@@ -1,0 +1,72 @@
+name: flax
+description: "High-fidelity music player with parametric EQ, AutoEQ, and Navidrome support."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Routing
+  go_router: ^14.8.1
+
+  # Networking
+  dio: ^5.7.0
+
+  # Local database
+  drift: ^2.22.1
+  sqlite3_flutter_libs: ^0.5.28
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
+  # Audio engine
+  mpv_audio_kit: ^0.4.2
+
+  # Theming
+  dynamic_color: ^1.7.0
+
+  # Images
+  cached_network_image: ^3.4.1
+  palette_generator: ^0.3.3+4
+
+  # Auth
+  crypto: ^3.0.6
+
+  # Archive extraction
+  archive: ^4.0.2
+
+  # Utils
+  collection: ^1.19.1
+  intl: ^0.19.0
+  connectivity_plus: ^6.1.1
+  url_launcher: ^6.3.1
+  uuid: ^4.5.1
+  shared_preferences: ^2.3.4
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.14
+  drift_dev: ^2.22.1
+  freezed: ^2.5.7
+  json_serializable: ^6.9.0
+  riverpod_generator: ^2.6.3
+  mockito: ^5.4.5
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/autoeq/
+    - assets/flax_logo.svg
