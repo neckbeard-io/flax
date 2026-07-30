@@ -1,0 +1,969 @@
+[
+  {
+    "id": "sennheiser_hd650",
+    "headphone": "Sennheiser HD 650",
+    "brand": "Sennheiser",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -6.2,
+    "filters": [
+      { "type": "peaking", "fc": 28, "q": 0.46, "gain": 6.3 },
+      { "type": "peaking", "fc": 162, "q": 0.91, "gain": -2.3 },
+      { "type": "peaking", "fc": 1580, "q": 0.54, "gain": 1.2 },
+      { "type": "peaking", "fc": 2237, "q": 1.94, "gain": -4.6 },
+      { "type": "peaking", "fc": 4500, "q": 3.5, "gain": 3.2 },
+      { "type": "peaking", "fc": 5500, "q": 6.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 8300, "q": 3.0, "gain": 3.0 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 6.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -3.5 }
+    ]
+  },
+  {
+    "id": "sennheiser_hd600",
+    "headphone": "Sennheiser HD 600",
+    "brand": "Sennheiser",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.8,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.45, "gain": 5.8 },
+      { "type": "peaking", "fc": 160, "q": 0.85, "gain": -1.9 },
+      { "type": "peaking", "fc": 1500, "q": 0.6, "gain": 1.5 },
+      { "type": "peaking", "fc": 3200, "q": 2.5, "gain": -3.8 },
+      { "type": "peaking", "fc": 5800, "q": 5.0, "gain": -3.2 },
+      { "type": "peaking", "fc": 8500, "q": 3.0, "gain": 2.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 5.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.8 }
+    ]
+  },
+  {
+    "id": "sennheiser_hd660s",
+    "headphone": "Sennheiser HD 660 S",
+    "brand": "Sennheiser",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.5,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 5.0 },
+      { "type": "peaking", "fc": 200, "q": 0.9, "gain": -2.0 },
+      { "type": "peaking", "fc": 1200, "q": 0.5, "gain": 1.0 },
+      { "type": "peaking", "fc": 3500, "q": 3.0, "gain": -4.0 },
+      { "type": "peaking", "fc": 5500, "q": 4.0, "gain": 3.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.5, "gain": -2.5 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 5.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -3.0 }
+    ]
+  },
+  {
+    "id": "sennheiser_hd800s",
+    "headphone": "Sennheiser HD 800 S",
+    "brand": "Sennheiser",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -7.0,
+    "filters": [
+      { "type": "peaking", "fc": 25, "q": 0.4, "gain": 5.5 },
+      { "type": "peaking", "fc": 130, "q": 0.8, "gain": -1.5 },
+      { "type": "peaking", "fc": 1800, "q": 1.2, "gain": 2.0 },
+      { "type": "peaking", "fc": 3000, "q": 2.0, "gain": -2.5 },
+      { "type": "peaking", "fc": 5700, "q": 8.0, "gain": -7.0 },
+      { "type": "peaking", "fc": 6300, "q": 5.0, "gain": 4.5 },
+      { "type": "peaking", "fc": 8500, "q": 3.0, "gain": 2.0 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 7.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -4.0 }
+    ]
+  },
+  {
+    "id": "sennheiser_hd560s",
+    "headphone": "Sennheiser HD 560 S",
+    "brand": "Sennheiser",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -3.5,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -1.0 },
+      { "type": "peaking", "fc": 1300, "q": 0.6, "gain": 1.0 },
+      { "type": "peaking", "fc": 4000, "q": 3.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 6000, "q": 4.0, "gain": 2.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "beyerdynamic_dt770_pro_250",
+    "headphone": "Beyerdynamic DT 770 Pro (250 Ohm)",
+    "brand": "Beyerdynamic",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.0,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.4, "gain": 3.0 },
+      { "type": "peaking", "fc": 220, "q": 0.8, "gain": -2.5 },
+      { "type": "peaking", "fc": 3500, "q": 2.5, "gain": -3.0 },
+      { "type": "peaking", "fc": 5800, "q": 6.0, "gain": -5.0 },
+      { "type": "peaking", "fc": 7800, "q": 4.0, "gain": 4.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 5.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -4.0 }
+    ]
+  },
+  {
+    "id": "beyerdynamic_dt990_pro_250",
+    "headphone": "Beyerdynamic DT 990 Pro (250 Ohm)",
+    "brand": "Beyerdynamic",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -7.5,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.4, "gain": 3.5 },
+      { "type": "peaking", "fc": 150, "q": 0.7, "gain": -2.0 },
+      { "type": "peaking", "fc": 3000, "q": 1.5, "gain": -3.0 },
+      { "type": "peaking", "fc": 5800, "q": 3.0, "gain": -7.5 },
+      { "type": "peaking", "fc": 8500, "q": 5.0, "gain": -6.0 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 5.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -3.5 }
+    ]
+  },
+  {
+    "id": "beyerdynamic_dt900_pro_x",
+    "headphone": "Beyerdynamic DT 900 Pro X",
+    "brand": "Beyerdynamic",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -4.5,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 180, "q": 0.8, "gain": -1.5 },
+      { "type": "peaking", "fc": 1500, "q": 0.6, "gain": 1.0 },
+      { "type": "peaking", "fc": 4200, "q": 3.0, "gain": -4.5 },
+      { "type": "peaking", "fc": 6000, "q": 4.0, "gain": 2.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 4.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "akg_k712_pro",
+    "headphone": "AKG K712 Pro",
+    "brand": "AKG",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.5,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 4.5 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -2.5 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": -3.0 },
+      { "type": "peaking", "fc": 3500, "q": 3.0, "gain": 2.5 },
+      { "type": "peaking", "fc": 6000, "q": 4.0, "gain": -3.5 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 5.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.5 }
+    ]
+  },
+  {
+    "id": "akg_k371",
+    "headphone": "AKG K371",
+    "brand": "AKG",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -3.0,
+    "filters": [
+      { "type": "peaking", "fc": 32, "q": 0.5, "gain": 2.0 },
+      { "type": "peaking", "fc": 250, "q": 0.9, "gain": -1.5 },
+      { "type": "peaking", "fc": 3000, "q": 2.0, "gain": -3.0 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": 2.0 },
+      { "type": "peaking", "fc": 8000, "q": 4.0, "gain": -2.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 3.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "akg_k702",
+    "headphone": "AKG K702",
+    "brand": "AKG",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -6.0,
+    "filters": [
+      { "type": "peaking", "fc": 28, "q": 0.45, "gain": 5.0 },
+      { "type": "peaking", "fc": 180, "q": 0.8, "gain": -2.0 },
+      { "type": "peaking", "fc": 2200, "q": 2.0, "gain": -4.0 },
+      { "type": "peaking", "fc": 4000, "q": 3.0, "gain": 3.0 },
+      { "type": "peaking", "fc": 6000, "q": 4.0, "gain": -3.5 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 6.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -3.0 }
+    ]
+  },
+  {
+    "id": "hifiman_sundara",
+    "headphone": "HiFiMAN Sundara",
+    "brand": "HiFiMAN",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -4.5,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -1.5 },
+      { "type": "peaking", "fc": 1500, "q": 0.6, "gain": 1.5 },
+      { "type": "peaking", "fc": 3500, "q": 2.5, "gain": -3.0 },
+      { "type": "peaking", "fc": 5500, "q": 4.0, "gain": 2.0 },
+      { "type": "peaking", "fc": 8500, "q": 3.0, "gain": -2.5 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 4.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "hifiman_ananda",
+    "headphone": "HiFiMAN Ananda",
+    "brand": "HiFiMAN",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -4.0,
+    "filters": [
+      { "type": "peaking", "fc": 25, "q": 0.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 180, "q": 0.7, "gain": -1.5 },
+      { "type": "peaking", "fc": 1800, "q": 1.0, "gain": 2.0 },
+      { "type": "peaking", "fc": 3200, "q": 2.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 5500, "q": 3.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": -2.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 4.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "hifiman_he400se",
+    "headphone": "HiFiMAN HE400se",
+    "brand": "HiFiMAN",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.0,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 4.0 },
+      { "type": "peaking", "fc": 220, "q": 0.9, "gain": -2.0 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": -3.5 },
+      { "type": "peaking", "fc": 4000, "q": 3.0, "gain": 3.0 },
+      { "type": "peaking", "fc": 6500, "q": 4.0, "gain": -2.5 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 5.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "hifiman_edition_xs",
+    "headphone": "HiFiMAN Edition XS",
+    "brand": "HiFiMAN",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -3.5,
+    "filters": [
+      { "type": "peaking", "fc": 28, "q": 0.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -1.0 },
+      { "type": "peaking", "fc": 1500, "q": 0.7, "gain": 1.5 },
+      { "type": "peaking", "fc": 3500, "q": 2.5, "gain": -3.5 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": 2.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "audeze_lcd2_classic",
+    "headphone": "Audeze LCD-2 Classic",
+    "brand": "Audeze",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.0,
+    "filters": [
+      { "type": "peaking", "fc": 25, "q": 0.4, "gain": 3.0 },
+      { "type": "peaking", "fc": 150, "q": 0.7, "gain": -1.5 },
+      { "type": "peaking", "fc": 800, "q": 0.5, "gain": 2.0 },
+      { "type": "peaking", "fc": 3000, "q": 2.0, "gain": 5.0 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": -3.0 },
+      { "type": "peaking", "fc": 9000, "q": 4.0, "gain": 3.0 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "audeze_lcdi3",
+    "headphone": "Audeze LCDi3",
+    "brand": "Audeze",
+    "source": "oratory1990",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -6.0,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 4.0 },
+      { "type": "peaking", "fc": 300, "q": 1.0, "gain": -2.5 },
+      { "type": "peaking", "fc": 2500, "q": 2.0, "gain": 6.0 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -4.0 },
+      { "type": "peaking", "fc": 8000, "q": 3.5, "gain": 3.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 5.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.5 }
+    ]
+  },
+  {
+    "id": "audiotechnica_athm50x",
+    "headphone": "Audio-Technica ATH-M50x",
+    "brand": "Audio-Technica",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.5,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 250, "q": 1.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 3200, "q": 2.0, "gain": -4.0 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": 3.5 },
+      { "type": "peaking", "fc": 8500, "q": 4.0, "gain": -5.5 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 5.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "audiotechnica_athr70x",
+    "headphone": "Audio-Technica ATH-R70x",
+    "brand": "Audio-Technica",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -4.0,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -1.5 },
+      { "type": "peaking", "fc": 3000, "q": 2.0, "gain": -3.0 },
+      { "type": "peaking", "fc": 5500, "q": 3.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": -2.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 4.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "focal_clear",
+    "headphone": "Focal Clear",
+    "brand": "Focal",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -4.0,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 180, "q": 0.7, "gain": -1.0 },
+      { "type": "peaking", "fc": 1200, "q": 0.6, "gain": 1.5 },
+      { "type": "peaking", "fc": 3500, "q": 3.0, "gain": -4.0 },
+      { "type": "peaking", "fc": 5500, "q": 4.0, "gain": 2.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 4.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "focal_utopia",
+    "headphone": "Focal Utopia",
+    "brand": "Focal",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -3.0,
+    "filters": [
+      { "type": "peaking", "fc": 25, "q": 0.5, "gain": 2.0 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -1.0 },
+      { "type": "peaking", "fc": 1500, "q": 0.7, "gain": 1.5 },
+      { "type": "peaking", "fc": 3800, "q": 3.5, "gain": -3.0 },
+      { "type": "peaking", "fc": 6000, "q": 4.0, "gain": 2.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 3.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "focal_elegia",
+    "headphone": "Focal Elegia",
+    "brand": "Focal",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.5,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.5, "gain": 4.0 },
+      { "type": "peaking", "fc": 250, "q": 0.9, "gain": -3.0 },
+      { "type": "peaking", "fc": 1500, "q": 1.0, "gain": 2.5 },
+      { "type": "peaking", "fc": 3500, "q": 2.5, "gain": -5.5 },
+      { "type": "peaking", "fc": 5800, "q": 4.0, "gain": 4.0 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": -3.0 },
+      { "type": "low_shelf", "fc": 105, "q": 0.7, "gain": 5.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.5 }
+    ]
+  },
+  {
+    "id": "sony_wh1000xm4",
+    "headphone": "Sony WH-1000XM4",
+    "brand": "Sony",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -4.5,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 130, "q": 0.7, "gain": -1.5 },
+      { "type": "peaking", "fc": 1500, "q": 1.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 3500, "q": 2.5, "gain": 4.5 },
+      { "type": "peaking", "fc": 6000, "q": 3.0, "gain": -3.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 4.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "sony_wh1000xm5",
+    "headphone": "Sony WH-1000XM5",
+    "brand": "Sony",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -3.5,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 2.0 },
+      { "type": "peaking", "fc": 150, "q": 0.7, "gain": -1.0 },
+      { "type": "peaking", "fc": 1200, "q": 0.8, "gain": -2.5 },
+      { "type": "peaking", "fc": 3000, "q": 2.0, "gain": 3.5 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": -2.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "sony_mdr7506",
+    "headphone": "Sony MDR-7506",
+    "brand": "Sony",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -6.0,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -2.5 },
+      { "type": "peaking", "fc": 2500, "q": 1.5, "gain": -4.0 },
+      { "type": "peaking", "fc": 4500, "q": 3.0, "gain": 3.5 },
+      { "type": "peaking", "fc": 7000, "q": 4.0, "gain": -6.0 },
+      { "type": "peaking", "fc": 9000, "q": 3.0, "gain": 4.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 5.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -3.0 }
+    ]
+  },
+  {
+    "id": "apple_airpods_pro_2",
+    "headphone": "Apple AirPods Pro (2nd gen)",
+    "brand": "Apple",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -3.5,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 2.0 },
+      { "type": "peaking", "fc": 250, "q": 0.8, "gain": -1.5 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 2.0 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "apple_airpods_max",
+    "headphone": "Apple AirPods Max",
+    "brand": "Apple",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -3.0,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 2.0 },
+      { "type": "peaking", "fc": 150, "q": 0.7, "gain": -1.0 },
+      { "type": "peaking", "fc": 2500, "q": 1.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 5500, "q": 3.5, "gain": -3.0 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 1.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 3.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "moondrop_blessing2",
+    "headphone": "Moondrop Blessing 2",
+    "brand": "Moondrop",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -2.5,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 1.5 },
+      { "type": "peaking", "fc": 250, "q": 0.8, "gain": -1.0 },
+      { "type": "peaking", "fc": 1800, "q": 1.2, "gain": 1.5 },
+      { "type": "peaking", "fc": 4500, "q": 3.0, "gain": -2.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.5, "gain": 1.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 2.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "moondrop_starfield",
+    "headphone": "Moondrop Starfield",
+    "brand": "Moondrop",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -3.0,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 2.0 },
+      { "type": "peaking", "fc": 200, "q": 0.7, "gain": -1.5 },
+      { "type": "peaking", "fc": 2500, "q": 1.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -3.0 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 2.0 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "moondrop_kato",
+    "headphone": "Moondrop Kato",
+    "brand": "Moondrop",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -2.5,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.6, "gain": 1.5 },
+      { "type": "peaking", "fc": 200, "q": 0.7, "gain": -1.0 },
+      { "type": "peaking", "fc": 2000, "q": 1.2, "gain": 2.0 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -2.5 },
+      { "type": "peaking", "fc": 8500, "q": 3.5, "gain": 1.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 2.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "etymotic_er2se",
+    "headphone": "Etymotic ER2SE",
+    "brand": "Etymotic",
+    "source": "oratory1990",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -3.5,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 2.5 },
+      { "type": "peaking", "fc": 300, "q": 0.9, "gain": -1.5 },
+      { "type": "peaking", "fc": 2200, "q": 1.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -2.0 },
+      { "type": "peaking", "fc": 8500, "q": 3.5, "gain": 2.0 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "etymotic_er4sr",
+    "headphone": "Etymotic ER4SR",
+    "brand": "Etymotic",
+    "source": "oratory1990",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -4.0,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 3.0 },
+      { "type": "peaking", "fc": 250, "q": 0.8, "gain": -1.5 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": 4.0 },
+      { "type": "peaking", "fc": 4500, "q": 2.5, "gain": -2.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 2.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 4.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "shure_se215",
+    "headphone": "Shure SE215",
+    "brand": "Shure",
+    "source": "oratory1990",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -5.0,
+    "filters": [
+      { "type": "peaking", "fc": 50, "q": 0.6, "gain": 3.0 },
+      { "type": "peaking", "fc": 300, "q": 1.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 2500, "q": 2.0, "gain": 5.0 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": -4.0 },
+      { "type": "peaking", "fc": 8000, "q": 3.5, "gain": 3.0 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 4.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "shure_se535",
+    "headphone": "Shure SE535",
+    "brand": "Shure",
+    "source": "oratory1990",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -4.5,
+    "filters": [
+      { "type": "peaking", "fc": 45, "q": 0.6, "gain": 2.5 },
+      { "type": "peaking", "fc": 350, "q": 1.0, "gain": -2.5 },
+      { "type": "peaking", "fc": 2200, "q": 1.5, "gain": 4.5 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 8500, "q": 3.0, "gain": 2.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 4.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "sennheiser_ie300",
+    "headphone": "Sennheiser IE 300",
+    "brand": "Sennheiser",
+    "source": "oratory1990",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -4.0,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 2.0 },
+      { "type": "peaking", "fc": 250, "q": 0.8, "gain": -2.5 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -4.0 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 2.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "sennheiser_ie600",
+    "headphone": "Sennheiser IE 600",
+    "brand": "Sennheiser",
+    "source": "oratory1990",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -3.0,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.6, "gain": 1.5 },
+      { "type": "peaking", "fc": 200, "q": 0.7, "gain": -1.0 },
+      { "type": "peaking", "fc": 2500, "q": 1.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 5500, "q": 3.5, "gain": -3.0 },
+      { "type": "peaking", "fc": 8500, "q": 3.0, "gain": 1.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "sennheiser_momentum4",
+    "headphone": "Sennheiser Momentum 4",
+    "brand": "Sennheiser",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -3.5,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 150, "q": 0.7, "gain": -1.5 },
+      { "type": "peaking", "fc": 1200, "q": 0.8, "gain": -2.0 },
+      { "type": "peaking", "fc": 3000, "q": 2.0, "gain": 3.5 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": -2.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "philips_shp9500",
+    "headphone": "Philips SHP9500",
+    "brand": "Philips",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.5,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.5, "gain": 4.0 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -3.0 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": -3.5 },
+      { "type": "peaking", "fc": 4000, "q": 3.0, "gain": 3.0 },
+      { "type": "peaking", "fc": 6500, "q": 4.0, "gain": -3.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 5.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.5 }
+    ]
+  },
+  {
+    "id": "bose_qc45",
+    "headphone": "Bose QuietComfort 45",
+    "brand": "Bose",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -4.5,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -2.5 },
+      { "type": "peaking", "fc": 1500, "q": 1.0, "gain": -3.0 },
+      { "type": "peaking", "fc": 3500, "q": 2.5, "gain": 4.5 },
+      { "type": "peaking", "fc": 6000, "q": 3.0, "gain": -3.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 4.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "bose_700",
+    "headphone": "Bose 700",
+    "brand": "Bose",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.0,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 180, "q": 0.7, "gain": -2.0 },
+      { "type": "peaking", "fc": 1200, "q": 0.8, "gain": -2.5 },
+      { "type": "peaking", "fc": 3000, "q": 2.0, "gain": 5.0 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": -4.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 4.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.5 }
+    ]
+  },
+  {
+    "id": "samsung_galaxy_buds2_pro",
+    "headphone": "Samsung Galaxy Buds2 Pro",
+    "brand": "Samsung",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -3.0,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 2.0 },
+      { "type": "peaking", "fc": 250, "q": 0.8, "gain": -1.5 },
+      { "type": "peaking", "fc": 2500, "q": 1.5, "gain": 2.0 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": -3.0 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 2.0 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "7hz_timeless",
+    "headphone": "7Hz Timeless",
+    "brand": "7Hz",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -3.5,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 2.0 },
+      { "type": "peaking", "fc": 300, "q": 0.9, "gain": -1.5 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 2.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "thieaudio_monarch_mk2",
+    "headphone": "ThieAudio Monarch Mk2",
+    "brand": "ThieAudio",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -2.0,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.6, "gain": 1.5 },
+      { "type": "peaking", "fc": 200, "q": 0.7, "gain": -0.5 },
+      { "type": "peaking", "fc": 2500, "q": 1.5, "gain": 1.5 },
+      { "type": "peaking", "fc": 5500, "q": 3.5, "gain": -2.0 },
+      { "type": "peaking", "fc": 8500, "q": 3.0, "gain": 1.0 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 2.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -0.5 }
+    ]
+  },
+  {
+    "id": "campfire_andromeda",
+    "headphone": "Campfire Audio Andromeda",
+    "brand": "Campfire Audio",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -4.0,
+    "filters": [
+      { "type": "peaking", "fc": 45, "q": 0.6, "gain": 2.5 },
+      { "type": "peaking", "fc": 300, "q": 1.0, "gain": -3.0 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -4.0 },
+      { "type": "peaking", "fc": 7500, "q": 3.0, "gain": 3.0 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 4.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "fiio_fh3",
+    "headphone": "FiiO FH3",
+    "brand": "FiiO",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -3.5,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 2.0 },
+      { "type": "peaking", "fc": 250, "q": 0.8, "gain": -2.0 },
+      { "type": "peaking", "fc": 2200, "q": 1.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 5500, "q": 3.5, "gain": -3.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 2.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "kz_zs10_pro",
+    "headphone": "KZ ZS10 Pro",
+    "brand": "KZ",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -5.0,
+    "filters": [
+      { "type": "peaking", "fc": 50, "q": 0.7, "gain": 3.0 },
+      { "type": "peaking", "fc": 350, "q": 1.0, "gain": -3.0 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": 4.0 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -5.0 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 3.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 4.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "meze_99_classics",
+    "headphone": "Meze 99 Classics",
+    "brand": "Meze",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -6.0,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -4.0 },
+      { "type": "peaking", "fc": 1000, "q": 0.6, "gain": 2.5 },
+      { "type": "peaking", "fc": 3000, "q": 2.0, "gain": 4.0 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.5, "gain": -6.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 5.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -3.0 }
+    ]
+  },
+  {
+    "id": "dan_clark_aeon2_closed",
+    "headphone": "Dan Clark Audio Aeon 2 Closed",
+    "brand": "Dan Clark Audio",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -4.5,
+    "filters": [
+      { "type": "peaking", "fc": 30, "q": 0.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 180, "q": 0.7, "gain": -1.5 },
+      { "type": "peaking", "fc": 1500, "q": 0.8, "gain": 2.0 },
+      { "type": "peaking", "fc": 3500, "q": 2.5, "gain": -3.5 },
+      { "type": "peaking", "fc": 6000, "q": 4.0, "gain": 2.5 },
+      { "type": "peaking", "fc": 9000, "q": 3.0, "gain": -2.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 4.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.5 }
+    ]
+  },
+  {
+    "id": "grado_sr80e",
+    "headphone": "Grado SR80e",
+    "brand": "Grado",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.0,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.5, "gain": 3.5 },
+      { "type": "peaking", "fc": 200, "q": 0.8, "gain": -2.5 },
+      { "type": "peaking", "fc": 2500, "q": 2.0, "gain": -5.0 },
+      { "type": "peaking", "fc": 4000, "q": 3.0, "gain": 3.5 },
+      { "type": "peaking", "fc": 6500, "q": 4.0, "gain": -3.0 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 5.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "koss_porta_pro",
+    "headphone": "Koss Porta Pro",
+    "brand": "Koss",
+    "source": "oratory1990",
+    "target": "harman_over-ear_2018",
+    "type": "over-ear",
+    "preamp": -5.0,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 250, "q": 0.9, "gain": -3.5 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 4500, "q": 3.0, "gain": -5.0 },
+      { "type": "peaking", "fc": 7000, "q": 3.0, "gain": 3.5 },
+      { "type": "low_shelf", "fc": 100, "q": 0.7, "gain": 5.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -2.0 }
+    ]
+  },
+  {
+    "id": "truthear_zero",
+    "headphone": "TruthEar x Crinacle Zero",
+    "brand": "TruthEar",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -2.0,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.6, "gain": 1.0 },
+      { "type": "peaking", "fc": 200, "q": 0.7, "gain": -0.5 },
+      { "type": "peaking", "fc": 2500, "q": 1.5, "gain": 1.5 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": -2.0 },
+      { "type": "peaking", "fc": 8500, "q": 3.5, "gain": 1.0 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 2.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -0.5 }
+    ]
+  },
+  {
+    "id": "sony_wf1000xm4",
+    "headphone": "Sony WF-1000XM4",
+    "brand": "Sony",
+    "source": "oratory1990",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -3.5,
+    "filters": [
+      { "type": "peaking", "fc": 40, "q": 0.6, "gain": 2.0 },
+      { "type": "peaking", "fc": 250, "q": 0.8, "gain": -1.5 },
+      { "type": "peaking", "fc": 2000, "q": 1.5, "gain": 3.0 },
+      { "type": "peaking", "fc": 5000, "q": 3.0, "gain": -3.5 },
+      { "type": "peaking", "fc": 8000, "q": 3.0, "gain": 2.0 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.5 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  },
+  {
+    "id": "sony_wf1000xm5",
+    "headphone": "Sony WF-1000XM5",
+    "brand": "Sony",
+    "source": "crinacle",
+    "target": "harman_in-ear_2019",
+    "type": "in-ear",
+    "preamp": -3.0,
+    "filters": [
+      { "type": "peaking", "fc": 35, "q": 0.6, "gain": 1.5 },
+      { "type": "peaking", "fc": 200, "q": 0.7, "gain": -1.0 },
+      { "type": "peaking", "fc": 2500, "q": 1.5, "gain": 2.5 },
+      { "type": "peaking", "fc": 5500, "q": 3.0, "gain": -3.0 },
+      { "type": "peaking", "fc": 8500, "q": 3.5, "gain": 1.5 },
+      { "type": "low_shelf", "fc": 80, "q": 0.7, "gain": 3.0 },
+      { "type": "high_shelf", "fc": 10000, "q": 0.7, "gain": -1.0 }
+    ]
+  }
+]
