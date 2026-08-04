@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Streaming from the Subsonic server. Debug builds get INTERNET injected
+         automatically by the Flutter tool; release builds do not, so it must be
+         declared here or release APKs silently fail every network request. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Keeps playback alive while the screen is off (required by mpv_audio_kit). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:label="flax"
         android:name="${applicationName}"

@@ -1,0 +1,285 @@
+name: Release
+
+# Manual, opt-in release builds. Nothing here fires on its own — no push or tag
+# trigger — because this is a PRIVATE repo and runner minutes are billed at a
+# multiplier (macOS 10x, Windows 2x, Linux 1x). Every platform is off by default
+# and must be ticked on for the run that needs it.
+#
+# Run it from the Actions tab ("Release" -> "Run workflow"), or:
+#
+#   gh workflow run release.yml -f version=0.1.1 -f windows=true -f android=true
+#
+# The `version` input is the whole version story: it becomes the build-name, the
+# git tag (v<version>), and the release title. The workflow run number becomes
+# the build-number so two builds of the same version stay distinguishable
+# on-device. Nothing in pubspec.yaml is ever bumped.
+#
+# macOS is deliberately the expensive one to opt into. A local
+# `tool/release.sh --mac` produces an identical ad-hoc-signed universal .dmg in
+# ~90s on an Apple Silicon Mac; you can attach it to the release afterwards with
+#   gh release upload v<version> dist/flax-<version>-macos-universal.dmg
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version, without the leading v (e.g. 0.1.1)'
+        required: true
+        type: string
+      macos:
+        description: 'Build macOS .dmg (billed at 10x — prefer tool/release.sh --mac)'
+        required: false
+        default: false
+        type: boolean
+      windows:
+        description: 'Build Windows .zip (billed at 2x)'
+        required: false
+        default: false
+        type: boolean
+      android:
+        description: 'Build Android .apk (billed at 1x)'
+        required: false
+        default: false
+        type: boolean
+      publish:
+        description: 'Create the tag + GitHub Release from whatever was built'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write # create the tag, the Release, and upload assets
+
+# Two concurrent runs would race to create the same tag.
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: 3.44.2
+
+jobs:
+  macos:
+    name: macOS (.dmg)
+    if: inputs.macos
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build macOS release
+        run: |
+          flutter build macos --release \
+            --build-name=${{ inputs.version }} \
+            --build-number=${{ github.run_number }}
+
+      # Ad-hoc signed (CODE_SIGN_IDENTITY = "-"), so Gatekeeper quarantines this
+      # on the receiving Mac; the release notes tell testers how to clear it. To
+      # move to a notarized build later this is the only step that changes:
+      # import a Developer ID cert, enable Hardened Runtime, then
+      # `xcrun notarytool submit --wait` + `xcrun stapler staple` the .dmg.
+      - name: Package .dmg
+        run: |
+          mkdir -p dist dmg-staging
+          cp -R "build/macos/Build/Products/Release/flax.app" dmg-staging/
+          ln -s /Applications dmg-staging/Applications
+          hdiutil create -volname "flax" \
+            -srcfolder dmg-staging \
+            -ov -format UDZO \
+            "dist/flax-${{ inputs.version }}-macos-universal.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: dist/*.dmg
+
+  windows:
+    name: Windows (.zip)
+    if: inputs.windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build Windows release
+        run: |
+          flutter build windows --release `
+            --build-name=${{ inputs.version }} `
+            --build-number=${{ github.run_number }}
+
+      # The whole Release folder must ship: flax.exe alone will not start. It
+      # needs the Flutter DLLs, libmpv.dll, and the data/ directory beside it.
+      - name: Package .zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive `
+            -Path build\windows\x64\runner\Release\* `
+            -DestinationPath dist\flax-${{ inputs.version }}-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: dist/*.zip
+
+  android:
+    name: Android (.apk)
+    if: inputs.android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Recreate the gitignored signing material from secrets so the APK is
+      # signed with the stable test key. Without this the Gradle config silently
+      # falls back to the debug keystore and testers cannot upgrade in place.
+      - name: Restore release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.FLAX_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.FLAX_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::FLAX_KEYSTORE_BASE64 / FLAX_KEYSTORE_PASSWORD not set — refusing to ship a debug-signed APK."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > android/flax-test.jks
+          cat > android/key.properties <<EOF
+          storePassword=${KEYSTORE_PASSWORD}
+          keyPassword=${KEYSTORE_PASSWORD}
+          keyAlias=flax-test
+          storeFile=flax-test.jks
+          EOF
+
+      # A universal APK, not --split-per-abi: one file a tester can grab without
+      # knowing their ABI, and not an .aab, which cannot be sideloaded.
+      - name: Build release APK
+        run: |
+          flutter build apk --release \
+            --build-name=${{ inputs.version }} \
+            --build-number=${{ github.run_number }}
+
+      # Fail loudly rather than shipping an APK signed with the wrong key.
+      - name: Verify signing identity
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          DN=$("$BT/apksigner" verify --print-certs \
+            build/app/outputs/flutter-apk/app-release.apk \
+            | grep -m1 'certificate DN')
+          echo "$DN"
+          echo "$DN" | grep -q 'CN=flax test builds' \
+            || { echo "::error::APK is not signed with the flax test key."; exit 1; }
+
+      - name: Stage APK
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "dist/flax-${{ inputs.version }}-android-universal.apk"
+
+      - name: Scrub signing material
+        if: always()
+        run: rm -f android/flax-test.jks android/key.properties
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: dist/*.apk
+
+  release:
+    name: Publish GitHub Release
+    needs: [macos, windows, android]
+    # always() so that platforms left opted-out (skipped) don't block the
+    # release, but a genuine build failure still does.
+    if: |
+      always() && inputs.publish
+      && !contains(needs.*.result, 'failure')
+      && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Require at least one artifact
+        run: |
+          if [ -z "$(ls -A dist 2>/dev/null)" ]; then
+            echo "::error::No artifacts were built — tick at least one platform, or untick publish."
+            exit 1
+          fi
+          ls -lh dist/
+
+      - name: Write install notes
+        run: |
+          cat > notes.md <<'EOF'
+          Test build of flax. Unsigned on macOS and Windows — both OSes will
+          object on first launch, and the steps below are how you get past it.
+          This is expected, not a corrupted download.
+
+          ### macOS (universal — Apple Silicon and Intel)
+          Open the `.dmg`, drag **flax** to Applications, then clear the
+          download quarantine flag once:
+
+          ```
+          xattr -dr com.apple.quarantine /Applications/flax.app
+          ```
+
+          Without that, macOS 15+ reports the app as damaged.
+
+          ### Windows 10/11 (x64)
+          Unzip **the whole folder** somewhere permanent and run `flax.exe` from
+          inside it — the .exe needs the DLLs and `data/` folder next to it.
+          SmartScreen will warn: *More info* -> *Run anyway*.
+
+          ### Android (7.0+, arm64/armv7/x86_64)
+          Sideload the `.apk`. Enable "install unknown apps" for your browser or
+          file manager when prompted. All test builds share one signing key, so
+          later versions install over this one.
+
+          Not every platform is necessarily attached to every release — builds
+          are opted into per run to control CI cost.
+          EOF
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ inputs.version }}
+        run: |
+          # Creates the tag at this commit if it does not already exist.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG exists — uploading/replacing assets."
+            gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "flax $TAG" \
+              --notes-file notes.md \
+              --prerelease \
+              dist/*
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[].name'
