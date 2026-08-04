@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
+import 'package:flax/shared/widgets/eq_curve_chart.dart';
 
 class AutoEqScreen extends ConsumerStatefulWidget {
   const AutoEqScreen({super.key});
@@ -75,38 +76,104 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
 
   Widget _buildActiveProfileBanner(ThemeData theme, AutoEqState state) {
     final profile = state.activeProfile!;
+    final points = profile.points;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       color: theme.colorScheme.primaryContainer,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.headphones, color: theme.colorScheme.onPrimaryContainer),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.name,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
+          Row(
+            children: [
+              Icon(Icons.headphones,
+                  color: theme.colorScheme.onPrimaryContainer),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      profile.name,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Source: ${profile.source} · ${points.length} points',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer
+                            .withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  'Source: ${profile.source} · ${profile.points.length} bands',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+              ),
+              Icon(Icons.check_circle, color: theme.colorScheme.primary),
+            ],
+          ),
+          // The correction curve itself. Without this there is no way to tell a
+          // working profile from one that loaded no data — which is exactly how
+          // a broken AutoEQ cache went unnoticed.
+          if (points.length >= 2) ...[
+            const SizedBox(height: 12),
+            EqCurveChart(
+              height: 110,
+              // Darkened rather than left to the default surface tint: this
+              // banner is already primaryContainer, and a curve in the same
+              // family disappears into it.
+              backgroundColor: Colors.black.withValues(alpha: 0.22),
+              curves: [
+                EqCurve(
+                  points: [
+                    for (final p in points) CurvePoint(p.frequency, p.gain),
+                  ],
+                  color: theme.colorScheme.primary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _curveSummary(points),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer
+                    .withValues(alpha: 0.7),
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    size: 16, color: theme.colorScheme.error),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'No correction curve loaded — this profile is not doing '
+                    'anything. Re-download the database.',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.error),
                   ),
                 ),
               ],
             ),
-          ),
-          Icon(Icons.check_circle, color: theme.colorScheme.primary),
+          ],
         ],
       ),
     );
+  }
+
+  /// Peak boost and cut, so the numbers back up the shape of the curve.
+  String _curveSummary(List<GraphicEqPoint> points) {
+    var maxGain = points.first.gain;
+    var minGain = points.first.gain;
+    for (final p in points) {
+      if (p.gain > maxGain) maxGain = p.gain;
+      if (p.gain < minGain) minGain = p.gain;
+    }
+    return 'Peak ${maxGain >= 0 ? "+" : ""}${maxGain.toStringAsFixed(1)} dB, '
+        'dip ${minGain.toStringAsFixed(1)} dB';
   }
 
   Widget _buildDbInfoBar(ThemeData theme, AutoEqState state) {

@@ -236,10 +236,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     final autoEq = _ref.read(autoEqProvider);
 
     try {
-      // Preamp via mpv's native volume-gain property (dB)
-      final preampDb = eq.enabled ? eq.preamp : 0.0;
-      await _player.setVolumeGain(preampDb);
-
       // Accumulate per-band gain in dB. Our 18 EQ bands are exactly the
       // superequalizer bands, so band i maps to key '${i + 1}b'.
       final gainsDb = List<double>.filled(_superEqBandCount, 0);
@@ -261,6 +257,17 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         }
       }
 
+      // Headroom. superequalizer amplifies for real, and AutoEQ curves
+      // routinely carry bass shelves of +6 dB or more, so a boosted band on
+      // already-loud material clips audibly. Pull the whole chain down by the
+      // largest boost in the combined curve, which costs loudness but is the
+      // only way a positive band can be honoured cleanly. Manual preamp is
+      // applied on top, and both go through mpv's volume-gain (dB).
+      final maxBoostDb =
+          gainsDb.fold<double>(0, (m, g) => g > m ? g : m);
+      final preampDb = (eq.enabled ? eq.preamp : 0.0) - maxBoostDb;
+      await _player.setVolumeGain(preampDb);
+
       final active = gainsDb.any((g) => g != 0);
 
       // superequalizer takes LINEAR multipliers (0..20, 1.0 = 0 dB).
@@ -273,8 +280,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       }
 
       developer.log(
-        'EQ apply: enabled=${eq.enabled}, preamp=${preampDb}dB, '
-        'active=$active, autoEq=${profile?.name ?? "none"}, '
+        'EQ apply: enabled=${eq.enabled}, gain=${preampDb.toStringAsFixed(1)}dB '
+        '(headroom ${(-maxBoostDb).toStringAsFixed(1)}dB), active=$active, '
+        'autoEq=${profile?.name ?? "none"}'
+        '${profile != null ? " (${profile.points.length} pts)" : ""}, '
         'gainsDb=${gainsDb.map((g) => g.toStringAsFixed(1)).join(",")}',
         name: 'PlayerEQ',
       );
