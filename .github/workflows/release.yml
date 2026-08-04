@@ -239,6 +239,11 @@ jobs:
           object on first launch, and the steps below are how you get past it.
           This is expected, not a corrupted download.
 
+          **Check you are running what you just installed.** *Settings → About*
+          shows the version and build number. If it does not match this release,
+          an older copy is still installed — on macOS, Finder's "Keep Both"
+          leaves the previous `flax.app` in place, so delete it and re-copy.
+
           ### macOS (universal — Apple Silicon and Intel)
           Open the `.dmg`, drag **flax** to Applications, then clear the
           download quarantine flag once:
