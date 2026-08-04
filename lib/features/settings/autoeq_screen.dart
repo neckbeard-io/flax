@@ -41,15 +41,11 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
     final state = ref.watch(autoEqProvider);
 
     return Scaffold(
+      // No AppBar actions: ShellScaffold overlays the window buttons on this
+      // corner, so anything here is drawn underneath them. "Clear" lives in the
+      // active-profile banner instead, next to what it clears.
       appBar: AppBar(
         title: const Text('AutoEQ'),
-        actions: [
-          if (state.activeProfile != null)
-            TextButton(
-              onPressed: () => ref.read(autoEqProvider.notifier).clearProfile(),
-              child: const Text('Clear'),
-            ),
-        ],
       ),
       body: Column(
         children: [
@@ -111,6 +107,17 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
                 ),
               ),
               Icon(Icons.check_circle, color: theme.colorScheme.primary),
+              const SizedBox(width: 4),
+              TextButton.icon(
+                onPressed: () =>
+                    ref.read(autoEqProvider.notifier).clearProfile(),
+                icon: const Icon(Icons.close, size: 16),
+                label: const Text('Clear'),
+                style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.onPrimaryContainer,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
             ],
           ),
           // The correction curve itself. Without this there is no way to tell a
