@@ -53,6 +53,20 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 add_subdirectory("runner")
 
 
+# Workaround for an upstream mpv_audio_kit issue, not something flax needs.
+# Its Windows plugin uses C++/WinRT, which includes <experimental/coroutine>.
+# MSVC 14.51 (Visual Studio 18, what github's windows-latest runner now ships)
+# promoted that header's deprecation to a hard static_assert (STL1011), so the
+# plugin fails to compile with error C2338 and takes the whole build with it.
+# This define is Microsoft's documented escape hatch. It is set at directory
+# scope so the plugin targets added below inherit it — we cannot patch a
+# package in .pub-cache.
+#
+# Remove this once mpv_audio_kit migrates to the C++20 <coroutine> header. If
+# MSVC follows through and deletes <experimental/coroutine> outright, this stops
+# helping and the plugin will need the real upstream fix.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
