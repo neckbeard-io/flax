@@ -160,7 +160,13 @@ class _AboutTile extends StatelessWidget {
             : (kProfileMode ? ' · profile build' : '');
         return ListTile(
           title: const Text('Flax'),
-          subtitle: Text('$version$mode · High-fidelity music player'),
+          // The licence is named here because handing someone a build is
+          // distribution, and GPL expects an interactive program to say so
+          // somewhere the recipient can find it.
+          subtitle: Text(
+            '$version$mode · High-fidelity music player\n'
+            'GPL-3.0-or-later · source at github.com/neckbeard-io/flax',
+          ),
         );
       },
     );

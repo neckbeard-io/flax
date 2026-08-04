@@ -90,6 +90,9 @@ is not yet read by the player:
 
 **Features not yet built**
 
+- Plot the AutoEQ correction and the manual band curve together on the equalizer
+  screen, so their interaction is visible rather than only the AutoEQ curve on
+  its own page. `EqCurveChart` already layers curves, so this is mostly wiring.
 - Synchronized lyrics (LRC) — the Subsonic client already fetches them
 - Offline sync and a rotating download cache
 - Scrobbling — client support exists, nothing drives it
@@ -104,7 +107,8 @@ is not yet read by the player:
   it can work on Android.
 - No signed builds. macOS is ad-hoc signed and Windows is unsigned, so both warn
   on first launch; notarization and a Windows certificate are open items.
-- No license file (see [below](#license)).
+- The licence of the bundled `libmpv` binaries is unconfirmed, which is what
+  forces flax's own licence to be GPL (see [License](#license)).
 
 ---
 
@@ -213,6 +217,25 @@ table.
 
 ## License
 
-Not yet licensed. Without a license file, default copyright applies and nobody
-else has the right to use, modify, or redistribute this code — worth resolving
-before sharing builds beyond personal testing.
+[GNU General Public License v3.0 or later](LICENSE).
+
+This is not a free choice: flax ships prebuilt `libmpv` binaries inside every
+artifact, and mpv is copyleft. Upstream mpv is GPLv2-or-later unless it is
+deliberately built `--enable-lgpl`, the binaries flax downloads carry no licence
+statement either in the archive or in the plugin that publishes them, and the
+FFmpeg configuration string is stripped from them — so there is no way to
+confirm they are the LGPL variant. Assuming the GPL build is the safe reading,
+and a GPL-licensed whole is valid whichever variant they turn out to be, since
+LGPL is one-way compatible with GPL.
+
+Practical consequences, since handing a build to someone else is distribution:
+
+- Anyone you give a build to is entitled to the corresponding source, which the
+  public repository satisfies.
+- A closed-source fork is not an option, and neither is Mac App Store
+  distribution — GPLv3's anti-tivoization terms conflict with App Store
+  licensing. Neither is on the roadmap.
+
+If the bundled libmpv is ever confirmed to be the LGPL build, or is replaced
+with one, this could be relaxed to a permissive licence. Until then, GPL is the
+defensible choice.
