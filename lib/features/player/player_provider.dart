@@ -159,7 +159,31 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       next();
     } else if (state.repeatMode == RepeatMode.all && state.queue.isNotEmpty) {
       _playIndex(0);
+    } else {
+      _onQueueFinished();
     }
+  }
+
+  /// The queue ran out with repeat off.
+  ///
+  /// This used to do nothing, which left mpv wherever its `keep-open` policy
+  /// had parked it: paused on the last frame with `eof-reached` set. That is
+  /// not an ordinary paused state, and picking another album afterwards
+  /// loaded it without starting playback — the album appeared merely queued
+  /// and needed a manual press of play, while the same action from a fresh
+  /// start played immediately.
+  ///
+  /// Rewinding clears `eof-reached`, so the transport ends up somewhere both
+  /// the play button and the next `open()` behave normally.
+  Future<void> _onQueueFinished() async {
+    try {
+      await _player.seek(Duration.zero);
+      await _player.pause();
+    } catch (e) {
+      developer.log('Queue-finished reset failed: $e', name: 'PlayerNotifier');
+    }
+    if (!mounted) return;
+    state = state.copyWith(position: Duration.zero, isPlaying: false);
   }
 
   Uri _streamUri(Song song) {
@@ -178,9 +202,21 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       queueIndex: index,
     );
     final uri = _streamUri(song);
-    await _player.open(mpv.Media(uri.toString()), play: true);
+    await _openAndPlay(uri);
     _updateNowPlayingForSong(song);
     _debounceSaveQueue();
+  }
+
+  /// Loads [uri] and starts it.
+  ///
+  /// `open(play: true)` already asks mpv to unpause, but the follow-up
+  /// [Player.play] is deliberate rather than redundant: it is documented as
+  /// idempotent, and it makes "start playing" hold even when the player was
+  /// parked somewhere unusual beforehand — the end-of-queue case being the one
+  /// that actually bit. Cheap insurance against a load that lands paused.
+  Future<void> _openAndPlay(Uri uri) async {
+    await _player.open(mpv.Media(uri.toString()), play: true);
+    await _player.play();
   }
 
   Future<void> playSong(Song song, {List<Song>? queue, int? index}) async {
@@ -192,7 +228,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       currentSong: newQueue[newIndex],
     );
     final uri = _streamUri(newQueue[newIndex]);
-    await _player.open(mpv.Media(uri.toString()), play: true);
+    await _openAndPlay(uri);
     _updateNowPlayingForSong(newQueue[newIndex]);
     _debounceSaveQueue();
   }
@@ -338,11 +374,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _debounceSaveQueue();
   }
 
-  void replaceQueue(List<Song> songs) {
+  Future<void> replaceQueue(List<Song> songs) async {
     if (songs.isEmpty) return;
     state = state.copyWith(queue: songs, queueIndex: 0, currentSong: songs.first);
     final uri = _streamUri(songs.first);
-    _player.open(mpv.Media(uri.toString()), play: true);
+    await _openAndPlay(uri);
     _updateNowPlayingForSong(songs.first);
     _debounceSaveQueue();
   }
