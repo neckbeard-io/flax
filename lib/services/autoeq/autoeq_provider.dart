@@ -151,6 +151,19 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
           dbDate: meta?['commitTime'] as String?,
           downloadStatus: 'Database ready (${_db.profileCount} profiles)',
         );
+
+        // Populate the list here rather than leaving it to the UI. The screen
+        // only kicks off a search from initState, gated on the database already
+        // being available — which it is not on a first run — so after a download
+        // nothing refreshed the results and the list read "no profiles found"
+        // until the screen was torn down and rebuilt.
+        await search(state.searchQuery);
+
+        // A profile saved before the database was downloaded (or after it was
+        // deleted) can only resolve now that the curves exist.
+        if (state.activeProfile == null) {
+          await _restoreProfile();
+        }
       }
     } catch (e) {
       if (mounted) {
