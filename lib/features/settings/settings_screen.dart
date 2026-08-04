@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
@@ -122,12 +123,40 @@ class SettingsScreen extends ConsumerWidget {
 
           // ── About ──
           _SectionTitle(title: 'About'),
-          const ListTile(
-            title: Text('Flax'),
-            subtitle: Text('v0.1.0 · High-fidelity music player'),
-          ),
+          const _AboutTile(),
         ],
       ),
+    );
+  }
+}
+
+/// Version read from the app bundle, never hardcoded.
+///
+/// This was a literal 'v0.1.0' string for a while, which meant every build ever
+/// shipped claimed to be 0.1.0 — testers had no way to tell which build they had
+/// installed, and the release pipeline's version stamping was invisible. The
+/// build number matters as much as the name: two builds of the same version are
+/// distinguished only by it.
+class _AboutTile extends StatelessWidget {
+  const _AboutTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        final String version;
+        if (info == null) {
+          version = snapshot.hasError ? 'version unavailable' : '…';
+        } else {
+          version = 'v${info.version} (build ${info.buildNumber})';
+        }
+        return ListTile(
+          title: const Text('Flax'),
+          subtitle: Text('$version · High-fidelity music player'),
+        );
+      },
     );
   }
 }
