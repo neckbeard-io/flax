@@ -6,6 +6,7 @@ import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/queue_panel.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/hover_effects.dart';
 
 class NowPlayingScreen extends ConsumerStatefulWidget {
   const NowPlayingScreen({super.key});
@@ -154,23 +155,19 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      GestureDetector(
+                      HoverLink(
+                        text: song.artistName ?? '',
                         onTap: song.artistId != null
                             ? () {
                                 Navigator.of(context).pop();
                                 context.push('/artists/${song.artistId}');
                               }
                             : null,
-                        child: Text(
-                          song.artistName ?? '',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: song.artistId != null
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: song.artistId != null
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],

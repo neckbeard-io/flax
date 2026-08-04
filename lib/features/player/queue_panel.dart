@@ -304,12 +304,10 @@ class _AlbumGroup extends StatelessWidget {
           final song = entry.value;
           final isCurrent = currentSong?.id == song.id;
 
-          return InkWell(
+          return _QueueRowHover(
+            isCurrent: isCurrent,
             onTap: () => onSongTap(song, index),
             child: Container(
-              color: isCurrent
-                  ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-                  : null,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Row(
                 children: [
@@ -371,5 +369,63 @@ class _AlbumGroup extends StatelessWidget {
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return '$m:${s.toString().padLeft(2, '0')}';
+  }
+}
+
+/// A queue row that highlights under the pointer.
+///
+/// The current-track tint and the hover tint are composited into a single
+/// background colour, so the row background can't hide the hover feedback the
+/// way an opaque child would cover an [InkWell]'s ink.
+class _QueueRowHover extends StatefulWidget {
+  final Widget child;
+  final bool isCurrent;
+  final VoidCallback onTap;
+
+  const _QueueRowHover({
+    required this.child,
+    required this.isCurrent,
+    required this.onTap,
+  });
+
+  @override
+  State<_QueueRowHover> createState() => _QueueRowHoverState();
+}
+
+class _QueueRowHoverState extends State<_QueueRowHover> {
+  bool _hovering = false;
+
+  void _setHover(bool value) {
+    if (_hovering == value) return;
+    setState(() => _hovering = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    Color? background;
+    if (widget.isCurrent) {
+      background = scheme.primaryContainer.withValues(
+        alpha: _hovering ? 0.45 : 0.3,
+      );
+    } else if (_hovering) {
+      background = scheme.primary.withValues(alpha: 0.08);
+    }
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => _setHover(true),
+      onExit: (_) => _setHover(false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          color: background ?? Colors.transparent,
+          child: widget.child,
+        ),
+      ),
+    );
   }
 }

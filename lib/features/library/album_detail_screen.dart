@@ -5,6 +5,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 
 final albumDetailProvider =
@@ -75,12 +76,14 @@ class AlbumDetailScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              GestureDetector(
-                                onTap: album.artistId != null
-                                    ? () => context.push('/artists/${album.artistId}')
-                                    : null,
-                                child: Text(
-                                  album.artistName ?? '',
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: HoverLink(
+                                  text: album.artistName ?? '',
+                                  onTap: album.artistId != null
+                                      ? () => context
+                                          .push('/artists/${album.artistId}')
+                                      : null,
                                   style: theme.textTheme.titleSmall?.copyWith(
                                     color: album.artistId != null
                                         ? theme.colorScheme.primary
