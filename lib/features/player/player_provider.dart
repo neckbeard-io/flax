@@ -21,7 +21,10 @@ class PlayerState {
   final bool isPlaying;
   final Duration position;
   final Duration duration;
+  /// Fader position, 0.0 (silent) to 1.0 (unity gain). This is *not* a linear
+  /// amplitude multiplier — see [PlayerNotifier.faderToMpvVolume].
   final double volume;
+  final bool muted;
   final bool shuffle;
   final RepeatMode repeatMode;
   final bool buffering;
@@ -34,10 +37,16 @@ class PlayerState {
     this.position = Duration.zero,
     this.duration = Duration.zero,
     this.volume = 1.0,
+    this.muted = false,
     this.shuffle = false,
     this.repeatMode = RepeatMode.off,
     this.buffering = false,
   });
+
+  /// Attenuation the current fader position corresponds to, in dB, or null at
+  /// the very bottom of the fader (true silence, which has no finite dB value).
+  double? get volumeDb =>
+      volume <= 0 ? null : PlayerNotifier.faderToDb(volume);
 
   PlayerState copyWith({
     Song? currentSong,
@@ -47,6 +56,7 @@ class PlayerState {
     Duration? position,
     Duration? duration,
     double? volume,
+    bool? muted,
     bool? shuffle,
     RepeatMode? repeatMode,
     bool? buffering,
@@ -59,6 +69,7 @@ class PlayerState {
       position: position ?? this.position,
       duration: duration ?? this.duration,
       volume: volume ?? this.volume,
+      muted: muted ?? this.muted,
       shuffle: shuffle ?? this.shuffle,
       repeatMode: repeatMode ?? this.repeatMode,
       buffering: buffering ?? this.buffering,
@@ -91,6 +102,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _initStreams();
     _initMediaKeys();
     _initEqListener();
+    _restoreVolume();
     _restorePlayQueue();
   }
 
@@ -331,6 +343,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   static const _prefsKeyQueue = 'flax_play_queue';
   static const _prefsKeyCurrentId = 'flax_play_queue_current';
   static const _prefsKeyPositionMs = 'flax_play_queue_position';
+  static const _prefsKeyVolume = 'flax_volume';
+  static const _prefsKeyMuted = 'flax_muted';
 
   Future<void> _restorePlayQueue() async {
     // Try server first, fall back to local
@@ -528,10 +542,131 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     await _player.seek(position);
   }
 
+  // ── Volume ────────────────────────────────────────────────────────────
+  //
+  // mpv does not treat its `volume` property as a linear amplitude. From
+  // mpv's audio_get_gain():
+  //
+  //     float gain = MPMAX(opts->softvol_volume / 100.0, 0);
+  //     gain = pow(gain, 3);
+  //     gain *= db_gain(opts->softvol_gain);
+  //
+  // so the property is *already* cubed on the way to the output. Passing the
+  // fader position straight through (the old `setVolume(pos * 100)`) therefore
+  // produced gain = pos^3: -18 dB at half travel and -36 dB at a quarter. Every
+  // usable listening level was squeezed into the top of the fader and the
+  // bottom half was effectively mute, which is what made small adjustments feel
+  // by turns useless and drastic.
+  //
+  // Instead we impose our own taper. A fader that is *linear in dB* is
+  // tempting — equal travel would give equal perceived change — but over any
+  // range wide enough to reach a late-night level it puts mid-travel absurdly
+  // low (-30 dB for a 60 dB range), and stacked on a low OS volume plus an
+  // AutoEQ preamp of -6..-12 dB, half the fader is inaudible. Tried it; it
+  // reads as "the volume cuts out halfway".
+  //
+  // So: a square-law taper, amplitude = pos^2, the conventional audio fader
+  // curve. Half travel lands at -12 dB (a real, usable level), it still reaches
+  // deep attenuation near the bottom, and it approaches silence continuously
+  // rather than needing an artificial floor. Solving
+  //
+  //     (v/100)^3 = pos^kFaderAmplitudeExponent
+  //
+  // for v gives v = 100 * pos^(exponent/3).
+  //
+  //     pos 1.00 ->   0.0 dB      pos 0.30 -> -20.9 dB
+  //     pos 0.75 ->  -2.5 dB      pos 0.20 -> -28.0 dB
+  //     pos 0.50 -> -12.0 dB      pos 0.10 -> -40.0 dB
+  //
+  // Raise the exponent for a steeper fader, lower it for a flatter one; 2.0 is
+  // the usual choice and 3.0 would reproduce mpv's own untreated curve.
+
+  /// Exponent of the amplitude taper. 2.0 = square law.
+  static const double kFaderAmplitudeExponent = 2.0;
+
+  /// Fader position below which we snap to true silence, so that stepping down
+  /// with the keyboard or scroll wheel can actually reach zero instead of
+  /// chasing an asymptote. -60 dB under the square law.
+  static const double _faderSilenceThreshold = 0.0316;
+
+  /// Attenuation in dB for a fader position in (0, 1]. Returns null at zero,
+  /// which is silence and has no finite dB value.
+  static double faderToDb(double pos) {
+    final clamped = pos.clamp(0.0, 1.0);
+    return 20 * kFaderAmplitudeExponent * math.log(clamped) / math.ln10;
+  }
+
+  /// Inverse of [faderToDb]: the fader position that yields [db] attenuation.
+  static double dbToFader(double db) =>
+      math.pow(10, db / (20 * kFaderAmplitudeExponent)).toDouble();
+
+  /// Fader position (0..1) to the value mpv's `volume` property wants (0..100),
+  /// pre-compensated for mpv's internal cubing.
+  static double faderToMpvVolume(double pos) {
+    final clamped = pos.clamp(0.0, 1.0);
+    if (clamped <= 0) return 0;
+    return 100 *
+        math.pow(clamped, kFaderAmplitudeExponent / 3.0).toDouble();
+  }
+
+  /// Sets the fader position. [volume] is a position in 0..1, not a gain.
   Future<void> setVolume(double volume) async {
     final clamped = volume.clamp(0.0, 1.0);
-    state = state.copyWith(volume: clamped);
-    await _player.setVolume(clamped * 100);
+    // Moving the fader off zero is an unmute — matches every OS volume control.
+    final unmute = state.muted && clamped > 0;
+    state = state.copyWith(volume: clamped, muted: unmute ? false : null);
+    if (unmute) await _player.setMute(false);
+    await _player.setVolume(faderToMpvVolume(clamped));
+    _saveVolume();
+  }
+
+  /// Nudges the fader by [deltaDb] decibels, for keyboard and scroll-wheel
+  /// adjustment. Stepping in dB rather than in fader percent keeps every step
+  /// the same perceived size, even though the fader itself is not dB-linear.
+  Future<void> adjustVolumeDb(double deltaDb) async {
+    if (state.volume <= 0 && deltaDb <= 0) return;
+    // Stepping up from silence starts from the silence threshold rather than
+    // from -infinity.
+    final currentDb = state.volume <= 0
+        ? faderToDb(_faderSilenceThreshold)
+        : faderToDb(state.volume);
+    final targetDb = math.min(currentDb + deltaDb, 0.0);
+    final pos = dbToFader(targetDb);
+    // Snap to true silence once stepping down passes the floor.
+    await setVolume(pos <= _faderSilenceThreshold ? 0.0 : pos);
+  }
+
+  Future<void> toggleMute() async {
+    final next = !state.muted;
+    state = state.copyWith(muted: next);
+    await _player.setMute(next);
+    _saveVolume();
+  }
+
+  Future<void> _saveVolume() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_prefsKeyVolume, state.volume);
+      await prefs.setBool(_prefsKeyMuted, state.muted);
+    } catch (e) {
+      developer.log('Failed to save volume: $e', name: 'PlayerNotifier');
+    }
+  }
+
+  /// Volume is restored on launch; without this every start was full-scale
+  /// regardless of where the fader was left.
+  Future<void> _restoreVolume() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pos = prefs.getDouble(_prefsKeyVolume);
+      final muted = prefs.getBool(_prefsKeyMuted) ?? false;
+      final clamped = (pos ?? 1.0).clamp(0.0, 1.0);
+      state = state.copyWith(volume: clamped, muted: muted);
+      await _player.setVolume(faderToMpvVolume(clamped));
+      if (muted) await _player.setMute(true);
+    } catch (e) {
+      developer.log('Failed to restore volume: $e', name: 'PlayerNotifier');
+    }
   }
 
   Future<void> toggleShuffle() async {
