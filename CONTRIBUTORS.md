@@ -47,10 +47,14 @@ flax is mostly a thin, opinionated shell over other people's hard work.
 ### Equalizer and headphone correction
 
 - **[AutoEQ](https://github.com/jaakkopasanen/AutoEq)** by Jaakko Pasanen — the
-  project and methodology behind the bundled headphone correction profiles.
-- **[oratory1990](https://www.reddit.com/user/oratory1990)** and
-  **[crinacle](https://crinacle.com/)** — the headphone measurements the bundled
-  profiles are derived from. Targets are Harman over-ear 2018 and in-ear 2019.
+  project and methodology behind the headphone correction profiles, and the
+  ~8850 GraphicEQ curves flax downloads.
+- **[AutoEqPackages](https://github.com/timschneeb/AutoEqPackages)** by Tim
+  Schneeberger — repackages the AutoEQ results into the indexed archive flax
+  fetches, which is what makes on-demand profile lookup practical.
+- **[oratory1990](https://www.reddit.com/user/oratory1990)**,
+  **[crinacle](https://crinacle.com/)**, and the other measurement sources
+  credited per profile — the measurements the corrections are derived from.
 - **[foobar2000](https://www.foobar2000.org/)** — the 22 stock graphic-equalizer
   presets in `lib/features/settings/equalizer_screen.dart` are ports of its
   `.feq` preset table.

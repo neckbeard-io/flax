@@ -182,16 +182,25 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
 
   /// Select and activate a profile.
   Future<void> selectProfile(AutoEqProfile profile) async {
-    state = state.copyWith(loading: true);
+    state = state.copyWith(loading: true, clearError: true);
     try {
       final loaded = await _db.loadProfile(profile);
-      if (mounted) {
-        state = state.copyWith(
-          activeProfile: loaded ?? profile,
-          loading: false,
-        );
+      if (loaded == null) {
+        // Do not activate a profile whose curve could not be loaded: it would
+        // display as active while correcting nothing.
+        if (mounted) {
+          state = state.copyWith(
+            loading: false,
+            error: 'No correction curve for "${profile.name}". '
+                'Re-download the AutoEQ database.',
+          );
+        }
+        return;
       }
-      await _saveProfile(loaded ?? profile);
+      if (mounted) {
+        state = state.copyWith(activeProfile: loaded, loading: false);
+      }
+      await _saveProfile(loaded);
     } catch (e) {
       if (mounted) {
         state = state.copyWith(
