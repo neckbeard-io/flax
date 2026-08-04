@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -35,11 +36,28 @@ class ShellScaffold extends ConsumerWidget {
       body: Stack(
         children: [
           child,
+          // Drag strip first, so the window buttons below it in the stack stay
+          // on top and keep receiving their taps.
+          if (Platform.isWindows)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: WindowDragArea(),
+            ),
           if (Platform.isMacOS || Platform.isWindows)
             Positioned(
               top: MediaQuery.of(context).padding.top + 4,
               right: 4,
               child: const WindowButtons(),
+            ),
+          // Below the window buttons: that row is shared with the screen's own
+          // AppBar actions, and anything placed in it overlaps them.
+          if (kDebugMode)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 40,
+              right: 8,
+              child: const DebugBadge(),
             ),
         ],
       ),
