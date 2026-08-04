@@ -36,7 +36,10 @@ if [ "$BUILD" = 1 ]; then
   VERSION="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null | sed 's/^v//' || true)"
   [ -n "$VERSION" ] || VERSION="0.1.0"
   BUILD_NUMBER="$(git rev-list --count HEAD)"
-  echo "==> Building flax ($MODE) $VERSION+$BUILD_NUMBER…"
+  # Braces are required: an unbraced $BUILD_NUMBER runs into the following
+  # multibyte ellipsis and bash takes it as part of the variable name, which
+  # under `set -u` aborts the script.
+  echo "==> Building flax ($MODE) ${VERSION}+${BUILD_NUMBER}…"
   flutter build macos --"$MODE" \
     --build-name="$VERSION" --build-number="$BUILD_NUMBER"
 fi
