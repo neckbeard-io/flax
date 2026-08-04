@@ -10,6 +10,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
+import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/platform/now_playing_service.dart';
 
@@ -227,46 +228,49 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       final preampDb = eq.enabled ? eq.preamp : 0.0;
       await _player.setVolumeGain(preampDb);
 
-      // Build superequalizer params from our EQ bands.
-      // superequalizer is an 18-band graphic EQ built into ffmpeg/mpv.
-      // Gains are LINEAR multipliers (0..20, default 1.0 = 0 dB).
-      final params = <String, double>{};
+      // Accumulate per-band gain in dB. Our 18 EQ bands are exactly the
+      // superequalizer bands, so band i maps to key '${i + 1}b'.
+      final gainsDb = List<double>.filled(_superEqBandCount, 0);
 
       if (eq.enabled) {
-        // Map our 10 bands to the nearest superequalizer band
-        for (final band in eq.bands) {
-          final seqKey = _nearestSuperEqBand(band.frequency);
-          final linear = math.pow(10.0, band.gain / 20.0).toDouble()
-              .clamp(0.0, 20.0);
-          params[seqKey] = linear;
+        for (var i = 0; i < eq.bands.length && i < _superEqBandCount; i++) {
+          gainsDb[i] += eq.bands[i].gain;
         }
       }
 
-      // AutoEQ — map graphic EQ points to nearest superequalizer bands
+      // AutoEQ correction sums on top of the manual curve.
       final profile = autoEq.activeProfile;
       if (profile != null && profile.points.isNotEmpty) {
-        for (final p in profile.points) {
-          final seqKey = _nearestSuperEqBand(p.frequency);
-          final linear = math.pow(10.0, p.gain / 20.0).toDouble()
-              .clamp(0.0, 20.0);
-          // Multiply with any existing band value
-          params[seqKey] = (params[seqKey] ?? 1.0) * linear;
+        for (var i = 0; i < _superEqBandCount; i++) {
+          gainsDb[i] += _interpolateGain(
+            profile.points,
+            _superEqBandFrequencies[i],
+          );
         }
       }
 
-      final useEq = eq.enabled && params.values.any((v) => v != 1.0);
-      final useAutoEq = profile != null && profile.points.isNotEmpty;
+      final active = gainsDb.any((g) => g != 0);
+
+      // superequalizer takes LINEAR multipliers (0..20, 1.0 = 0 dB).
+      final params = <String, double>{};
+      if (active) {
+        for (var i = 0; i < _superEqBandCount; i++) {
+          params['${i + 1}b'] =
+              math.pow(10.0, gainsDb[i] / 20.0).toDouble().clamp(0.0, 20.0);
+        }
+      }
 
       developer.log(
         'EQ apply: enabled=${eq.enabled}, preamp=${preampDb}dB, '
-        'superEq=${useEq || useAutoEq}, params=$params',
+        'active=$active, autoEq=${profile?.name ?? "none"}, '
+        'gainsDb=${gainsDb.map((g) => g.toStringAsFixed(1)).join(",")}',
         name: 'PlayerEQ',
       );
 
       await _player.setAudioEffects(
         const mpv.AudioEffects().copyWith(
           superequalizer: mpv.SuperequalizerSettings(
-            enabled: useEq || useAutoEq,
+            enabled: active,
             params: params,
           ),
         ),
@@ -276,27 +280,32 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
-  // superequalizer band center frequencies (Hz)
-  static const _superEqBands = <String, double>{
-    '1b': 65, '2b': 92, '3b': 131, '4b': 185, '5b': 262,
-    '6b': 370, '7b': 523, '8b': 740, '9b': 1047, '10b': 1480,
-    '11b': 2093, '12b': 2960, '13b': 4186, '14b': 5920, '15b': 8372,
-    '16b': 11840, '17b': 16744, '18b': 20000,
-  };
+  static const _superEqBandCount = 18;
 
-  /// Find the superequalizer band key closest to a given frequency.
-  static String _nearestSuperEqBand(double freq) {
-    String best = '1b';
-    double bestDist = double.infinity;
-    for (final entry in _superEqBands.entries) {
-      // Compare in log space for perceptual accuracy
-      final dist = (math.log(freq) - math.log(entry.value)).abs();
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = entry.key;
+  /// superequalizer band centre frequencies (Hz).
+  static const _superEqBandFrequencies = <double>[
+    65, 92, 131, 185, 262, 370, 523, 740, 1047,
+    1480, 2093, 2960, 4186, 5920, 8372, 11840, 16744, 20000,
+  ];
+
+  /// Sample an AutoEQ GraphicEQ curve at [freq], interpolating in log-frequency
+  /// space between the two surrounding points.
+  static double _interpolateGain(List<GraphicEqPoint> pts, double freq) {
+    if (pts.isEmpty) return 0;
+    if (freq <= pts.first.frequency) return pts.first.gain;
+    if (freq >= pts.last.frequency) return pts.last.gain;
+
+    for (var i = 0; i < pts.length - 1; i++) {
+      final a = pts[i];
+      final b = pts[i + 1];
+      if (freq >= a.frequency && freq <= b.frequency) {
+        final span = math.log(b.frequency) - math.log(a.frequency);
+        if (span <= 0) return a.gain;
+        final t = (math.log(freq) - math.log(a.frequency)) / span;
+        return a.gain + (b.gain - a.gain) * t;
       }
     }
-    return best;
+    return pts.last.gain;
   }
 
   // ── Queue manipulation ─────────────────────────────────────────────

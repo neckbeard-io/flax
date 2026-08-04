@@ -6,6 +6,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/hover_effects.dart';
 
 final albumsProvider = FutureProvider<List<Album>>((ref) async {
   final client = ref.watch(subsonicClientProvider);
@@ -50,40 +51,38 @@ class AlbumsScreen extends ConsumerWidget {
             final album = albums[index];
             return AlbumContextMenu(
               album: album,
-              child: GestureDetector(
-                onTap: () => context.push('/albums/${album.id}'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: CoverArtImage(
-                          coverArtId: album.coverArtId,
-                          size: 180,
-                        ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: HoverArtwork(
+                      onTap: () => context.push('/albums/${album.id}'),
+                      showPlayBadge: true,
+                      child: CoverArtImage(
+                        coverArtId: album.coverArtId,
+                        size: 180,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      album.name,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  HoverLink(
+                    text: album.name,
+                    onTap: () => context.push('/albums/${album.id}'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    Text(
-                      album.artistName ?? '',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  ),
+                  HoverLink(
+                    text: album.artistName ?? '',
+                    onTap: album.artistId != null
+                        ? () => context.push('/artists/${album.artistId}')
+                        : null,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 11,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           },

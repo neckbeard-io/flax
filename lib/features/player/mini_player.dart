@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/hover_effects.dart';
 
 class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
@@ -21,7 +22,7 @@ class MiniPlayer extends ConsumerWidget {
             playerState.duration.inMilliseconds
         : 0.0;
 
-    return GestureDetector(
+    return HoverSurface(
       onTap: () => context.push('/now-playing'),
       child: Container(
         decoration: BoxDecoration(
@@ -47,8 +48,10 @@ class MiniPlayer extends ConsumerWidget {
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  ClipRRect(
+                  HoverArtwork(
+                    onTap: () => context.push('/now-playing'),
                     borderRadius: BorderRadius.circular(6),
+                    scale: 1.06,
                     child: SizedBox(
                       width: 42,
                       height: 42,
@@ -76,13 +79,15 @@ class MiniPlayer extends ConsumerWidget {
                         Row(
                           children: [
                             Flexible(
-                              child: Text(
-                                song.artistName!,
+                              child: HoverLink(
+                                text: song.artistName!,
+                                onTap: song.artistId != null
+                                    ? () => context
+                                        .push('/artists/${song.artistId}')
+                                    : null,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             if (_formatLabel(song) != null) ...[

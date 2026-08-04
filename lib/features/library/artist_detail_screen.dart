@@ -9,6 +9,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/hover_effects.dart';
 
 // ── Sort enum ─────────────────────────────────────────────────────────
 
@@ -230,8 +231,10 @@ class _AlbumTile extends ConsumerWidget {
     return AlbumContextMenu(
       album: album,
       child: ListTile(
-        leading: ClipRRect(
+        leading: HoverArtwork(
+          onTap: () => context.push('/albums/${album.id}'),
           borderRadius: BorderRadius.circular(4),
+          scale: 1.08,
           child: SizedBox(
             width: 48,
             height: 48,
@@ -343,33 +346,37 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
           ],
           if (bio != null && bio.isNotEmpty) ...[
             const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 200),
-                    alignment: Alignment.topLeft,
-                    child: Text(
-                      bio,
-                      maxLines: _expanded ? null : 3,
-                      overflow: _expanded ? null : TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 200),
+                      alignment: Alignment.topLeft,
+                      child: Text(
+                        bio,
+                        maxLines: _expanded ? null : 3,
+                        overflow: _expanded ? null : TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      _expanded ? 'Show less' : 'Read more',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.primary,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: HoverLink(
+                        text: _expanded ? 'Show less' : 'Read more',
+                        onTap: () => setState(() => _expanded = !_expanded),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
