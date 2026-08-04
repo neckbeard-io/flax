@@ -108,7 +108,37 @@ is not yet read by the player:
 - No signed builds. macOS is ad-hoc signed and Windows is unsigned, so both warn
   on first launch; notarization and a Windows certificate are open items.
 - The licence of the bundled `libmpv` binaries is unconfirmed, which is what
-  forces flax's own licence to be GPL (see [License](#license)).
+  forces flax's own licence to be GPL (see [Licensing](#licensing) below).
+
+### Licensing
+
+Relicensing permissively (MIT or Apache-2.0) is possible but blocked on libmpv,
+not on preference — a permissive `LICENSE` file changes nothing while the bundled
+library is copyleft, because the combined work is what gets distributed. This
+only matters if flax should ever ship somewhere GPL cannot go; the Mac App Store
+is the specific case, since GPLv3's anti-tivoization terms conflict with App
+Store licensing.
+
+In order:
+
+1. Obtain a `libmpv` built `--enable-lgpl`, with FFmpeg also built LGPL (no
+   `--enable-gpl`). Today's binaries come from `mpv_audio_kit`'s GitHub releases
+   with no licence statement anywhere, and their FFmpeg configuration string is
+   stripped, so this means asking upstream or building libmpv here.
+2. Audit for GPL-only components. The one that matters today is already clear:
+   `af_superequalizer.c`, which the 18-band EQ runs on, is LGPL-2.1-or-later and
+   is not gated behind FFmpeg's `CONFIG_GPL`. Re-check when adopting further
+   effects — some FFmpeg filters *are* GPL-gated.
+3. Link it dynamically and be able to supply source and objects, so a user can
+   relink a modified library (LGPL-2.1 §6).
+4. Then relicense. Target **LGPL-2.1**, never LGPL-3: v3 carries the same
+   anti-tivoization problem as GPLv3 and lands back at the start. VLC took
+   exactly this route after being pulled from the App Store for being GPL, so it
+   is a travelled path rather than a theory.
+
+Timing is the one real constraint. flax has a single copyright holder today, so
+relicensing is unilateral; once outside contributions are accepted under GPL that
+stops being true and every contributor has to agree.
 
 ---
 
@@ -236,6 +266,7 @@ Practical consequences, since handing a build to someone else is distribution:
   distribution — GPLv3's anti-tivoization terms conflict with App Store
   licensing. Neither is on the roadmap.
 
-If the bundled libmpv is ever confirmed to be the LGPL build, or is replaced
-with one, this could be relaxed to a permissive licence. Until then, GPL is the
-defensible choice.
+If the bundled libmpv is ever confirmed to be the LGPL build, or is replaced with
+one, this could be relaxed to a permissive licence — see
+[Licensing](#licensing) under the roadmap for what that actually takes, and why
+it has to happen in that order. Until then, GPL is the defensible choice.
