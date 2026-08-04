@@ -6,6 +6,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/flax_logo.dart';
 
 final _recentAlbumsProvider = FutureProvider<List<Album>>((ref) async {
@@ -151,44 +152,42 @@ class _AlbumCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: AlbumContextMenu(
         album: album,
-        child: GestureDetector(
-          onTap: () => context.push('/albums/${album.id}'),
-          child: SizedBox(
-            width: 140,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: 140,
-                    height: 140,
-                    child: CoverArtImage(
-                      coverArtId: album.coverArtId,
-                      size: 140,
-                    ),
+        child: SizedBox(
+          width: 140,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              HoverArtwork(
+                onTap: () => context.push('/albums/${album.id}'),
+                showPlayBadge: true,
+                child: SizedBox(
+                  width: 140,
+                  height: 140,
+                  child: CoverArtImage(
+                    coverArtId: album.coverArtId,
+                    size: 140,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  album.name,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              HoverLink(
+                text: album.name,
+                onTap: () => context.push('/albums/${album.id}'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
-                Text(
-                  album.artistName ?? '',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    fontSize: 11,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ),
+              HoverLink(
+                text: album.artistName ?? '',
+                onTap: album.artistId != null
+                    ? () => context.push('/artists/${album.artistId}')
+                    : null,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 11,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

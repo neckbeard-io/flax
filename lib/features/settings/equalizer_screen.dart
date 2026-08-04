@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,33 +8,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 
+/// Maximum boost/cut per band, in dB (matches foobar2000's range).
+const eqGainLimit = 20.0;
+
 class EqBandState {
   final double frequency;
   final double gain;
-  final double q;
   final String label;
 
   const EqBandState({
     required this.frequency,
     this.gain = 0,
-    this.q = 1.4,
     required this.label,
   });
 
-  EqBandState copyWith({double? gain, double? q}) =>
-      EqBandState(frequency: frequency, gain: gain ?? this.gain, q: q ?? this.q, label: label);
+  EqBandState copyWith({double? gain}) =>
+      EqBandState(frequency: frequency, gain: gain ?? this.gain, label: label);
 
   Map<String, dynamic> toJson() => {
         'frequency': frequency,
         'gain': gain,
-        'q': q,
         'label': label,
       };
 
   factory EqBandState.fromJson(Map<String, dynamic> json) => EqBandState(
         frequency: (json['frequency'] as num).toDouble(),
         gain: (json['gain'] as num?)?.toDouble() ?? 0,
-        q: (json['q'] as num?)?.toDouble() ?? 1.4,
         label: json['label'] as String,
       );
 }
@@ -77,36 +77,60 @@ class EqState {
       );
 }
 
-final _defaultBands = [
-  const EqBandState(frequency: 60, label: '60'),
-  const EqBandState(frequency: 170, label: '170'),
-  const EqBandState(frequency: 310, label: '310'),
-  const EqBandState(frequency: 600, label: '600'),
-  const EqBandState(frequency: 1000, label: '1k'),
-  const EqBandState(frequency: 3000, label: '3k'),
-  const EqBandState(frequency: 6000, label: '6k'),
-  const EqBandState(frequency: 12000, label: '12k'),
-  const EqBandState(frequency: 14000, label: '14k'),
-  const EqBandState(frequency: 16000, label: '16k'),
+/// The 18 band centre frequencies, in Hz.
+///
+/// These are the fixed bands of ffmpeg's `superequalizer` filter, which is what
+/// actually performs the filtering. foobar2000 uses 18 log-spaced bands too, so
+/// its preset files map onto these one-for-one by index.
+const _bandFrequencies = <double>[
+  65, 92, 131, 185, 262, 370, 523, 740, 1047,
+  1480, 2093, 2960, 4186, 5920, 8372, 11840, 16744, 20000,
 ];
 
-final _rockPreset = [
-  const EqBandState(frequency: 60, gain: 8.0, label: '60'),
-  const EqBandState(frequency: 170, gain: 4.8, label: '170'),
-  const EqBandState(frequency: 310, gain: -5.6, label: '310'),
-  const EqBandState(frequency: 600, gain: -8.0, label: '600'),
-  const EqBandState(frequency: 1000, gain: -3.2, label: '1k'),
-  const EqBandState(frequency: 3000, gain: 4.0, label: '3k'),
-  const EqBandState(frequency: 6000, gain: 8.8, label: '6k'),
-  const EqBandState(frequency: 12000, gain: 11.2, label: '12k'),
-  const EqBandState(frequency: 14000, gain: 11.2, label: '14k'),
-  const EqBandState(frequency: 16000, gain: 11.2, label: '16k'),
+const _bandLabels = <String>[
+  '65', '92', '131', '185', '262', '370', '523', '740', '1k',
+  '1.5k', '2.1k', '3k', '4.2k', '5.9k', '8.4k', '12k', '17k', '20k',
 ];
 
-final _presets = <String, List<EqBandState>>{
-  'Flat': _defaultBands,
-  'Rock': _rockPreset,
+/// Stock foobar2000 equalizer presets (`.feq` files are 18 dB values).
+const _presetGains = <String, List<double>>{
+  'Flat': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  '1965': [-20, -16, -7, -4, -4, -4, -7, -7, 3, 3, -2, -4, 4, 1, 1, -4, -6, -12],
+  'Air': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 2],
+  'Brittle': [-12, -10, -9, -8, -7, -6, -5, -3, -2, -2, -2, -2, -1, 1, 4, 4, 1, 0],
+  'Car Stereo': [-5, 0, 1, 0, 0, -4, -4, -5, -5, -5, -3, -2, -2, 0, 1, 0, -2, -5],
+  'Classic V': [5, 2, 0, -2, -5, -6, -8, -8, -7, -7, -4, -3, -1, 1, 3, 5, 5, 4],
+  'Clear': [1, 1, 0, 0, 0, -3, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 1],
+  'Dark': [-6, -2, -2, -2, -2, -2, -2, -2, -2, -2, -2, -5, -8, -10, -12, -14, -18, -18],
+  'DEATH': [20, 17, 12, 8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  'Drums': [2, 1, 0, 0, 0, -2, 0, -2, 0, 0, 0, 0, 2, 0, 0, 3, 0, 0],
+  'Home Theater': [5, 2, 0, -2, -3, -5, -6, -6, -5, -2, -1, 0, -1, -3, 3, 4, 3, 0],
+  'Loudness': [4, 4, 4, 2, -2, -2, -2, -2, -2, -2, -2, -4, -10, -7, 0, 3, 4, 4],
+  'Metal': [4, 5, 5, 3, 0, -1, -2, -1, 0, 1, 1, 1, 1, 0, -1, -1, -1, -1],
+  'Pop': [6, 5, 3, 0, -2, -4, -4, -6, -3, 1, 0, 0, 2, 1, 2, 4, 5, 6],
+  'Premaster': [0, 1, 3, 0, -3, -3, 0, 0, 0, 2, 0, 0, 3, 0, 3, 1, 3, 2],
+  'Presence': [0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 4, 3, 2, 0, 0, 0, 0],
+  'Punch & Sparkle': [3, 5, 3, -1, -3, -5, -5, -3, -2, 1, 1, 1, 0, 2, 1, 3, 5, 3],
+  'Rock': [4, 3, 1, -1, -3, -4, -6, -6, -5, -5, -3, -2, 0, 2, 4, 5, 5, 4],
+  'Rock 2': [2, 1, 0, -2, -3, -4, -5, -5, -4, -4, -2, -1, 1, 2, 3, 4, 4, 3],
+  'Shimmer': [0, 0, 0, -2, -2, -7, -5, 0, 0, 0, 0, 0, 4, 1, 3, 3, 4, 0],
+  'Soft Bass': [3, 5, 4, 0, -13, -7, -5, -5, -1, 2, 5, 1, -1, -1, -2, -7, -9, -14],
+  'Strings': [-3, -4, -4, -5, -5, -4, -4, -3, -2, -2, -2, -2, -1, 2, 3, 0, -2, -2],
 };
+
+/// Build a band list from 18 dB gain values.
+List<EqBandState> _bandsFromGains(List<double> gains) => [
+      for (var i = 0; i < _bandFrequencies.length; i++)
+        EqBandState(
+          frequency: _bandFrequencies[i],
+          gain: gains[i],
+          label: _bandLabels[i],
+        ),
+    ];
+
+final _defaultBands = _bandsFromGains(_presetGains['Flat']!);
+
+final _presetNames = _presetGains.keys.toList();
 
 final eqProvider = StateNotifierProvider<EqNotifier, EqState>((ref) {
   return EqNotifier();
@@ -149,26 +173,60 @@ class EqNotifier extends StateNotifier<EqState> {
 
   void setBandGain(int index, double gain) {
     final bands = List.of(state.bands);
-    bands[index] = bands[index].copyWith(gain: gain.clamp(-12.0, 12.0));
+    bands[index] =
+        bands[index].copyWith(gain: gain.clamp(-eqGainLimit, eqGainLimit));
     state = state.copyWith(bands: bands, presetName: 'Custom');
     _save();
   }
 
   void setPreamp(double preamp) {
-    state = state.copyWith(preamp: preamp.clamp(-12.0, 12.0));
+    state = state.copyWith(preamp: preamp.clamp(-eqGainLimit, eqGainLimit));
     _save();
   }
 
   void applyPreset(String name) {
-    final preset = _presets[name];
-    if (preset != null) {
-      state = state.copyWith(bands: List.of(preset), presetName: name, preamp: 0);
+    final gains = _presetGains[name];
+    if (gains != null) {
+      state = state.copyWith(
+        bands: _bandsFromGains(gains),
+        presetName: name,
+        preamp: 0,
+      );
       _save();
     }
   }
 
+  /// Zero every band, leaving the preamp untouched.
+  void zeroAll() {
+    state = state.copyWith(
+      bands: List.of(_defaultBands),
+      presetName: 'Flat',
+    );
+    _save();
+  }
+
+  /// Slide the whole curve down so the loudest band sits at 0 dB.
+  ///
+  /// This preserves the shape of the response while removing the positive
+  /// gain that causes clipping — the same idea as foobar2000's "Auto level".
+  void autoLevel() {
+    if (state.bands.isEmpty) return;
+    final peak = state.bands.map((b) => b.gain).reduce(math.max);
+    if (peak <= 0) return;
+    final bands = [
+      for (final b in state.bands)
+        b.copyWith(gain: (b.gain - peak).clamp(-eqGainLimit, eqGainLimit)),
+    ];
+    state = state.copyWith(bands: bands, presetName: 'Custom');
+    _save();
+  }
+
   void reset() {
-    state = state.copyWith(bands: List.of(_defaultBands), presetName: 'Flat', preamp: 0);
+    state = state.copyWith(
+      bands: List.of(_defaultBands),
+      presetName: 'Flat',
+      preamp: 0,
+    );
     _save();
   }
 }
@@ -183,9 +241,9 @@ class EqualizerScreen extends ConsumerWidget {
 
     // Preset dropdown entries, including a read-only 'Custom' marker
     // when band gains have been hand-adjusted.
-    final isCustom = !_presets.containsKey(eq.presetName);
+    final isCustom = !_presetGains.containsKey(eq.presetName);
     final dropdownItems = [
-      ..._presets.keys,
+      ..._presetNames,
       if (isCustom) eq.presetName,
     ];
 
@@ -240,7 +298,7 @@ class EqualizerScreen extends ConsumerWidget {
                               ))
                           .toList(),
                       onChanged: (name) {
-                        if (name != null && _presets.containsKey(name)) {
+                        if (name != null && _presetGains.containsKey(name)) {
                           ref.read(eqProvider.notifier).applyPreset(name);
                         }
                       },
@@ -248,11 +306,26 @@ class EqualizerScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Auto level — drops the curve so the peak sits at 0 dB
+                _EqActionButton(
+                  label: 'Auto level',
+                  icon: Icons.vertical_align_bottom,
+                  onPressed: () => ref.read(eqProvider.notifier).autoLevel(),
+                  tooltip: 'Lower the whole curve so the loudest band is 0 dB',
+                ),
+                const SizedBox(width: 8),
+                _EqActionButton(
+                  label: 'Zero all',
+                  icon: Icons.horizontal_rule,
+                  onPressed: () => ref.read(eqProvider.notifier).zeroAll(),
+                  tooltip: 'Flatten all bands',
+                ),
+                const SizedBox(width: 8),
                 // Reset
                 IconButton(
                   onPressed: () => ref.read(eqProvider.notifier).reset(),
                   icon: const Icon(Icons.restart_alt),
-                  tooltip: 'Reset to flat',
+                  tooltip: 'Reset bands and preamp',
                   style: IconButton.styleFrom(
                     backgroundColor: theme.colorScheme.surfaceContainerHighest,
                     shape: RoundedRectangleBorder(
@@ -285,9 +358,9 @@ class EqualizerScreen extends ConsumerWidget {
                 Expanded(
                   child: Slider(
                     value: eq.preamp,
-                    min: -12,
-                    max: 12,
-                    divisions: 48,
+                    min: -eqGainLimit,
+                    max: eqGainLimit,
+                    divisions: (eqGainLimit * 4).round(),
                     label: '${eq.preamp.toStringAsFixed(1)} dB',
                     onChanged: (v) => ref.read(eqProvider.notifier).setPreamp(v),
                   ),
@@ -308,20 +381,24 @@ class EqualizerScreen extends ConsumerWidget {
           // ── Band sliders ──
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // dB labels
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('+12', style: theme.textTheme.labelSmall),
-                      Text('0', style: theme.textTheme.labelSmall),
-                      Text('-12', style: theme.textTheme.labelSmall),
-                    ],
+                  // dB scale — aligned to the slider track, not the labels below
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 26),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text('+20', style: theme.textTheme.labelSmall),
+                        Text('0', style: theme.textTheme.labelSmall),
+                        Text('-20', style: theme.textTheme.labelSmall),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 6),
                   // Band sliders
                   ...List.generate(eq.bands.length, (i) {
                     final band = eq.bands[i];
@@ -333,32 +410,53 @@ class EqualizerScreen extends ConsumerWidget {
                               quarterTurns: 3,
                               child: SliderTheme(
                                 data: SliderThemeData(
-                                  trackHeight: 3,
-                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                  trackHeight: 2,
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 5,
+                                    disabledThumbRadius: 4,
+                                  ),
+                                  overlayShape: const RoundSliderOverlayShape(
+                                    overlayRadius: 12,
+                                  ),
                                   activeTrackColor: theme.colorScheme.primary,
-                                  inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+                                  inactiveTrackColor:
+                                      theme.colorScheme.surfaceContainerHighest,
                                 ),
                                 child: Slider(
                                   value: band.gain,
-                                  min: -12,
-                                  max: 12,
+                                  min: -eqGainLimit,
+                                  max: eqGainLimit,
                                   onChanged: eq.enabled
-                                      ? (v) => ref.read(eqProvider.notifier).setBandGain(i, v)
+                                      ? (v) => ref
+                                          .read(eqProvider.notifier)
+                                          .setBandGain(i, v)
                                       : null,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
                             band.label,
-                            style: theme.textTheme.labelSmall,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontSize: 9,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.visible,
                           ),
                           Text(
-                            '${band.gain > 0 ? '+' : ''}${band.gain.toStringAsFixed(1)}',
+                            band.gain == 0
+                                ? '0'
+                                : '${band.gain > 0 ? '+' : ''}'
+                                    '${band.gain.round()}',
                             style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                              color: band.gain == 0
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : theme.colorScheme.primary,
                               fontSize: 9,
+                              fontWeight: band.gain == 0
+                                  ? FontWeight.normal
+                                  : FontWeight.w600,
                             ),
                           ),
                         ],
@@ -390,6 +488,47 @@ class EqualizerScreen extends ConsumerWidget {
           }),
           const SizedBox(height: 8),
         ],
+      ),
+    );
+  }
+}
+
+/// Small outlined button matching the preset dropdown's styling.
+class _EqActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String tooltip;
+
+  const _EqActionButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    required this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        height: 40,
+        child: OutlinedButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 16),
+          label: Text(label),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            foregroundColor: theme.colorScheme.onSurface,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            textStyle: theme.textTheme.bodyMedium,
+            side: BorderSide(color: theme.colorScheme.outlineVariant),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
       ),
     );
   }
