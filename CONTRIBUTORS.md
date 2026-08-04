@@ -76,9 +76,15 @@ Flutter and Dart, plus [Riverpod](https://riverpod.dev),
 
 ## A note on licensing
 
-flax itself has no license file yet, which means default copyright applies. That
-is a loose end worth closing, and it is not purely a formality here: the bundled
-`libmpv` binaries carry mpv's own upstream license terms, which constrain how a
-combined work may be redistributed. Anyone planning to distribute flax more
-widely than personal test builds should confirm the license of the specific
-libmpv binaries being shipped and pick a compatible license for this project.
+flax is [GPL-3.0-or-later](LICENSE), and that follows from what it bundles rather
+than from preference. Every artifact ships prebuilt `libmpv`, mpv is copyleft,
+and nothing in the archive or in the plugin that publishes those binaries states
+which mpv licence variant they were built under. GPL is correct whichever it is.
+
+Contributions are therefore accepted under the same licence. If you contribute
+code, you are agreeing it can be distributed under GPL-3.0-or-later.
+
+One consequence worth knowing before adding a dependency: a package under a
+GPL-incompatible licence cannot be used here, and that includes proprietary SDKs
+and anything under the original 4-clause BSD or similar. Permissively licensed
+packages (MIT, BSD-2/3, Apache-2.0) are fine.
