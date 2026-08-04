@@ -28,8 +28,17 @@ pkill -f "flax.app/Contents/MacOS/flax" 2>/dev/null || true
 for _ in $(seq 1 20); do pgrep -f "flax.app/Contents/MacOS/flax" >/dev/null || break; sleep 0.2; done
 
 if [ "$BUILD" = 1 ]; then
-  echo "==> Building flax ($MODE)…"
-  flutter build macos --"$MODE"
+  # Stamp the version the same way tool/release.sh does. Without this a local
+  # build reports pubspec's 0.1.0 forever, so Settings -> About cannot tell you
+  # which code you are looking at — and a stale bundle here has already been
+  # mistaken for an installed release. Debug builds also carry the DEBUG ribbon
+  # and say "debug build" in About.
+  VERSION="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null | sed 's/^v//' || true)"
+  [ -n "$VERSION" ] || VERSION="0.1.0"
+  BUILD_NUMBER="$(git rev-list --count HEAD)"
+  echo "==> Building flax ($MODE) $VERSION+$BUILD_NUMBER…"
+  flutter build macos --"$MODE" \
+    --build-name="$VERSION" --build-number="$BUILD_NUMBER"
 fi
 
 if [ ! -d "$APP" ]; then

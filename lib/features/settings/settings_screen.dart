@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -152,9 +153,14 @@ class _AboutTile extends StatelessWidget {
         } else {
           version = 'v${info.version} (build ${info.buildNumber})';
         }
+        // Name the build mode so a leftover debug bundle cannot be mistaken for
+        // an installed release. Release builds say nothing extra.
+        const mode = kDebugMode
+            ? ' · debug build'
+            : (kProfileMode ? ' · profile build' : '');
         return ListTile(
           title: const Text('Flax'),
-          subtitle: Text('$version · High-fidelity music player'),
+          subtitle: Text('$version$mode · High-fidelity music player'),
         );
       },
     );
