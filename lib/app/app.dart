@@ -18,13 +18,13 @@ class FlaxApp extends ConsumerWidget {
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         return MaterialApp.router(
           title: 'Flax',
-          // Left on deliberately. A debug bundle is otherwise
-          // indistinguishable from an installed release — same name, same
-          // icon, same window — and a stale `build/` copy left over from
-          // `flutter run` has already been mistaken for a fresh install, with
-          // the resulting "the release is missing my changes" hunt. The ribbon
-          // only appears in debug builds, never in release.
-          debugShowCheckedModeBanner: true,
+          // Flutter pins its DEBUG ribbon to the top-right corner, which is
+          // exactly where ShellScaffold puts the custom window buttons — the
+          // ribbon covered the close button, making it unclickable in debug
+          // builds. WindowButtons carries a DEBUG badge instead, and Settings ->
+          // About names the build mode; both mark a debug build without
+          // occupying the corner.
+          debugShowCheckedModeBanner: false,
           theme: FlaxTheme.light(dynamicScheme: lightDynamic),
           darkTheme:
               FlaxTheme.dark(dynamicScheme: darkDynamic, amoled: amoled),
