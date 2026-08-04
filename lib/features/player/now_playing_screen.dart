@@ -5,6 +5,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/queue_panel.dart';
+import 'package:flax/features/player/volume_control.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
@@ -289,6 +290,17 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                             ref.read(playerProvider.notifier).cycleRepeatMode(),
                       ),
                     ],
+                  ),
+                ),
+
+                // ── Volume ──
+                // Wider fader than the mini player's, with the dB readout
+                // visible since there is room for it here.
+                Padding(
+                  padding: const EdgeInsets.only(
+                      left: 24, right: 24, top: 8),
+                  child: Center(
+                    child: VolumeControl(width: 200, showLabel: true),
                   ),
                 ),
 
