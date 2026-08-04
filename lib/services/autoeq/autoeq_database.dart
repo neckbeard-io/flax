@@ -12,24 +12,49 @@ import 'autoeq_profile.dart';
 ///
 /// Data flow:
 /// 1. Fetch version.json from AutoEqPackages to get archive URL
-/// 2. Download archive.tar.gz (~5-10 MB)
+/// 2. Download archive.tar.gz (~100 MB)
 /// 3. Extract and parse index.json (name/source/rank/id per profile)
-/// 4. Store GraphicEQ .txt files on disk, keyed by id
+/// 4. Store each profile's GraphicEQ curve on disk as `data/<id>.txt`
 /// 5. Search and load on demand
+///
+/// The archive lays profiles out as `<headphone>/<source>/graphic.txt`, so the
+/// filename alone does not identify a profile — every one of the ~8850 curves is
+/// called `graphic.txt`. They are rekeyed to the index's id on extraction.
 class AutoEqDatabase {
   static const _versionUrl =
       'https://raw.githubusercontent.com/ThePBone/AutoEqPackages/main/version.json';
+
+  /// Bumped when the on-disk layout changes, so a stale cache is treated as
+  /// absent and re-downloaded rather than silently misread.
+  ///
+  /// v1 extracted every profile with `p.basename()`, which collapsed all 8850
+  /// `graphic.txt` files onto a single filename — the cache ended up holding
+  /// one arbitrary curve, no profile could be loaded, and AutoEQ silently did
+  /// nothing. Any v1 cache must be discarded.
+  static const _cacheVersion = 2;
+
+  /// Key for the (headphone, source) pair that identifies a profile. Separated
+  /// by NUL, which cannot occur in a path segment - a space or slash would
+  /// collide with the many headphone names that already contain one.
+  static String _profileKey(String name, String source) => '$name\u0000$source';
 
   final Dio _dio;
   Directory? _cacheDir;
   List<AutoEqProfile>? _index;
   bool _downloading = false;
 
-  AutoEqDatabase({Dio? dio}) : _dio = dio ?? Dio();
+  /// [cacheDirOverride] bypasses path_provider so the download-and-extract path
+  /// can be exercised in a test, which is otherwise only reachable by hand.
+  AutoEqDatabase({Dio? dio, Directory? cacheDirOverride})
+      : _dio = dio ?? Dio(),
+        _cacheDir = cacheDirOverride;
 
   /// The local cache directory for the AutoEQ database.
   Future<Directory> get cacheDir async {
-    if (_cacheDir != null) return _cacheDir!;
+    if (_cacheDir != null) {
+      if (!_cacheDir!.existsSync()) _cacheDir!.createSync(recursive: true);
+      return _cacheDir!;
+    }
     final appDir = await getApplicationSupportDirectory();
     _cacheDir = Directory(p.join(appDir.path, 'autoeq'));
     if (!_cacheDir!.existsSync()) {
@@ -38,11 +63,16 @@ class AutoEqDatabase {
     return _cacheDir!;
   }
 
-  /// Whether the database has been downloaded and indexed.
+  /// Whether a usable database has been downloaded and indexed.
+  ///
+  /// Requires the cache to have been written by the current extraction layout.
+  /// A v1 cache has an index but no loadable curves, and reporting it as
+  /// available is what let AutoEQ look installed while doing nothing.
   Future<bool> get isAvailable async {
     final dir = await cacheDir;
-    final indexFile = File(p.join(dir.path, 'index.json'));
-    return indexFile.existsSync();
+    if (!File(p.join(dir.path, 'index.json')).existsSync()) return false;
+    final meta = await getMeta();
+    return (meta?['cacheVersion'] as int?) == _cacheVersion;
   }
 
   /// Number of profiles in the database, or 0 if not loaded.
@@ -82,56 +112,85 @@ class AutoEqDatabase {
       final gzDecoded = GZipDecoder().decodeBytes(archiveBytes);
       final tarArchive = TarDecoder().decodeBytes(gzDecoded);
 
-      // Parse and store
-      final profiles = <AutoEqProfile>[];
       final dataDir = Directory(p.join(dir.path, 'data'));
       if (dataDir.existsSync()) dataDir.deleteSync(recursive: true);
       dataDir.createSync(recursive: true);
 
-      int fileCount = 0;
+      // Pass 1: the archive's index is the only thing that maps a
+      // (headphone, source) pair to a stable id, so it has to be read before
+      // any curve can be filed under the right name.
+      // Archive member names are always POSIX paths, so they must be parsed
+      // with p.posix rather than the platform context — p.split on Windows
+      // would not treat "/" the same way.
       String? indexContent;
-
       for (final file in tarArchive) {
-        if (file.isFile) {
-          final name = file.name;
-          if (name.endsWith('index.json')) {
-            indexContent = utf8.decode(file.content as List<int>);
-          } else if (name.endsWith('.txt')) {
-            // Store GraphicEQ txt files
-            final outPath = p.join(dataDir.path, p.basename(name));
-            File(outPath).writeAsBytesSync(file.content as List<int>);
-            fileCount++;
-          }
+        if (file.isFile && p.posix.basename(file.name) == 'index.json') {
+          indexContent = utf8.decode(file.content as List<int>);
+          break;
+        }
+      }
+      if (indexContent == null) {
+        throw Exception(
+          'AutoEQ archive contains no index.json — cannot identify profiles',
+        );
+      }
+
+      final profiles = <AutoEqProfile>[];
+      // A list per key, not a single id: the upstream index contains at least
+      // one (headphone, source) pair listed twice under different ids, and both
+      // must end up with the curve or selecting one of them silently corrects
+      // nothing.
+      final idsFor = <String, List<int>>{};
+      for (final entry in jsonDecode(indexContent) as List) {
+        final name = entry['n'] as String;
+        final source = entry['s'] as String;
+        final id = entry['i'] as int;
+        profiles.add(AutoEqProfile(
+          id: id,
+          name: name,
+          source: source,
+          rank: (entry['r'] as int?) ?? 0,
+        ));
+        idsFor.putIfAbsent(_profileKey(name, source), () => <int>[]).add(id);
+      }
+
+      // Pass 2: every curve in the archive is named `graphic.txt` and is
+      // distinguished only by its `<headphone>/<source>/` directory, so it is
+      // rekeyed to the index id. Writing these out by basename is what
+      // previously collapsed all of them onto one file.
+      yield 'Extracting ${profiles.length} profiles...';
+      var written = 0;
+      var unmatched = 0;
+      for (final file in tarArchive) {
+        if (!file.isFile) continue;
+        // raw.csv is the unsmoothed measurement; only the GraphicEQ curve is
+        // used, and skipping the rest roughly halves what is written to disk.
+        if (p.posix.basename(file.name) != 'graphic.txt') continue;
+
+        final segments = p.posix.split(file.name);
+        if (segments.length < 3) {
+          unmatched++;
+          continue;
+        }
+        final source = segments[segments.length - 2];
+        final headphone = segments[segments.length - 3];
+        final ids = idsFor[_profileKey(headphone, source)];
+        if (ids == null) {
+          unmatched++;
+          continue;
+        }
+        final content = file.content as List<int>;
+        for (final id in ids) {
+          File(p.join(dataDir.path, '$id.txt')).writeAsBytesSync(content);
+          written++;
         }
       }
 
-      yield 'Indexing $fileCount profiles...';
-
-      if (indexContent != null) {
-        // Parse the index.json from the archive
-        final indexData = jsonDecode(indexContent) as List;
-        for (final entry in indexData) {
-          profiles.add(AutoEqProfile(
-            id: entry['i'] as int,
-            name: entry['n'] as String,
-            source: entry['s'] as String,
-            rank: (entry['r'] as int?) ?? 0,
-          ));
-        }
-      } else {
-        // Fallback: build index from extracted files
-        yield 'Building index from files...';
-        int id = 0;
-        for (final entity in dataDir.listSync()) {
-          if (entity is File && entity.path.endsWith('.txt')) {
-            final fileName = p.basenameWithoutExtension(entity.path);
-            profiles.add(AutoEqProfile(
-              id: id++,
-              name: fileName,
-              source: 'AutoEQ',
-            ));
-          }
-        }
+      if (written == 0) {
+        throw Exception(
+          'AutoEQ archive layout not recognised — extracted 0 of '
+          '${profiles.length} profiles',
+        );
       }
 
       // Sort by name
@@ -141,9 +200,19 @@ class AutoEqDatabase {
       final indexJson = jsonEncode(profiles.map((p) => p.toJson()).toList());
       File(p.join(dir.path, 'index.json')).writeAsStringSync(indexJson);
 
-      // Save metadata
-      final meta = {'commitTime': commitTime, 'profileCount': profiles.length};
+      // Save metadata. cacheVersion gates isAvailable, so an older cache is
+      // re-downloaded instead of being read with the wrong layout.
+      final meta = {
+        'commitTime': commitTime,
+        'profileCount': profiles.length,
+        'curveCount': written,
+        'cacheVersion': _cacheVersion,
+      };
       File(p.join(dir.path, 'meta.json')).writeAsStringSync(jsonEncode(meta));
+
+      if (unmatched > 0) {
+        yield '$written curves extracted ($unmatched unmatched)';
+      }
 
       // Clean up archive
       File(archivePath).deleteSync();
@@ -180,40 +249,22 @@ class AutoEqDatabase {
     return index.where((p) => p.name.toLowerCase().contains(lower)).toList();
   }
 
-  /// Load the GraphicEQ data for a specific profile.
+  /// Load the GraphicEQ curve for a specific profile.
+  ///
+  /// Returns null when the curve is missing, which callers must treat as a
+  /// failure rather than falling back to the profile unchanged — a profile with
+  /// no curve applies no correction, and doing that silently is what made a
+  /// broken cache look like a working one.
   Future<AutoEqProfile?> loadProfile(AutoEqProfile profile) async {
     final dir = await cacheDir;
-    final dataDir = Directory(p.join(dir.path, 'data'));
+    final file = File(p.join(dir.path, 'data', '${profile.id}.txt'));
+    if (!file.existsSync()) return null;
 
-    // Try to find the file by id
-    final idFile = File(p.join(dataDir.path, '${profile.id}.txt'));
-    if (idFile.existsSync()) {
-      profile.rawGraphicEq = idFile.readAsStringSync().trim();
-      return profile;
-    }
-
-    // Try by name
-    final nameFile = File(p.join(dataDir.path, '${profile.name}.txt'));
-    if (nameFile.existsSync()) {
-      profile.rawGraphicEq = nameFile.readAsStringSync().trim();
-      return profile;
-    }
-
-    // Search data directory for a matching file
-    if (dataDir.existsSync()) {
-      for (final entity in dataDir.listSync()) {
-        if (entity is File && entity.path.endsWith('.txt')) {
-          final basename = p.basenameWithoutExtension(entity.path);
-          if (basename == profile.id.toString() ||
-              basename.toLowerCase() == profile.name.toLowerCase()) {
-            profile.rawGraphicEq = entity.readAsStringSync().trim();
-            return profile;
-          }
-        }
-      }
-    }
-
-    return null;
+    final raw = file.readAsStringSync().trim();
+    if (raw.isEmpty) return null;
+    profile.rawGraphicEq = raw;
+    // A curve that parses to nothing is no more useful than a missing file.
+    return profile.points.isEmpty ? null : profile;
   }
 
   /// Get database metadata (commit time, profile count).

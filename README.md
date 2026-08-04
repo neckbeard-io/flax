@@ -10,10 +10,9 @@ The name is a play on FLAC.
 **Platforms:** macOS (universal), Windows 10/11 (x64), Android 7.0+
 
 > **Status: early, and under active development.** The library browser, player,
-> equalizer, and AutoEQ all work against a real server. Several settings screens
-> are still UI-only — see [What works today](#what-works-today) for an honest
-> breakdown before you judge a missing feature as a bug. There are no signed
-> builds yet, so every platform shows a first-launch warning.
+> equalizer, and AutoEQ all work against a real server. Plenty is still on the
+> [roadmap](#roadmap) — check there before filing a missing feature as a bug.
+> There are no signed builds yet, so every platform shows a first-launch warning.
 
 ---
 
@@ -62,8 +61,6 @@ Subsonic's salted token scheme rather than as a plaintext password.
 
 ## What works today
 
-**Working**
-
 - Browse and search a remote library — home (recently added, random, most
   played), albums, artists, artist and album detail, songs
 - Playback with a queue: shuffle, repeat off/all/one, previous/next, seek
@@ -72,25 +69,42 @@ Subsonic's salted token scheme rather than as a plaintext password.
   adjustment, and a dB readout — persisted across launches
 - 18-band graphic equalizer (65 Hz – 20 kHz) with preamp and 22 presets ported
   from foobar2000's stock `.feq` table
-- AutoEQ headphone correction: 53 bundled profiles, summed on top of the manual
-  EQ curve, each with its own preamp
+- AutoEQ headphone correction from the full ~8850-profile AutoEQ database,
+  summed on top of the manual EQ curve, with the correction curve plotted
 - Star ratings and favorites
 - OS media session — now-playing metadata and hardware/media-key controls
 - Hi-res format badge (bit depth / sample rate) on the current track
 
-**Not wired up yet.** These screens exist and remember what you set, but nothing
-downstream consumes the value:
+## Roadmap
 
-- Audio output: exclusive mode, sample rate, bit depth
+Roughly in the order it is likely to be tackled. [SPEC.md](SPEC.md) is the
+design document and describes all of this in detail — treat it as intent rather
+than as a changelog.
+
+**Audio pipeline.** These screens exist and persist what you set, but the value
+is not yet read by the player:
+
+- Audio output — exclusive mode, sample rate, bit depth
 - Gapless, crossfade, ReplayGain
 - Transcoding
 
-**Specified but not built.** [SPEC.md](SPEC.md) is the design document and
-describes considerably more than is implemented — synchronized lyrics, offline
-sync and caching, Android Auto, scrobbling, and a local metadata database
-(`drift` is a declared dependency but currently unused). The Subsonic client
-already speaks to several of those endpoints; the features on top of them do not
-exist. Treat SPEC.md as intent, not as a changelog.
+**Features not yet built**
+
+- Synchronized lyrics (LRC) — the Subsonic client already fetches them
+- Offline sync and a rotating download cache
+- Scrobbling — client support exists, nothing drives it
+- Local metadata database (`drift` is a declared dependency, currently unused)
+- Android Auto
+- Last.fm / richer artist info
+
+**Known limitations**
+
+- The AutoEQ database download decompresses a ~341 MB archive entirely in
+  memory, so it is desktop-only in practice and needs a streaming rewrite before
+  it can work on Android.
+- No signed builds. macOS is ad-hoc signed and Windows is unsigned, so both warn
+  on first launch; notarization and a Windows certificate are open items.
+- No license file (see [below](#license)).
 
 ---
 
