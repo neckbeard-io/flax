@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/player/volume_control.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
@@ -134,6 +135,8 @@ class MiniPlayer extends ConsumerWidget {
                         ref.read(playerProvider.notifier).next(),
                     iconSize: 24,
                   ),
+                  const SizedBox(width: 4),
+                  const VolumeControl(),
                 ],
               ),
             ),
