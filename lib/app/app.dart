@@ -18,7 +18,13 @@ class FlaxApp extends ConsumerWidget {
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
         return MaterialApp.router(
           title: 'Flax',
-          debugShowCheckedModeBanner: false,
+          // Left on deliberately. A debug bundle is otherwise
+          // indistinguishable from an installed release — same name, same
+          // icon, same window — and a stale `build/` copy left over from
+          // `flutter run` has already been mistaken for a fresh install, with
+          // the resulting "the release is missing my changes" hunt. The ribbon
+          // only appears in debug builds, never in release.
+          debugShowCheckedModeBanner: true,
           theme: FlaxTheme.light(dynamicScheme: lightDynamic),
           darkTheme:
               FlaxTheme.dark(dynamicScheme: darkDynamic, amoled: amoled),
