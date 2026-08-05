@@ -9,6 +9,7 @@ import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 
 final albumDetailProvider =
     FutureProvider.family<Album, String>((ref, id) async {
@@ -193,17 +194,14 @@ class _DesktopHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Replacing the SliverAppBar with this header also removed the back
-          // button it provided for free, leaving no way out of an album except
-          // the sidebar. Put one back.
-          if (Navigator.canPop(context))
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              tooltip: 'Back',
-              onPressed: () => Navigator.maybePop(context),
-            )
-          else
-            const SizedBox(height: 8),
+          // Always present. Popping returns you to wherever you came from; with
+          // nothing to pop — a deep link, or a directly launched screen — it
+          // falls back to the album's artist, which is the page that contains
+          // it. Hiding the button in that case left no way out at all.
+          UpBackButton(
+            fallbackLocation:
+                album.artistId != null ? '/artists/${album.artistId}' : '/albums',
+          ),
           Padding(
             padding: const EdgeInsets.only(left: 8),
             child: Row(
