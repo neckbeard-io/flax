@@ -25,30 +25,22 @@ void main() {
     });
   });
 
-  group('countryFlag', () {
-    test('builds the flag from regional indicator symbols', () {
-      // U+1F1F3 U+1F1F4 — what the platform draws as the Norwegian flag.
-      expect(countryFlag('NO'), '\u{1F1F3}\u{1F1F4}');
-      expect(countryFlag('NL'), '\u{1F1F3}\u{1F1F1}');
-      expect(countryFlag('JP'), '\u{1F1EF}\u{1F1F5}');
-    });
-
-    test('every known country yields a two-symbol flag', () {
-      for (final code in ['NO', 'NL', 'GB', 'US', 'DE', 'SE', 'FI', 'BR']) {
-        final flag = countryFlag(code);
-        expect(flag, isNotNull, reason: '$code should have a flag');
-        expect(flag!.runes.length, 2, reason: '$code flag should be two runes');
-        for (final r in flag.runes) {
-          expect(r, greaterThanOrEqualTo(0x1F1E6));
-          expect(r, lessThanOrEqualTo(0x1F1FF));
-        }
+  group('flag support', () {
+    test('recognises the codes a flag can be drawn for', () {
+      // CountryFlagIcon keys off the same map, so anything named has an asset.
+      for (final code in ['NO', 'NL', 'GB', 'US', 'CA', 'DE', 'JP', 'BR']) {
+        expect(countryName(code), isNotNull, reason: '$code should be known');
       }
     });
 
-    test('unknown or malformed codes give no flag', () {
-      expect(countryFlag('ZZ'), isNull);
-      expect(countryFlag(null), isNull);
-      expect(countryFlag('Bergen'), isNull);
+    test('does not claim support for non-countries', () {
+      // Emoji flags were dropped because Windows renders a regional indicator
+      // pair as the two letters rather than a flag; flags are now bundled SVGs
+      // keyed off these codes, so an unknown code must fall back to an icon
+      // rather than request a missing asset.
+      expect(countryName('ZZ'), isNull);
+      expect(countryName('Bergen'), isNull);
+      expect(countryName(''), isNull);
     });
   });
 }
