@@ -1,3 +1,5 @@
+import 'package:flax/shared/country.dart';
+
 class ArtistInfo {
   final String? biography;
   final String? musicBrainzId;
@@ -33,7 +35,12 @@ class SimilarArtist {
 }
 
 class MusicBrainzArtistInfo {
+  /// Free-text area name from MusicBrainz. Inconsistent by nature — a country
+  /// for one artist, a city for the next — so prefer [countryLabel].
   final String? country;
+
+  /// ISO 3166-1 alpha-2 code, which unlike [country] is uniform across artists.
+  final String? countryCode;
   final String? type;
   final String? beginDate;
   final String? endDate;
@@ -42,12 +49,22 @@ class MusicBrainzArtistInfo {
 
   const MusicBrainzArtistInfo({
     this.country,
+    this.countryCode,
     this.type,
     this.beginDate,
     this.endDate,
     this.ended,
     this.tags = const [],
   });
+
+  /// Country name for display, resolved from [countryCode] when possible.
+  ///
+  /// Falls back to the raw area name only when there is no usable code, so a
+  /// city is shown rather than nothing at all.
+  String? get countryLabel => countryName(countryCode) ?? country;
+
+  /// Flag emoji for the country, or null when the code is missing or unknown.
+  String? get countryFlagEmoji => countryFlag(countryCode);
 
   String? get activeYears {
     if (beginDate == null) return null;

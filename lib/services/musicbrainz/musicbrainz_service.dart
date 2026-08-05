@@ -39,8 +39,19 @@ class MusicBrainzService {
       final area = data['area'] as Map<String, dynamic>?;
       final lifeSpan = data['life-span'] as Map<String, dynamic>?;
 
+      // `country` is an alpha-2 code and is consistent; `area.name` is
+      // whatever granularity MusicBrainz holds, which is why some artists
+      // showed a country and others a city. A country-typed area also carries
+      // its own iso-3166-1-codes, used when the top-level field is absent.
+      final areaCodes = area?['iso-3166-1-codes'] as List<dynamic>?;
+      final code = data['country'] as String? ??
+          (areaCodes != null && areaCodes.isNotEmpty
+              ? areaCodes.first as String?
+              : null);
+
       final info = MusicBrainzArtistInfo(
-        country: area?['name'] as String? ?? data['country'] as String?,
+        country: area?['name'] as String?,
+        countryCode: code,
         type: data['type'] as String?,
         beginDate: lifeSpan?['begin'] as String?,
         endDate: lifeSpan?['end'] as String?,
