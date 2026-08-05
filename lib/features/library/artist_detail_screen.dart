@@ -9,6 +9,8 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/favorite_button.dart';
+import 'package:flax/shared/widgets/star_rating.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
 // ── Sort enum ─────────────────────────────────────────────────────────
@@ -98,6 +100,9 @@ class ArtistDetailScreen extends ConsumerWidget {
           return CustomScrollView(
             slivers: [
               _buildAppBar(context, artist, artistInfo),
+              SliverToBoxAdapter(
+                child: _ArtistActionsBar(artist: artist, artistId: artistId),
+              ),
               if (_isDesktop)
                 SliverToBoxAdapter(
                   child: _ArtistInfoPanel(
@@ -301,12 +306,19 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
 
     final chips = <Widget>[];
 
-    if (mb?.country != null) {
-      chips.add(_infoChip(Icons.public, mb!.country!, theme));
+    // Flag instead of a globe icon where the country is known; the globe stays
+    // as the fallback for an area we could not resolve to a country.
+    final countryLabel = mb?.countryLabel;
+    if (countryLabel != null) {
+      chips.add(_infoChip(
+        Icons.public,
+        countryLabel,
+        theme,
+        leadingEmoji: mb?.countryFlagEmoji,
+      ));
     }
-    if (mb?.type != null) {
-      chips.add(_infoChip(Icons.category, mb!.type!, theme));
-    }
+    // The Group/Person designation is deliberately not shown: it adds a chip
+    // without telling you anything you cannot see from the artist itself.
     if (mb?.activeYears != null) {
       chips.add(_infoChip(Icons.calendar_today, mb!.activeYears!, theme));
     }
@@ -385,11 +397,19 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
     );
   }
 
-  Widget _infoChip(IconData icon, String label, ThemeData theme) {
+  Widget _infoChip(
+    IconData icon,
+    String label,
+    ThemeData theme, {
+    String? leadingEmoji,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
+        if (leadingEmoji != null)
+          Text(leadingEmoji, style: const TextStyle(fontSize: 14))
+        else
+          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
         const SizedBox(width: 4),
         Text(label,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -410,5 +430,62 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
         .replaceAll('&quot;', '"')
         .replaceAll('&#39;', "'")
         .trim();
+  }
+}
+
+/// Rating and favourite for the artist.
+///
+/// Navidrome exposes both for artists — a 0-5 rating and a separate favourite
+/// flag — and Subsonic's setRating/star take an artist id like any other
+/// entity, so nothing special is needed beyond a model field to read back.
+class _ArtistActionsBar extends ConsumerWidget {
+  const _ArtistActionsBar({required this.artist, required this.artistId});
+
+  final Artist artist;
+  final String artistId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          Text(
+            '${artist.albumCount} '
+            '${artist.albumCount == 1 ? "album" : "albums"}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const Spacer(),
+          StarRating(
+            rating: artist.userRating ?? 0,
+            size: 20,
+            onRatingChanged: (rating) async {
+              final client = ref.read(subsonicClientProvider);
+              if (client == null) return;
+              await client.setRating(artist.id, rating);
+              ref.invalidate(artistDetailProvider(artistId));
+            },
+          ),
+          const SizedBox(width: 8),
+          FavoriteButton(
+            isFavorite: artist.starred,
+            size: 20,
+            onToggle: () async {
+              final client = ref.read(subsonicClientProvider);
+              if (client == null) return;
+              if (artist.starred) {
+                await client.unstar(artistId: artist.id);
+              } else {
+                await client.star(artistId: artist.id);
+              }
+              ref.invalidate(artistDetailProvider(artistId));
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
