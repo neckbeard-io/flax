@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -18,11 +19,26 @@ import 'package:flax/features/settings/autoeq_screen.dart';
 import 'package:flax/features/player/now_playing_screen.dart';
 import 'package:flax/shared/widgets/shell_scaffold.dart';
 
+/// Route to open on launch instead of home, for debug builds only.
+///
+/// Set with `--dart-define=FLAX_ROUTE=/artists/<id>`, or via
+/// `tool/run_flax.sh --route <path>`. Screens buried behind navigation are
+/// otherwise unreachable without clicking, which makes verifying them by
+/// screenshot impossible — synthetic clicks do not reach a Flutter window, so
+/// there was no way to look at an artist or album page at all.
+const _debugInitialRoute = String.fromEnvironment('FLAX_ROUTE');
+
 final routerProvider = Provider<GoRouter>((ref) {
   final hasServer = ref.watch(activeServerProvider) != null;
 
+  // Ignored in release builds even if the define is set, so a stray define
+  // cannot ship an app that opens somewhere unexpected.
+  final start = (kDebugMode && _debugInitialRoute.isNotEmpty && hasServer)
+      ? _debugInitialRoute
+      : (hasServer ? '/home' : '/add-server');
+
   return GoRouter(
-    initialLocation: hasServer ? '/home' : '/add-server',
+    initialLocation: start,
     routes: [
       GoRoute(
         path: '/add-server',
