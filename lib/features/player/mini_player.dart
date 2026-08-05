@@ -5,6 +5,9 @@ import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/volume_control.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/favorite_button.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
+import 'package:flax/shared/widgets/star_rating.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
 class MiniPlayer extends ConsumerWidget {
@@ -135,6 +138,25 @@ class MiniPlayer extends ConsumerWidget {
                         ref.read(playerProvider.notifier).next(),
                     iconSize: 24,
                   ),
+                  // Rating and favourite for the playing track. Desktop only:
+                  // the phone bar is already tight, and these belong on the
+                  // now-playing screen there.
+                  if (isDesktopLayout(context)) ...[
+                    const SizedBox(width: 12),
+                    StarRating(
+                      rating: song.userRating ?? 0,
+                      size: 16,
+                      onRatingChanged: (r) =>
+                          ref.read(playerProvider.notifier).rateCurrentSong(r),
+                    ),
+                    const SizedBox(width: 4),
+                    FavoriteButton(
+                      isFavorite: song.starred,
+                      onToggle: () => ref
+                          .read(playerProvider.notifier)
+                          .toggleCurrentSongStarred(),
+                    ),
+                  ],
                   const SizedBox(width: 4),
                   const VolumeControl(),
                 ],
