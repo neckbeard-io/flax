@@ -12,6 +12,7 @@ import 'package:flax/shared/widgets/country_chip.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
 // ── Sort enum ─────────────────────────────────────────────────────────
@@ -533,14 +534,9 @@ class _DesktopArtistHeader extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (Navigator.canPop(context))
-            IconButton(
-              icon: const Icon(Icons.arrow_back),
-              tooltip: 'Back',
-              onPressed: () => Navigator.maybePop(context),
-            )
-          else
-            const SizedBox(height: 8),
+          // See UpBackButton: pops when it can, otherwise goes up to the list
+          // of artists rather than disappearing.
+          const UpBackButton(fallbackLocation: '/artists'),
           Padding(
             padding: const EdgeInsets.only(left: 8),
             child: Row(
