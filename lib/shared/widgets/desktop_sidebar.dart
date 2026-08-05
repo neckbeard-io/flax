@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:flax/app/nav_destinations.dart';
 import 'package:flax/features/search/search_screen.dart' show searchQueryProvider;
+import 'package:flax/shared/widgets/flax_input.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
 /// Focus node for the sidebar search field, exposed so the global "/" shortcut
@@ -146,23 +147,12 @@ class _SearchField extends StatelessWidget {
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
       style: theme.textTheme.bodyMedium,
-      decoration: InputDecoration(
+      decoration: flaxInputDecoration(
+        context,
         hintText: 'Search',
         prefixIcon: const Icon(Icons.search, size: 18),
+      ).copyWith(
         prefixIconConstraints: const BoxConstraints(minWidth: 36),
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 10),
-        filled: true,
-        fillColor: theme.colorScheme.surfaceContainerHighest
-            .withValues(alpha: 0.5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
       ),
     );
   }
