@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flax/shared/widgets/flax_logo.dart';
+import 'package:flax/shared/widgets/flax_input.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -12,7 +14,10 @@ class AddServerScreen extends ConsumerStatefulWidget {
 
 class _AddServerScreenState extends ConsumerState<AddServerScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'My Server');
+  // Empty, with the suggestion as a hint. Pre-filling it meant clearing
+  // someone else's text before typing your own, and a filled field also looks
+  // like a value you already confirmed.
+  final _nameController = TextEditingController();
   final _urlController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -68,11 +73,7 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(
-                    Icons.headphones,
-                    size: 64,
-                    color: theme.colorScheme.primary,
-                  ),
+                  const Center(child: FlaxLogo(size: 64)),
                   const SizedBox(height: 16),
                   Text(
                     'Flax',
@@ -92,9 +93,10 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
                   const SizedBox(height: 40),
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Server Name',
-                      prefixIcon: Icon(Icons.label_outline),
+                    decoration: flaxInputDecoration(
+                      context,
+                      hintText: 'My Server',
+                      prefixIcon: const Icon(Icons.label_outline),
                     ),
                     validator: (v) =>
                         v == null || v.trim().isEmpty ? 'Required' : null,
@@ -102,10 +104,10 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _urlController,
-                    decoration: const InputDecoration(
-                      labelText: 'Server URL',
+                    decoration: flaxInputDecoration(
+                      context,
                       hintText: 'https://music.example.com',
-                      prefixIcon: Icon(Icons.dns_outlined),
+                      prefixIcon: const Icon(Icons.dns_outlined),
                     ),
                     keyboardType: TextInputType.url,
                     validator: (v) {
@@ -120,9 +122,10 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Username',
-                      prefixIcon: Icon(Icons.person_outline),
+                    decoration: flaxInputDecoration(
+                      context,
+                      hintText: 'Username',
+                      prefixIcon: const Icon(Icons.person_outline),
                     ),
                     validator: (v) =>
                         v == null || v.trim().isEmpty ? 'Required' : null,
@@ -130,9 +133,10 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock_outline),
+                    decoration: flaxInputDecoration(
+                      context,
+                      hintText: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outline),
                     ),
                     obscureText: true,
                     textInputAction: TextInputAction.go,
