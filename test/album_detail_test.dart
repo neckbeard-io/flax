@@ -88,6 +88,52 @@ void main() {
 
   });
 
+  testWidgets('desktop header has a back button when there is a route to pop',
+      (tester) async {
+    tester.view.physicalSize = const ui.Size(1400, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    // Pushed rather than used as `home`: replacing the SliverAppBar with a
+    // custom header removed the back button it provided for free, and a screen
+    // that is the first route can legitimately show none. The regression only
+    // appears once something is on the stack beneath it.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          albumDetailProvider(_albumId).overrideWith((ref) async => _album),
+          albumSongsProvider(_albumId).overrideWith((ref) async => _songs()),
+        ],
+        child: MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1400, 1000)),
+            child: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AlbumDetailScreen(albumId: _albumId),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('ALBUM'), findsOneWidget, reason: 'album screen is up');
+    expect(
+      find.widgetWithIcon(IconButton, Icons.arrow_back),
+      findsOneWidget,
+      reason: 'there must be a way back out of an album',
+    );
+  });
+
   testWidgets('phone layout keeps favourites but drops per-track stars',
       (tester) async {
     tester.view.physicalSize = const ui.Size(400, 900);

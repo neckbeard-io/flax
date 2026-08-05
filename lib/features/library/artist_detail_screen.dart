@@ -8,6 +8,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
+import 'package:flax/shared/country.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
@@ -314,7 +315,8 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
         Icons.public,
         countryLabel,
         theme,
-        leadingEmoji: mb?.countryFlagEmoji,
+        // Suppressed on Windows, which draws the letters instead of a flag.
+        leadingEmoji: flagEmojiSupported ? mb?.countryFlagEmoji : null,
       ));
     }
     // The Group/Person designation is deliberately not shown: it adds a chip
@@ -335,8 +337,11 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
         children: [
           if (chips.isNotEmpty)
             Wrap(
-              spacing: 8,
+              spacing: 14,
               runSpacing: 6,
+              // Centre the chips against each other, so a chip whose leading
+              // glyph is a different height does not ride high or low.
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: chips,
             ),
           if (genres.isNotEmpty) ...[
@@ -403,18 +408,36 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
     ThemeData theme, {
     String? leadingEmoji,
   }) {
+    // Leading glyphs go in a fixed box, centred: an emoji and a Material icon
+    // have different intrinsic sizes and baselines, so laying them out directly
+    // in the row left each chip sitting at a slightly different height — the
+    // country and the active years visibly failed to line up.
     return Row(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (leadingEmoji != null)
-          Text(leadingEmoji, style: const TextStyle(fontSize: 14))
-        else
-          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
-        const SizedBox(width: 4),
-        Text(label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
+        SizedBox(
+          width: 16,
+          height: 16,
+          child: Center(
+            child: leadingEmoji != null
+                ? Text(
+                    leadingEmoji,
+                    // height: 1 stops the emoji's own line spacing from
+                    // pushing it off centre.
+                    style: const TextStyle(fontSize: 13, height: 1),
+                  )
+                : Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            height: 1.2,
+          ),
+        ),
       ],
     );
   }
