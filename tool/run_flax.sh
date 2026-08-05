@@ -12,12 +12,20 @@ cd "$(dirname "$0")/.."
 
 MODE="debug"
 BUILD=1
-for arg in "$@"; do
-  case "$arg" in
+ROUTE=""
+while [ $# -gt 0 ]; do
+  case "$1" in
     --release) MODE="release" ;;
     --no-build) BUILD=0 ;;
-    *) echo "unknown arg: $arg" >&2; exit 2 ;;
+    # Open straight onto a screen instead of home, e.g.
+    #   tool/run_flax.sh --route /artists/ar-123
+    # Debug builds only; the router ignores it in release. Lets a screen buried
+    # behind navigation be screenshotted, which is otherwise impossible because
+    # synthetic clicks do not reach a Flutter window.
+    --route) shift; ROUTE="${1:-}" ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
+  shift
 done
 
 APP="build/macos/Build/Products/$([ "$MODE" = release ] && echo Release || echo Debug)/flax.app"
@@ -40,8 +48,11 @@ if [ "$BUILD" = 1 ]; then
   # multibyte ellipsis and bash takes it as part of the variable name, which
   # under `set -u` aborts the script.
   echo "==> Building flax ($MODE) ${VERSION}+${BUILD_NUMBER}…"
+  DEFINES=()
+  [ -n "$ROUTE" ] && DEFINES+=(--dart-define=FLAX_ROUTE="$ROUTE")
   flutter build macos --"$MODE" \
-    --build-name="$VERSION" --build-number="$BUILD_NUMBER"
+    --build-name="$VERSION" --build-number="$BUILD_NUMBER" \
+    "${DEFINES[@]+"${DEFINES[@]}"}"
 fi
 
 if [ ! -d "$APP" ]; then
