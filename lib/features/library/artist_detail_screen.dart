@@ -9,6 +9,8 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/favorite_button.dart';
+import 'package:flax/shared/widgets/star_rating.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
 // ── Sort enum ─────────────────────────────────────────────────────────
@@ -98,6 +100,9 @@ class ArtistDetailScreen extends ConsumerWidget {
           return CustomScrollView(
             slivers: [
               _buildAppBar(context, artist, artistInfo),
+              SliverToBoxAdapter(
+                child: _ArtistActionsBar(artist: artist, artistId: artistId),
+              ),
               if (_isDesktop)
                 SliverToBoxAdapter(
                   child: _ArtistInfoPanel(
@@ -410,5 +415,62 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
         .replaceAll('&quot;', '"')
         .replaceAll('&#39;', "'")
         .trim();
+  }
+}
+
+/// Rating and favourite for the artist.
+///
+/// Navidrome exposes both for artists — a 0-5 rating and a separate favourite
+/// flag — and Subsonic's setRating/star take an artist id like any other
+/// entity, so nothing special is needed beyond a model field to read back.
+class _ArtistActionsBar extends ConsumerWidget {
+  const _ArtistActionsBar({required this.artist, required this.artistId});
+
+  final Artist artist;
+  final String artistId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          Text(
+            '${artist.albumCount} '
+            '${artist.albumCount == 1 ? "album" : "albums"}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const Spacer(),
+          StarRating(
+            rating: artist.userRating ?? 0,
+            size: 20,
+            onRatingChanged: (rating) async {
+              final client = ref.read(subsonicClientProvider);
+              if (client == null) return;
+              await client.setRating(artist.id, rating);
+              ref.invalidate(artistDetailProvider(artistId));
+            },
+          ),
+          const SizedBox(width: 8),
+          FavoriteButton(
+            isFavorite: artist.starred,
+            size: 20,
+            onToggle: () async {
+              final client = ref.read(subsonicClientProvider);
+              if (client == null) return;
+              if (artist.starred) {
+                await client.unstar(artistId: artist.id);
+              } else {
+                await client.star(artistId: artist.id);
+              }
+              ref.invalidate(artistDetailProvider(artistId));
+            },
+          ),
+        ],
+      ),
+    );
   }
 }

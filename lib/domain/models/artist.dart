@@ -7,6 +7,10 @@ class Artist {
   final int albumCount;
   final bool starred;
   final DateTime? starredAt;
+
+  /// 0-5 star rating, independent of [starred]. Navidrome exposes both for
+  /// artists, and Subsonic's setRating accepts an artist id like any other.
+  final int? userRating;
   final String? musicBrainzId;
   final String? biography;
   final String? imageUrl;
@@ -21,6 +25,7 @@ class Artist {
     this.albumCount = 0,
     this.starred = false,
     this.starredAt,
+    this.userRating,
     this.musicBrainzId,
     this.biography,
     this.imageUrl,
@@ -36,6 +41,7 @@ class Artist {
     int? albumCount,
     bool? starred,
     DateTime? starredAt,
+    int? userRating,
     String? musicBrainzId,
     String? biography,
     String? imageUrl,
@@ -50,6 +56,7 @@ class Artist {
       albumCount: albumCount ?? this.albumCount,
       starred: starred ?? this.starred,
       starredAt: starredAt ?? this.starredAt,
+      userRating: userRating ?? this.userRating,
       musicBrainzId: musicBrainzId ?? this.musicBrainzId,
       biography: biography ?? this.biography,
       imageUrl: imageUrl ?? this.imageUrl,
