@@ -6,6 +6,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
 final albumsProvider = FutureProvider<List<Album>>((ref) async {
@@ -40,8 +41,8 @@ class AlbumsScreen extends ConsumerWidget {
               child: albumsAsync.when(
         data: (albums) => GridView.builder(
           padding: const EdgeInsets.all(12),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 180,
+          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: artGridExtent(context),
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
             childAspectRatio: 0.75,
@@ -58,10 +59,10 @@ class AlbumsScreen extends ConsumerWidget {
                     child: HoverArtwork(
                       onTap: () => context.push('/albums/${album.id}'),
                       showPlayBadge: true,
-                      child: CoverArtImage(
-                        coverArtId: album.coverArtId,
-                        size: 180,
-                      ),
+                      // No explicit size: CoverArtImage measures its own box
+                      // and fetches to match, so a wider desktop tile pulls a
+                      // correspondingly larger image.
+                      child: CoverArtImage(coverArtId: album.coverArtId),
                     ),
                   ),
                   const SizedBox(height: 6),
