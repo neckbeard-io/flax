@@ -79,9 +79,12 @@ class PlayerState {
 
 final playerProvider =
     StateNotifierProvider<PlayerNotifier, PlayerState>((ref) {
-  final notifier = PlayerNotifier(ref);
-  ref.onDispose(() => notifier.dispose());
-  return notifier;
+  // No ref.onDispose here: StateNotifierProvider already disposes the notifier
+  // it is given, so adding one disposed it twice and threw "Tried to use
+  // PlayerNotifier after dispose was called". Invisible in the app, where this
+  // provider lives for the whole session and is never disposed — it only
+  // surfaces under test, where scopes come and go.
+  return PlayerNotifier(ref);
 });
 
 class PlayerNotifier extends StateNotifier<PlayerState> {
@@ -420,6 +423,22 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   // ── Queue manipulation ─────────────────────────────────────────────
+
+  /// Inserts [songs] directly after the playing track, leaving the rest of the
+  /// queue in order — the "play next" of the album header, as distinct from
+  /// [addToQueue], which appends to the end.
+  void playNext(List<Song> songs) {
+    if (songs.isEmpty) return;
+    if (state.queue.isEmpty) {
+      replaceQueue(songs);
+      return;
+    }
+    final queue = [...state.queue];
+    final at = (state.queueIndex + 1).clamp(0, queue.length);
+    queue.insertAll(at, songs);
+    state = state.copyWith(queue: queue);
+    _debounceSaveQueue();
+  }
 
   void addToQueue(List<Song> songs) {
     if (songs.isEmpty) return;
