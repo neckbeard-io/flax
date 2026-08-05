@@ -6,6 +6,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/flax_logo.dart';
 
@@ -118,7 +119,9 @@ class _AlbumRow extends ConsumerWidget {
           ),
         ),
         SizedBox(
-          height: 196,
+          // Art plus two lines of label. Tracks the shelf width, or desktop's
+          // larger art overflows the row.
+          height: artShelfExtent(context) + 56,
           child: albumsAsync.when(
             data: (albums) => ListView.builder(
               scrollDirection: Axis.horizontal,
@@ -148,12 +151,13 @@ class _AlbumCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final extent = artShelfExtent(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: AlbumContextMenu(
         album: album,
         child: SizedBox(
-          width: 140,
+          width: extent,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -161,12 +165,11 @@ class _AlbumCard extends StatelessWidget {
                 onTap: () => context.push('/albums/${album.id}'),
                 showPlayBadge: true,
                 child: SizedBox(
-                  width: 140,
-                  height: 140,
-                  child: CoverArtImage(
-                    coverArtId: album.coverArtId,
-                    size: 140,
-                  ),
+                  width: extent,
+                  height: extent,
+                  // Sized from its box rather than a fixed number, so desktop's
+                  // larger shelf fetches a larger image.
+                  child: CoverArtImage(coverArtId: album.coverArtId),
                 ),
               ),
               const SizedBox(height: 6),
