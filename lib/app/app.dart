@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/app/theme/flax_theme.dart';
 import 'package:flax/app/theme/theme_provider.dart';
+import 'package:flax/shared/widgets/app_chrome.dart';
 
 class FlaxApp extends ConsumerWidget {
   const FlaxApp({super.key});
@@ -30,6 +31,10 @@ class FlaxApp extends ConsumerWidget {
               FlaxTheme.dark(dynamicScheme: darkDynamic, amoled: amoled),
           themeMode: resolveThemeMode(themeModeSetting),
           routerConfig: router,
+          // Wraps every route, so screens outside the shell — server setup,
+          // now playing — get window controls and the global shortcut too.
+          builder: (context, child) =>
+              AppChrome(child: child ?? const SizedBox.shrink()),
         );
       },
     );

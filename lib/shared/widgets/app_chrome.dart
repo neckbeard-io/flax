@@ -1,0 +1,120 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:flax/shared/widgets/desktop_sidebar.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
+
+/// Window controls, drag strip, debug badge, and the global "/" shortcut,
+/// wrapped around every route.
+///
+/// These used to live in ShellScaffold, which meant any screen outside the shell
+/// had none of them: the server setup screen had no way to minimise, maximise or
+/// close the window at all, and neither did the now-playing screen. Doing it once
+/// here covers every route, including ones added later.
+class AppChrome extends ConsumerStatefulWidget {
+  const AppChrome({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<AppChrome> createState() => _AppChromeState();
+}
+
+class _AppChromeState extends ConsumerState<AppChrome> {
+  @override
+  void initState() {
+    super.initState();
+    // A keyboard handler rather than a Shortcuts widget.
+    //
+    // Shortcuts only sees keys that bubble up through the focused node's
+    // ancestors. Clicking empty space in the sidebar clears focus to the root
+    // scope, which sits *above* any widget we can wrap the app in — so "/" never
+    // reached the handler and macOS played the unhandled-key beep instead. A
+    // handler on the keyboard itself is focus-independent, which is what a
+    // global shortcut actually means.
+    HardwareKeyboard.instance.addHandler(_onKey);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
+    super.dispose();
+  }
+
+  /// Whether a text field currently has focus, in which case "/" is a character
+  /// the user is typing and must be left alone.
+  static bool _isEditing() {
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null) return false;
+    return ctx.widget is EditableText ||
+        ctx.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  bool _onKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.slash) return false;
+    if (_isEditing()) return false;
+    if (!mounted) return false;
+
+    final node = ref.read(searchFieldFocusProvider);
+    // Nothing to focus when the sidebar is not on screen — a phone, or a window
+    // too narrow for it. Returning false lets the key fall through as normal.
+    if (!node.canRequestFocus) return false;
+    node.requestFocus();
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = Platform.isMacOS || Platform.isWindows;
+
+    final top = MediaQuery.of(context).padding.top;
+
+    return Stack(
+      children: [
+        widget.child,
+        // The chrome gets an Overlay of its own. MaterialApp.builder runs
+        // outside the router's Navigator, so anything here is a sibling of it
+        // rather than a descendant — and the window buttons' tooltips need an
+        // Overlay ancestor, which threw "No Overlay widget found" without this.
+        //
+        // Only Positioned children go inside, so the empty area does not absorb
+        // pointer events and clicks still reach the screen underneath.
+        Positioned.fill(
+          child: Overlay(
+            initialEntries: [
+              OverlayEntry(
+                builder: (context) => Stack(
+                  children: [
+                    // Drag strip first, so the buttons above keep their taps.
+                    if (Platform.isWindows)
+                      const Positioned(
+                          top: 0, left: 0, right: 0, child: WindowDragArea()),
+                    if (isDesktop)
+                      Positioned(
+                        top: top + 4,
+                        right: 4,
+                        child: const WindowButtons(),
+                      ),
+                    // Below the buttons: that row is shared with a screen's
+                    // AppBar actions.
+                    if (kDebugMode)
+                      Positioned(
+                        top: top + 40,
+                        right: 8,
+                        child: const DebugBadge(),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -28,14 +28,37 @@ import 'package:flax/shared/widgets/shell_scaffold.dart';
 /// there was no way to look at an artist or album page at all.
 const _debugInitialRoute = String.fromEnvironment('FLAX_ROUTE');
 
+/// Where the app opens.
+///
+/// Pulled out as a plain function so the rule can be tested without standing up
+/// a router or touching the machine's real preferences — the bug this guards
+/// looked exactly like a saved server having been forgotten.
+///
+/// [debugRoute] comes from FLAX_ROUTE. /add-server is refused as a destination
+/// whenever a server exists: a build with that route compiled in reopened setup
+/// on every launch, and with a server already configured, starting at setup is
+/// never right.
+String initialLocationFor({
+  required bool hasServer,
+  String debugRoute = '',
+  bool allowDebugRoute = false,
+}) {
+  if (!hasServer) return '/add-server';
+  final wantsSetup = debugRoute.startsWith('/add-server');
+  if (allowDebugRoute && debugRoute.isNotEmpty && !wantsSetup) {
+    return debugRoute;
+  }
+  return '/home';
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final hasServer = ref.watch(activeServerProvider) != null;
 
-  // Ignored in release builds even if the define is set, so a stray define
-  // cannot ship an app that opens somewhere unexpected.
-  final start = (kDebugMode && _debugInitialRoute.isNotEmpty && hasServer)
-      ? _debugInitialRoute
-      : (hasServer ? '/home' : '/add-server');
+  final start = initialLocationFor(
+    hasServer: hasServer,
+    debugRoute: _debugInitialRoute,
+    allowDebugRoute: kDebugMode,
+  );
 
   return GoRouter(
     initialLocation: start,
