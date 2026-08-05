@@ -365,6 +365,60 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     return pts.last.gain;
   }
 
+  // ── Rating and favourites for the playing track ────────────────────
+  //
+  // Applied optimistically and reverted if the server rejects it. The player
+  // holds the only copy of the current song that the mini player and
+  // now-playing screen read, so the local update has to happen here rather
+  // than by invalidating some album provider — the track in the queue is what
+  // is on screen.
+
+  /// Sets the star rating (0-5) of the playing track.
+  Future<void> rateCurrentSong(int rating) async {
+    final song = state.currentSong;
+    final client = _ref.read(subsonicClientProvider);
+    if (song == null || client == null) return;
+
+    _replaceSongInQueue(song.copyWith(userRating: rating));
+    try {
+      await client.setRating(song.id, rating);
+    } catch (e) {
+      developer.log('setRating failed: $e', name: 'PlayerNotifier');
+      _replaceSongInQueue(song);
+    }
+  }
+
+  /// Toggles the favourite (starred) flag of the playing track.
+  Future<void> toggleCurrentSongStarred() async {
+    final song = state.currentSong;
+    final client = _ref.read(subsonicClientProvider);
+    if (song == null || client == null) return;
+
+    final next = !song.starred;
+    _replaceSongInQueue(song.copyWith(starred: next));
+    try {
+      if (next) {
+        await client.star(id: song.id);
+      } else {
+        await client.unstar(id: song.id);
+      }
+    } catch (e) {
+      developer.log('star/unstar failed: $e', name: 'PlayerNotifier');
+      _replaceSongInQueue(song);
+    }
+  }
+
+  /// Swaps the song at the current queue position, keeping queue and
+  /// currentSong consistent — they are separate fields and a mismatch shows up
+  /// as the UI disagreeing with itself.
+  void _replaceSongInQueue(Song song) {
+    final queue = [...state.queue];
+    final i = state.queueIndex;
+    if (i >= 0 && i < queue.length) queue[i] = song;
+    state = state.copyWith(currentSong: song, queue: queue);
+    _debounceSaveQueue();
+  }
+
   // ── Queue manipulation ─────────────────────────────────────────────
 
   void addToQueue(List<Song> songs) {
