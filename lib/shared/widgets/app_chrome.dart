@@ -100,12 +100,14 @@ class _AppChromeState extends ConsumerState<AppChrome> {
                         right: 4,
                         child: const WindowButtons(),
                       ),
-                    // Below the buttons: that row is shared with a screen's
-                    // AppBar actions.
+                    // Upper left, well away from the window controls and any
+                    // AppBar actions that sit beside them. On the shell the
+                    // sidebar keeps its top strip clear, so nothing is under it
+                    // there either.
                     if (kDebugMode)
                       Positioned(
-                        top: top + 40,
-                        right: 8,
+                        top: top + 8,
+                        left: 8,
                         child: const DebugBadge(),
                       ),
                   ],

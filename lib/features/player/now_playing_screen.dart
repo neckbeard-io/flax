@@ -7,6 +7,7 @@ import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/queue_panel.dart';
 import 'package:flax/features/player/volume_control.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
 class NowPlayingScreen extends ConsumerStatefulWidget {
@@ -91,6 +92,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     ),
                     onPressed: () => setState(() => _showQueue = !_showQueue),
                   ),
+                  // The window controls are drawn over this corner, so the
+                  // queue button has to step aside or the two overlap. Zero
+                  // off desktop, where nothing is drawn there.
+                  SizedBox(width: windowButtonsReservedWidth),
                 ],
               ),
             ),
