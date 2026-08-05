@@ -1,11 +1,40 @@
 #!/usr/bin/env python3
-"""Generate macOS app icon PNGs using Pillow."""
+"""Generate app icons for macOS and Android from one drawing.
+
+Android shipped the stock Flutter template icon because this script only ever
+wrote the macOS asset catalogue. It now emits both, so the two cannot drift.
+
+Android gets two forms:
+
+* Legacy `ic_launcher.png` per density — the whole icon, dark rounded background
+  included, for pre-Android-8 launchers.
+* An adaptive icon — a separate foreground and background layer, which Android 8+
+  masks into whatever shape the launcher uses (circle, squircle, teardrop). The
+  foreground must keep its art inside the middle 66% of the canvas: the system
+  crops and can zoom for parallax, so anything closer to the edge gets cut.
+"""
 import math
 import os
 from PIL import Image, ImageDraw
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'macos', 'Runner',
+ROOT = os.path.join(os.path.dirname(__file__), '..')
+OUT_DIR = os.path.join(ROOT, 'macos', 'Runner',
                        'Assets.xcassets', 'AppIcon.appiconset')
+ANDROID_RES = os.path.join(ROOT, 'android', 'app', 'src', 'main', 'res')
+
+BACKGROUND = (0x1A, 0x1A, 0x2E, 255)
+
+# Launcher icon edge length in px per density bucket.
+ANDROID_LEGACY = {
+    'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192,
+}
+# Adaptive layers are 108dp square regardless of the art inside them.
+ANDROID_ADAPTIVE = {
+    'mdpi': 108, 'hdpi': 162, 'xhdpi': 216, 'xxhdpi': 324, 'xxxhdpi': 432,
+}
+# Fraction of the adaptive canvas the art may occupy. The safe zone is 72/108 =
+# 0.667; staying just inside it leaves room for the launcher's parallax zoom.
+SAFE_ZONE = 0.62
 SIZES = [16, 32, 64, 128, 256, 512, 1024]
 RENDER_SIZE = 1024  # render at 1024 then downscale
 
@@ -93,6 +122,91 @@ def rounded_rect_mask(size, radius):
     return mask
 
 
+def full_icon(size):
+    """The complete icon: flower on the dark rounded background."""
+    img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    radius = int(size * 0.22)
+    draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=radius,
+                           fill=BACKGROUND)
+    draw_flower(draw, size)
+    img.putalpha(rounded_rect_mask(size, radius))
+    return img
+
+
+def flower_layer(size):
+    """Just the flower, transparent behind it."""
+    img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    draw_flower(ImageDraw.Draw(img), size)
+    return img
+
+
+def adaptive_foreground(size):
+    """Flower centred and filling the adaptive icon's safe zone.
+
+    The drawing has its own margins — petals start below the top edge, the stem
+    stops short of the bottom — so scaling the whole canvas into the safe zone
+    left the flower looking lost inside the mask. Crop to the art's actual
+    bounding box first, then fit that, which uses the available room without
+    crossing into the region launchers may clip.
+    """
+    art = flower_layer(size)
+    bbox = art.getbbox()  # tight box around non-transparent pixels
+    if bbox:
+        art = art.crop(bbox)
+
+    target = int(size * SAFE_ZONE)
+    w, h = art.size
+    scale = target / max(w, h)
+    art = art.resize((max(1, int(w * scale)), max(1, int(h * scale))),
+                     Image.LANCZOS)
+
+    out = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    out.paste(art, ((size - art.width) // 2, (size - art.height) // 2), art)
+    return out
+
+
+def write_android():
+    master = full_icon(RENDER_SIZE)
+    for bucket, px in ANDROID_LEGACY.items():
+        d = os.path.join(ANDROID_RES, f'mipmap-{bucket}')
+        os.makedirs(d, exist_ok=True)
+        out = os.path.join(d, 'ic_launcher.png')
+        master.resize((px, px), Image.LANCZOS).save(out, 'PNG')
+        print(f'Generated {out} ({px}x{px})')
+
+    fg_master = adaptive_foreground(RENDER_SIZE)
+    for bucket, px in ANDROID_ADAPTIVE.items():
+        d = os.path.join(ANDROID_RES, f'mipmap-{bucket}')
+        os.makedirs(d, exist_ok=True)
+        out = os.path.join(d, 'ic_launcher_foreground.png')
+        fg_master.resize((px, px), Image.LANCZOS).save(out, 'PNG')
+        print(f'Generated {out} ({px}x{px})')
+
+    # Background is a flat colour, so a drawable beats five more PNGs.
+    values = os.path.join(ANDROID_RES, 'values')
+    os.makedirs(values, exist_ok=True)
+    hex_bg = '#%02X%02X%02X' % BACKGROUND[:3]
+    with open(os.path.join(values, 'ic_launcher_background.xml'), 'w') as f:
+        f.write('<?xml version="1.0" encoding="utf-8"?>\n'
+                '<resources>\n'
+                f'    <color name="ic_launcher_background">{hex_bg}</color>\n'
+                '</resources>\n')
+
+    # anydpi-v26 is what Android 8+ picks up in preference to the bitmaps.
+    anydpi = os.path.join(ANDROID_RES, 'mipmap-anydpi-v26')
+    os.makedirs(anydpi, exist_ok=True)
+    xml = ('<?xml version="1.0" encoding="utf-8"?>\n'
+           '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+           '    <background android:drawable="@color/ic_launcher_background" />\n'
+           '    <foreground android:drawable="@mipmap/ic_launcher_foreground" />\n'
+           '</adaptive-icon>\n')
+    out = os.path.join(anydpi, 'ic_launcher.xml')
+    with open(out, 'w') as f:
+        f.write(xml)
+    print(f'Generated {out}')
+
+
 def main():
     s = RENDER_SIZE
     img = Image.new('RGBA', (s, s), (0, 0, 0, 0))
@@ -116,6 +230,7 @@ def main():
         resized.save(out_path, 'PNG')
         print(f'Generated {out_path} ({size}x{size})')
 
+    write_android()
     print('Done!')
 
 
