@@ -12,6 +12,13 @@ class FlaxTheme {
 
     return ThemeData(
       useMaterial3: true,
+      // One back arrow everywhere. Automatic AppBar back buttons are
+      // platform-adaptive and drew a bare chevron on macOS, so the artist page
+      // disagreed with the album page's explicit arrow. Setting it here fixes
+      // every screen at once, including ones not written yet.
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (context) => const Icon(Icons.arrow_back),
+      ),
       colorScheme: colorScheme,
       navigationBarTheme: NavigationBarThemeData(
         indicatorColor: colorScheme.secondaryContainer,
@@ -58,6 +65,13 @@ class FlaxTheme {
 
     return ThemeData(
       useMaterial3: true,
+      // One back arrow everywhere. Automatic AppBar back buttons are
+      // platform-adaptive and drew a bare chevron on macOS, so the artist page
+      // disagreed with the album page's explicit arrow. Setting it here fixes
+      // every screen at once, including ones not written yet.
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (context) => const Icon(Icons.arrow_back),
+      ),
       colorScheme: effectiveScheme,
       scaffoldBackgroundColor: amoled ? Colors.black : null,
       navigationBarTheme: NavigationBarThemeData(

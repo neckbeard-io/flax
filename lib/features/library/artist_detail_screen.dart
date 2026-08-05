@@ -8,7 +8,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
-import 'package:flax/shared/country.dart';
+import 'package:flax/shared/widgets/country_chip.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
@@ -307,22 +307,22 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
 
     final chips = <Widget>[];
 
-    // Flag instead of a globe icon where the country is known; the globe stays
-    // as the fallback for an area we could not resolve to a country.
+    // A flag where the country resolved, the globe where only an area name did.
     final countryLabel = mb?.countryLabel;
     if (countryLabel != null) {
-      chips.add(_infoChip(
-        Icons.public,
-        countryLabel,
-        theme,
-        // Suppressed on Windows, which draws the letters instead of a flag.
-        leadingEmoji: flagEmojiSupported ? mb?.countryFlagEmoji : null,
+      chips.add(InfoChip(
+        label: countryLabel,
+        icon: Icons.public,
+        countryCode: mb?.countryCode,
       ));
     }
     // The Group/Person designation is deliberately not shown: it adds a chip
     // without telling you anything you cannot see from the artist itself.
     if (mb?.activeYears != null) {
-      chips.add(_infoChip(Icons.calendar_today, mb!.activeYears!, theme));
+      chips.add(InfoChip(
+        label: mb!.activeYears!,
+        icon: Icons.calendar_today,
+      ));
     }
 
     final genres = mb?.tags ?? widget.artist.genres ?? [];
@@ -402,45 +402,7 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
     );
   }
 
-  Widget _infoChip(
-    IconData icon,
-    String label,
-    ThemeData theme, {
-    String? leadingEmoji,
-  }) {
-    // Leading glyphs go in a fixed box, centred: an emoji and a Material icon
-    // have different intrinsic sizes and baselines, so laying them out directly
-    // in the row left each chip sitting at a slightly different height — the
-    // country and the active years visibly failed to line up.
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 16,
-          height: 16,
-          child: Center(
-            child: leadingEmoji != null
-                ? Text(
-                    leadingEmoji,
-                    // height: 1 stops the emoji's own line spacing from
-                    // pushing it off centre.
-                    style: const TextStyle(fontSize: 13, height: 1),
-                  )
-                : Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
-          ),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            height: 1.2,
-          ),
-        ),
-      ],
-    );
-  }
+
 
   String? _cleanBio(String? html) {
     if (html == null || html.isEmpty) return null;
