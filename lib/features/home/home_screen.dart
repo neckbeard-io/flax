@@ -55,10 +55,14 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.settings_outlined),
-                    onPressed: () => context.push('/settings'),
-                  ),
+                  // Only on layouts without the sidebar: it carries its own
+                  // Settings entry, and a second gear here sat right beside the
+                  // window buttons.
+                  if (!isDesktopLayout(context))
+                    IconButton(
+                      icon: const Icon(Icons.settings_outlined),
+                      onPressed: () => context.push('/settings'),
+                    ),
                 ],
               ),
             ),
