@@ -48,13 +48,21 @@ final artistInfoProvider =
 
 final musicBrainzInfoProvider =
     FutureProvider.family<MusicBrainzArtistInfo?, String>((ref, artistId) async {
-  // First try to get the MusicBrainz ID from Subsonic artist info
+  // Order matters for latency. This used to await artistInfoProvider first,
+  // which is Navidrome's getArtistInfo2 — and Navidrome fetches that from
+  // Last.fm — so the MusicBrainz request could not even start until a slow
+  // third-party call had returned, putting two of them in series. getArtist is
+  // a plain local Navidrome lookup and already parses musicBrainzId, so start
+  // from that instead and only fall back to the slow path when it is absent.
+  final artist = await ref.watch(artistDetailProvider(artistId).future);
+  if (artist.musicBrainzId != null) {
+    return MusicBrainzService.getArtistInfo(artist.musicBrainzId!);
+  }
+
   final artistInfo = await ref.watch(artistInfoProvider(artistId).future);
   if (artistInfo?.musicBrainzId != null) {
     return MusicBrainzService.getArtistInfo(artistInfo!.musicBrainzId!);
   }
-  // Fallback: search by artist name
-  final artist = await ref.watch(artistDetailProvider(artistId).future);
   return MusicBrainzService.searchArtist(artist.name);
 });
 
@@ -98,20 +106,39 @@ class ArtistDetailScreen extends ConsumerWidget {
           final artistInfo = artistInfoAsync.valueOrNull;
           final mbInfo = mbInfoAsync.valueOrNull;
 
+          // Desktop shows the artist image contained beside the details rather
+          // than cropped into a banner behind them. A square photo stretched
+          // across a wide window shows a torso and loses the face, and text and
+          // controls drawn over arbitrary artwork are unreadable against light
+          // images — the back button vanished entirely against a pale one.
+          final infoLoading = artistInfoAsync.isLoading || mbInfoAsync.isLoading;
           return CustomScrollView(
             slivers: [
-              _buildAppBar(context, artist, artistInfo),
-              SliverToBoxAdapter(
-                child: _ArtistActionsBar(artist: artist, artistId: artistId),
-              ),
+              if (_isDesktop)
+                SliverToBoxAdapter(
+                  child: _DesktopArtistHeader(
+                    artist: artist,
+                    artistId: artistId,
+                    artistInfo: artistInfo,
+                    mbInfo: mbInfo,
+                    infoLoading: infoLoading,
+                  ),
+                ),
               if (_isDesktop)
                 SliverToBoxAdapter(
                   child: _ArtistInfoPanel(
                     artist: artist,
                     artistInfo: artistInfo,
                     mbInfo: mbInfo,
+                    infoLoading: infoLoading,
                   ),
+                )
+              else ...[
+                _buildAppBar(context, artist, artistInfo),
+                SliverToBoxAdapter(
+                  child: _ArtistActionsBar(artist: artist, artistId: artistId),
                 ),
+              ],
               SliverToBoxAdapter(
                 child: _buildSortBar(context, ref, sortMode),
               ),
@@ -283,11 +310,13 @@ class _ArtistInfoPanel extends StatefulWidget {
   final Artist artist;
   final ArtistInfo? artistInfo;
   final MusicBrainzArtistInfo? mbInfo;
+  final bool infoLoading;
 
   const _ArtistInfoPanel({
     required this.artist,
     this.artistInfo,
     this.mbInfo,
+    this.infoLoading = false,
   });
 
   @override
@@ -297,53 +326,56 @@ class _ArtistInfoPanel extends StatefulWidget {
 class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
   bool _expanded = false;
 
+  /// Height the collapsed panel always occupies: genre chips, three lines of
+  /// biography, and the Read more affordance.
+  ///
+  /// Fixed rather than intrinsic because the two lookups feeding it are slow
+  /// and arrive separately. Sizing to content meant the panel grew as each one
+  /// landed and pushed the album list down — a row moving out from under the
+  /// pointer mid-click. Expanding is a deliberate act and may grow past this.
+  static const _collapsedHeight = 132.0;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final info = widget.artistInfo;
     final mb = widget.mbInfo;
 
-    if (info == null && mb == null) return const SizedBox.shrink();
-
-    final chips = <Widget>[];
-
-    // A flag where the country resolved, the globe where only an area name did.
-    final countryLabel = mb?.countryLabel;
-    if (countryLabel != null) {
-      chips.add(InfoChip(
-        label: countryLabel,
-        icon: Icons.public,
-        countryCode: mb?.countryCode,
-      ));
-    }
-    // The Group/Person designation is deliberately not shown: it adds a chip
-    // without telling you anything you cannot see from the artist itself.
-    if (mb?.activeYears != null) {
-      chips.add(InfoChip(
-        label: mb!.activeYears!,
-        icon: Icons.calendar_today,
-      ));
-    }
-
     final genres = mb?.tags ?? widget.artist.genres ?? [];
 
     // Clean up biography HTML
     final bio = _cleanBio(info?.biography);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Column(
+    // While the bio is still in flight, hold the space three lines of it will
+    // occupy. Letting the panel collapse and then expand shifted the album list
+    // downward mid-click, which is how a click lands on the wrong album.
+    if (widget.infoLoading && (bio == null || bio.isEmpty)) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+        child: SizedBox(
+          height: _collapsedHeight,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _LoadingBar(width: 90, height: 24),
+              SizedBox(height: 12),
+              _LoadingBar(width: 620, height: 12),
+              SizedBox(height: 10),
+              _LoadingBar(width: 660, height: 12),
+              SizedBox(height: 10),
+              _LoadingBar(width: 420, height: 12),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (info == null && mb == null) return const SizedBox.shrink();
+
+    final content = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (chips.isNotEmpty)
-            Wrap(
-              spacing: 14,
-              runSpacing: 6,
-              // Centre the chips against each other, so a chip whose leading
-              // glyph is a different height does not ride high or low.
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: chips,
-            ),
+          // Country and years live in the header; this panel is genres and bio.
           if (genres.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(
@@ -398,7 +430,24 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
             ),
           ],
         ],
-      ),
+      );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: _expanded
+          ? content
+          // Clipped to a constant height while collapsed so the panel is the
+          // same size before and after its data arrives.
+          : SizedBox(
+              height: _collapsedHeight,
+              child: ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  maxHeight: double.infinity,
+                  child: content,
+                ),
+              ),
+            ),
     );
   }
 
@@ -444,33 +493,273 @@ class _ArtistActionsBar extends ConsumerWidget {
             ),
           ),
           const Spacer(),
-          StarRating(
-            rating: artist.userRating ?? 0,
-            size: 20,
-            onRatingChanged: (rating) async {
-              final client = ref.read(subsonicClientProvider);
-              if (client == null) return;
-              await client.setRating(artist.id, rating);
-              ref.invalidate(artistDetailProvider(artistId));
-            },
-          ),
-          const SizedBox(width: 8),
-          FavoriteButton(
-            isFavorite: artist.starred,
-            size: 20,
-            onToggle: () async {
-              final client = ref.read(subsonicClientProvider);
-              if (client == null) return;
-              if (artist.starred) {
-                await client.unstar(artistId: artist.id);
-              } else {
-                await client.star(artistId: artist.id);
-              }
-              ref.invalidate(artistDetailProvider(artistId));
-            },
+          _ArtistRatingRow(artist: artist, artistId: artistId, size: 20),
+        ],
+      ),
+    );
+  }
+}
+
+/// Desktop artist header: contained square image beside the details.
+///
+/// Replaces the full-bleed banner, which cropped a square publicity photo down
+/// to a strip and forced text and buttons on top of arbitrary artwork. Against a
+/// pale image the back button became invisible, and no amount of scrim tuning
+/// fixes that reliably for every photo in a library.
+class _DesktopArtistHeader extends ConsumerWidget {
+  const _DesktopArtistHeader({
+    required this.artist,
+    required this.artistId,
+    required this.artistInfo,
+    required this.mbInfo,
+    required this.infoLoading,
+  });
+
+  final Artist artist;
+  final String artistId;
+  final ArtistInfo? artistInfo;
+  final MusicBrainzArtistInfo? mbInfo;
+  final bool infoLoading;
+
+  static const _imageSize = 200.0;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final remoteImage = artistInfo?.bestImageUrl;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 24, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (Navigator.canPop(context))
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Back',
+              onPressed: () => Navigator.maybePop(context),
+            )
+          else
+            const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ArtistImage(
+                  size: _imageSize,
+                  remoteImageUrl: remoteImage,
+                  coverArtId: artist.coverArtId,
+                ),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ARTIST',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        artist.name,
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${artist.albumCount} '
+                        '${artist.albumCount == 1 ? "album" : "albums"}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Reserved whether or not the metadata has arrived, so the
+                      // album list below does not shift under the pointer when
+                      // it does. Two third-party lookups feed this and either
+                      // can take seconds.
+                      SizedBox(
+                        height: 22,
+                        child: infoLoading && mbInfo == null
+                            ? const _LoadingBar(width: 220)
+                            : _ArtistChips(mbInfo: mbInfo),
+                      ),
+                      const SizedBox(height: 12),
+                      _ArtistRatingRow(artist: artist, artistId: artistId),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The artist photo, contained rather than cropped.
+///
+/// Prefers the remote image from artist info, falling back to the server's own
+/// cover art, and to a placeholder when there is neither — so the box is always
+/// the same size and nothing below it moves once an image resolves.
+class _ArtistImage extends StatelessWidget {
+  const _ArtistImage({
+    required this.size,
+    required this.remoteImageUrl,
+    required this.coverArtId,
+  });
+
+  final double size;
+  final String? remoteImageUrl;
+  final String? coverArtId;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final radius = BorderRadius.circular(8);
+
+    Widget fallback() => coverArtId != null
+        ? CoverArtImage(coverArtId: coverArtId, borderRadius: radius)
+        : DecoratedBox(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: radius,
+            ),
+            child: Center(
+              child: Icon(
+                Icons.person,
+                size: size * 0.4,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          );
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: remoteImageUrl == null
+          ? fallback()
+          : ClipRRect(
+              borderRadius: radius,
+              child: CachedNetworkImage(
+                imageUrl: remoteImageUrl!,
+                fit: BoxFit.cover,
+                placeholder: (_, _) => fallback(),
+                errorWidget: (_, _, _) => fallback(),
+              ),
+            ),
+    );
+  }
+}
+
+/// Placeholder occupying the space a not-yet-loaded value will fill.
+class _LoadingBar extends StatelessWidget {
+  const _LoadingBar({required this.width, this.height = 12});
+
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+    );
+  }
+}
+
+/// Country and active-years chips, shared by the desktop header and the phone
+/// info panel so the two cannot present the same metadata differently.
+class _ArtistChips extends StatelessWidget {
+  const _ArtistChips({required this.mbInfo});
+
+  final MusicBrainzArtistInfo? mbInfo;
+
+  @override
+  Widget build(BuildContext context) {
+    final mb = mbInfo;
+    final country = mb?.countryLabel;
+    final years = mb?.activeYears;
+    if (country == null && years == null) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 14,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (country != null)
+          InfoChip(
+            label: country,
+            icon: Icons.public,
+            countryCode: mb?.countryCode,
+          ),
+        if (years != null)
+          InfoChip(label: years, icon: Icons.calendar_today),
+      ],
+    );
+  }
+}
+
+/// Star rating and favourite for an artist, writing straight through and
+/// refreshing the artist so the server stays the source of truth.
+class _ArtistRatingRow extends ConsumerWidget {
+  const _ArtistRatingRow({
+    required this.artist,
+    required this.artistId,
+    this.size = 22,
+  });
+
+  final Artist artist;
+  final String artistId;
+  final double size;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        StarRating(
+          rating: artist.userRating ?? 0,
+          size: size,
+          onRatingChanged: (rating) async {
+            final client = ref.read(subsonicClientProvider);
+            if (client == null) return;
+            await client.setRating(artist.id, rating);
+            ref.invalidate(artistDetailProvider(artistId));
+          },
+        ),
+        const SizedBox(width: 8),
+        FavoriteButton(
+          isFavorite: artist.starred,
+          size: size,
+          onToggle: () async {
+            final client = ref.read(subsonicClientProvider);
+            if (client == null) return;
+            if (artist.starred) {
+              await client.unstar(artistId: artist.id);
+            } else {
+              await client.star(artistId: artist.id);
+            }
+            ref.invalidate(artistDetailProvider(artistId));
+          },
+        ),
+      ],
     );
   }
 }
