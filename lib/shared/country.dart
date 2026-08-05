@@ -6,6 +6,16 @@
 /// code, which is uniform, and a name and a flag can both be derived from it.
 library;
 
+import 'dart:io';
+
+/// Whether flag emoji actually render as flags on this platform.
+///
+/// Windows ships no country flag glyphs: Segoe UI Emoji draws a regional
+/// indicator pair as the two letters in boxes, so "CA" appeared where a
+/// Canadian flag was intended. macOS, iOS, and Android all render them properly.
+/// Callers should fall back to the plain country name where this is false.
+bool get flagEmojiSupported => !Platform.isWindows;
+
 /// Name for an alpha-2 code, or null if unrecognised.
 String? countryName(String? alpha2) {
   if (alpha2 == null || alpha2.length != 2) return null;

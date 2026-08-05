@@ -189,10 +189,26 @@ class _DesktopHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 12, 24, 16),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Replacing the SliverAppBar with this header also removed the back
+          // button it provided for free, leaving no way out of an album except
+          // the sidebar. Put one back.
+          if (Navigator.canPop(context))
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Back',
+              onPressed: () => Navigator.maybePop(context),
+            )
+          else
+            const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           SizedBox(
             width: 240,
             height: 240,
@@ -254,6 +270,9 @@ class _DesktopHeader extends StatelessWidget {
                     _AlbumActions(album: album, albumId: albumId),
                   ],
                 ),
+              ],
+            ),
+          ),
               ],
             ),
           ),
