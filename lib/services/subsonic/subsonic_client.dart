@@ -518,6 +518,7 @@ class SubsonicClient implements MusicBackend {
       starredAt: json['starred'] != null
           ? DateTime.tryParse(json['starred'] as String)
           : null,
+      userRating: json['userRating'] as int?,
       musicBrainzId: json['musicBrainzId'] as String?,
     );
   }
