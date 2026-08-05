@@ -63,9 +63,6 @@ class MusicBrainzArtistInfo {
   /// city is shown rather than nothing at all.
   String? get countryLabel => countryName(countryCode) ?? country;
 
-  /// Flag emoji for the country, or null when the code is missing or unknown.
-  String? get countryFlagEmoji => countryFlag(countryCode);
-
   String? get activeYears {
     if (beginDate == null) return null;
     final start = beginDate!.substring(0, 4);

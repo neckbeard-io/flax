@@ -1,41 +1,18 @@
-/// ISO 3166-1 alpha-2 country codes to display names, and flag emoji.
+/// ISO 3166-1 alpha-2 country codes to display names.
 ///
 /// MusicBrainz reports an artist's `area` as whatever granularity the database
 /// happens to hold — "Netherlands" for one artist, "Bergen" for the next — so
 /// area names cannot be shown consistently. The `country` field is an alpha-2
-/// code, which is uniform, and a name and a flag can both be derived from it.
+/// code, which is uniform, and both a name and a flag are keyed off it. Flags
+/// are drawn from bundled SVGs by CountryFlagIcon rather than from emoji, which
+/// Windows does not render.
 library;
 
-import 'dart:io';
-
-/// Whether flag emoji actually render as flags on this platform.
-///
-/// Windows ships no country flag glyphs: Segoe UI Emoji draws a regional
-/// indicator pair as the two letters in boxes, so "CA" appeared where a
-/// Canadian flag was intended. macOS, iOS, and Android all render them properly.
-/// Callers should fall back to the plain country name where this is false.
-bool get flagEmojiSupported => !Platform.isWindows;
 
 /// Name for an alpha-2 code, or null if unrecognised.
 String? countryName(String? alpha2) {
   if (alpha2 == null || alpha2.length != 2) return null;
   return _names[alpha2.toUpperCase()];
-}
-
-/// Flag emoji for an alpha-2 code, or null if unrecognised.
-///
-/// Built from regional indicator symbols: 'N','O' becomes U+1F1F3 U+1F1F4,
-/// which the platform renders as the Norwegian flag. No image assets, and it
-/// covers every code the map knows.
-String? countryFlag(String? alpha2) {
-  if (alpha2 == null || alpha2.length != 2) return null;
-  final code = alpha2.toUpperCase();
-  if (!_names.containsKey(code)) return null;
-  const base = 0x1F1E6; // regional indicator 'A'
-  return String.fromCharCodes([
-    base + (code.codeUnitAt(0) - 0x41),
-    base + (code.codeUnitAt(1) - 0x41),
-  ]);
 }
 
 const _names = <String, String>{
