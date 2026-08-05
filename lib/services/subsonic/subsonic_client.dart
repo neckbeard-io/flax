@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:meta/meta.dart';
 import 'package:dio/dio.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
@@ -237,7 +238,9 @@ class SubsonicClient implements MusicBackend {
 
     return SearchResult(
       artists: (result['artist'] as List<dynamic>? ?? [])
-          .map((a) => _parseArtist(a as Map<String, dynamic>))
+          .cast<Map<String, dynamic>>()
+          .where(hasSearchableAlbums)
+          .map(_parseArtist)
           .toList(),
       albums: (result['album'] as List<dynamic>? ?? [])
           .map((a) => _parseAlbum(a as Map<String, dynamic>))
@@ -505,6 +508,24 @@ class SubsonicClient implements MusicBackend {
   }
 
   // ── Parsers ───────────────────────────────────────────────────────────
+
+  /// Whether a search hit is an artist worth listing.
+  ///
+  /// Navidrome's search3 matches credit participants as well as album artists —
+  /// songwriters, session performers, alternate legal names — so searching "liz"
+  /// returned Lizzo alongside ten people with no music in the library, including
+  /// "Melissa \"Lizzo\" Jefferson", her songwriting credit. Its browse index has
+  /// none of them: of 1286 artists there, zero have no albums. Filtering to match
+  /// therefore hides nothing that browsing could otherwise reach.
+  ///
+  /// A missing albumCount is kept rather than dropped. Navidrome always sends it,
+  /// but a Subsonic server that omits the field would otherwise have every artist
+  /// filtered out of its search results.
+  @visibleForTesting
+  static bool hasSearchableAlbums(Map<String, dynamic> json) {
+    final count = json['albumCount'] as int?;
+    return count == null || count > 0;
+  }
 
   Artist _parseArtist(Map<String, dynamic> json) {
     return Artist(
