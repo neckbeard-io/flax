@@ -306,12 +306,19 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
 
     final chips = <Widget>[];
 
-    if (mb?.country != null) {
-      chips.add(_infoChip(Icons.public, mb!.country!, theme));
+    // Flag instead of a globe icon where the country is known; the globe stays
+    // as the fallback for an area we could not resolve to a country.
+    final countryLabel = mb?.countryLabel;
+    if (countryLabel != null) {
+      chips.add(_infoChip(
+        Icons.public,
+        countryLabel,
+        theme,
+        leadingEmoji: mb?.countryFlagEmoji,
+      ));
     }
-    if (mb?.type != null) {
-      chips.add(_infoChip(Icons.category, mb!.type!, theme));
-    }
+    // The Group/Person designation is deliberately not shown: it adds a chip
+    // without telling you anything you cannot see from the artist itself.
     if (mb?.activeYears != null) {
       chips.add(_infoChip(Icons.calendar_today, mb!.activeYears!, theme));
     }
@@ -390,11 +397,19 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
     );
   }
 
-  Widget _infoChip(IconData icon, String label, ThemeData theme) {
+  Widget _infoChip(
+    IconData icon,
+    String label,
+    ThemeData theme, {
+    String? leadingEmoji,
+  }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
+        if (leadingEmoji != null)
+          Text(leadingEmoji, style: const TextStyle(fontSize: 14))
+        else
+          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
         const SizedBox(width: 4),
         Text(label,
             style: theme.textTheme.bodySmall?.copyWith(
