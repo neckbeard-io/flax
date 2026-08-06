@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 
+import 'package:flax/shared/widgets/hover_effects.dart';
+
 /// Heart toggle for a track, album, or artist.
 ///
 /// Subsonic calls this "starred", which collides confusingly with the separate
 /// 0-5 star *rating* — they are two independent fields on the same entity. The
 /// heart glyph keeps them visually distinct, matching how Navidrome clients
 /// present it.
+///
+/// Hover comes from [HoverIcon], shared with the star rating, so a heart in the
+/// mini player behaves exactly like one in an album's track list.
 class FavoriteButton extends StatelessWidget {
   const FavoriteButton({
     super.key,
@@ -23,22 +28,16 @@ class FavoriteButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return IconButton(
-      icon: Icon(
-        isFavorite ? Icons.favorite : Icons.favorite_border,
-        size: size,
-        color: isFavorite
-            ? theme.colorScheme.primary
-            : theme.colorScheme.onSurfaceVariant,
-      ),
-      visualDensity: VisualDensity.compact,
-      padding: EdgeInsets.zero,
-      constraints: BoxConstraints(
-        minWidth: size + 12,
-        minHeight: size + 12,
-      ),
-      tooltip: tooltip ?? (isFavorite ? 'Remove from favorites' : 'Add to favorites'),
-      onPressed: onToggle,
+
+    return HoverIcon(
+      icon: isFavorite ? Icons.favorite : Icons.favorite_border,
+      size: size,
+      color: isFavorite
+          ? theme.colorScheme.primary
+          : theme.colorScheme.onSurfaceVariant,
+      onTap: onToggle,
+      tooltip:
+          tooltip ?? (isFavorite ? 'Remove from favorites' : 'Add to favorites'),
     );
   }
 }

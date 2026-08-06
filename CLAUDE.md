@@ -20,11 +20,11 @@ tool/run_flax.sh --no-build   # just kill + relaunch the existing bundle
 tool/run_flax.sh --route /albums/<id>   # open straight onto a screen
 ```
 
-`--route` exists because screens behind navigation are otherwise impossible to
-verify: synthetic clicks and keystrokes do not reach a Flutter window, so an
-artist or album page can never be screenshotted by driving the UI. It compiles
-`FLAX_ROUTE` into a debug build and is ignored entirely in release. Real ids can
-be read from the app's saved queue in its preferences.
+`--route` opens a screen directly instead of navigating to it, which is both
+faster and deterministic — no hunting for coordinates, no dependence on what the
+previous screen happened to show. It compiles `FLAX_ROUTE` into a debug build and
+is ignored entirely in release. Real ids can be read from the app's saved queue
+in its preferences.
 
 Screens that put controls in the **top-right** must reserve
 `windowButtonsReservedWidth` (see `lib/shared/widgets/window_buttons.dart`).
@@ -44,9 +44,30 @@ tool/screenshot.sh                    # -> /tmp/flax-shots/flax-<timestamp>.png
 tool/screenshot.sh /tmp/albums.png    # explicit path
 ```
 
-Then Read the PNG to confirm the change rendered. For hover/mouseover effects,
-a static screenshot can't move the pointer — verify those by reading the code
-path and, where possible, screenshotting the pressed/active state.
+Then Read the PNG to confirm the change rendered.
+
+### Hover and click states can be captured too
+
+The pointer can be driven for real, so hover affordances do not have to be taken
+on trust from the code:
+
+```bash
+tool/pointer.sh -w move 865 891   # hover, window-relative points
+tool/pointer.sh -w click 606 23   # move, then left click
+tool/pointer.sh park              # pointer out of the way before a clean shot
+tool/screenshot.sh /tmp/hover.png
+```
+
+Events go to the HID event tap, where real hardware delivers them, so the
+Flutter window treats them exactly like a physical mouse — **verified for
+pointer moves and left clicks**, both of which this repo's docs previously
+claimed were impossible. Keystrokes have not been tested; assume nothing.
+
+Screenshot pixels are not points: divide by the backing scale (2 on a Retina
+Mac, i.e. image width ÷ window width in points) before passing coordinates.
+
+Park the pointer before capturing a resting state — leave it over a control and
+the "before" shot quietly contains a hover.
 
 ### One-time macOS permission setup (required for screenshots)
 

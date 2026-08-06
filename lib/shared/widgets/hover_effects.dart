@@ -184,6 +184,123 @@ class _HoverLinkState extends State<HoverLink> {
   }
 }
 
+/// Hover treatment for a single glyph-sized control — hearts, stars, and any
+/// other bare icon that is a button.
+///
+/// An [IconButton] is the obvious choice and the wrong one at this size: its
+/// ink splash is drawn inside its own bounds, so at 16-20px with zero padding
+/// there is almost nothing to see, and on a dark surface the overlay is close
+/// to invisible. A heart sitting in a row of text simply did not read as
+/// something you could click.
+///
+/// So the feedback is explicit: the glyph grows, brightens toward
+/// [hoverColor], and — where there is room for it — a tinted disc fades in
+/// behind. Timing and scale live here rather than at each call site so every
+/// icon button in the app feels the same.
+class HoverIcon extends StatefulWidget {
+  const HoverIcon({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.size = 18,
+    this.hoverColor,
+    this.onTap,
+    this.tooltip,
+    this.onHoverChanged,
+    this.scale = 1.18,
+    this.backdrop = true,
+    this.padding = const EdgeInsets.all(6),
+  });
+
+  final IconData icon;
+  final double size;
+  final Color color;
+
+  /// Colour under the pointer. Defaults to the theme's primary.
+  final Color? hoverColor;
+
+  final VoidCallback? onTap;
+  final String? tooltip;
+
+  /// Told when the pointer enters or leaves, for controls whose neighbours
+  /// react too — hovering one star previews the whole rating.
+  final ValueChanged<bool>? onHoverChanged;
+
+  final double scale;
+
+  /// Whether to fade in a disc behind the glyph. Off for tightly packed runs
+  /// of icons, where five overlapping discs are noise rather than affordance.
+  final bool backdrop;
+
+  /// Kept constant between states, so growing the glyph never moves anything.
+  final EdgeInsets padding;
+
+  @override
+  State<HoverIcon> createState() => _HoverIconState();
+}
+
+class _HoverIconState extends State<HoverIcon> {
+  bool _hovering = false;
+
+  static const _duration = Duration(milliseconds: 120);
+  static const _curve = Curves.easeOut;
+
+  void _setHover(bool value) {
+    if (_hovering == value) return;
+    setState(() => _hovering = value);
+    widget.onHoverChanged?.call(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final enabled = widget.onTap != null;
+    final active = _hovering && enabled;
+    final hoverColor = widget.hoverColor ?? theme.colorScheme.primary;
+
+    Widget child = AnimatedContainer(
+      duration: _duration,
+      curve: _curve,
+      padding: widget.padding,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: active && widget.backdrop
+            ? hoverColor.withValues(alpha: 0.16)
+            : Colors.transparent,
+      ),
+      child: AnimatedScale(
+        scale: active ? widget.scale : 1.0,
+        duration: _duration,
+        curve: _curve,
+        child: Icon(
+          widget.icon,
+          size: widget.size,
+          color: active ? hoverColor : widget.color,
+        ),
+      ),
+    );
+
+    if (widget.tooltip != null) {
+      child = Tooltip(
+        message: widget.tooltip!,
+        waitDuration: const Duration(milliseconds: 600),
+        child: child,
+      );
+    }
+
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+      onEnter: (_) => _setHover(true),
+      onExit: (_) => _setHover(false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Generic hover surface for non-artwork tap targets — rows, bars and panels.
 ///
 /// Uses a real [InkWell] so hover, focus and press states all come from the
