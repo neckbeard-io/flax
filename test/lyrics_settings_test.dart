@@ -23,16 +23,16 @@ void main() {
 
     test('alignment carries a TextAlign the panel can apply', () {
       expect(LyricsAlignment.left.textAlign, TextAlign.left);
-      expect(LyricsAlignment.centre.textAlign, TextAlign.center);
+      expect(LyricsAlignment.center.textAlign, TextAlign.center);
     });
 
     test('a stored size survives a round trip', () {
       final restored = LyricsSettings.fromJson(
-        const LyricsSettings(fontSize: 22, alignment: LyricsAlignment.centre)
+        const LyricsSettings(fontSize: 22, alignment: LyricsAlignment.center)
             .toJson(),
       );
       expect(restored.fontSize, 22);
-      expect(restored.alignment, LyricsAlignment.centre);
+      expect(restored.alignment, LyricsAlignment.center);
     });
 
     test('nonsense in prefs falls back rather than breaking the panel', () {

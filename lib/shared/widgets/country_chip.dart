@@ -5,7 +5,7 @@ import 'package:flax/shared/country.dart';
 
 /// Width of the leading slot in an info chip.
 ///
-/// Every chip's leading glyph — a flag, an icon — is centred in a box of this
+/// Every chip's leading glyph — a flag, an icon — is centered in a box of this
 /// size so the rows line up. An emoji and a Material icon have different
 /// intrinsic sizes and baselines, and laying them straight into a row left the
 /// country sitting at a different height from the years beside it.

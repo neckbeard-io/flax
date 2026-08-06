@@ -468,9 +468,9 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
   }
 }
 
-/// Rating and favourite for the artist.
+/// Rating and favorite for the artist.
 ///
-/// Navidrome exposes both for artists — a 0-5 rating and a separate favourite
+/// Navidrome exposes both for artists — a 0-5 rating and a separate favorite
 /// flag — and Subsonic's setRating/star take an artist id like any other
 /// entity, so nothing special is needed beyond a model field to read back.
 class _ArtistActionsBar extends ConsumerWidget {
@@ -712,7 +712,7 @@ class _ArtistChips extends StatelessWidget {
   }
 }
 
-/// Star rating and favourite for an artist, writing straight through and
+/// Star rating and favorite for an artist, writing straight through and
 /// refreshing the artist so the server stays the source of truth.
 class _ArtistRatingRow extends ConsumerWidget {
   const _ArtistRatingRow({

@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Where lyric lines sit in their column.
 enum LyricsAlignment {
   left('Left', TextAlign.left, CrossAxisAlignment.start),
-  centre('Centre', TextAlign.center, CrossAxisAlignment.center);
+  center('Center', TextAlign.center, CrossAxisAlignment.center);
 
   const LyricsAlignment(this.label, this.textAlign, this.crossAxisAlignment);
 

@@ -152,7 +152,7 @@ class MiniPlayer extends ConsumerWidget {
                         ref.read(playerProvider.notifier).next(),
                     iconSize: 24,
                   ),
-                  // Rating and favourite for the playing track. Desktop only:
+                  // Rating and favorite for the playing track. Desktop only:
                   // the phone bar is already tight, and these belong on the
                   // now-playing screen there.
                   if (isDesktopLayout(context)) ...[

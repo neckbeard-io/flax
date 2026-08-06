@@ -57,7 +57,7 @@ Widget _harness({required Size size}) {
 }
 
 void main() {
-  testWidgets('desktop layout shows album and per-track rating and favourite',
+  testWidgets('desktop layout shows album and per-track rating and favorite',
       (tester) async {
     tester.view.physicalSize = const ui.Size(1400, 1000);
     tester.view.devicePixelRatio = 1.0;
@@ -76,7 +76,7 @@ void main() {
     expect(find.text('Next'), findsOneWidget);
     expect(find.text('Last'), findsOneWidget);
 
-    // Track table, with a rating and a favourite per row plus the album's own.
+    // Track table, with a rating and a favorite per row plus the album's own.
     expect(find.text('TITLE'), findsOneWidget);
     expect(find.byType(StarRating), findsNWidgets(1 + 4));
     expect(find.byType(FavoriteButton), findsNWidgets(1 + 4));
@@ -134,7 +134,7 @@ void main() {
     );
   });
 
-  testWidgets('phone layout keeps favourites but drops per-track stars',
+  testWidgets('phone layout keeps favorites but drops per-track stars',
       (tester) async {
     tester.view.physicalSize = const ui.Size(400, 900);
     tester.view.devicePixelRatio = 1.0;

@@ -21,6 +21,7 @@ Widget _harness({
   bool? artistOpen,
   NowPlayingPanel selected = NowPlayingPanel.lyrics,
   Widget lyrics = const _Stub('lyrics'),
+  Widget? leading,
 }) {
   final layout = NowPlayingLayout.forWidth(width);
   return MaterialApp(
@@ -28,6 +29,7 @@ Widget _harness({
     home: MediaQuery(
       data: MediaQueryData(size: Size(width, 900)),
       child: NowPlayingPanels(
+        leading: leading,
         layout: layout,
         artist: const _Stub('artist'),
         lyrics: lyrics,
@@ -111,6 +113,20 @@ void main() {
     expect(tester.getSize(_lyrics).width, 900);
   });
 
+  testWidgets('the switcher sits in the middle of the window', (tester) async {
+    _sizeWindow(tester, 900);
+    await tester.pumpWidget(
+      _harness(width: 900, leading: const BackButton()),
+    );
+    await tester.pumpAndSettle();
+
+    // Centered against the window, not against what the controls leave over.
+    // The trailing side reserves room for the window buttons and the leading
+    // side does not, so a pair of Spacers puts this visibly off center.
+    final box = tester.getRect(find.byType(SegmentedButton<NowPlayingPanel>));
+    expect(box.center.dx, moreOrLessEquals(450, epsilon: 0.5));
+  });
+
   testWidgets('the switcher picks which panel fills a narrow window',
       (tester) async {
     _sizeWindow(tester, 900);
@@ -156,7 +172,7 @@ void main() {
     _sizeWindow(tester, 1500);
 
     // Nothing loaded yet. The placeholder fills its column the way the real
-    // loading state does — a message centred in the panel.
+    // loading state does — a message centered in the panel.
     await tester.pumpWidget(
       _harness(width: 1500, lyrics: const Center(child: Text(''))),
     );
