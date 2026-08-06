@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'package:flax/shared/widgets/window_buttons.dart';
@@ -177,6 +179,12 @@ class _Header extends StatelessWidget {
   final ValueChanged<NowPlayingPanel> onSelected;
   final Widget? leading;
 
+  /// Width reserved at each end: a back button and the panel toggle on the
+  /// leading side, the window controls on the trailing one. The larger of the
+  /// two wins for both, so the middle is really the middle.
+  double get _sideWidth =>
+      math.max(2 * 48, windowButtonsReservedWidth + 48).toDouble();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -191,35 +199,52 @@ class _Header extends StatelessWidget {
           ),
         ),
       ),
+      // Both sides reserve the same width so the switcher sits in the middle
+      // of the window. Spacers alone center it in whatever the controls leave
+      // over, and the trailing side is heavier by the room the window controls
+      // need — enough to read as crooked.
       child: Row(
         children: [
-          if (leading != null) leading!,
-          if (!layout.singlePanel)
-            IconButton(
-              icon: Icon(
-                artistOpen ? Icons.view_sidebar : Icons.view_sidebar_outlined,
-              ),
-              tooltip: artistOpen ? 'Hide artist panel' : 'Show artist panel',
-              onPressed: () => onArtistOpenChanged(!artistOpen),
-            ),
-          const Spacer(),
-          if (layout.singlePanel)
-            SegmentedButton<NowPlayingPanel>(
-              showSelectedIcon: false,
-              segments: [
-                for (final panel in NowPlayingPanel.values)
-                  ButtonSegment(
-                    value: panel,
-                    icon: Icon(panel.icon, size: 18),
-                    label: Text(panel.label),
+          SizedBox(
+            width: _sideWidth,
+            child: Row(
+              children: [
+                if (leading != null) leading!,
+                if (!layout.singlePanel)
+                  IconButton(
+                    icon: Icon(
+                      artistOpen
+                          ? Icons.view_sidebar
+                          : Icons.view_sidebar_outlined,
+                    ),
+                    tooltip:
+                        artistOpen ? 'Hide artist panel' : 'Show artist panel',
+                    onPressed: () => onArtistOpenChanged(!artistOpen),
                   ),
               ],
-              selected: {selected},
-              onSelectionChanged: (s) => onSelected(s.first),
             ),
-          const Spacer(),
+          ),
+          Expanded(
+            child: Center(
+              child: layout.singlePanel
+                  ? SegmentedButton<NowPlayingPanel>(
+                      showSelectedIcon: false,
+                      segments: [
+                        for (final panel in NowPlayingPanel.values)
+                          ButtonSegment(
+                            value: panel,
+                            icon: Icon(panel.icon, size: 18),
+                            label: Text(panel.label),
+                          ),
+                      ],
+                      selected: {selected},
+                      onSelectionChanged: (s) => onSelected(s.first),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
           // The window controls are painted over this corner by AppChrome.
-          SizedBox(width: windowButtonsReservedWidth),
+          SizedBox(width: _sideWidth),
         ],
       ),
     );

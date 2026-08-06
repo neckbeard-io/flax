@@ -72,6 +72,27 @@ the whole verification pass rather than diagnosing it again:
 nohup caffeinate -d -u -t 900 >/dev/null 2>&1 &
 ```
 
+## Stars are ratings, hearts are favorites
+
+These are **two independent fields** on the same entity, not two views of one.
+Subsonic confusingly calls the favorite flag "starred", which is why the glyphs
+have to keep them apart:
+
+- **Stars** (`StarRating`) — the 0–5 `userRating`. Written with `setRating`.
+- **Hearts** (`FavoriteButton`) — the boolean `starred` flag. Written with
+  `star` / `unstar`.
+
+Never draw a star for a favorite or a heart for a rating, and never let one
+control write the other's field. Tracks, albums and artists each carry their own
+pair, so also be clear *which* entity a control acts on — the mini player's pair
+is the track's, the queue header's pair is the album's.
+
+## US English
+
+User-facing strings and identifiers are US English: *color*, *center*,
+*favorite*. Internationalization is a roadmap item, not a current concern — but
+do not seed it with mixed spellings in the meantime.
+
 ## Hover / mouseover conventions
 
 Interactive elements use the primitives in

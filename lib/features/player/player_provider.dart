@@ -342,7 +342,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   static const _superEqBandCount = 18;
 
-  /// superequalizer band centre frequencies (Hz).
+  /// superequalizer band center frequencies (Hz).
   static const _superEqBandFrequencies = <double>[
     65, 92, 131, 185, 262, 370, 523, 740, 1047,
     1480, 2093, 2960, 4186, 5920, 8372, 11840, 16744, 20000,
@@ -368,7 +368,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     return pts.last.gain;
   }
 
-  // ── Rating and favourites for the playing track ────────────────────
+  // ── Rating and favorites for the playing track ────────────────────
   //
   // Applied optimistically and reverted if the server rejects it. The player
   // holds the only copy of the current song that the mini player and
@@ -391,7 +391,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
-  /// Toggles the favourite (starred) flag of the playing track.
+  /// Toggles the favorite (starred) flag of the playing track.
   Future<void> toggleCurrentSongStarred() async {
     final song = state.currentSong;
     final client = _ref.read(subsonicClientProvider);

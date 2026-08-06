@@ -77,7 +77,7 @@ class EqState {
       );
 }
 
-/// The 18 band centre frequencies, in Hz.
+/// The 18 band center frequencies, in Hz.
 ///
 /// These are the fixed bands of ffmpeg's `superequalizer` filter, which is what
 /// actually performs the filtering. foobar2000 uses 18 log-spaced bands too, so

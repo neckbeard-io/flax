@@ -34,14 +34,14 @@ void main() {
     expect(tester.takeException(), isNull);
 
     // The point of the fixed-size leading slot: every chip's label must share a
-    // vertical centre, whatever its leading glyph is. Before this, an emoji and
+    // vertical center, whatever its leading glyph is. Before this, an emoji and
     // a Material icon had different intrinsic heights and the row stepped.
     final labels = ['Canada', '1999–present', 'Bergen', 'Norway']
         .map((t) => tester.getCenter(find.text(t)).dy)
         .toList();
     for (final dy in labels) {
       expect(dy, closeTo(labels.first, 0.5),
-          reason: 'chip labels should share a centre line: $labels');
+          reason: 'chip labels should share a center line: $labels');
     }
 
     // And the leading slots themselves.
