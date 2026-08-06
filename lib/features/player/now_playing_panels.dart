@@ -227,18 +227,17 @@ class _Header extends StatelessWidget {
           Expanded(
             child: Center(
               child: layout.singlePanel
-                  ? SegmentedButton<NowPlayingPanel>(
-                      showSelectedIcon: false,
-                      segments: [
-                        for (final panel in NowPlayingPanel.values)
-                          ButtonSegment(
-                            value: panel,
-                            icon: Icon(panel.icon, size: 18),
-                            label: Text(panel.label),
-                          ),
-                      ],
-                      selected: {selected},
-                      onSelectionChanged: (s) => onSelected(s.first),
+                  ? LayoutBuilder(
+                      builder: (context, constraints) => _PanelSwitcher(
+                        selected: selected,
+                        onSelected: onSelected,
+                        // Below this the labels no longer fit beside their
+                        // icons, and SegmentedButton wraps them mid-word
+                        // rather than shrinking: "Artis / t". Drop to icons
+                        // and let the tooltips carry the names.
+                        showLabels:
+                            constraints.maxWidth >= _switcherLabelMinWidth,
+                      ),
                     )
                   : const SizedBox.shrink(),
             ),
@@ -247,6 +246,54 @@ class _Header extends StatelessWidget {
           SizedBox(width: _sideWidth),
         ],
       ),
+    );
+  }
+}
+
+/// Width the switcher needs before its labels fit beside their icons.
+///
+/// The labelled form measures about 416pt, so this is that plus a little room
+/// for a larger text scale. Set it below the real width and the fallback never
+/// fires, which is exactly how the wrapping survived the first fix.
+const double _switcherLabelMinWidth = 440;
+
+/// Artist / Lyrics / Queue picker for single-panel widths.
+class _PanelSwitcher extends StatelessWidget {
+  const _PanelSwitcher({
+    required this.selected,
+    required this.onSelected,
+    required this.showLabels,
+  });
+
+  final NowPlayingPanel selected;
+  final ValueChanged<NowPlayingPanel> onSelected;
+  final bool showLabels;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<NowPlayingPanel>(
+      showSelectedIcon: false,
+      segments: [
+        for (final panel in NowPlayingPanel.values)
+          ButtonSegment(
+            value: panel,
+            icon: Icon(panel.icon, size: 18),
+            tooltip: panel.label,
+            label: showLabels
+                ? Text(
+                    panel.label,
+                    // A label that wraps is worse than one that clips: the
+                    // header has a fixed height, so wrapping pushes the text
+                    // out of the button rather than making room.
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.clip,
+                  )
+                : null,
+          ),
+      ],
+      selected: {selected},
+      onSelectionChanged: (s) => onSelected(s.first),
     );
   }
 }
