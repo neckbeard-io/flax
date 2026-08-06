@@ -62,6 +62,16 @@ grants in System Settings → Privacy & Security:
 
 Test the grant at any time with: `screencapture -x /tmp/t.png && echo ok`.
 
+A **sleeping display** looks exactly like a crash and isn't one: System Events
+reports zero windows, `screencapture` returns a black full-screen image, and
+`open` fails with `_LSOpenURLsWithCompletionHandler() ... error -600`. A debug
+build takes long enough that the screen can sleep mid-build. Hold it awake for
+the whole verification pass rather than diagnosing it again:
+
+```bash
+nohup caffeinate -d -u -t 900 >/dev/null 2>&1 &
+```
+
 ## Hover / mouseover conventions
 
 Interactive elements use the primitives in
