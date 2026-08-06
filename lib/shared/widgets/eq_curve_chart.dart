@@ -65,7 +65,7 @@ class EqCurveChart extends StatelessWidget {
   final bool showFrequencyLabels;
 
   /// Plot background. Defaults to a tint of the surface, which is fine on a
-  /// plain page but needs overriding when the chart sits on an already-coloured
+  /// plain page but needs overriding when the chart sits on an already-colored
   /// card — otherwise the curve is drawn tone-on-tone and vanishes.
   final Color? backgroundColor;
 
@@ -215,7 +215,7 @@ class _EqCurvePainter extends CustomPainter {
   }
 
   /// Vertical position for a gain. Higher gain is higher on screen; 0 dB lands
-  /// wherever the fitted range puts it, not necessarily the centre.
+  /// wherever the fitted range puts it, not necessarily the center.
   double _y(double gainDb, double height) {
     final span = maxDb - minDb;
     if (span <= 0) return height / 2;

@@ -214,7 +214,7 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
   }
 }
 
-/// Rating and favourite for the album being played.
+/// Rating and favorite for the album being played.
 ///
 /// Both act on the *album*, not the track — the mini player already carries the
 /// track's pair, and having two identical controls mean different things a few
@@ -442,7 +442,7 @@ class _AlbumGroup extends StatelessWidget {
 /// A queue row that highlights under the pointer.
 ///
 /// The current-track tint and the hover tint are composited into a single
-/// background colour, so the row background can't hide the hover feedback the
+/// background color, so the row background can't hide the hover feedback the
 /// way an opaque child would cover an [InkWell]'s ink.
 class _QueueRowHover extends StatefulWidget {
   final Widget child;

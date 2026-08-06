@@ -59,6 +59,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     );
   }
 
+  /// Width of each side of the phone header, so the two balance and the title
+  /// sits in the middle. One icon button, plus whatever the window controls
+  /// need on the trailing side.
+  double get _phoneHeaderSideWidth => 48 + windowButtonsReservedWidth;
+
   Widget _buildPhone(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(playerProvider);
@@ -96,44 +101,71 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         child: Column(
           children: [
             // ── Top bar ──
+            //
+            // Both sides are the same width so the title lands in the middle
+            // of the *window*. Spacers only center it in what the buttons
+            // leave over, and the right side is heavier than the left by the
+            // room reserved for the window controls — enough to push "Now
+            // Playing" visibly off center against the artwork below it.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    onPressed: () => Navigator.of(context).pop(),
-                    iconSize: 28,
-                  ),
-                  const Spacer(),
-                  Column(
-                    children: [
-                      Text(
-                        _showQueue ? 'Queue' : 'Now Playing',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                  SizedBox(
+                    width: _phoneHeaderSideWidth,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        icon: const Icon(Icons.keyboard_arrow_down),
+                        onPressed: () => Navigator.of(context).pop(),
+                        iconSize: 28,
                       ),
-                      Text(
-                        song.albumName ?? '',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: Icon(
-                      _showQueue ? Icons.music_note : Icons.queue_music,
-                      color: _showQueue ? theme.colorScheme.primary : null,
                     ),
-                    onPressed: () => setState(() => _showQueue = !_showQueue),
                   ),
-                  // The window controls are drawn over this corner, so the
-                  // queue button has to step aside or the two overlap. Zero
-                  // off desktop, where nothing is drawn there.
-                  SizedBox(width: windowButtonsReservedWidth),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(
+                          _showQueue ? 'Queue' : 'Now Playing',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          song.albumName ?? '',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: _phoneHeaderSideWidth,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            _showQueue ? Icons.music_note : Icons.queue_music,
+                            color:
+                                _showQueue ? theme.colorScheme.primary : null,
+                          ),
+                          onPressed: () =>
+                              setState(() => _showQueue = !_showQueue),
+                        ),
+                        // The window controls are drawn over this corner, so
+                        // the queue button steps aside or the two overlap.
+                        // Zero off desktop, where nothing is drawn there.
+                        SizedBox(width: windowButtonsReservedWidth),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),

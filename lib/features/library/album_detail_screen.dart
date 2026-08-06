@@ -86,7 +86,7 @@ class AlbumDetailScreen extends ConsumerWidget {
   }
 }
 
-/// Album-level rating and favourite.
+/// Album-level rating and favorite.
 ///
 /// Both write straight through and then invalidate the album, which is cheap:
 /// one request, and the server stays the source of truth for what a star means.
@@ -398,8 +398,8 @@ class _TrackTableHeader extends StatelessWidget {
   }
 }
 
-/// One track. On desktop this is a table row with rating and favourite columns;
-/// on a phone it keeps the list-tile shape and shows only the favourite, since
+/// One track. On desktop this is a table row with rating and favorite columns;
+/// on a phone it keeps the list-tile shape and shows only the favorite, since
 /// five stars per row does not fit a narrow screen.
 class _TrackRow extends ConsumerWidget {
   const _TrackRow({

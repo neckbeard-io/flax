@@ -66,14 +66,14 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
   DateTime? _scrolledByHandAt;
   static const _handsOff = Duration(seconds: 6);
 
-  int _lastCentredLine = -1;
+  int _lastCenteredLine = -1;
 
   @override
   void didUpdateWidget(_LyricsView old) {
     super.didUpdateWidget(old);
     // A new track starts at the top with a clean slate.
     if (old.songId != widget.songId) {
-      _lastCentredLine = -1;
+      _lastCenteredLine = -1;
       _scrolledByHandAt = null;
       if (_scrollController.hasClients) _scrollController.jumpTo(0);
     }
@@ -95,13 +95,13 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
     return false;
   }
 
-  void _centreOn(int line) {
-    if (line < 0 || line == _lastCentredLine) return;
+  void _centerOn(int line) {
+    if (line < 0 || line == _lastCenteredLine) return;
     final handsOff = _scrolledByHandAt != null &&
         DateTime.now().difference(_scrolledByHandAt!) < _handsOff;
     if (handsOff) return;
 
-    _lastCentredLine = line;
+    _lastCenteredLine = line;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = _lineKeys[line]?.currentContext;
       if (context == null || !mounted) return;
@@ -120,7 +120,7 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
     final settings = ref.watch(lyricsSettingsProvider);
     final current =
         widget.lyrics.synced ? ref.watch(currentLyricLineProvider) : -1;
-    _centreOn(current);
+    _centerOn(current);
 
     return NotificationListener<ScrollNotification>(
       onNotification: _onScrollNotification,
@@ -129,7 +129,7 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
         // Half a panel of padding at each end so the first and last lines can
         // still reach the middle of the view.
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 120),
-        // Capped and centred rather than filling the column: with the artist
+        // Capped and centered rather than filling the column: with the artist
         // panel hidden the lyrics column is over 1000px wide, and text ragged
         // against its left edge with a void beside it reads as broken layout.
         child: Center(
