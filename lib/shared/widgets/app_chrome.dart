@@ -1,10 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart' show kBackMouseButton;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flax/app/router.dart';
+import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/shared/input/back_swipe.dart';
+import 'package:flax/shared/input/global_keys.dart';
 import 'package:flax/shared/widgets/desktop_sidebar.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 
@@ -55,17 +60,61 @@ class _AppChromeState extends ConsumerState<AppChrome> {
   }
 
   bool _onKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return false;
-    if (event.logicalKey != LogicalKeyboardKey.slash) return false;
-    if (_isEditing()) return false;
     if (!mounted) return false;
+    return switch (globalKeyAction(event, isEditing: _isEditing())) {
+      GlobalKeyAction.focusSearch => _focusSearch(),
+      GlobalKeyAction.togglePlayback => _togglePlayback(),
+      GlobalKeyAction.none => false,
+    };
+  }
 
+  bool _focusSearch() {
     final node = ref.read(searchFieldFocusProvider);
     // Nothing to focus when the sidebar is not on screen — a phone, or a window
     // too narrow for it. Returning false lets the key fall through as normal.
     if (!node.canRequestFocus) return false;
     node.requestFocus();
     return true;
+  }
+
+  /// Space plays and pauses, from anywhere.
+  ///
+  /// Claimed globally rather than left to whatever has focus. Space would
+  /// otherwise press the focused button, which after clicking "next" means the
+  /// spacebar skips tracks — and every other player in the world treats space
+  /// as play/pause regardless of where you last clicked.
+  bool _togglePlayback() {
+    ref.read(playerProvider.notifier).togglePlayPause();
+    return true;
+  }
+
+  /// Back, for the mouse button and the trackpad swipe.
+  ///
+  /// Nothing to pop means we are at the start of the history, where a browser
+  /// also does nothing. The router comes from the provider rather than the
+  /// context: this widget is MaterialApp.router's builder, which sits *above*
+  /// the InheritedGoRouter, so `GoRouter.of(context)` finds nothing here.
+  void _goBack() {
+    if (!mounted) return;
+    final router = ref.read(routerProvider);
+    if (router.canPop()) router.pop();
+  }
+
+  final _backSwipe = BackSwipeTracker();
+
+  void _onPointerDown(PointerDownEvent event) {
+    // Mouse button 4. The browser back button on any five-button mouse, and
+    // the one Windows users reach for without thinking.
+    if (event.buttons & kBackMouseButton != 0) _goBack();
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    // A scrollable moved during this swipe, so the swipe was a scroll.
+    if (notification is ScrollUpdateNotification &&
+        notification.metrics.axis == Axis.horizontal) {
+      _backSwipe.noteScrolled();
+    }
+    return false;
   }
 
   @override
@@ -76,7 +125,22 @@ class _AppChromeState extends ConsumerState<AppChrome> {
 
     return Stack(
       children: [
-        widget.child,
+        // Pointer-driven navigation, wrapped around the routed screen only —
+        // not the chrome overlay below, which has no business consuming a
+        // swipe.
+        Listener(
+          onPointerDown: _onPointerDown,
+          onPointerPanZoomStart: (_) => _backSwipe.start(),
+          onPointerPanZoomUpdate: (event) {
+            if (_backSwipe.update(event.panDelta.dx, event.panDelta.dy)) {
+              _goBack();
+            }
+          },
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: widget.child,
+          ),
+        ),
         // The chrome gets an Overlay of its own. MaterialApp.builder runs
         // outside the router's Navigator, so anything here is a sibling of it
         // rather than a descendant — and the window buttons' tooltips need an
