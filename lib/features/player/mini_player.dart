@@ -3,12 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/player/seek_bar.dart';
 import 'package:flax/features/player/volume_control.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
-import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
+
+/// Window width at which the mini player gains its seek bar, rating and
+/// favorite. Matches the now-playing panel floor, so the bar fills out at the
+/// same moment the screen above it does.
+const double kMiniPlayerRoomyWidth = 700;
 
 class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
@@ -40,47 +45,68 @@ class MiniPlayer extends ConsumerWidget {
       context.push('/now-playing');
     }
 
-    return HoverSurface(
-      onTap: openNowPlaying,
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHigh,
-          border: Border(
-            top: BorderSide(
-              color: theme.colorScheme.outlineVariant,
-              width: 0.5,
-            ),
+    // Wide enough for a seek bar, a rating and a favorite in the same row.
+    //
+    // Measured against the window rather than the platform, matching the
+    // now-playing breakpoints: a tablet in landscape has as much room for
+    // these as a Mac does.
+    final roomy = MediaQuery.sizeOf(context).width >= kMiniPlayerRoomyWidth;
+
+    // Only the artwork and the track's name open now playing.
+    //
+    // The whole bar used to be one tap target, which quietly broke the seek
+    // bar the moment it was added: an ancestor InkWell competes with the
+    // slider for the tap and wins, so clicking the bar navigated instead of
+    // seeking. Clicking a transport control to mean "show me the now-playing
+    // screen" was never the intent anyway.
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        border: Border(
+          top: BorderSide(
+            color: theme.colorScheme.outlineVariant,
+            width: 0.5,
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // A hairline of progress, for when there is no room for the real
+          // seek bar. Alongside one it is the same fact drawn twice.
+          if (!roomy)
             LinearProgressIndicator(
               value: progress,
               minHeight: 2,
               backgroundColor: Colors.transparent,
               valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
             ),
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  HoverArtwork(
-                    onTap: openNowPlaying,
-                    borderRadius: BorderRadius.circular(6),
-                    scale: 1.06,
-                    child: SizedBox(
-                      width: 42,
-                      height: 42,
-                      child: CoverArtImage(
-                        coverArtId: song.coverArtId,
-                        size: 42,
-                      ),
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                HoverArtwork(
+                  onTap: openNowPlaying,
+                  borderRadius: BorderRadius.circular(6),
+                  scale: 1.06,
+                  child: SizedBox(
+                    width: 42,
+                    height: 42,
+                    child: CoverArtImage(
+                      coverArtId: song.coverArtId,
+                      size: 42,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  // Two shares to the seek bar's three: the track's name
+                  // needs enough room to be read, but the empty space this
+                  // used to swallow is better spent on somewhere to drag.
+                  flex: 2,
+                  child: HoverSurface(
+                    onTap: openNowPlaying,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -130,54 +156,62 @@ class MiniPlayer extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.skip_previous),
-                    onPressed: () =>
-                        ref.read(playerProvider.notifier).previous(),
-                    iconSize: 24,
+                ),
+                if (roomy) ...[
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    flex: 3,
+                    child: TrackSeekBar(inlineLabels: true),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      playerState.isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                    ),
-                    onPressed: () =>
-                        ref.read(playerProvider.notifier).togglePlayPause(),
-                    iconSize: 32,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.skip_next),
-                    onPressed: () =>
-                        ref.read(playerProvider.notifier).next(),
-                    iconSize: 24,
-                  ),
-                  // Rating and favorite for the playing track. Desktop only:
-                  // the phone bar is already tight, and these belong on the
-                  // now-playing screen there.
-                  if (isDesktopLayout(context)) ...[
-                    const SizedBox(width: 12),
-                    StarRating(
-                      rating: song.userRating ?? 0,
-                      size: 16,
-                      onRatingChanged: (r) =>
-                          ref.read(playerProvider.notifier).rateCurrentSong(r),
-                    ),
-                    const SizedBox(width: 4),
-                    FavoriteButton(
-                      isFavorite: song.starred,
-                      onToggle: () => ref
-                          .read(playerProvider.notifier)
-                          .toggleCurrentSongStarred(),
-                    ),
-                  ],
-                  const SizedBox(width: 4),
-                  const VolumeControl(),
+                  const SizedBox(width: 16),
                 ],
-              ),
+                IconButton(
+                  icon: const Icon(Icons.skip_previous),
+                  onPressed: () =>
+                      ref.read(playerProvider.notifier).previous(),
+                  iconSize: 24,
+                ),
+                IconButton(
+                  icon: Icon(
+                    playerState.isPlaying
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
+                  ),
+                  onPressed: () =>
+                      ref.read(playerProvider.notifier).togglePlayPause(),
+                  iconSize: 32,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.skip_next),
+                  onPressed: () =>
+                      ref.read(playerProvider.notifier).next(),
+                  iconSize: 24,
+                ),
+                // Rating and favorite for the playing track. Only where
+                // there is room: the phone bar is already tight, and these
+                // belong on the now-playing screen there.
+                if (roomy) ...[
+                  const SizedBox(width: 12),
+                  StarRating(
+                    rating: song.userRating ?? 0,
+                    size: 16,
+                    onRatingChanged: (r) =>
+                        ref.read(playerProvider.notifier).rateCurrentSong(r),
+                  ),
+                  const SizedBox(width: 4),
+                  FavoriteButton(
+                    isFavorite: song.starred,
+                    onToggle: () => ref
+                        .read(playerProvider.notifier)
+                        .toggleCurrentSongStarred(),
+                  ),
+                ],
+                const SizedBox(width: 4),
+                const VolumeControl(),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

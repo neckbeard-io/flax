@@ -8,6 +8,7 @@ import 'package:flax/features/player/lyrics_panel.dart';
 import 'package:flax/features/player/now_playing_panels.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/queue_panel.dart';
+import 'package:flax/features/player/seek_bar.dart';
 import 'package:flax/features/player/volume_control.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
@@ -92,10 +93,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       );
     }
 
-    final progress = state.duration.inMilliseconds > 0
-        ? state.position.inMilliseconds / state.duration.inMilliseconds
-        : 0.0;
-
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -174,7 +171,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             Expanded(
               child: _showQueue
                   ? const QueuePanel()
-                  : _buildPlayerView(context, theme, state, song, progress),
+                  : _buildPlayerView(context, theme, state, song),
             ),
           ],
         ),
@@ -187,7 +184,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     ThemeData theme,
     PlayerState state,
     Song song,
-    double progress,
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -259,53 +255,13 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 const SizedBox(height: 8),
 
                 // ── Progress bar ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(
-                    children: [
-                      SliderTheme(
-                        data: SliderThemeData(
-                          trackHeight: 3,
-                          thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 6,
-                          ),
-                          overlayShape: const RoundSliderOverlayShape(
-                            overlayRadius: 14,
-                          ),
-                        ),
-                        child: Slider(
-                          value: progress.clamp(0.0, 1.0),
-                          onChanged: (v) {
-                            final pos = Duration(
-                              milliseconds:
-                                  (v * state.duration.inMilliseconds).toInt(),
-                            );
-                            ref.read(playerProvider.notifier).seek(pos);
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              _formatDuration(state.position),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            Text(
-                              _formatDuration(state.duration),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                //
+                // The same control the mini player uses. It used to be a
+                // second copy here, which seeked on every frame of the drag
+                // rather than at the end of it.
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 32),
+                  child: TrackSeekBar(),
                 ),
 
                 const SizedBox(height: 8),
@@ -386,11 +342,6 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         );
   }
 
-  String _formatDuration(Duration d) {
-    final m = d.inMinutes;
-    final s = d.inSeconds.remainder(60);
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
 }
 
 class _AudioFormatBadge extends StatelessWidget {
