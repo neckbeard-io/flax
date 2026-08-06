@@ -5,6 +5,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
@@ -17,7 +18,14 @@ final searchResultsProvider = FutureProvider<SearchResult?>((ref) async {
 });
 
 class SearchScreen extends ConsumerStatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.initialQuery});
+
+  /// Query handed over from the sidebar's quick search, via `?q=`.
+  ///
+  /// Passed in the URL rather than through the shared provider the two
+  /// searches used to sit on: that provider meant typing in the sidebar
+  /// rewrote this screen and navigated to it, whether you wanted it or not.
+  final String? initialQuery;
 
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
@@ -25,6 +33,21 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialQuery ?? '';
+    _controller.text = initial;
+    // The field is the truth, including when it is empty. Leaving the provider
+    // alone instead meant arriving here from the sidebar's Search item showed
+    // the *previous* search's results under a blank field.
+    //
+    // After the first frame: writing a provider during initState throws.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(searchQueryProvider.notifier).state = initial;
+    });
+  }
 
   @override
   void dispose() {
@@ -65,11 +88,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   if (_controller.text.isNotEmpty)
                     IconButton(
                       icon: const Icon(Icons.clear),
+                      tooltip: 'Clear search',
                       onPressed: () {
                         _controller.clear();
                         ref.read(searchQueryProvider.notifier).state = '';
                       },
                     ),
+                  // AppChrome paints the window controls over this corner, so
+                  // the clear button has to step aside — it was drawn directly
+                  // under the close button, and neither was reliably clickable.
+                  SizedBox(width: windowButtonsReservedWidth),
                 ],
               ),
             ),

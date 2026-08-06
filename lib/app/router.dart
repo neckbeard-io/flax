@@ -110,7 +110,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/search',
-            builder: (context, state) => const SearchScreen(),
+            builder: (context, state) => SearchScreen(
+              // Keyed on the query so arriving from quick search a second
+              // time, with different words, rebuilds the screen rather than
+              // reusing the old state and showing the old query.
+              key: ValueKey(state.uri.queryParameters['q'] ?? ''),
+              initialQuery: state.uri.queryParameters['q'],
+            ),
           ),
           GoRoute(
             path: '/settings',
