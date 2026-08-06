@@ -3,10 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
+import 'package:flax/features/player/artist_panel.dart';
+import 'package:flax/features/player/lyrics_panel.dart';
+import 'package:flax/features/player/now_playing_panels.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/queue_panel.dart';
 import 'package:flax/features/player/volume_control.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/shell_scaffold.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
@@ -20,8 +25,43 @@ class NowPlayingScreen extends ConsumerStatefulWidget {
 class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   bool _showQueue = false;
 
+  /// Null until the width has been seen once, then the user's choice. Kept
+  /// here rather than in the panels widget so that resizing the window past a
+  /// breakpoint does not throw away a collapse the user asked for.
+  bool? _artistOpen;
+  double _artistWidth = kArtistPanelDefaultWidth;
+  NowPlayingPanel _selected = NowPlayingPanel.lyrics;
+
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (NowPlayingLayout.fitsAt(width)) return _buildPanels(context, width);
+    return _buildPhone(context);
+  }
+
+  /// The desktop and tablet screen: three panels inside the ordinary shell, so
+  /// the sidebar and the mini player's transport stay where they always are.
+  Widget _buildPanels(BuildContext context, double width) {
+    final layout = NowPlayingLayout.forWidth(width);
+
+    return ShellScaffold(
+      child: NowPlayingPanels(
+        layout: layout,
+        leading: const UpBackButton(fallbackLocation: '/home'),
+        artist: const ArtistPanel(),
+        lyrics: const LyricsPanel(),
+        queue: const QueuePanel(),
+        artistOpen: _artistOpen ?? layout.artistOpenByDefault,
+        onArtistOpenChanged: (open) => setState(() => _artistOpen = open),
+        artistWidth: _artistWidth,
+        onArtistWidthChanged: (w) => setState(() => _artistWidth = w),
+        selected: _selected,
+        onSelected: (p) => setState(() => _selected = p),
+      ),
+    );
+  }
+
+  Widget _buildPhone(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(playerProvider);
     final song = state.currentSong;
