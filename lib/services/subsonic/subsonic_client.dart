@@ -293,11 +293,16 @@ class SubsonicClient implements MusicBackend {
     return lyrics?['value'] as String?;
   }
 
+  /// Time-synced lyrics via the OpenSubsonic `songLyrics` extension.
+  ///
+  /// Servers without the extension answer with an error rather than an empty
+  /// list, so a failure here means "no lyrics", not "broken" — the caller can
+  /// still fall back to [getLyrics].
   @override
-  Future<Map<String, dynamic>?> getStructuredLyrics(String songId) async {
+  Future<Lyrics?> getSongLyrics(String songId) async {
     try {
       final data = await _get('getLyricsBySongId', {'id': songId});
-      return data['lyricsList'] as Map<String, dynamic>?;
+      return Lyrics.fromLyricsList(data['lyricsList'] as Map<String, dynamic>?);
     } catch (_) {
       return null;
     }
