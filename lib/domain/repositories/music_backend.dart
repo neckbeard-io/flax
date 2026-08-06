@@ -42,7 +42,7 @@ abstract class MusicBackend {
   Uri getCoverArtUri(String id, {int? size});
 
   Future<String?> getLyrics({String? artist, String? title});
-  Future<Map<String, dynamic>?> getStructuredLyrics(String songId);
+  Future<Lyrics?> getSongLyrics(String songId);
 
   // Annotations
   Future<void> star({String? id, String? albumId, String? artistId});
