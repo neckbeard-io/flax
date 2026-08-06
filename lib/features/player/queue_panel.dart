@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/domain/models/album.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/library/album_detail_screen.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 
 class QueuePanel extends ConsumerWidget {
@@ -178,20 +180,17 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
                     ),
                   ),
                 const SizedBox(height: 4),
-                albumAsync?.when(
-                  data: (album) => StarRating(
-                    rating: album.userRating ?? 0,
-                    size: 20,
-                    onRatingChanged: (newRating) async {
-                      final client = ref.read(subsonicClientProvider);
-                      if (client == null) return;
-                      await client.setRating(album.id, newRating);
-                      ref.invalidate(albumDetailProvider(album.id));
-                    },
-                  ),
-                  loading: () => const SizedBox(height: 20),
-                  error: (_, _) => const SizedBox(height: 20),
-                ) ?? StarRating(rating: 0, size: 20),
+                // Fixed height whether or not the album has loaded: the rating
+                // row appearing later would shove the queue down by its height.
+                SizedBox(
+                  height: 28,
+                  child: albumAsync?.when(
+                        data: (album) => _AlbumRatingRow(album: album),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, _) => const SizedBox.shrink(),
+                      ) ??
+                      StarRating(rating: 0, size: 20),
+                ),
               ],
             ),
           ),
@@ -212,6 +211,74 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
     }
     if (song.bitRate != null) parts.add('${song.bitRate}kbps');
     return parts.join(' · ');
+  }
+}
+
+/// Rating and favourite for the album being played.
+///
+/// Both act on the *album*, not the track — the mini player already carries the
+/// track's pair, and having two identical controls mean different things a few
+/// hundred pixels apart is worse than having neither.
+class _AlbumRatingRow extends ConsumerStatefulWidget {
+  const _AlbumRatingRow({required this.album});
+
+  final Album album;
+
+  @override
+  ConsumerState<_AlbumRatingRow> createState() => _AlbumRatingRowState();
+}
+
+class _AlbumRatingRowState extends ConsumerState<_AlbumRatingRow> {
+  /// Shown in place of the server's answer until the round trip finishes, so
+  /// the heart fills on click rather than a refetch later.
+  bool? _pendingStarred;
+
+  Future<void> _toggleStarred() async {
+    final album = widget.album;
+    final next = !(_pendingStarred ?? album.starred);
+    final client = ref.read(subsonicClientProvider);
+    if (client == null) return;
+
+    setState(() => _pendingStarred = next);
+    try {
+      if (next) {
+        await client.star(albumId: album.id);
+      } else {
+        await client.unstar(albumId: album.id);
+      }
+      ref.invalidate(albumDetailProvider(album.id));
+    } catch (_) {
+      if (mounted) setState(() => _pendingStarred = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final album = widget.album;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        StarRating(
+          rating: album.userRating ?? 0,
+          size: 20,
+          onRatingChanged: (newRating) async {
+            final client = ref.read(subsonicClientProvider);
+            if (client == null) return;
+            await client.setRating(album.id, newRating);
+            ref.invalidate(albumDetailProvider(album.id));
+          },
+        ),
+        const SizedBox(width: 4),
+        FavoriteButton(
+          isFavorite: _pendingStarred ?? album.starred,
+          onToggle: _toggleStarred,
+          tooltip: (_pendingStarred ?? album.starred)
+              ? 'Remove album from favorites'
+              : 'Add album to favorites',
+        ),
+      ],
+    );
   }
 }
 
