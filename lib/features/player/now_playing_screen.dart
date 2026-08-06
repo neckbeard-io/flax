@@ -10,7 +10,6 @@ import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/queue_panel.dart';
 import 'package:flax/features/player/volume_control.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
-import 'package:flax/shared/widgets/shell_scaffold.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
@@ -39,25 +38,24 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     return _buildPhone(context);
   }
 
-  /// The desktop and tablet screen: three panels inside the ordinary shell, so
-  /// the sidebar and the mini player's transport stay where they always are.
+  /// The desktop and tablet screen: three panels. The sidebar and the mini
+  /// player's transport come from the shell this route sits inside, so they
+  /// stay exactly where they are on every other screen.
   Widget _buildPanels(BuildContext context, double width) {
     final layout = NowPlayingLayout.forWidth(width);
 
-    return ShellScaffold(
-      child: NowPlayingPanels(
-        layout: layout,
-        leading: const UpBackButton(fallbackLocation: '/home'),
-        artist: const ArtistPanel(),
-        lyrics: const LyricsPanel(),
-        queue: const QueuePanel(),
-        artistOpen: _artistOpen ?? layout.artistOpenByDefault,
-        onArtistOpenChanged: (open) => setState(() => _artistOpen = open),
-        artistWidth: _artistWidth,
-        onArtistWidthChanged: (w) => setState(() => _artistWidth = w),
-        selected: _selected,
-        onSelected: (p) => setState(() => _selected = p),
-      ),
+    return NowPlayingPanels(
+      layout: layout,
+      leading: const UpBackButton(fallbackLocation: '/home'),
+      artist: const ArtistPanel(),
+      lyrics: const LyricsPanel(),
+      queue: const QueuePanel(),
+      artistOpen: _artistOpen ?? layout.artistOpenByDefault,
+      onArtistOpenChanged: (open) => setState(() => _artistOpen = open),
+      artistWidth: _artistWidth,
+      onArtistWidthChanged: (w) => setState(() => _artistWidth = w),
+      selected: _selected,
+      onSelected: (p) => setState(() => _selected = p),
     );
   }
 

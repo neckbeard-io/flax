@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
+import 'package:flax/features/settings/lyrics_settings.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -95,6 +96,11 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
 
+          // ── Lyrics ──
+          _SectionTitle(title: 'Lyrics'),
+          const _LyricsSettingsSection(),
+          const Divider(),
+
           // ── Playback ──
           _SectionTitle(title: 'Playback'),
           ListTile(
@@ -169,6 +175,99 @@ class _AboutTile extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Size and justification for the lyrics panel, over a live sample.
+///
+/// The sample is the point: a number of points means nothing until you can see
+/// what it looks like, and the sung line's size is derived rather than chosen,
+/// so seeing the pair together is the only way to judge the setting.
+class _LyricsSettingsSection extends ConsumerWidget {
+  const _LyricsSettingsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final settings = ref.watch(lyricsSettingsProvider);
+    final notifier = ref.read(lyricsSettingsProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          title: const Text('Justification'),
+          trailing: SegmentedButton<LyricsAlignment>(
+            segments: [
+              for (final a in LyricsAlignment.values)
+                ButtonSegment(value: a, label: Text(a.label)),
+            ],
+            selected: {settings.alignment},
+            onSelectionChanged: (s) => notifier.setAlignment(s.first),
+          ),
+        ),
+        ListTile(
+          title: const Text('Text size'),
+          subtitle: Slider(
+            value: settings.fontSize,
+            min: LyricsSettings.minFontSize,
+            max: LyricsSettings.maxFontSize,
+            divisions:
+                (LyricsSettings.maxFontSize - LyricsSettings.minFontSize)
+                    .round(),
+            label: '${settings.fontSize.round()} pt',
+            onChanged: notifier.setFontSize,
+          ),
+          trailing: Text(
+            '${settings.fontSize.round()} pt',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (line, active) in const [
+                  ('And return as falling snow', false),
+                  ('To sweep the landscape a wind haunted', true),
+                  ('Wings without bodies', false),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    child: Text(
+                      line,
+                      textAlign: settings.alignment.textAlign,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        height: 1.4,
+                        fontSize: active
+                            ? settings.activeFontSize
+                            : settings.fontSize,
+                        fontWeight:
+                            active ? FontWeight.w700 : FontWeight.w400,
+                        color: active
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface
+                                .withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

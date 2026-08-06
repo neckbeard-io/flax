@@ -67,13 +67,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/add-server',
         builder: (context, state) => const AddServerScreen(),
       ),
-      GoRoute(
-        path: '/now-playing',
-        builder: (context, state) => const NowPlayingScreen(),
-      ),
       ShellRoute(
         builder: (context, state, child) => ShellScaffold(child: child),
         routes: [
+          // Inside the shell, not beside it. The desktop layout wants the
+          // sidebar and the mini player's transport, and a second ShellScaffold
+          // of its own meant two sidebars alive at once — two text fields
+          // sharing one FocusNode, which broke the "/" shortcut entirely.
+          // ShellScaffold drops its own chrome at phone widths, so the phone
+          // now-playing screen still fills the window.
+          GoRoute(
+            path: '/now-playing',
+            builder: (context, state) => const NowPlayingScreen(),
+          ),
           GoRoute(
             path: '/home',
             builder: (context, state) => const HomeScreen(),
