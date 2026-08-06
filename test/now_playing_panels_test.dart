@@ -127,6 +127,41 @@ void main() {
     expect(box.center.dx, moreOrLessEquals(450, epsilon: 0.5));
   });
 
+  testWidgets('a cramped switcher drops its labels rather than wrapping them',
+      (tester) async {
+    // A 700pt panel area leaves the switcher under 400pt once both sides have
+    // reserved their width — enough for three icons, not for three icons and
+    // their names. SegmentedButton's answer to that was to wrap mid-word
+    // ("Artis / t") and overflow the fixed-height header.
+    _sizeWindow(tester, 700);
+    await tester.pumpWidget(
+      _harness(width: 700, leading: const BackButton()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Artist'), findsNothing);
+    // The icons stay, so all three panels are still reachable.
+    expect(find.byType(SegmentedButton<NowPlayingPanel>), findsOneWidget);
+    for (final panel in NowPlayingPanel.values) {
+      expect(find.byIcon(panel.icon), findsOneWidget);
+    }
+  });
+
+  testWidgets('a roomier switcher keeps its labels on one line',
+      (tester) async {
+    _sizeWindow(tester, 1050);
+    await tester.pumpWidget(
+      _harness(width: 1050, leading: const BackButton()),
+    );
+    await tester.pumpAndSettle();
+
+    for (final panel in NowPlayingPanel.values) {
+      final label = tester.widget<Text>(find.text(panel.label));
+      expect(label.maxLines, 1, reason: '${panel.label} must not wrap');
+    }
+  });
+
   testWidgets('the switcher picks which panel fills a narrow window',
       (tester) async {
     _sizeWindow(tester, 900);
