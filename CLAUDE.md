@@ -17,7 +17,19 @@ Always use the helper (it kills the old process, rebuilds, and relaunches):
 tool/run_flax.sh              # kill -> flutter build macos --debug -> open the .app
 tool/run_flax.sh --release    # release build instead
 tool/run_flax.sh --no-build   # just kill + relaunch the existing bundle
+tool/run_flax.sh --route /albums/<id>   # open straight onto a screen
 ```
+
+`--route` exists because screens behind navigation are otherwise impossible to
+verify: synthetic clicks and keystrokes do not reach a Flutter window, so an
+artist or album page can never be screenshotted by driving the UI. It compiles
+`FLAX_ROUTE` into a debug build and is ignored entirely in release. Real ids can
+be read from the app's saved queue in its preferences.
+
+Screens that put controls in the **top-right** must reserve
+`windowButtonsReservedWidth` (see `lib/shared/widgets/window_buttons.dart`).
+`AppChrome` draws the window controls over every route, and anything else in that
+corner ends up underneath them.
 
 Do **not** rely on `flutter run` hot reload for verification — a full rebuild is
 the only guarantee that the window matches `main`. A debug build from cold takes
