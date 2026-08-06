@@ -59,9 +59,20 @@ tool/screenshot.sh /tmp/hover.png
 ```
 
 Events go to the HID event tap, where real hardware delivers them, so the
-Flutter window treats them exactly like a physical mouse — **verified for
-pointer moves and left clicks**, both of which this repo's docs previously
-claimed were impossible. Keystrokes have not been tested; assume nothing.
+Flutter window treats them exactly like physical input. Verified for pointer
+moves, left clicks, mouse button 4, and **keystrokes** — all of which this
+repo's docs once claimed were impossible. A keypress is five lines of the same
+Swift the script uses:
+
+```swift
+let src = CGEventSource(stateID: .hidSystemState)
+CGEvent(keyboardEventSource: src, virtualKey: 49, keyDown: true)?  // 49 = space
+  .post(tap: .cghidEventTap)
+```
+
+Trackpad swipes are the exception — synthesising those is not worth it; cover
+them with a widget test that sends `PointerPanZoom` events instead (see
+`test/back_navigation_test.dart`).
 
 Screenshot pixels are not points: divide by the backing scale (2 on a Retina
 Mac, i.e. image width ÷ window width in points) before passing coordinates.
@@ -92,6 +103,32 @@ the whole verification pass rather than diagnosing it again:
 ```bash
 nohup caffeinate -d -u -t 900 >/dev/null 2>&1 &
 ```
+
+## Global input lives in AppChrome
+
+Shortcuts and navigation gestures are handled once, in
+`lib/shared/widgets/app_chrome.dart`, which wraps every route:
+
+| Input | Action |
+| --- | --- |
+| `/` | Focus the sidebar search field |
+| Space | Play / pause |
+| Mouse button 4 | Back |
+| Two-finger swipe right | Back |
+
+Two rules these all obey, and any new one must too:
+
+- **Never fire while a text field has focus.** Both shortcuts are printable
+  characters; `globalKeyAction(..., isEditing:)` in
+  `lib/shared/input/global_keys.dart` is the single place that decides.
+- **A horizontal swipe that scrolls something is not a navigation.** The home
+  screen's album shelves scroll horizontally with the same gesture, so
+  `BackSwipeTracker` stands down for the rest of a swipe once any horizontal
+  scrollable moves.
+
+AppChrome is `MaterialApp.router`'s *builder*, which sits above the
+`InheritedGoRouter` — `GoRouter.of(context)` finds nothing there. Read the
+router from `routerProvider` instead.
 
 ## Stars are ratings, hearts are favorites
 
