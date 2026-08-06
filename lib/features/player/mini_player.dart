@@ -26,8 +26,15 @@ class MiniPlayer extends ConsumerWidget {
             playerState.duration.inMilliseconds
         : 0.0;
 
+    // The desktop now-playing screen keeps the shell, and so keeps this bar.
+    // Without the guard, clicking it there pushes /now-playing on top of
+    // /now-playing, and each click costs another press of Back to undo.
+    final path = GoRouter.maybeOf(context)?.state.uri.path;
+    final openNowPlaying =
+        path == '/now-playing' ? null : () => context.push('/now-playing');
+
     return HoverSurface(
-      onTap: () => context.push('/now-playing'),
+      onTap: openNowPlaying,
       child: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHigh,
@@ -53,7 +60,7 @@ class MiniPlayer extends ConsumerWidget {
               child: Row(
                 children: [
                   HoverArtwork(
-                    onTap: () => context.push('/now-playing'),
+                    onTap: openNowPlaying,
                     borderRadius: BorderRadius.circular(6),
                     scale: 1.06,
                     child: SizedBox(
