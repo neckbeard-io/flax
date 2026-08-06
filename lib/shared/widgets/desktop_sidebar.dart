@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flax/app/nav_destinations.dart';
-import 'package:flax/features/search/search_screen.dart' show searchQueryProvider;
+import 'package:flax/features/search/quick_search.dart';
+import 'package:flax/features/search/quick_search_overlay.dart';
 import 'package:flax/shared/widgets/flax_input.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
@@ -31,27 +33,150 @@ class DesktopSidebar extends ConsumerStatefulWidget {
 
 class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
   final _controller = TextEditingController();
+  final _link = LayerLink();
+  final _panel = OverlayPortalController();
+
+  /// Row the keyboard is on, or -1 for none. The last row is always "search
+  /// everything", so the highest valid index is the result count.
+  int _highlighted = -1;
+
+  /// Held rather than read on demand: the provider outlives this widget, and
+  /// `ref` is unusable by the time dispose runs.
+  late final FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
-    // Keep the field in step with the query when it is changed elsewhere (the
-    // search screen has its own field, and "/" can be pressed at any time).
-    _controller.text = ref.read(searchQueryProvider);
+    _focusNode = ref.read(searchFieldFocusProvider);
+    _focusNode.addListener(_onFocusChanged);
   }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
+    // The node is shared and outlasts this widget, so leaving a handler on it
+    // would keep calling into a dead State.
+    _focusNode.onKeyEvent = null;
     _controller.dispose();
     super.dispose();
   }
 
-  void _submit(String value) {
-    ref.read(searchQueryProvider.notifier).state = value;
-    // Typing in the sidebar should take you to the results, wherever you were.
-    if (GoRouterState.of(context).uri.path != '/search') {
-      context.go('/search');
+  void _onFocusChanged() {
+    // Losing focus closes the popup. Clicking a result moves focus too, but
+    // the tap is delivered first, so the route change still happens.
+    if (!_focusNode.hasFocus) _closePanel();
+  }
+
+  void _onChanged(String value) {
+    ref.read(quickSearchProvider.notifier).setQuery(value);
+    setState(() => _highlighted = -1);
+    if (value.trim().length >= kQuickSearchMinChars) {
+      _panel.show();
+    } else {
+      _panel.hide();
     }
+  }
+
+  void _closePanel() {
+    if (_panel.isShowing) _panel.hide();
+    if (_highlighted != -1) setState(() => _highlighted = -1);
+  }
+
+  void _dismiss() {
+    _closePanel();
+    _controller.clear();
+    ref.read(quickSearchProvider.notifier).clear();
+    _focusNode.unfocus();
+  }
+
+  void _open(QuickSearchItem item) {
+    _dismiss();
+    context.push(item.route);
+  }
+
+  /// Hands the query to the search screen, which is where songs and the full
+  /// result set live. Pushed with the query in the URL rather than through a
+  /// shared provider — that shared provider is exactly what tied these two
+  /// searches together.
+  void _searchEverything(String query) {
+    _dismiss();
+    context.push('/search?q=${Uri.encodeQueryComponent(query)}');
+  }
+
+  KeyEventResult _onFieldKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (!_panel.isShowing) return KeyEventResult.ignored;
+
+    final items = quickSearchItems(
+      ref.read(quickSearchResultsProvider).valueOrNull ??
+          QuickSearchResults.empty,
+    );
+    // One past the results is the "search everything" row.
+    final last = items.length;
+
+    switch (event.logicalKey) {
+      case LogicalKeyboardKey.escape:
+        _closePanel();
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowDown:
+        setState(() => _highlighted =
+            _highlighted >= last ? 0 : _highlighted + 1);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowUp:
+        setState(() => _highlighted =
+            _highlighted <= 0 ? last : _highlighted - 1);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.enter:
+      case LogicalKeyboardKey.numpadEnter:
+        // Nothing highlighted means "I typed and hit enter", which is the
+        // full search — the same thing the last row does.
+        if (_highlighted >= 0 && _highlighted < items.length) {
+          _open(items[_highlighted]);
+        } else {
+          _searchEverything(_controller.text.trim());
+        }
+        return KeyEventResult.handled;
+      default:
+        return KeyEventResult.ignored;
+    }
+  }
+
+  Widget _buildPanel(BuildContext context) {
+    final async = ref.watch(quickSearchResultsProvider);
+    final items = quickSearchItems(async.valueOrNull ?? QuickSearchResults.empty);
+
+    return Stack(
+      children: [
+        // Clicking anywhere else puts the popup away, the way every other
+        // dropdown behaves. Behind the panel so it never eats its taps.
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _closePanel,
+          ),
+        ),
+        CompositedTransformFollower(
+          link: _link,
+          targetAnchor: Alignment.bottomLeft,
+          followerAnchor: Alignment.topLeft,
+          offset: const Offset(0, 6),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: QuickSearchPanel(
+              items: items,
+              highlighted: _highlighted,
+              query: _controller.text.trim(),
+              loading: async.isLoading,
+              onSelected: _open,
+              onSearchEverything: () =>
+                  _searchEverything(_controller.text.trim()),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -59,12 +184,6 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
     final theme = Theme.of(context);
     final location = GoRouterState.of(context).uri.path;
     final selected = navIndexForLocation(location);
-
-    // Mirror external changes to the query without fighting the user's caret.
-    final query = ref.watch(searchQueryProvider);
-    if (query != _controller.text && !ref.read(searchFieldFocusProvider).hasFocus) {
-      _controller.text = query;
-    }
 
     return Container(
       width: widget.width,
@@ -81,11 +200,18 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
           SizedBox(height: MediaQuery.of(context).padding.top + 40),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: _SearchField(
-              controller: _controller,
-              focusNode: ref.watch(searchFieldFocusProvider),
-              onSubmitted: _submit,
-              onChanged: (v) => ref.read(searchQueryProvider.notifier).state = v,
+            child: CompositedTransformTarget(
+              link: _link,
+              child: OverlayPortal(
+                controller: _panel,
+                overlayChildBuilder: _buildPanel,
+                child: _SearchField(
+                  controller: _controller,
+                  focusNode: ref.watch(searchFieldFocusProvider),
+                  onChanged: _onChanged,
+                  onKey: _onFieldKey,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -128,22 +254,25 @@ class _SearchField extends StatelessWidget {
   const _SearchField({
     required this.controller,
     required this.focusNode,
-    required this.onSubmitted,
     required this.onChanged,
+    required this.onKey,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
-  final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onChanged;
+  final KeyEventResult Function(FocusNode, KeyEvent) onKey;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // The key handler goes on the node rather than a Shortcuts wrapper: arrow
+    // keys inside a TextField are consumed by the editable itself, and an
+    // onKeyEvent on the node sees them first.
+    focusNode.onKeyEvent = onKey;
     return TextField(
       controller: controller,
       focusNode: focusNode,
-      onSubmitted: onSubmitted,
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
       style: theme.textTheme.bodyMedium,
