@@ -29,9 +29,16 @@ class MiniPlayer extends ConsumerWidget {
     // The desktop now-playing screen keeps the shell, and so keeps this bar.
     // Without the guard, clicking it there pushes /now-playing on top of
     // /now-playing, and each click costs another press of Back to undo.
-    final path = GoRouter.maybeOf(context)?.state.uri.path;
-    final openNowPlaying =
-        path == '/now-playing' ? null : () => context.push('/now-playing');
+    //
+    // Checked when tapped, not when built. Reading the route during build left
+    // the answer stale: this bar does not rebuild on navigation, so once it had
+    // seen /now-playing it stayed unclickable after leaving — until some
+    // unrelated player change happened to rebuild it, which made the bar look
+    // like it only worked while playing.
+    void openNowPlaying() {
+      if (GoRouter.maybeOf(context)?.state.uri.path == '/now-playing') return;
+      context.push('/now-playing');
+    }
 
     return HoverSurface(
       onTap: openNowPlaying,

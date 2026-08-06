@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/lyrics_provider.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/settings/lyrics_settings.dart';
 
 /// The lyrics column: the sheet for the playing track, following along when
 /// the server sends timings.
@@ -116,6 +117,7 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final settings = ref.watch(lyricsSettingsProvider);
     final current =
         widget.lyrics.synced ? ref.watch(currentLyricLineProvider) : -1;
     _centreOn(current);
@@ -148,6 +150,7 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
                             .read(playerProvider.notifier)
                             .seek(widget.lyrics.lines[i].start!),
                     theme: theme,
+                    settings: settings,
                   ),
               ],
             ),
@@ -166,6 +169,7 @@ class _LyricLineText extends StatelessWidget {
     required this.active,
     required this.dimmed,
     required this.theme,
+    required this.settings,
     this.onTap,
   });
 
@@ -173,12 +177,17 @@ class _LyricLineText extends StatelessWidget {
   final bool active;
   final bool dimmed;
   final ThemeData theme;
+  final LyricsSettings settings;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    // The sung line is bigger as well as brighter. Size alone is what carries
+    // at a glance from across a desk, which is the distance a lyrics panel is
+    // actually read from.
     final style = theme.textTheme.titleMedium?.copyWith(
       height: 1.5,
+      fontSize: active ? settings.activeFontSize : settings.fontSize,
       fontWeight: active ? FontWeight.w700 : FontWeight.w400,
       color: active
           ? theme.colorScheme.primary
@@ -190,6 +199,7 @@ class _LyricLineText extends StatelessWidget {
       child: AnimatedDefaultTextStyle(
         duration: const Duration(milliseconds: 200),
         style: style ?? const TextStyle(),
+        textAlign: settings.alignment.textAlign,
         child: Text(text.isEmpty ? ' ' : text),
       ),
     );
