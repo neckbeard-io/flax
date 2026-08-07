@@ -15,8 +15,21 @@ lib/
 ```
 
 Feature code lives in `lib/features/<area>/`, reusable widgets in
-`lib/shared/widgets/`. [README.md](README.md) covers installing a test build,
-the roadmap, and licensing.
+`lib/shared/widgets/`. [README.md](README.md) covers installing a test build and
+licensing; [SPEC.md](SPEC.md) is the design intent and describes considerably
+more than is built.
+
+**Work is tracked on the
+[flax factory board](https://github.com/orgs/neckbeard-io/projects/2), not in
+this repo.** Issues carry a native type (Feature / Task / Bug), an `area:*` label
+for routing, and an `agent:*` label saying whether they are ready to pick up:
+
+- `agent:ready` — the body is a complete spec; start without asking.
+- `agent:needs-spec` — a design decision is owed first; do not guess it.
+- `agent:blocked-human` — needs credentials, hardware or a physical device.
+
+Issues labeled `needs-triage` came from outside and have not been validated or
+scoped yet. Do not start one.
 
 > **This file is `AGENTS.md`, and `CLAUDE.md` is a symlink to it.** Claude Code
 > does not load `AGENTS.md` on its own — verified — so the symlink is what makes
@@ -50,8 +63,8 @@ is the track's, the queue header's pair is the album's.
 ### US English
 
 User-facing strings and identifiers are US English: *color*, *center*,
-*favorite*. Internationalization is a roadmap item, not a current concern — but
-do not seed it with mixed spellings in the meantime.
+*favorite*. Internationalization is planned but not current — it is tracked as
+its own issue, so do not seed the codebase with mixed spellings in the meantime.
 
 ### Hover / mouseover conventions
 
