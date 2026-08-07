@@ -23,11 +23,11 @@ anything else, and both exist because they have already caused wasted time:
    hot reload to decide something works.
 2. **Give new interactive elements a hover affordance** using the primitives in
    `lib/shared/widgets/hover_effects.dart` (`HoverArtwork`, `HoverLink`,
-   `HoverSurface`) rather than hand-rolling `MouseRegion`s.
+   `HoverSurface`, `HoverIcon`) rather than hand-rolling `MouseRegion`s.
 
 Before opening a change: `flutter analyze`, `flutter test`, and
 `dart run tool/verify_presets.dart` if you touched the equalizer table.
-[CLAUDE.md](CLAUDE.md) has the longer version of the working conventions, and
+[AGENTS.md](AGENTS.md) has the longer version of the working conventions, and
 [SPEC.md](SPEC.md) is the design intent — note that it describes considerably
 more than is built.
 

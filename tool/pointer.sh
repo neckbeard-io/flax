@@ -51,7 +51,7 @@ if [[ "$WINDOW_RELATIVE" == "1" ]]; then
   ORIGIN="$(window_origin)"
   if [[ ! "$ORIGIN" =~ ^([0-9-]+),\ *([0-9-]+)$ ]]; then
     echo "error: could not read the flax window position — is it running?" >&2
-    echo "       (a sleeping display also reports no windows; see CLAUDE.md)" >&2
+    echo "       (a sleeping display also reports no windows; see AGENTS.md)" >&2
     exit 1
   fi
   X=$(( X + BASH_REMATCH[1] ))
