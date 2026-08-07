@@ -183,7 +183,9 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final location = GoRouterState.of(context).uri.path;
-    final selected = navIndexForLocation(location);
+    // Nullable on purpose: null means the open route is Now Playing or
+    // Settings, and nothing in the list below should look selected.
+    final selected = navDestinationIndex(location);
 
     return Container(
       width: widget.width,
@@ -225,6 +227,23 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+          // Above Home, and outside navDestinations so it does not also become a
+          // sixth entry in the phone bottom bar — there the mini player sits
+          // directly above that bar and already opens this screen.
+          //
+          // Always present, never gated on something playing: the screen has a
+          // "Nothing playing" state, and a menu entry that comes and goes is
+          // harder to aim for than one that is simply always there.
+          _SidebarItem(
+            destination: const NavDestination(
+              path: '/now-playing',
+              icon: Icons.play_circle_outline,
+              selectedIcon: Icons.play_circle,
+              label: 'Now Playing',
+            ),
+            selected: location == '/now-playing',
+            onTap: () => context.go('/now-playing'),
           ),
           for (var i = 0; i < navDestinations.length; i++)
             _SidebarItem(
@@ -325,11 +344,19 @@ class _SidebarItem extends StatelessWidget {
                 color: color,
               ),
               const SizedBox(width: 12),
-              Text(
-                destination.label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: color,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              // Flexible, because the label is the one part of this row whose
+              // width is not ours to decide. "Now Playing" already lands within
+              // 2px of the 220px rail in the test font, and a larger text scale
+              // or a translated label overflows outright.
+              Expanded(
+                child: Text(
+                  destination.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: color,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
                 ),
               ),
             ],

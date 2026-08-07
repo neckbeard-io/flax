@@ -49,10 +49,20 @@ const navDestinations = <NavDestination>[
   ),
 ];
 
-/// Index of the destination matching the current location, or 0.
-int navIndexForLocation(String location) {
+/// Index of the destination matching [location], or null when the route is not
+/// one of them.
+///
+/// Now Playing and Settings are their own sidebar items rather than entries in
+/// this list, and answering 0 for them left Home lit up alongside whichever of
+/// the two was actually open.
+int? navDestinationIndex(String location) {
   for (var i = 0; i < navDestinations.length; i++) {
     if (location.startsWith(navDestinations[i].path)) return i;
   }
-  return 0;
+  return null;
 }
+
+/// Index of the destination matching the current location, or 0.
+///
+/// For `NavigationBar`, which requires a valid index whatever the route.
+int navIndexForLocation(String location) => navDestinationIndex(location) ?? 0;
