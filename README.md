@@ -230,7 +230,7 @@ lib/
 ```
 
 Feature code lives in `lib/features/<area>/`, reusable widgets in
-`lib/shared/widgets/`. [CLAUDE.md](CLAUDE.md) documents the working
+`lib/shared/widgets/`. [AGENTS.md](AGENTS.md) documents the working
 conventions — hover affordances, the rebuild-before-you-believe-it rule, and the
 release process — and is worth reading before a first change.
 
