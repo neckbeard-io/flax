@@ -52,13 +52,18 @@ class MiniPlayer extends ConsumerWidget {
     // these as a Mac does.
     final roomy = MediaQuery.sizeOf(context).width >= kMiniPlayerRoomyWidth;
 
-    // Only the artwork and the track's name open now playing.
+    // The artwork and the text are one target, and it stops before the seek
+    // bar.
     //
-    // The whole bar used to be one tap target, which quietly broke the seek
-    // bar the moment it was added: an ancestor InkWell competes with the
-    // slider for the tap and wins, so clicking the bar navigated instead of
-    // seeking. Clicking a transport control to mean "show me the now-playing
-    // screen" was never the intent anyway.
+    // Two failure modes to keep apart here. Wrapping the *whole* bar makes an
+    // ancestor InkWell that beats the Slider to the tap, so clicking the seek
+    // bar navigates instead of seeking. But wrapping the artwork and the text
+    // *separately* — which is what replaced it — left a dead 12px gap between
+    // two targets of different heights, so whether a click registered depended
+    // on where in the block it landed.
+    //
+    // So: one target covering exactly the artwork, the gap, and every line of
+    // text, ending well short of anything draggable.
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHigh,
@@ -86,74 +91,98 @@ class MiniPlayer extends ConsumerWidget {
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                HoverArtwork(
-                  onTap: openNowPlaying,
-                  borderRadius: BorderRadius.circular(6),
-                  scale: 1.06,
-                  child: SizedBox(
-                    width: 42,
-                    height: 42,
-                    child: CoverArtImage(
-                      coverArtId: song.coverArtId,
-                      size: 42,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
-                  // Two shares to the seek bar's three: the track's name
-                  // needs enough room to be read, but the empty space this
-                  // used to swallow is better spent on somewhere to drag.
+                  // Two shares to the seek bar's three. The artwork now sits
+                  // inside this share rather than beside it, so the title has
+                  // a little less room than it did — the price of the artwork
+                  // and the text being one thing to click.
                   flex: 2,
                   child: HoverSurface(
                     onTap: openNowPlaying,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          song.title,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (song.artistName != null)
-                        Row(
-                          children: [
-                            Flexible(
-                              child: HoverLink(
-                                text: song.artistName!,
-                                onTap: song.artistId != null
-                                    ? () => context
-                                        .push('/artists/${song.artistId}')
-                                    : null,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: SizedBox(
+                              width: 42,
+                              height: 42,
+                              child: CoverArtImage(
+                                coverArtId: song.coverArtId,
+                                size: 42,
                               ),
                             ),
-                            if (_formatLabel(song) != null) ...[
-                              Text(
-                                ' · ',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  song.title,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              Text(
-                                _formatLabel(song)!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: _isHiRes(song)
-                                      ? Colors.amber[700]
-                                      : theme.colorScheme.onSurfaceVariant,
-                                  fontWeight: _isHiRes(song) ? FontWeight.w600 : null,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
+                                if (song.artistName != null)
+                                  Row(
+                                    children: [
+                                      // Plain text, not a link. It used to
+                                      // navigate to the artist, which made one
+                                      // line of this block behave unlike every
+                                      // other part of it. The artist is one tap
+                                      // away on the screen this opens.
+                                      Flexible(
+                                        child: Text(
+                                          song.artistName!,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: theme
+                                                .colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                      if (_formatLabel(song) != null) ...[
+                                        Text(
+                                          ' · ',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: theme
+                                                .colorScheme.onSurfaceVariant
+                                                .withValues(alpha: 0.5),
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatLabel(song)!,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: _isHiRes(song)
+                                                ? Colors.amber[700]
+                                                : theme.colorScheme
+                                                    .onSurfaceVariant,
+                                            fontWeight: _isHiRes(song)
+                                                ? FontWeight.w600
+                                                : null,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
