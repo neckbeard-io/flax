@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/features/library/album_sort.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/country_chip.dart';
@@ -14,10 +15,6 @@ import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
-
-// ── Sort enum ─────────────────────────────────────────────────────────
-
-enum AlbumSortMode { yearAsc, yearDesc, title, rating }
 
 // ── Providers ─────────────────────────────────────────────────────────
 
@@ -67,8 +64,6 @@ final musicBrainzInfoProvider =
   return MusicBrainzService.searchArtist(artist.name);
 });
 
-final _albumSortProvider = StateProvider<AlbumSortMode>((ref) => AlbumSortMode.yearAsc);
-
 // ── Screen ────────────────────────────────────────────────────────────
 
 class ArtistDetailScreen extends ConsumerWidget {
@@ -78,28 +73,13 @@ class ArtistDetailScreen extends ConsumerWidget {
   static bool get _isDesktop =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
-  List<Album> _sortAlbums(List<Album> albums, AlbumSortMode mode) {
-    final sorted = List<Album>.from(albums);
-    switch (mode) {
-      case AlbumSortMode.yearAsc:
-        sorted.sort((a, b) => (a.year ?? 9999).compareTo(b.year ?? 9999));
-      case AlbumSortMode.yearDesc:
-        sorted.sort((a, b) => (b.year ?? 0).compareTo(a.year ?? 0));
-      case AlbumSortMode.title:
-        sorted.sort((a, b) => a.name.compareTo(b.name));
-      case AlbumSortMode.rating:
-        sorted.sort((a, b) => (b.userRating ?? 0).compareTo(a.userRating ?? 0));
-    }
-    return sorted;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final artistAsync = ref.watch(artistDetailProvider(artistId));
     final albumsAsync = ref.watch(artistAlbumsProvider(artistId));
     final artistInfoAsync = ref.watch(artistInfoProvider(artistId));
     final mbInfoAsync = ref.watch(musicBrainzInfoProvider(artistId));
-    final sortMode = ref.watch(_albumSortProvider);
+    final sortMode = ref.watch(albumSortProvider);
 
     return Scaffold(
       body: artistAsync.when(
@@ -145,7 +125,7 @@ class ArtistDetailScreen extends ConsumerWidget {
               ),
               albumsAsync.when(
                 data: (albums) {
-                  final sorted = _sortAlbums(albums, sortMode);
+                  final sorted = sortAlbums(albums, sortMode);
                   return SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) => _AlbumTile(album: sorted[index]),
@@ -221,13 +201,9 @@ class ArtistDetailScreen extends ConsumerWidget {
             icon: const Icon(Icons.sort, size: 20),
             tooltip: 'Sort albums',
             onSelected: (mode) =>
-                ref.read(_albumSortProvider.notifier).state = mode,
+                ref.read(albumSortProvider.notifier).setMode(mode),
             itemBuilder: (_) => [
-              _sortItem(AlbumSortMode.yearAsc, 'Year (oldest first)', current),
-              _sortItem(
-                  AlbumSortMode.yearDesc, 'Year (newest first)', current),
-              _sortItem(AlbumSortMode.title, 'Title', current),
-              _sortItem(AlbumSortMode.rating, 'Rating', current),
+              for (final mode in AlbumSortMode.values) _sortItem(mode, current),
             ],
           ),
         ],
@@ -236,7 +212,7 @@ class ArtistDetailScreen extends ConsumerWidget {
   }
 
   PopupMenuEntry<AlbumSortMode> _sortItem(
-      AlbumSortMode value, String label, AlbumSortMode current) {
+      AlbumSortMode value, AlbumSortMode current) {
     return PopupMenuItem(
       value: value,
       child: Row(
@@ -246,7 +222,7 @@ class ArtistDetailScreen extends ConsumerWidget {
               padding: EdgeInsets.only(right: 8),
               child: Icon(Icons.check, size: 16),
             ),
-          Text(label),
+          Text(value.label),
         ],
       ),
     );
