@@ -10,8 +10,9 @@ The name is a play on FLAC.
 **Platforms:** macOS (universal), Windows 10/11 (x64), Android 7.0+
 
 > **Status: early, and under active development.** The library browser, player,
-> equalizer, and AutoEQ all work against a real server. Plenty is still on the
-> [roadmap](#roadmap) — check there before filing a missing feature as a bug.
+> equalizer, and AutoEQ all work against a real server. Plenty is still
+> [planned](#planned-work) — check the board before filing a missing feature as
+> a bug.
 > There are no signed builds yet, so every platform shows a first-launch warning.
 
 ---
@@ -72,45 +73,27 @@ Subsonic's salted token scheme rather than as a plaintext password.
 - AutoEQ headphone correction from the full ~8850-profile AutoEQ database,
   summed on top of the manual EQ curve, with the correction curve plotted
 - Star ratings and favorites
+- Time-synced lyrics, with a scrolling panel that follows playback, tap-to-seek
+  on any line, and configurable size and justification
+- Multi-panel Now Playing on desktop — artist, lyrics and queue, adapting to the
+  window width; window size and position persist across launches
+- Quick search from anywhere with `/`, plus space to play/pause and
+  mouse-button-4 or a two-finger swipe to go back
 - OS media session — now-playing metadata and hardware/media-key controls
 - Hi-res format badge (bit depth / sample rate) on the current track
 
-## Roadmap
+## Planned work
 
-Roughly in the order it is likely to be tackled. [SPEC.md](SPEC.md) is the
-design document and describes all of this in detail — treat it as intent rather
-than as a changelog.
+Everything not yet built is tracked as issues on the
+**[flax factory board](https://github.com/orgs/neckbeard-io/projects/2)** rather
+than in this file, so there is one queue instead of a list that quietly goes
+stale. Issues are typed (Feature / Task / Bug), routed by `area:*`, and gated by
+`agent:*` on whether they are ready to be picked up.
 
-**Audio pipeline.** These screens exist and persist what you set, but the value
-is not yet read by the player:
+[SPEC.md](SPEC.md) remains the design document behind those issues — treat it as
+intent rather than as a changelog; it describes considerably more than is built.
 
-- Audio output — exclusive mode, sample rate, bit depth
-- Gapless, crossfade, ReplayGain
-- Transcoding
-
-**Features not yet built**
-
-- Plot the AutoEQ correction and the manual band curve together on the equalizer
-  screen, so their interaction is visible rather than only the AutoEQ curve on
-  its own page. `EqCurveChart` already layers curves, so this is mostly wiring.
-- Synchronized lyrics (LRC) — the Subsonic client already fetches them
-- Offline sync and a rotating download cache
-- Scrobbling — client support exists, nothing drives it
-- Local metadata database (`drift` is a declared dependency, currently unused)
-- Android Auto
-- Last.fm / richer artist info
-
-**Known limitations**
-
-- The AutoEQ database download decompresses a ~341 MB archive entirely in
-  memory, so it is desktop-only in practice and needs a streaming rewrite before
-  it can work on Android.
-- No signed builds. macOS is ad-hoc signed and Windows is unsigned, so both warn
-  on first launch; notarization and a Windows certificate are open items.
-- The licence of the bundled `libmpv` binaries is unconfirmed, which is what
-  forces flax's own licence to be GPL (see [Licensing](#licensing) below).
-
-### Licensing
+## Relicensing
 
 Relicensing permissively (MIT or Apache-2.0) is possible but blocked on libmpv,
 not on preference — a permissive `LICENSE` file changes nothing while the bundled
@@ -265,9 +248,9 @@ Practical consequences, since handing a build to someone else is distribution:
   public repository satisfies.
 - A closed-source fork is not an option, and neither is Mac App Store
   distribution — GPLv3's anti-tivoization terms conflict with App Store
-  licensing. Neither is on the roadmap.
+  licensing. Neither is planned.
 
 If the bundled libmpv is ever confirmed to be the LGPL build, or is replaced with
 one, this could be relaxed to a permissive licence — see
-[Licensing](#licensing) under the roadmap for what that actually takes, and why
-it has to happen in that order. Until then, GPL is the defensible choice.
+[Relicensing](#relicensing) for what that actually takes, and why it has to
+happen in that order. Until then, GPL is the defensible choice.
