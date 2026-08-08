@@ -7,6 +7,7 @@ import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/features/settings/lyrics_settings.dart';
+import 'package:flax/features/settings/scrobble_settings.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -18,6 +19,7 @@ class SettingsScreen extends ConsumerWidget {
     final amoled = ref.watch(amoledProvider);
     final servers = ref.watch(serverListProvider);
     final activeServer = ref.watch(activeServerProvider);
+    final scrobble = ref.watch(scrobbleEnabledProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -103,6 +105,15 @@ class SettingsScreen extends ConsumerWidget {
 
           // ── Playback ──
           _SectionTitle(title: 'Playback'),
+          SwitchListTile(
+            title: const Text('Report plays to server'),
+            subtitle: const Text(
+              'Keeps Recently Played and Most Played up to date',
+            ),
+            value: scrobble,
+            onChanged: (v) =>
+                ref.read(scrobbleEnabledProvider.notifier).setEnabled(v),
+          ),
           ListTile(
             title: const Text('Audio Output'),
             subtitle: const Text('DAC, sample rate, exclusive mode'),
