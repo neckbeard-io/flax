@@ -10,6 +10,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
+import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/platform/now_playing_service.dart';
@@ -93,6 +94,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   final NowPlayingService _nowPlaying;
   final List<StreamSubscription<dynamic>> _subs = [];
   String? _lastNowPlayingSongId;
+  /// Track already announced to the server as playing, and track whose play has
+  /// already been recorded. Held separately because the two happen at different
+  /// moments and only the second one counts as a listen.
+  String? _scrobbleAnnouncedId;
+  String? _scrobbleSubmittedId;
   Timer? _saveQueueTimer;
   int _lastSavedPositionSec = -1;
   ProviderSubscription<EqState>? _eqSub;
@@ -126,11 +132,17 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
           position: state.position,
           isPlaying: playing,
         );
+        // Driven off playback actually starting rather than off the calls that
+        // load a track, so a queue restored at launch — which opens its track
+        // paused and never goes through _playIndex — still announces itself
+        // when you press play.
+        if (playing) _announceNowPlaying();
       }
     }));
     _subs.add(_player.stream.position.listen((pos) {
       if (mounted) {
         state = state.copyWith(position: pos);
+        _maybeSubmitScrobble(pos);
         // Save queue position every 10 seconds of playback change
         final currentSec = pos.inSeconds;
         if ((currentSec - _lastSavedPositionSec).abs() >= 10) {
@@ -154,6 +166,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   void _onTrackCompleted() {
     if (state.repeatMode == RepeatMode.one) {
+      // A second time through is a second listen, so this play has to be able
+      // to be recorded again.
+      _resetScrobble();
       seek(Duration.zero);
       play();
       return;
@@ -200,6 +215,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   Future<void> _playIndex(int index) async {
     if (index < 0 || index >= state.queue.length) return;
     final song = state.queue[index];
+    _resetScrobble();
     state = state.copyWith(
       currentSong: song,
       queueIndex: index,
@@ -225,6 +241,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   Future<void> playSong(Song song, {List<Song>? queue, int? index}) async {
     final newQueue = queue ?? [song];
     final newIndex = index ?? 0;
+    _resetScrobble();
     state = state.copyWith(
       queue: newQueue,
       queueIndex: newIndex,
@@ -255,6 +272,74 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       isPlaying: true,
       artUrl: artUrl,
     );
+  }
+
+  // ── Scrobbling ─────────────────────────────────────────────────────
+  //
+  // Reporting plays back to the server, which is the only thing that moves its
+  // play counts and play dates — streaming a file does not. Without this,
+  // Recently Played and Most Played stay frozen at whatever another client last
+  // reported, however much you listen here.
+  //
+  // Both calls are fire-and-forget. A server that is slow, offline, or refuses
+  // the request must never stall or interrupt playback, so failures are logged
+  // and dropped.
+
+  /// Forgets what has been reported for the playing track.
+  ///
+  /// Called when a different track is loaded, and when repeat-one restarts the
+  /// same one — the second time through is a second listen, and the id guards
+  /// alone would swallow it.
+  void _resetScrobble() {
+    _scrobbleAnnouncedId = null;
+    _scrobbleSubmittedId = null;
+  }
+
+  /// Tells the server what is playing, so its now-playing list is right. Not a
+  /// play: `submission: false` is explicitly the "started" notification.
+  void _announceNowPlaying() {
+    final song = state.currentSong;
+    if (song == null || song.id == _scrobbleAnnouncedId) return;
+    if (!_ref.read(scrobbleEnabledProvider)) return;
+    _scrobbleAnnouncedId = song.id;
+    _scrobble(song.id, submission: false);
+  }
+
+  /// Records the play once the track has run far enough to count.
+  ///
+  /// Reads the position rather than timing the playback, which means seeking
+  /// past the threshold counts the track. That is the same bargain every other
+  /// Subsonic client makes, and the alternative — accumulating played time —
+  /// buys accuracy in a case nobody hits by accident.
+  void _maybeSubmitScrobble(Duration position) {
+    final song = state.currentSong;
+    if (song == null || song.id == _scrobbleSubmittedId) return;
+    if (!_ref.read(scrobbleEnabledProvider)) return;
+
+    // mpv reports the real duration a moment after the stream opens; until it
+    // does, the length the server gave us for the track is the better number.
+    final length = state.duration > Duration.zero
+        ? state.duration
+        : Duration(seconds: song.duration);
+
+    final threshold = scrobbleThreshold(length);
+    if (threshold == null || position < threshold) return;
+
+    _scrobbleSubmittedId = song.id;
+    _scrobble(song.id, submission: true);
+  }
+
+  Future<void> _scrobble(String id, {required bool submission}) async {
+    final client = _ref.read(subsonicClientProvider);
+    if (client == null) return;
+    try {
+      await client.scrobble(id, submission: submission);
+    } catch (e) {
+      developer.log(
+        'scrobble (submission: $submission) failed: $e',
+        name: 'PlayerNotifier',
+      );
+    }
   }
 
   // ── EQ ────────────────────────────────────────────────────────────
