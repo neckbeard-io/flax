@@ -16,13 +16,9 @@ class NavDestination {
   final String label;
 }
 
+/// There is deliberately no Home entry. Its three shelves became tabs on the
+/// Albums screen, which is where the app now opens.
 const navDestinations = <NavDestination>[
-  NavDestination(
-    path: '/home',
-    icon: Icons.home_outlined,
-    selectedIcon: Icons.home,
-    label: 'Home',
-  ),
   NavDestination(
     path: '/artists',
     icon: Icons.people_outlined,
@@ -53,8 +49,8 @@ const navDestinations = <NavDestination>[
 /// one of them.
 ///
 /// Now Playing and Settings are their own sidebar items rather than entries in
-/// this list, and answering 0 for them left Home lit up alongside whichever of
-/// the two was actually open.
+/// this list, and answering 0 for them left the first destination lit up
+/// alongside whichever of the two was actually open.
 int? navDestinationIndex(String location) {
   for (var i = 0; i < navDestinations.length; i++) {
     if (location.startsWith(navDestinations[i].path)) return i;

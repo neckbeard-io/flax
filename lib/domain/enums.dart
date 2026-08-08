@@ -49,6 +49,7 @@ enum AlbumListType {
   frequent,
   recent,
   starred,
+  highest,
   alphabeticalByName,
   alphabeticalByArtist,
   byYear,
@@ -60,6 +61,9 @@ enum AlbumListType {
         AlbumListType.frequent => 'frequent',
         AlbumListType.recent => 'recent',
         AlbumListType.starred => 'starred',
+        // Rated, not favorited: `highest` reads userRating, `starred` reads the
+        // boolean favorite flag. The two are separate fields on the same album.
+        AlbumListType.highest => 'highest',
         AlbumListType.alphabeticalByName => 'alphabeticalByName',
         AlbumListType.alphabeticalByArtist => 'alphabeticalByArtist',
         AlbumListType.byYear => 'byYear',

@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 /// Back button that always has somewhere to go.
 ///
 /// Prefers popping, so you return to wherever you actually came from — the album
-/// you opened from Random Picks goes back to Home, not to its artist. When there
+/// you opened from the Random tab goes back to that tab, not to its artist. When
+/// there
 /// is nothing on the stack it navigates to [fallbackLocation], the screen that
 /// logically contains this one.
 ///
