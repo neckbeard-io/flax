@@ -228,8 +228,9 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
               ),
             ),
           ),
-          // Above Home, and outside navDestinations so it does not also become a
-          // sixth entry in the phone bottom bar — there the mini player sits
+          // Above the library destinations, and outside navDestinations so it
+          // does not also become an extra entry in the phone bottom bar — there
+          // the mini player sits
           // directly above that bar and already opens this screen.
           //
           // Always present, never gated on something playing: the screen has a

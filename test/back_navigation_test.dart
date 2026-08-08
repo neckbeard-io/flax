@@ -93,42 +93,42 @@ Future<void> _swipeBack(
 void main() {
   testWidgets('mouse button 4 goes back', (tester) async {
     final router = await _pumpApp(tester);
-    expect(router.state.uri.path, '/home');
-
-    router.push('/albums');
-    await _settle(tester);
     expect(router.state.uri.path, '/albums');
 
+    router.push('/artists');
+    await _settle(tester);
+    expect(router.state.uri.path, '/artists');
+
     await _pressBackButton(tester);
-    expect(router.state.uri.path, '/home');
+    expect(router.state.uri.path, '/albums');
   });
 
   testWidgets('a trackpad swipe right goes back', (tester) async {
     final router = await _pumpApp(tester);
-    router.push('/albums');
+    router.push('/artists');
     await _settle(tester);
 
     await _swipeBack(tester);
-    expect(router.state.uri.path, '/home');
+    expect(router.state.uri.path, '/albums');
   });
 
   testWidgets('a short swipe does not go back', (tester) async {
     final router = await _pumpApp(tester);
-    router.push('/albums');
+    router.push('/artists');
     await _settle(tester);
 
     await _swipeBack(tester, dx: 40);
-    expect(router.state.uri.path, '/albums');
+    expect(router.state.uri.path, '/artists');
   });
 
   testWidgets('going back from the first screen does nothing', (tester) async {
     // Nothing to pop. A browser does nothing here too — and popping the last
     // route would leave the app showing an empty navigator.
     final router = await _pumpApp(tester);
-    expect(router.state.uri.path, '/home');
+    expect(router.state.uri.path, '/albums');
 
     await _pressBackButton(tester);
     expect(tester.takeException(), isNull);
-    expect(router.state.uri.path, '/home');
+    expect(router.state.uri.path, '/albums');
   });
 }

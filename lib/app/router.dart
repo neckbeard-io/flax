@@ -9,7 +9,6 @@ import 'package:flax/features/library/album_detail_screen.dart';
 import 'package:flax/features/library/artists_screen.dart';
 import 'package:flax/features/library/artist_detail_screen.dart';
 import 'package:flax/features/library/songs_screen.dart';
-import 'package:flax/features/home/home_screen.dart';
 import 'package:flax/features/search/search_screen.dart';
 import 'package:flax/features/settings/settings_screen.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
@@ -48,7 +47,8 @@ String initialLocationFor({
   if (allowDebugRoute && debugRoute.isNotEmpty && !wantsSetup) {
     return debugRoute;
   }
-  return '/home';
+  // Albums, since Home is gone: its shelves are tabs there now.
+  return '/albums';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -79,10 +79,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/now-playing',
             builder: (context, state) => const NowPlayingScreen(),
-          ),
-          GoRoute(
-            path: '/home',
-            builder: (context, state) => const HomeScreen(),
           ),
           GoRoute(
             path: '/artists',
