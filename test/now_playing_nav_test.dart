@@ -70,14 +70,14 @@ bool _isSelected(WidgetTester tester, IconData selectedIcon) =>
 void main() {
   group('navDestinationIndex', () {
     test('finds the listed destinations', () {
-      expect(navDestinationIndex('/home'), 0);
-      expect(navDestinationIndex('/artists'), 1);
-      expect(navDestinationIndex('/artists/abc'), 1);
+      expect(navDestinationIndex('/artists'), 0);
+      expect(navDestinationIndex('/artists/abc'), 0);
+      expect(navDestinationIndex('/albums'), 1);
     });
 
     test('answers null for routes that are their own sidebar item', () {
-      // Returning 0 here is what left Home lit up at the same time as Now
-      // Playing or Settings.
+      // Returning 0 here is what left the first destination lit up at the same
+      // time as Now Playing or Settings.
       expect(navDestinationIndex('/now-playing'), isNull);
       expect(navDestinationIndex('/settings'), isNull);
       expect(navDestinationIndex('/settings/equalizer'), isNull);
@@ -87,7 +87,7 @@ void main() {
       // NavigationBar asserts on an out-of-range selectedIndex, so this one
       // must keep falling back to 0 whatever the route.
       expect(navIndexForLocation('/now-playing'), 0);
-      expect(navIndexForLocation('/albums'), 2);
+      expect(navIndexForLocation('/albums'), 1);
     });
 
     test('Now Playing is not a bottom-bar destination', () {
@@ -101,7 +101,7 @@ void main() {
   });
 
   group('the sidebar entry', () {
-    testWidgets('offers Now Playing, above Home', (tester) async {
+    testWidgets('offers Now Playing, above the library', (tester) async {
       await _pumpApp(tester);
 
       final labels = tester
@@ -116,9 +116,10 @@ void main() {
       expect(labels, contains('Now Playing'));
       expect(
         labels.indexOf('Now Playing'),
-        lessThan(labels.indexOf('Home')),
-        reason: 'the ticket asks for it above Home',
+        lessThan(labels.indexOf('Artists')),
+        reason: 'the ticket asks for it above the library destinations',
       );
+      expect(labels, isNot(contains('Home')));
     });
 
     testWidgets('navigates to the now playing screen', (tester) async {
@@ -136,9 +137,10 @@ void main() {
       );
     });
 
-    testWidgets('does not leave Home looking selected', (tester) async {
+    testWidgets('does not leave the landing screen looking selected',
+        (tester) async {
       final container = await _pumpApp(tester);
-      expect(_isSelected(tester, Icons.home), isTrue);
+      expect(_isSelected(tester, Icons.album), isTrue);
 
       container.read(routerProvider).go('/now-playing');
       await _settle(tester);
@@ -149,9 +151,9 @@ void main() {
         reason: 'Now Playing must show as selected',
       );
       expect(
-        _isSelected(tester, Icons.home),
+        _isSelected(tester, Icons.album),
         isFalse,
-        reason: 'Home must not stay lit while Now Playing is open',
+        reason: 'Albums must not stay lit while Now Playing is open',
       );
     });
   });

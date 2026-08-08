@@ -64,7 +64,7 @@ void main() {
     });
 
     test('no other route is ever immersive', () {
-      for (final route in ['/home', '/albums', '/settings', '/search']) {
+      for (final route in ['/artists', '/albums', '/settings', '/search']) {
         expect(ShellScaffold.isImmersiveRoute(route, 400), isFalse);
       }
     });

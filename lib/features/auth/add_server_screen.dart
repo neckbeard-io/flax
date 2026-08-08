@@ -48,7 +48,7 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
             username: _usernameController.text.trim(),
             password: _passwordController.text,
           );
-      if (mounted) context.go('/home');
+      if (mounted) context.go('/albums');
     } catch (e) {
       final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
       setState(() => _error = msg);

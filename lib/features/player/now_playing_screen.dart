@@ -47,7 +47,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 
     return NowPlayingPanels(
       layout: layout,
-      leading: const UpBackButton(fallbackLocation: '/home'),
+      leading: const UpBackButton(fallbackLocation: '/albums'),
       artist: const ArtistPanel(),
       lyrics: const LyricsPanel(),
       queue: const QueuePanel(),

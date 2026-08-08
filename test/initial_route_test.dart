@@ -11,7 +11,7 @@ import 'package:flax/app/router.dart';
 /// fact a debug build had /add-server compiled in as its start route.
 void main() {
   test('a configured server is never asked for again on launch', () {
-    expect(initialLocationFor(hasServer: true), '/home');
+    expect(initialLocationFor(hasServer: true), '/albums');
   });
 
   test('with no server, setup is the only sensible start', () {
@@ -39,7 +39,7 @@ void main() {
         debugRoute: '/add-server',
         allowDebugRoute: true,
       ),
-      '/home',
+      '/albums',
     );
   });
 
@@ -50,7 +50,7 @@ void main() {
         debugRoute: '/albums/abc',
         allowDebugRoute: false,
       ),
-      '/home',
+      '/albums',
     );
   });
 
