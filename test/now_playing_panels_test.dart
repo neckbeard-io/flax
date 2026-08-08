@@ -54,6 +54,47 @@ final _lyrics = find.byKey(NowPlayingPanels.lyricsKey);
 final _queue = find.byKey(NowPlayingPanels.queueKey);
 
 void main() {
+  group('background', () {
+    testWidgets('is opaque, so a route underneath cannot show through',
+        (tester) async {
+      // These panels are the app's only screen that is not a Scaffold — the
+      // shell supplies one — so nothing else gives them a background. Without
+      // it the outgoing screen stayed visible through the lyrics for the whole
+      // push transition.
+      _sizeWindow(tester, 1400);
+      await tester.pumpWidget(_harness(width: 1400));
+
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(NowPlayingPanels),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+
+      expect(material.color, isNotNull);
+      expect(material.color!.a, 1.0);
+    });
+
+    testWidgets('takes its color from the theme surface', (tester) async {
+      _sizeWindow(tester, 1400);
+      await tester.pumpWidget(_harness(width: 1400));
+
+      final context = tester.element(find.byType(NowPlayingPanels));
+      final material = tester.widget<Material>(
+        find
+            .descendant(
+              of: find.byType(NowPlayingPanels),
+              matching: find.byType(Material),
+            )
+            .first,
+      );
+
+      expect(material.color, Theme.of(context).colorScheme.surface);
+    });
+  });
+
   group('breakpoints', () {
     test('below 700 the panels are not used at all', () {
       expect(NowPlayingLayout.fitsAt(699), isFalse);

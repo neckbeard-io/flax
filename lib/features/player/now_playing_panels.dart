@@ -111,20 +111,32 @@ class NowPlayingPanels extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _Header(
-          layout: layout,
-          artistOpen: artistOpen,
-          onArtistOpenChanged: onArtistOpenChanged,
-          selected: selected,
-          onSelected: onSelected,
-          leading: leading,
-        ),
-        Expanded(
-          child: layout.singlePanel ? _buildSingle() : _buildColumns(context),
-        ),
-      ],
+    // Opaque, and that is the whole job of this Material.
+    //
+    // These panels are the only screen in the app that is not a Scaffold — the
+    // shell already supplies one — and so they were the only route with no
+    // background of its own. During the push transition the outgoing screen is
+    // still on stage underneath, and an album grid was plainly visible through
+    // the lyrics until the animation finished and the old route was removed.
+    // The queue column hid it better than the others only because its rows are
+    // dense enough to read as solid.
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      child: Column(
+        children: [
+          _Header(
+            layout: layout,
+            artistOpen: artistOpen,
+            onArtistOpenChanged: onArtistOpenChanged,
+            selected: selected,
+            onSelected: onSelected,
+            leading: leading,
+          ),
+          Expanded(
+            child: layout.singlePanel ? _buildSingle() : _buildColumns(context),
+          ),
+        ],
+      ),
     );
   }
 
