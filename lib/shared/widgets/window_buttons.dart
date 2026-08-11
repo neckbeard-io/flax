@@ -118,8 +118,9 @@ class WindowButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Only show on desktop platforms
-    if (!Platform.isMacOS && !Platform.isWindows)
+    if (!Platform.isMacOS && !Platform.isWindows) {
       return const SizedBox.shrink();
+    }
 
     final color = Theme.of(
       context,
