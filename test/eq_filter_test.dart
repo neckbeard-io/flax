@@ -21,8 +21,11 @@ void main() {
     // re-tuned, the widths have to move with it.
     for (var i = 1; i < eqBandFrequencies.length - 1; i++) {
       final ratio = eqBandFrequencies[i] / eqBandFrequencies[i - 1];
-      expect(ratio, closeTo(1.414, 0.03),
-          reason: 'band $i is not a half-octave above ${i - 1}');
+      expect(
+        ratio,
+        closeTo(1.414, 0.03),
+        reason: 'band $i is not a half-octave above ${i - 1}',
+      );
     }
   });
 
@@ -36,10 +39,7 @@ void main() {
     test('emits ffmpeg syntax for a moved band', () {
       final gains = _flat()..[0] = -3;
       // 65 Hz, width 0.35 * 65 = 22.75, Butterworth.
-      expect(
-        anequalizerParams(gains, channels: 1),
-        'c0 f=65 w=22.75 g=-3 t=0',
-      );
+      expect(anequalizerParams(gains, channels: 1), 'c0 f=65 w=22.75 g=-3 t=0');
     });
 
     test('says everything once per channel', () {
@@ -120,8 +120,10 @@ void main() {
     });
 
     test('a cut is a multiplier below unity', () {
-      expect(superequalizerParams(_flat()..[0] = -6)['1b'],
-          closeTo(0.501, 0.01));
+      expect(
+        superequalizerParams(_flat()..[0] = -6)['1b'],
+        closeTo(0.501, 0.01),
+      );
     });
   });
 

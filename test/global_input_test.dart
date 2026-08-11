@@ -6,16 +6,16 @@ import 'package:flax/shared/input/back_swipe.dart';
 import 'package:flax/shared/input/global_keys.dart';
 
 KeyEvent _down(LogicalKeyboardKey key) => KeyDownEvent(
-      logicalKey: key,
-      physicalKey: PhysicalKeyboardKey.space,
-      timeStamp: Duration.zero,
-    );
+  logicalKey: key,
+  physicalKey: PhysicalKeyboardKey.space,
+  timeStamp: Duration.zero,
+);
 
 KeyEvent _up(LogicalKeyboardKey key) => KeyUpEvent(
-      logicalKey: key,
-      physicalKey: PhysicalKeyboardKey.space,
-      timeStamp: Duration.zero,
-    );
+  logicalKey: key,
+  physicalKey: PhysicalKeyboardKey.space,
+  timeStamp: Duration.zero,
+);
 
 void main() {
   group('global keys', () {
@@ -59,8 +59,10 @@ void main() {
         LogicalKeyboardKey.enter,
         LogicalKeyboardKey.arrowRight,
       ]) {
-        expect(globalKeyAction(_down(key), isEditing: false),
-            GlobalKeyAction.none);
+        expect(
+          globalKeyAction(_down(key), isEditing: false),
+          GlobalKeyAction.none,
+        );
       }
     });
   });

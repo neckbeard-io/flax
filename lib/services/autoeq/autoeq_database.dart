@@ -46,8 +46,8 @@ class AutoEqDatabase {
   /// [cacheDirOverride] bypasses path_provider so the download-and-extract path
   /// can be exercised in a test, which is otherwise only reachable by hand.
   AutoEqDatabase({Dio? dio, Directory? cacheDirOverride})
-      : _dio = dio ?? Dio(),
-        _cacheDir = cacheDirOverride;
+    : _dio = dio ?? Dio(),
+      _cacheDir = cacheDirOverride;
 
   /// The local cache directory for the AutoEQ database.
   Future<Directory> get cacheDir async {
@@ -101,10 +101,7 @@ class AutoEqDatabase {
       await _dio.download(
         packageUrl,
         archivePath,
-        options: Options(
-          followRedirects: true,
-          maxRedirects: 5,
-        ),
+        options: Options(followRedirects: true, maxRedirects: 5),
       );
 
       yield 'Extracting profiles...';
@@ -145,12 +142,14 @@ class AutoEqDatabase {
         final name = entry['n'] as String;
         final source = entry['s'] as String;
         final id = entry['i'] as int;
-        profiles.add(AutoEqProfile(
-          id: id,
-          name: name,
-          source: source,
-          rank: (entry['r'] as int?) ?? 0,
-        ));
+        profiles.add(
+          AutoEqProfile(
+            id: id,
+            name: name,
+            source: source,
+            rank: (entry['r'] as int?) ?? 0,
+          ),
+        );
         idsFor.putIfAbsent(_profileKey(name, source), () => <int>[]).add(id);
       }
 
@@ -236,7 +235,9 @@ class AutoEqDatabase {
     if (!indexFile.existsSync()) return [];
 
     final data = jsonDecode(indexFile.readAsStringSync()) as List;
-    _index = data.map((e) => AutoEqProfile.fromJson(e as Map<String, dynamic>)).toList();
+    _index = data
+        .map((e) => AutoEqProfile.fromJson(e as Map<String, dynamic>))
+        .toList();
     return _index!;
   }
 
@@ -278,7 +279,7 @@ class AutoEqDatabase {
   /// Check if a newer database is available upstream.
   /// Returns (updateAvailable, remoteTime, localTime).
   Future<({bool available, String remoteTime, String localTime})>
-      checkForUpdate() async {
+  checkForUpdate() async {
     final meta = await getMeta();
     final localTime = (meta?['commitTime'] as String?) ?? '';
 

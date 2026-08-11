@@ -18,51 +18,64 @@ import 'package:flax/shared/widgets/hover_effects.dart';
 
 // ── Providers ─────────────────────────────────────────────────────────
 
-final artistDetailProvider =
-    FutureProvider.family<Artist, String>((ref, id) async {
+final artistDetailProvider = FutureProvider.family<Artist, String>((
+  ref,
+  id,
+) async {
   final client = ref.watch(subsonicClientProvider);
   if (client == null) throw Exception('No server');
   return client.getArtist(id);
 });
 
-final artistAlbumsProvider =
-    FutureProvider.family<List<Album>, String>((ref, artistId) async {
+final artistAlbumsProvider = FutureProvider.family<List<Album>, String>((
+  ref,
+  artistId,
+) async {
   final client = ref.watch(subsonicClientProvider);
   if (client == null) return [];
   final artist = await client.getArtist(artistId);
-  final result = await client.search(artist.name,
-      albumCount: 50, songCount: 0, artistCount: 0);
+  final result = await client.search(
+    artist.name,
+    albumCount: 50,
+    songCount: 0,
+    artistCount: 0,
+  );
   return result.albums
       .where((a) => a.artistId == artistId || a.artistName == artist.name)
       .toList();
 });
 
-final artistInfoProvider =
-    FutureProvider.family<ArtistInfo?, String>((ref, artistId) async {
+final artistInfoProvider = FutureProvider.family<ArtistInfo?, String>((
+  ref,
+  artistId,
+) async {
   final client = ref.watch(subsonicClientProvider);
   if (client == null) return null;
   return client.getArtistInfoParsed(artistId);
 });
 
 final musicBrainzInfoProvider =
-    FutureProvider.family<MusicBrainzArtistInfo?, String>((ref, artistId) async {
-  // Order matters for latency. This used to await artistInfoProvider first,
-  // which is Navidrome's getArtistInfo2 — and Navidrome fetches that from
-  // Last.fm — so the MusicBrainz request could not even start until a slow
-  // third-party call had returned, putting two of them in series. getArtist is
-  // a plain local Navidrome lookup and already parses musicBrainzId, so start
-  // from that instead and only fall back to the slow path when it is absent.
-  final artist = await ref.watch(artistDetailProvider(artistId).future);
-  if (artist.musicBrainzId != null) {
-    return MusicBrainzService.getArtistInfo(artist.musicBrainzId!);
-  }
+    FutureProvider.family<MusicBrainzArtistInfo?, String>((
+      ref,
+      artistId,
+    ) async {
+      // Order matters for latency. This used to await artistInfoProvider first,
+      // which is Navidrome's getArtistInfo2 — and Navidrome fetches that from
+      // Last.fm — so the MusicBrainz request could not even start until a slow
+      // third-party call had returned, putting two of them in series. getArtist is
+      // a plain local Navidrome lookup and already parses musicBrainzId, so start
+      // from that instead and only fall back to the slow path when it is absent.
+      final artist = await ref.watch(artistDetailProvider(artistId).future);
+      if (artist.musicBrainzId != null) {
+        return MusicBrainzService.getArtistInfo(artist.musicBrainzId!);
+      }
 
-  final artistInfo = await ref.watch(artistInfoProvider(artistId).future);
-  if (artistInfo?.musicBrainzId != null) {
-    return MusicBrainzService.getArtistInfo(artistInfo!.musicBrainzId!);
-  }
-  return MusicBrainzService.searchArtist(artist.name);
-});
+      final artistInfo = await ref.watch(artistInfoProvider(artistId).future);
+      if (artistInfo?.musicBrainzId != null) {
+        return MusicBrainzService.getArtistInfo(artistInfo!.musicBrainzId!);
+      }
+      return MusicBrainzService.searchArtist(artist.name);
+    });
 
 // ── Screen ────────────────────────────────────────────────────────────
 
@@ -92,7 +105,8 @@ class ArtistDetailScreen extends ConsumerWidget {
           // across a wide window shows a torso and loses the face, and text and
           // controls drawn over arbitrary artwork are unreadable against light
           // images — the back button vanished entirely against a pale one.
-          final infoLoading = artistInfoAsync.isLoading || mbInfoAsync.isLoading;
+          final infoLoading =
+              artistInfoAsync.isLoading || mbInfoAsync.isLoading;
           return CustomScrollView(
             slivers: [
               if (_isDesktop)
@@ -120,9 +134,7 @@ class ArtistDetailScreen extends ConsumerWidget {
                   child: _ArtistActionsBar(artist: artist, artistId: artistId),
                 ),
               ],
-              SliverToBoxAdapter(
-                child: _buildSortBar(context, ref, sortMode),
-              ),
+              SliverToBoxAdapter(child: _buildSortBar(context, ref, sortMode)),
               albumsAsync.when(
                 data: (albums) {
                   final sorted = sortAlbums(albums, sortMode);
@@ -150,7 +162,10 @@ class ArtistDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildAppBar(
-      BuildContext context, Artist artist, ArtistInfo? artistInfo) {
+    BuildContext context,
+    Artist artist,
+    ArtistInfo? artistInfo,
+  ) {
     final bgImage = artistInfo?.bestImageUrl;
 
     return SliverAppBar(
@@ -187,15 +202,21 @@ class ArtistDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildSortBar(
-      BuildContext context, WidgetRef ref, AlbumSortMode current) {
+    BuildContext context,
+    WidgetRef ref,
+    AlbumSortMode current,
+  ) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
       child: Row(
         children: [
-          Text('Albums',
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            'Albums',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const Spacer(),
           PopupMenuButton<AlbumSortMode>(
             icon: const Icon(Icons.sort, size: 20),
@@ -212,7 +233,9 @@ class ArtistDetailScreen extends ConsumerWidget {
   }
 
   PopupMenuEntry<AlbumSortMode> _sortItem(
-      AlbumSortMode value, AlbumSortMode current) {
+    AlbumSortMode value,
+    AlbumSortMode current,
+  ) {
     return PopupMenuItem(
       value: value,
       child: Row(
@@ -270,7 +293,9 @@ class _AlbumTile extends ConsumerWidget {
                     size: 14,
                     color: i < album.userRating!
                         ? Colors.amber
-                        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                        : theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.3,
+                          ),
                   ),
                 ),
               )
@@ -350,64 +375,64 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
     if (info == null && mb == null) return const SizedBox.shrink();
 
     final content = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Country and years live in the header; this panel is genres and bio.
-          if (genres.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: genres
-                  .map((g) => Chip(
-                        label: Text(g,
-                            style: theme.textTheme.labelSmall),
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                      ))
-                  .toList(),
-            ),
-          ],
-          if (bio != null && bio.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () => setState(() => _expanded = !_expanded),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      alignment: Alignment.topLeft,
-                      child: Text(
-                        bio,
-                        maxLines: _expanded ? null : 3,
-                        overflow: _expanded ? null : TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Country and years live in the header; this panel is genres and bio.
+        if (genres.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: genres
+                .map(
+                  (g) => Chip(
+                    label: Text(g, style: theme.textTheme.labelSmall),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+        if (bio != null && bio.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    alignment: Alignment.topLeft,
+                    child: Text(
+                      bio,
+                      maxLines: _expanded ? null : 3,
+                      overflow: _expanded ? null : TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: HoverLink(
-                        text: _expanded ? 'Show less' : 'Read more',
-                        onTap: () => setState(() => _expanded = !_expanded),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.primary,
-                        ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: HoverLink(
+                      text: _expanded ? 'Show less' : 'Read more',
+                      onTap: () => setState(() => _expanded = !_expanded),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
+          ),
         ],
-      );
+      ],
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -427,8 +452,6 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
             ),
     );
   }
-
-
 
   String? _cleanBio(String? html) {
     if (html == null || html.isEmpty) return null;
@@ -681,8 +704,7 @@ class _ArtistChips extends StatelessWidget {
             icon: Icons.public,
             countryCode: mb?.countryCode,
           ),
-        if (years != null)
-          InfoChip(label: years, icon: Icons.calendar_today),
+        if (years != null) InfoChip(label: years, icon: Icons.calendar_today),
       ],
     );
   }

@@ -11,11 +11,7 @@ import 'package:flax/features/player/player_provider.dart';
 /// attenuation, and keyboard/scroll adjustment steps in dB too, so a step feels
 /// the same size wherever you are on the fader.
 class VolumeControl extends ConsumerStatefulWidget {
-  const VolumeControl({
-    super.key,
-    this.width = 96,
-    this.showLabel = false,
-  });
+  const VolumeControl({super.key, this.width = 96, this.showLabel = false});
 
   /// Width of the slider track.
   final double width;
@@ -72,15 +68,18 @@ class _VolumeControlState extends ConsumerState<VolumeControl> {
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 3,
-                  thumbShape:
-                      const RoundSliderThumbShape(enabledThumbRadius: 6),
-                  overlayShape:
-                      const RoundSliderOverlayShape(overlayRadius: 12),
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 6,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 12,
+                  ),
                   // Dim the whole control while muted so it reads as inactive
                   // without losing the remembered fader position.
                   activeTrackColor: effectivelySilent
-                      ? theme.colorScheme.onSurfaceVariant
-                          .withValues(alpha: 0.4)
+                      ? theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.4,
+                        )
                       : null,
                 ),
                 child: Slider(

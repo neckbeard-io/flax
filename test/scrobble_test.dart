@@ -39,8 +39,10 @@ void main() {
 
     test('very short tracks never count', () {
       expect(scrobbleThreshold(const Duration(seconds: 29)), isNull);
-      expect(scrobbleThreshold(const Duration(seconds: 30)),
-          const Duration(seconds: 15));
+      expect(
+        scrobbleThreshold(const Duration(seconds: 30)),
+        const Duration(seconds: 15),
+      );
     });
 
     test('an unknown duration submits nothing', () {

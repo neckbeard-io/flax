@@ -26,9 +26,9 @@ InputDecoration flaxInputDecoration(
   final radius = BorderRadius.circular(8);
 
   OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
-        borderRadius: radius,
-        borderSide: BorderSide(color: color, width: width),
-      );
+    borderRadius: radius,
+    borderSide: BorderSide(color: color, width: width),
+  );
 
   return InputDecoration(
     hintText: hintText,

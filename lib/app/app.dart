@@ -27,8 +27,7 @@ class FlaxApp extends ConsumerWidget {
           // occupying the corner.
           debugShowCheckedModeBanner: false,
           theme: FlaxTheme.light(dynamicScheme: lightDynamic),
-          darkTheme:
-              FlaxTheme.dark(dynamicScheme: darkDynamic, amoled: amoled),
+          darkTheme: FlaxTheme.dark(dynamicScheme: darkDynamic, amoled: amoled),
           themeMode: resolveThemeMode(themeModeSetting),
           routerConfig: router,
           // Wraps every route, so screens outside the shell — server setup,

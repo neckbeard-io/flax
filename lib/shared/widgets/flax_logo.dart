@@ -10,9 +10,7 @@ class FlaxLogo extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: _FlaxLogoPainter(),
-      ),
+      child: CustomPaint(painter: _FlaxLogoPainter()),
     );
   }
 }
@@ -32,17 +30,20 @@ class _FlaxLogoPainter extends CustomPainter {
       final pcy = cy + sin(angle) * petalLength * 0.52;
 
       final paint = Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: i.isEven
-              ? [const Color(0xFF93B1F5), const Color(0xFF4A6CF7)]
-              : [const Color(0xFF7C9DED), const Color(0xFF5B7DF2)],
-        ).createShader(Rect.fromCenter(
-          center: Offset(pcx, pcy),
-          width: petalWidth * 2,
-          height: petalLength * 2,
-        ));
+        ..shader =
+            LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: i.isEven
+                  ? [const Color(0xFF93B1F5), const Color(0xFF4A6CF7)]
+                  : [const Color(0xFF7C9DED), const Color(0xFF5B7DF2)],
+            ).createShader(
+              Rect.fromCenter(
+                center: Offset(pcx, pcy),
+                width: petalWidth * 2,
+                height: petalLength * 2,
+              ),
+            );
 
       canvas.save();
       canvas.translate(pcx, pcy);

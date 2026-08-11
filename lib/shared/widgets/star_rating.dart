@@ -51,8 +51,9 @@ class _StarRatingState extends State<StarRating> {
           final isFilled = starValue <= shown;
           final isPreview = _hovered > 0;
 
-          final icon =
-              isFilled ? Icons.star_rounded : Icons.star_outline_rounded;
+          final icon = isFilled
+              ? Icons.star_rounded
+              : Icons.star_outline_rounded;
           final color = isFilled
               ? (isPreview ? Colors.amber[300]! : Colors.amber[600]!)
               : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4);

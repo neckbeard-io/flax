@@ -119,7 +119,11 @@ class _SeekBarViewState extends State<SeekBarView> {
 
     if (widget.inlineLabels) {
       return Row(
-        children: [elapsed, Expanded(child: slider), total],
+        children: [
+          elapsed,
+          Expanded(child: slider),
+          total,
+        ],
       );
     }
 

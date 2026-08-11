@@ -34,66 +34,72 @@ void main() {
     print('skipping: set $_cacheEnvVar to a populated AutoEQ cache directory');
   }
 
-  testWidgets('restores a saved profile and plots its correction curve',
-      (tester) async {
-    final cacheDir = Directory(cachePath!);
+  testWidgets(
+    'restores a saved profile and plots its correction curve',
+    (tester) async {
+      final cacheDir = Directory(cachePath!);
 
-    // The same shape AutoEqProfile.toJson writes, so this is exactly what the
-    // app finds in prefs after a profile has been chosen.
-    SharedPreferences.setMockInitialValues({
-      'flax_autoeq_profile': jsonEncode({
-        'id': 6253,
-        'name': 'Sennheiser HD 650',
-        'source': 'oratory1990',
-        'rank': 1,
-      }),
-    });
-
-    final key = GlobalKey();
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          autoEqDatabaseProvider.overrideWithValue(
-            AutoEqDatabase(cacheDirOverride: cacheDir),
-          ),
-        ],
-        child: MaterialApp(
-          theme: ThemeData.dark(useMaterial3: true),
-          home: RepaintBoundary(key: key, child: const AutoEqScreen()),
-        ),
-      ),
-    );
-
-    // Restore is async (file IO plus prefs), so settle before asserting.
-    await tester.pumpAndSettle(const Duration(seconds: 2));
-
-    expect(tester.takeException(), isNull);
-
-    // The profile came back from prefs and resolved to a real curve.
-    expect(find.text('Sennheiser HD 650'), findsOneWidget);
-
-    // The whole point: a curve is present and plotted. Before the extraction
-    // fix this profile restored with zero points and the screen showed the
-    // "no correction curve" warning instead.
-    expect(find.byType(EqCurveChart), findsOneWidget,
-        reason: 'the correction curve must be plotted');
-    expect(
-      find.textContaining('No correction curve loaded'),
-      findsNothing,
-      reason: 'the profile must have loaded actual curve data',
-    );
-    expect(find.textContaining('points'), findsOneWidget);
-    expect(find.textContaining('Peak '), findsOneWidget);
-
-    final pngPath = Platform.environment[_pngEnvVar];
-    if (pngPath != null) {
-      await tester.runAsync(() async {
-        final boundary =
-            key.currentContext!.findRenderObject() as RenderRepaintBoundary;
-        final image = await boundary.toImage(pixelRatio: 2);
-        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-        File(pngPath).writeAsBytesSync(bytes!.buffer.asUint8List());
+      // The same shape AutoEqProfile.toJson writes, so this is exactly what the
+      // app finds in prefs after a profile has been chosen.
+      SharedPreferences.setMockInitialValues({
+        'flax_autoeq_profile': jsonEncode({
+          'id': 6253,
+          'name': 'Sennheiser HD 650',
+          'source': 'oratory1990',
+          'rank': 1,
+        }),
       });
-    }
-  }, skip: cachePath == null);
+
+      final key = GlobalKey();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            autoEqDatabaseProvider.overrideWithValue(
+              AutoEqDatabase(cacheDirOverride: cacheDir),
+            ),
+          ],
+          child: MaterialApp(
+            theme: ThemeData.dark(useMaterial3: true),
+            home: RepaintBoundary(key: key, child: const AutoEqScreen()),
+          ),
+        ),
+      );
+
+      // Restore is async (file IO plus prefs), so settle before asserting.
+      await tester.pumpAndSettle(const Duration(seconds: 2));
+
+      expect(tester.takeException(), isNull);
+
+      // The profile came back from prefs and resolved to a real curve.
+      expect(find.text('Sennheiser HD 650'), findsOneWidget);
+
+      // The whole point: a curve is present and plotted. Before the extraction
+      // fix this profile restored with zero points and the screen showed the
+      // "no correction curve" warning instead.
+      expect(
+        find.byType(EqCurveChart),
+        findsOneWidget,
+        reason: 'the correction curve must be plotted',
+      );
+      expect(
+        find.textContaining('No correction curve loaded'),
+        findsNothing,
+        reason: 'the profile must have loaded actual curve data',
+      );
+      expect(find.textContaining('points'), findsOneWidget);
+      expect(find.textContaining('Peak '), findsOneWidget);
+
+      final pngPath = Platform.environment[_pngEnvVar];
+      if (pngPath != null) {
+        await tester.runAsync(() async {
+          final boundary =
+              key.currentContext!.findRenderObject() as RenderRepaintBoundary;
+          final image = await boundary.toImage(pixelRatio: 2);
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          File(pngPath).writeAsBytesSync(bytes!.buffer.asUint8List());
+        });
+      }
+    },
+    skip: cachePath == null,
+  );
 }

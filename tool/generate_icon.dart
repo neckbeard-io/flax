@@ -35,7 +35,9 @@ Future<void> main() async {
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
 
     if (bytes != null) {
-      final file = File('macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_$size.png');
+      final file = File(
+        'macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_$size.png',
+      );
       await file.writeAsBytes(bytes.buffer.asUint8List());
       print('Generated ${file.path}');
     }
@@ -54,20 +56,34 @@ void _drawFlower(ui.Canvas canvas, double size) {
     final pcy = cy + sin(angle) * petalLength * 0.52;
 
     final paint = ui.Paint()
-      ..color = i.isEven ? const ui.Color(0xFF4A6CF7) : const ui.Color(0xFF5B7DF2);
+      ..color = i.isEven
+          ? const ui.Color(0xFF4A6CF7)
+          : const ui.Color(0xFF5B7DF2);
 
     canvas.save();
     canvas.translate(pcx, pcy);
     canvas.rotate(angle + pi / 2);
 
     final petalRect = ui.RRect.fromRectAndRadius(
-      ui.Rect.fromCenter(center: ui.Offset.zero, width: petalWidth, height: petalLength),
+      ui.Rect.fromCenter(
+        center: ui.Offset.zero,
+        width: petalWidth,
+        height: petalLength,
+      ),
       ui.Radius.circular(petalWidth * 0.5),
     );
     canvas.drawRRect(petalRect, paint);
     canvas.restore();
   }
 
-  canvas.drawCircle(ui.Offset(cx, cy), size * 0.07, ui.Paint()..color = const ui.Color(0xFFE8D44D));
-  canvas.drawCircle(ui.Offset(cx, cy), size * 0.04, ui.Paint()..color = const ui.Color(0xFFD4A017));
+  canvas.drawCircle(
+    ui.Offset(cx, cy),
+    size * 0.07,
+    ui.Paint()..color = const ui.Color(0xFFE8D44D),
+  );
+  canvas.drawCircle(
+    ui.Offset(cx, cy),
+    size * 0.04,
+    ui.Paint()..color = const ui.Color(0xFFD4A017),
+  );
 }

@@ -14,8 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// want.
 final scrobbleEnabledProvider =
     StateNotifierProvider<ScrobbleEnabledNotifier, bool>(
-  (ref) => ScrobbleEnabledNotifier(),
-);
+      (ref) => ScrobbleEnabledNotifier(),
+    );
 
 class ScrobbleEnabledNotifier extends StateNotifier<bool> {
   static const storageKey = 'flax_scrobble_enabled';

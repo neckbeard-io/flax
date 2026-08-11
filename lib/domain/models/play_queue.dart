@@ -5,11 +5,7 @@ class PlayQueue {
   final String? currentId;
   final int positionMs;
 
-  const PlayQueue({
-    required this.songs,
-    this.currentId,
-    this.positionMs = 0,
-  });
+  const PlayQueue({required this.songs, this.currentId, this.positionMs = 0});
 
   int get currentIndex {
     if (currentId == null) return 0;

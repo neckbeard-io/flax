@@ -39,9 +39,5 @@ Future<void> main() async {
     await WindowStateService.instance.restore();
   }
 
-  runApp(
-    const ProviderScope(
-      child: FlaxApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: FlaxApp()));
 }

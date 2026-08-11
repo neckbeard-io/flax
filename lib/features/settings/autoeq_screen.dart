@@ -44,13 +44,12 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
       // No AppBar actions: ShellScaffold overlays the window buttons on this
       // corner, so anything here is drawn underneath them. "Clear" lives in the
       // active-profile banner instead, next to what it clears.
-      appBar: AppBar(
-        title: const Text('AutoEQ'),
-      ),
+      appBar: AppBar(title: const Text('AutoEQ')),
       body: Column(
         children: [
           // ── Active profile banner ──
-          if (state.activeProfile != null) _buildActiveProfileBanner(theme, state),
+          if (state.activeProfile != null)
+            _buildActiveProfileBanner(theme, state),
 
           // ── Not downloaded state ──
           if (!state.dbAvailable && !state.downloading)
@@ -82,8 +81,10 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.headphones,
-                  color: theme.colorScheme.onPrimaryContainer),
+              Icon(
+                Icons.headphones,
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -99,8 +100,9 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
                     Text(
                       'Source: ${profile.source} · ${points.length} points',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer
-                            .withValues(alpha: 0.7),
+                        color: theme.colorScheme.onPrimaryContainer.withValues(
+                          alpha: 0.7,
+                        ),
                       ),
                     ),
                   ],
@@ -144,23 +146,28 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
             Text(
               _curveSummary(points),
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer
-                    .withValues(alpha: 0.7),
+                color: theme.colorScheme.onPrimaryContainer.withValues(
+                  alpha: 0.7,
+                ),
               ),
             ),
           ] else ...[
             const SizedBox(height: 8),
             Row(
               children: [
-                Icon(Icons.warning_amber_rounded,
-                    size: 16, color: theme.colorScheme.error),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 16,
+                  color: theme.colorScheme.error,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'No correction curve loaded — this profile is not doing '
                     'anything. Re-download the database.',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.error),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
                   ),
                 ),
               ],
@@ -186,8 +193,10 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
   Widget _buildDbInfoBar(ThemeData theme, AutoEqState state) {
     // Show status message if we just checked, otherwise show the DB date
     final statusText = state.downloadStatus;
-    final showStatus = statusText != null &&
-        (statusText.contains('up to date') || statusText.contains('Update available'));
+    final showStatus =
+        statusText != null &&
+        (statusText.contains('up to date') ||
+            statusText.contains('Update available'));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
@@ -196,11 +205,17 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.storage, size: 16, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.storage,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  state.dbDate != null ? 'DB: ${state.dbDate}' : 'AutoEQ Database',
+                  state.dbDate != null
+                      ? 'DB: ${state.dbDate}'
+                      : 'AutoEQ Database',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -244,7 +259,9 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
               child: Row(
                 children: [
                   Icon(
-                    state.updateAvailable ? Icons.info_outline : Icons.check_circle_outline,
+                    state.updateAvailable
+                        ? Icons.info_outline
+                        : Icons.check_circle_outline,
                     size: 14,
                     color: state.updateAvailable
                         ? theme.colorScheme.primary
@@ -252,7 +269,9 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    state.updateAvailable ? 'A newer database is available' : 'Up to date',
+                    state.updateAvailable
+                        ? 'A newer database is available'
+                        : 'Up to date',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: state.updateAvailable
                           ? theme.colorScheme.primary
@@ -367,11 +386,11 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
                   },
                 )
               : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
-          fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.3,
+          ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
         ),
         onChanged: (query) {
@@ -415,7 +434,8 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
       final displayed = state.searchResults.take(100).toList();
       return ListView.builder(
         controller: _scrollController,
-        itemCount: displayed.length + (state.searchResults.length > 100 ? 1 : 0),
+        itemCount:
+            displayed.length + (state.searchResults.length > 100 ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= displayed.length) {
             return Padding(
@@ -449,15 +469,19 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
             ),
           ),
           subtitle: Text('${profiles.length} profiles'),
-          children:
-              profiles.map((p) => _buildProfileTile(theme, p, state)).toList(),
+          children: profiles
+              .map((p) => _buildProfileTile(theme, p, state))
+              .toList(),
         );
       },
     );
   }
 
   Widget _buildProfileTile(
-      ThemeData theme, AutoEqProfile profile, AutoEqState state) {
+    ThemeData theme,
+    AutoEqProfile profile,
+    AutoEqState state,
+  ) {
     final isActive = state.activeProfile?.id == profile.id;
     return ListTile(
       leading: Icon(
@@ -475,10 +499,7 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
               )
             : null,
       ),
-      subtitle: Text(
-        profile.source,
-        style: theme.textTheme.bodySmall,
-      ),
+      subtitle: Text(profile.source, style: theme.textTheme.bodySmall),
       trailing: isActive
           ? Icon(Icons.check_circle, color: theme.colorScheme.primary)
           : const Icon(Icons.chevron_right),

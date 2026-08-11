@@ -33,11 +33,7 @@ abstract class MusicBackend {
   });
 
   // Media
-  Uri getStreamUri(
-    String songId, {
-    int? maxBitRate,
-    String? format,
-  });
+  Uri getStreamUri(String songId, {int? maxBitRate, String? format});
 
   Uri getCoverArtUri(String id, {int? size});
 

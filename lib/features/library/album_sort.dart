@@ -39,8 +39,8 @@ List<Album> sortAlbums(List<Album> albums, AlbumSortMode mode) {
 
 final albumSortProvider =
     StateNotifierProvider<AlbumSortNotifier, AlbumSortMode>((ref) {
-  return AlbumSortNotifier();
-});
+      return AlbumSortNotifier();
+    });
 
 /// The chosen album order, remembered across launches.
 ///
@@ -85,6 +85,6 @@ class AlbumSortNotifier extends StateNotifier<AlbumSortMode> {
 /// Resolves a stored name back to a mode, falling back to the default for
 /// anything unrecognized — an older build's value, or a corrupt string.
 AlbumSortMode decodeSortMode(String name) => AlbumSortMode.values.firstWhere(
-      (m) => m.name == name,
-      orElse: () => AlbumSortMode.defaultMode,
-    );
+  (m) => m.name == name,
+  orElse: () => AlbumSortMode.defaultMode,
+);

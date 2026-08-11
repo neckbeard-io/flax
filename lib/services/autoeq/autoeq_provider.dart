@@ -58,7 +58,9 @@ class AutoEqState {
       dbAvailable: dbAvailable ?? this.dbAvailable,
       downloading: downloading ?? this.downloading,
       downloadStatus: downloadStatus ?? this.downloadStatus,
-      activeProfile: clearActiveProfile ? null : (activeProfile ?? this.activeProfile),
+      activeProfile: clearActiveProfile
+          ? null
+          : (activeProfile ?? this.activeProfile),
       searchResults: searchResults ?? this.searchResults,
       searchQuery: searchQuery ?? this.searchQuery,
       loading: loading ?? this.loading,
@@ -70,8 +72,9 @@ class AutoEqState {
   }
 }
 
-final autoEqProvider =
-    StateNotifierProvider<AutoEqNotifier, AutoEqState>((ref) {
+final autoEqProvider = StateNotifierProvider<AutoEqNotifier, AutoEqState>((
+  ref,
+) {
   return AutoEqNotifier(ref.read(autoEqDatabaseProvider));
 });
 
@@ -185,10 +188,7 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
       }
     } catch (e) {
       if (mounted) {
-        state = state.copyWith(
-          loading: false,
-          error: e.toString(),
-        );
+        state = state.copyWith(loading: false, error: e.toString());
       }
     }
   }
@@ -204,7 +204,8 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
         if (mounted) {
           state = state.copyWith(
             loading: false,
-            error: 'No correction curve for "${profile.name}". '
+            error:
+                'No correction curve for "${profile.name}". '
                 'Re-download the AutoEQ database.',
           );
         }
@@ -232,7 +233,11 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
 
   /// Check if a newer database version is available upstream.
   Future<void> checkForUpdate() async {
-    state = state.copyWith(checking: true, clearError: true, updateAvailable: false);
+    state = state.copyWith(
+      checking: true,
+      clearError: true,
+      updateAvailable: false,
+    );
     try {
       final result = await _db.checkForUpdate();
       if (mounted) {
@@ -248,7 +253,8 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
       if (mounted) {
         state = state.copyWith(
           checking: false,
-          error: 'Failed to check: ${e.toString().replaceFirst(RegExp(r"^Exception:\s*"), "")}',
+          error:
+              'Failed to check: ${e.toString().replaceFirst(RegExp(r"^Exception:\s*"), "")}',
         );
       }
     }

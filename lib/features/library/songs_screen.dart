@@ -46,57 +46,55 @@ class SongsScreen extends ConsumerWidget {
             ),
             Expanded(
               child: songsAsync.when(
-        data: (songs) => ListView.builder(
-          itemCount: songs.length,
-          itemBuilder: (context, index) {
-            final song = songs[index];
-            return ListTile(
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: CoverArtImage(
-                    coverArtId: song.coverArtId,
-                    size: 40,
-                  ),
-                ),
-              ),
-              title: Text(
-                song.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                [
-                  song.artistName,
-                  song.albumName,
-                ].whereType<String>().join(' — '),
-                style: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: Text(
-                _formatDuration(song.duration),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              onTap: () {
-                ref.read(playerProvider.notifier).playSong(
-                      song,
-                      queue: songs,
-                      index: index,
+                data: (songs) => ListView.builder(
+                  itemCount: songs.length,
+                  itemBuilder: (context, index) {
+                    final song = songs[index];
+                    return ListTile(
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: CoverArtImage(
+                            coverArtId: song.coverArtId,
+                            size: 40,
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        [
+                          song.artistName,
+                          song.albumName,
+                        ].whereType<String>().join(' — '),
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: Text(
+                        _formatDuration(song.duration),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      onTap: () {
+                        ref
+                            .read(playerProvider.notifier)
+                            .playSong(song, queue: songs, index: index);
+                      },
                     );
-              },
-            );
-          },
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+                  },
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
               ),
             ),
           ],

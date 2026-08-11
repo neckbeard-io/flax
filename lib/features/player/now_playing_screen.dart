@@ -150,8 +150,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                         IconButton(
                           icon: Icon(
                             _showQueue ? Icons.music_note : Icons.queue_music,
-                            color:
-                                _showQueue ? theme.colorScheme.primary : null,
+                            color: _showQueue
+                                ? theme.colorScheme.primary
+                                : null,
                           ),
                           onPressed: () =>
                               setState(() => _showQueue = !_showQueue),
@@ -189,159 +190,156 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       builder: (context, constraints) {
         final maxArtSize = (constraints.maxWidth - 80).clamp(0.0, 360.0);
         final availableHeight = constraints.maxHeight;
-        final artSize = maxArtSize.clamp(0.0, (availableHeight - 290).clamp(120.0, 360.0));
+        final artSize = maxArtSize.clamp(
+          0.0,
+          (availableHeight - 290).clamp(120.0, 360.0),
+        );
 
         return Column(
           children: [
+            const Spacer(flex: 1),
 
-                const Spacer(flex: 1),
+            // ── Album art ──
+            SizedBox(
+              width: artSize,
+              height: artSize,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CoverArtImage(
+                  key: ValueKey('cover-${song.coverArtId}'),
+                  coverArtId: song.coverArtId,
+                  size: 600,
+                ),
+              ),
+            ),
 
-                // ── Album art ──
-                SizedBox(
-                  width: artSize,
-                  height: artSize,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: CoverArtImage(
-                      key: ValueKey('cover-${song.coverArtId}'),
-                      coverArtId: song.coverArtId,
-                      size: 600,
+            const Spacer(flex: 1),
+
+            // ── Song info ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                children: [
+                  Text(
+                    song.title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  HoverLink(
+                    text: song.artistName ?? '',
+                    onTap: song.artistId != null
+                        ? () {
+                            Navigator.of(context).pop();
+                            context.push('/artists/${song.artistId}');
+                          }
+                        : null,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: song.artistId != null
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
 
-                const Spacer(flex: 1),
+            const SizedBox(height: 8),
 
-                // ── Song info ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(
-                    children: [
-                      Text(
-                        song.title,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      HoverLink(
-                        text: song.artistName ?? '',
-                        onTap: song.artistId != null
-                            ? () {
-                                Navigator.of(context).pop();
-                                context.push('/artists/${song.artistId}');
-                              }
-                            : null,
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: song.artistId != null
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+            // ── Audio format info ──
+            if (song.suffix != null || song.bitRate != null)
+              _AudioFormatBadge(song: song),
+
+            const SizedBox(height: 8),
+
+            // ── Progress bar ──
+            //
+            // The same control the mini player uses. It used to be a
+            // second copy here, which seeked on every frame of the drag
+            // rather than at the end of it.
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 32),
+              child: TrackSeekBar(),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Transport controls ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.shuffle,
+                      color: state.shuffle
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    onPressed: () =>
+                        ref.read(playerProvider.notifier).toggleShuffle(),
                   ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // ── Audio format info ──
-                if (song.suffix != null || song.bitRate != null)
-                  _AudioFormatBadge(song: song),
-
-                const SizedBox(height: 8),
-
-                // ── Progress bar ──
-                //
-                // The same control the mini player uses. It used to be a
-                // second copy here, which seeked on every frame of the drag
-                // rather than at the end of it.
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 32),
-                  child: TrackSeekBar(),
-                ),
-
-                const SizedBox(height: 8),
-
-                // ── Transport controls ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          Icons.shuffle,
-                          color: state.shuffle
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
-                        onPressed: () =>
-                            ref.read(playerProvider.notifier).toggleShuffle(),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.skip_previous_rounded),
-                        iconSize: 36,
-                        onPressed: () =>
-                            ref.read(playerProvider.notifier).previous(),
-                      ),
-                      FilledButton(
-                        onPressed: () =>
-                            ref.read(playerProvider.notifier).togglePlayPause(),
-                        style: FilledButton.styleFrom(
-                          shape: const CircleBorder(),
-                          padding: const EdgeInsets.all(16),
-                        ),
-                        child: Icon(
-                          state.isPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          size: 36,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.skip_next_rounded),
-                        iconSize: 36,
-                        onPressed: () =>
-                            ref.read(playerProvider.notifier).next(),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          state.repeatMode == RepeatMode.one
-                              ? Icons.repeat_one
-                              : Icons.repeat,
-                          color: state.repeatMode != RepeatMode.off
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.onSurfaceVariant,
-                        ),
-                        onPressed: () =>
-                            ref.read(playerProvider.notifier).cycleRepeatMode(),
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.skip_previous_rounded),
+                    iconSize: 36,
+                    onPressed: () =>
+                        ref.read(playerProvider.notifier).previous(),
                   ),
-                ),
-
-                // ── Volume ──
-                // Wider fader than the mini player's, with the dB readout
-                // visible since there is room for it here.
-                Padding(
-                  padding: const EdgeInsets.only(
-                      left: 24, right: 24, top: 8),
-                  child: Center(
-                    child: VolumeControl(width: 200, showLabel: true),
+                  FilledButton(
+                    onPressed: () =>
+                        ref.read(playerProvider.notifier).togglePlayPause(),
+                    style: FilledButton.styleFrom(
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(16),
+                    ),
+                    child: Icon(
+                      state.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 36,
+                    ),
                   ),
-                ),
+                  IconButton(
+                    icon: const Icon(Icons.skip_next_rounded),
+                    iconSize: 36,
+                    onPressed: () => ref.read(playerProvider.notifier).next(),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      state.repeatMode == RepeatMode.one
+                          ? Icons.repeat_one
+                          : Icons.repeat,
+                      color: state.repeatMode != RepeatMode.off
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                    onPressed: () =>
+                        ref.read(playerProvider.notifier).cycleRepeatMode(),
+                  ),
+                ],
+              ),
+            ),
 
-                const SizedBox(height: 16),
-              ],
-            );
-          },
+            // ── Volume ──
+            // Wider fader than the mini player's, with the dB readout
+            // visible since there is room for it here.
+            Padding(
+              padding: const EdgeInsets.only(left: 24, right: 24, top: 8),
+              child: Center(child: VolumeControl(width: 200, showLabel: true)),
+            ),
+
+            const SizedBox(height: 16),
+          ],
         );
+      },
+    );
   }
-
 }
 
 class _AudioFormatBadge extends StatelessWidget {
@@ -362,7 +360,9 @@ class _AudioFormatBadge extends StatelessWidget {
     // Bit depth / sample rate (e.g. 24/96)
     if (song.bitDepth != null && song.sampleRate != null) {
       final rateKhz = song.sampleRate! >= 1000
-          ? (song.sampleRate! / 1000).toStringAsFixed(song.sampleRate! % 1000 == 0 ? 0 : 1)
+          ? (song.sampleRate! / 1000).toStringAsFixed(
+              song.sampleRate! % 1000 == 0 ? 0 : 1,
+            )
           : song.sampleRate.toString();
       parts.add('${song.bitDepth}/$rateKhz');
     } else if (song.sampleRate != null) {
@@ -380,8 +380,14 @@ class _AudioFormatBadge extends StatelessWidget {
     if (parts.isEmpty) return const SizedBox.shrink();
 
     final isHiRes = (song.bitDepth ?? 0) > 16 || (song.sampleRate ?? 0) > 48000;
-    final isLossless = const ['flac', 'alac', 'wav', 'aiff', 'dsf', 'dff']
-        .contains(song.suffix?.toLowerCase());
+    final isLossless = const [
+      'flac',
+      'alac',
+      'wav',
+      'aiff',
+      'dsf',
+      'dff',
+    ].contains(song.suffix?.toLowerCase());
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -389,15 +395,15 @@ class _AudioFormatBadge extends StatelessWidget {
         color: isHiRes
             ? Colors.amber.withValues(alpha: 0.15)
             : isLossless
-                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
-                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: isHiRes
               ? Colors.amber.withValues(alpha: 0.4)
               : isLossless
-                  ? theme.colorScheme.primary.withValues(alpha: 0.3)
-                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ? theme.colorScheme.primary.withValues(alpha: 0.3)
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           width: 0.5,
         ),
       ),

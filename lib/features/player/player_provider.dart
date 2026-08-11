@@ -25,6 +25,7 @@ class PlayerState {
   final bool isPlaying;
   final Duration position;
   final Duration duration;
+
   /// Fader position, 0.0 (silent) to 1.0 (unity gain). This is *not* a linear
   /// amplitude multiplier — see [PlayerNotifier.faderToMpvVolume].
   final double volume;
@@ -49,8 +50,7 @@ class PlayerState {
 
   /// Attenuation the current fader position corresponds to, in dB, or null at
   /// the very bottom of the fader (true silence, which has no finite dB value).
-  double? get volumeDb =>
-      volume <= 0 ? null : PlayerNotifier.faderToDb(volume);
+  double? get volumeDb => volume <= 0 ? null : PlayerNotifier.faderToDb(volume);
 
   PlayerState copyWith({
     Song? currentSong,
@@ -81,8 +81,9 @@ class PlayerState {
   }
 }
 
-final playerProvider =
-    StateNotifierProvider<PlayerNotifier, PlayerState>((ref) {
+final playerProvider = StateNotifierProvider<PlayerNotifier, PlayerState>((
+  ref,
+) {
   // No ref.onDispose here: StateNotifierProvider already disposes the notifier
   // it is given, so adding one disposed it twice and threw "Tried to use
   // PlayerNotifier after dispose was called". Invisible in the app, where this
@@ -97,6 +98,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   final NowPlayingService _nowPlaying;
   final List<StreamSubscription<dynamic>> _subs = [];
   String? _lastNowPlayingSongId;
+
   /// Track already announced to the server as playing, and track whose play has
   /// already been recorded. Held separately because the two happen at different
   /// moments and only the second one counts as a listen.
@@ -108,11 +110,14 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   ProviderSubscription<AutoEqState>? _autoEqSub;
   ProviderSubscription<EqEngine>? _eqEngineSub;
   ProviderSubscription<PlaybackSettings>? _playbackSub;
+
   /// Fade attenuation last pushed to mpv, so the ramp only re-applies when it
   /// has actually moved.
   double _lastAppliedFadeDb = 0;
+
   /// Output gain last pushed to mpv, so an unchanged value is not rewritten.
   double? _lastAppliedGainDb;
+
   /// Song ids currently loaded into mpv's playlist, in order. Gapless needs the
   /// queue to live in mpv rather than being fed one file at a time, and this is
   /// how we know whether what mpv holds still matches [PlayerState.queue].
@@ -120,9 +125,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   GaplessProbe? _probe;
 
   PlayerNotifier(this._ref)
-      : _player = mpv.Player(),
-        _nowPlaying = _ref.read(nowPlayingServiceProvider),
-        super(const PlayerState()) {
+    : _player = mpv.Player(),
+      _nowPlaying = _ref.read(nowPlayingServiceProvider),
+      super(const PlayerState()) {
     _initProbe();
     _initStreams();
     _initMediaKeys();
@@ -153,49 +158,61 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   void _initStreams() {
-    _subs.add(_player.stream.playing.listen((playing) {
-      if (mounted) {
-        state = state.copyWith(isPlaying: playing);
-        _nowPlaying.updatePlaybackState(
-          position: state.position,
-          isPlaying: playing,
-        );
-        // Driven off playback actually starting rather than off the calls that
-        // load a track, so a queue restored at launch — which opens its track
-        // paused and never goes through _playIndex — still announces itself
-        // when you press play.
-        if (playing) _announceNowPlaying();
-      }
-    }));
-    _subs.add(_player.stream.position.listen((pos) {
-      if (mounted) {
-        state = state.copyWith(position: pos);
-        _maybeSubmitScrobble(pos);
-        _updateFadeGain();
-        // Save queue position every 10 seconds of playback change
-        final currentSec = pos.inSeconds;
-        if ((currentSec - _lastSavedPositionSec).abs() >= 10) {
-          _lastSavedPositionSec = currentSec;
-          _debounceSaveQueue();
+    _subs.add(
+      _player.stream.playing.listen((playing) {
+        if (mounted) {
+          state = state.copyWith(isPlaying: playing);
+          _nowPlaying.updatePlaybackState(
+            position: state.position,
+            isPlaying: playing,
+          );
+          // Driven off playback actually starting rather than off the calls that
+          // load a track, so a queue restored at launch — which opens its track
+          // paused and never goes through _playIndex — still announces itself
+          // when you press play.
+          if (playing) _announceNowPlaying();
         }
-      }
-    }));
-    _subs.add(_player.stream.duration.listen((dur) {
-      if (mounted) state = state.copyWith(duration: dur);
-    }));
-    _subs.add(_player.stream.buffering.listen((buf) {
-      if (mounted) state = state.copyWith(buffering: buf);
-    }));
-    _subs.add(_player.stream.completed.listen((completed) {
-      if (mounted && completed) {
-        _onTrackCompleted();
-      }
-    }));
+      }),
+    );
+    _subs.add(
+      _player.stream.position.listen((pos) {
+        if (mounted) {
+          state = state.copyWith(position: pos);
+          _maybeSubmitScrobble(pos);
+          _updateFadeGain();
+          // Save queue position every 10 seconds of playback change
+          final currentSec = pos.inSeconds;
+          if ((currentSec - _lastSavedPositionSec).abs() >= 10) {
+            _lastSavedPositionSec = currentSec;
+            _debounceSaveQueue();
+          }
+        }
+      }),
+    );
+    _subs.add(
+      _player.stream.duration.listen((dur) {
+        if (mounted) state = state.copyWith(duration: dur);
+      }),
+    );
+    _subs.add(
+      _player.stream.buffering.listen((buf) {
+        if (mounted) state = state.copyWith(buffering: buf);
+      }),
+    );
+    _subs.add(
+      _player.stream.completed.listen((completed) {
+        if (mounted && completed) {
+          _onTrackCompleted();
+        }
+      }),
+    );
     // How a gapless advance reaches us: mpv moves to the next playlist entry on
     // its own, and nothing else reports it.
-    _subs.add(_player.stream.playlist.listen((playlist) {
-      if (mounted) _onMpvPlaylistIndex(playlist.index);
-    }));
+    _subs.add(
+      _player.stream.playlist.listen((playlist) {
+        if (mounted) _onMpvPlaylistIndex(playlist.index);
+      }),
+    );
   }
 
   void _onTrackCompleted() {
@@ -317,10 +334,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (index < 0 || index >= state.queue.length) return;
     final song = state.queue[index];
     _resetScrobble();
-    state = state.copyWith(
-      currentSong: song,
-      queueIndex: index,
-    );
+    state = state.copyWith(currentSong: song, queueIndex: index);
     // A jump inside the playlist mpv already holds, rather than a fresh load:
     // reloading would throw away the prefetched next entry every time someone
     // pressed skip.
@@ -553,9 +567,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// Applies the EQ's preamp and headroom, the ReplayGain offset for the
   /// playing track, and any fade currently in progress.
   Future<void> _applyVolumeGain() async {
-    final total = _eqGainDb(_combinedEqGains()) +
-        (_replayGainDb() ?? 0) +
-        _fadeDb();
+    final total =
+        _eqGainDb(_combinedEqGains()) + (_replayGainDb() ?? 0) + _fadeDb();
     _lastAppliedFadeDb = _fadeDb();
     // Nothing to say when nothing moved. This is called on every track change
     // for ReplayGain's sake, and mpv's own log showed the write landing inside
@@ -570,10 +583,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   double _fadeDb() => fadeOffsetDb(
-        position: state.position,
-        duration: state.duration,
-        fadeSeconds: _ref.read(playbackSettingsProvider).fadeSeconds,
-      );
+    position: state.position,
+    duration: state.duration,
+    fadeSeconds: _ref.read(playbackSettingsProvider).fadeSeconds,
+  );
 
   /// Rides the output gain while a fade is in progress.
   ///
@@ -652,7 +665,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       );
     }
   }
-
 
   /// Sample an AutoEQ GraphicEQ curve at [freq], interpolating in log-frequency
   /// space between the two surrounding points.
@@ -786,7 +798,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   Future<void> replaceQueue(List<Song> songs) async {
     if (songs.isEmpty) return;
     _resetScrobble();
-    state = state.copyWith(queue: songs, queueIndex: 0, currentSong: songs.first);
+    state = state.copyWith(
+      queue: songs,
+      queueIndex: 0,
+      currentSong: songs.first,
+    );
     await _openQueue(songs, 0, play: true);
     _updateNowPlayingForSong(songs.first);
     _applyVolumeGain();
@@ -924,8 +940,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         state.position.inMilliseconds,
       );
     } catch (e) {
-      developer.log('Failed to save play queue to server: $e',
-          name: 'PlayerNotifier');
+      developer.log(
+        'Failed to save play queue to server: $e',
+        name: 'PlayerNotifier',
+      );
     }
   }
 
@@ -941,8 +959,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await prefs.setString(_prefsKeyCurrentId, currentId);
       await prefs.setInt(_prefsKeyPositionMs, positionMs);
     } catch (e) {
-      developer.log('Failed to save play queue locally: $e',
-          name: 'PlayerNotifier');
+      developer.log(
+        'Failed to save play queue locally: $e',
+        name: 'PlayerNotifier',
+      );
     }
   }
 
@@ -1061,8 +1081,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   static double faderToMpvVolume(double pos) {
     final clamped = pos.clamp(0.0, 1.0);
     if (clamped <= 0) return 0;
-    return 100 *
-        math.pow(clamped, kFaderAmplitudeExponent / 3.0).toDouble();
+    return 100 * math.pow(clamped, kFaderAmplitudeExponent / 3.0).toDouble();
   }
 
   /// Sets the fader position. [volume] is a position in 0..1, not a gain.

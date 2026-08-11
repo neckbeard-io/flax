@@ -86,9 +86,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/artists/:id',
-            builder: (context, state) => ArtistDetailScreen(
-              artistId: state.pathParameters['id']!,
-            ),
+            builder: (context, state) =>
+                ArtistDetailScreen(artistId: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/albums',
@@ -96,9 +95,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/albums/:id',
-            builder: (context, state) => AlbumDetailScreen(
-              albumId: state.pathParameters['id']!,
-            ),
+            builder: (context, state) =>
+                AlbumDetailScreen(albumId: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/songs',

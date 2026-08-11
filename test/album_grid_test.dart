@@ -18,16 +18,16 @@ import 'package:flax/shared/widgets/layout_metrics.dart';
 /// CoverArtImage's BoxFit.cover then cropped the top and bottom off every
 /// sleeve. It read as art that was subtly wrong everywhere else in the app.
 List<Album> _albums(int count) => [
-      for (var i = 0; i < count; i++)
-        Album(
-          id: 'alb-$i',
-          serverId: 'srv',
-          name: 'Album $i',
-          artistName: 'Artist $i',
-          songCount: 9,
-          duration: 2400,
-        ),
-    ];
+  for (var i = 0; i < count; i++)
+    Album(
+      id: 'alb-$i',
+      serverId: 'srv',
+      name: 'Album $i',
+      artistName: 'Artist $i',
+      songCount: 9,
+      duration: 2400,
+    ),
+];
 
 Future<void> _pumpGrid(WidgetTester tester, {required double width}) async {
   tester.view.physicalSize = ui.Size(width, 900);
@@ -85,8 +85,9 @@ void main() {
       expect(art.width, closeTo(art.height, 0.5));
     });
 
-    testWidgets('gives the art the tile width and the labels the rest',
-        (tester) async {
+    testWidgets('gives the art the tile width and the labels the rest', (
+      tester,
+    ) async {
       await _pumpGrid(tester, width: 1200);
 
       final tile = tester.getSize(find.byType(AlbumContextMenu).first);

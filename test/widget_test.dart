@@ -4,9 +4,7 @@ import 'package:flax/app/app.dart';
 
 void main() {
   testWidgets('Flax app launches', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: FlaxApp()),
-    );
+    await tester.pumpWidget(const ProviderScope(child: FlaxApp()));
     await tester.pumpAndSettle();
 
     // On first launch with no server, should show the add server screen

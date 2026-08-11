@@ -49,11 +49,9 @@ class QueuePanel extends ConsumerWidget {
                 onSongTap: (song, index) {
                   final queueIndex = state.queue.indexOf(song);
                   if (queueIndex >= 0) {
-                    ref.read(playerProvider.notifier).playSong(
-                          song,
-                          queue: state.queue,
-                          index: queueIndex,
-                        );
+                    ref
+                        .read(playerProvider.notifier)
+                        .playSong(song, queue: state.queue, index: queueIndex);
                   }
                 },
               );
@@ -184,7 +182,8 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
                 // row appearing later would shove the queue down by its height.
                 SizedBox(
                   height: 28,
-                  child: albumAsync?.when(
+                  child:
+                      albumAsync?.when(
                         data: (album) => _AlbumRatingRow(album: album),
                         loading: () => const SizedBox.shrink(),
                         error: (_, _) => const SizedBox.shrink(),
@@ -205,7 +204,8 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
     if (song.bitDepth != null && song.sampleRate != null) {
       final rateKhz = song.sampleRate! >= 1000
           ? (song.sampleRate! / 1000).toStringAsFixed(
-              song.sampleRate! % 1000 == 0 ? 0 : 1)
+              song.sampleRate! % 1000 == 0 ? 0 : 1,
+            )
           : song.sampleRate.toString();
       parts.add('${song.bitDepth}/$rateKhz');
     }
@@ -310,10 +310,7 @@ class _AlbumGroup extends StatelessWidget {
                 child: SizedBox(
                   width: 32,
                   height: 32,
-                  child: CoverArtImage(
-                    coverArtId: group.coverArtId,
-                    size: 64,
-                  ),
+                  child: CoverArtImage(coverArtId: group.coverArtId, size: 64),
                 ),
               ),
               const SizedBox(width: 10),
@@ -396,9 +393,7 @@ class _AlbumGroup extends StatelessWidget {
                       song.title,
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontWeight: isCurrent ? FontWeight.w600 : null,
-                        color: isCurrent
-                            ? theme.colorScheme.primary
-                            : null,
+                        color: isCurrent ? theme.colorScheme.primary : null,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

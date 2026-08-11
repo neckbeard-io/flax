@@ -15,8 +15,10 @@ typedef LyricsQuery = ({String songId, String? artist, String? title});
 /// The structured call is the OpenSubsonic one and carries timing; the plain
 /// `getLyrics` call is the old artist/title lookup and never does. Servers
 /// that have only the latter still get an unsynced sheet out of this.
-final songLyricsProvider =
-    FutureProvider.family<Lyrics?, LyricsQuery>((ref, query) async {
+final songLyricsProvider = FutureProvider.family<Lyrics?, LyricsQuery>((
+  ref,
+  query,
+) async {
   final client = ref.watch(subsonicClientProvider);
   if (client == null) return null;
 
@@ -41,11 +43,13 @@ final songLyricsProvider =
 final currentLyricsProvider = Provider<AsyncValue<Lyrics?>>((ref) {
   final song = ref.watch(playerProvider.select((s) => s.currentSong));
   if (song == null) return const AsyncValue<Lyrics?>.data(null);
-  return ref.watch(songLyricsProvider((
-    songId: song.id,
-    artist: song.artistName,
-    title: song.title,
-  )));
+  return ref.watch(
+    songLyricsProvider((
+      songId: song.id,
+      artist: song.artistName,
+      title: song.title,
+    )),
+  );
 });
 
 /// Index of the lyric line being sung right now, or -1 for none.
