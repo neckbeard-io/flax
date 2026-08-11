@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/shared/audio/eq_filter.dart';
+import 'package:flax/shared/widgets/flax_dropdown.dart';
 
 /// Maximum boost/cut per band, in dB (matches foobar2000's range).
 const eqGainLimit = 20.0;
@@ -291,9 +292,11 @@ class EqualizerScreen extends ConsumerWidget {
                     border: Border.all(color: theme.colorScheme.outlineVariant),
                   ),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
+                    child: FlaxDropdown<String>(
                       value: eq.presetName,
                       isDense: true,
+                      // Matches the enclosing container's radius, not the
+                      // default 8.
                       borderRadius: BorderRadius.circular(10),
                       icon: const Padding(
                         padding: EdgeInsets.only(left: 4),

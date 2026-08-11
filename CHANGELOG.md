@@ -10,6 +10,14 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+
+- Dropdowns no longer keep a grey box behind the value after you pick something
+  from them. It was a focus highlight, so only one per screen ever showed it —
+  whichever you touched last — which read as a selection state that meant
+  nothing. Hovering a dropdown still highlights it, since that one says the
+  control is clickable.
+
 ## v0.1.9 — 2026-08-11
 
 A test build for comparing the two equalizer filters by ear. Cut from the
