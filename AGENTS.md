@@ -121,6 +121,41 @@ Screens that put controls in the **top-right** must reserve
 `AppChrome` draws the window controls over every route, and anything else in
 that corner ends up underneath them.
 
+### Every user-visible change gets a changelog line
+
+[CHANGELOG.md](CHANGELOG.md) is written **as part of the change**, not
+reconstructed from `git log` at release time. Reconstructing it is how you end
+up shipping notes that describe commits rather than what a tester will notice.
+
+Add the entry under `## Unreleased`, creating that heading if the last release
+closed it off:
+
+```markdown
+## Unreleased
+
+### Added
+- Albums now has Navidrome-style tabs: All, Random, Recently Added, …
+
+### Fixed
+- Album art in the grid was drawn taller than wide and cropped every sleeve.
+```
+
+Three rules, in order of how often they are got wrong:
+
+- **Write for someone using the app, not reading the diff.** "Report plays back
+  to the server so Recently Played stays current" — not "call scrobble() from
+  PlayerNotifier". If a change is invisible to a user, it does not need a line;
+  a refactor with no behavior change is exactly that.
+- **Group under `Added` / `Changed` / `Fixed` / `Removed`**, in that order. Skip
+  the headings you have nothing for.
+- **Note anything that changes behavior someone relied on**, however small,
+  under `Changed`. That is the section people actually read.
+
+Cutting a release renames `## Unreleased` to `## v<version> — <YYYY-MM-DD>` and
+starts a fresh `## Unreleased` above it. The release notes on GitHub are that
+section plus the standing install instructions — see the maintainer section
+below.
+
 ---
 
 ## Verifying a change
@@ -266,6 +301,14 @@ itself. The run number becomes the build-number. **Never bump `version:` in
 `pubspec.yaml`**; it is overridden by `--build-name`/`--build-number` on every
 build path. Re-running the same version uploads assets to the existing release
 (`--clobber`) rather than failing.
+
+Close off the changelog **before** starting the run, in its own commit on
+`main`: rename `## Unreleased` to `## v<version> — <YYYY-MM-DD>` and open a
+fresh `## Unreleased`. The workflow tags whatever `main` points at, so a
+changelog landed afterwards is not in the release it describes. The GitHub
+release body is that section followed by the standing install instructions
+(quarantine, SmartScreen, sideloading) carried over from the previous release —
+those do not change between builds and are not part of the changelog.
 
 Prefer building macOS **locally** and attaching it — same ad-hoc-signed
 universal .dmg, ~90s, and it avoids the 10x runner:
