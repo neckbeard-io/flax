@@ -10,6 +10,33 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.1.9 — 2026-08-11
+
+A test build for comparing the two equalizer filters by ear. Cut from the
+`eq-engine-ab` branch rather than `main`, so it is ahead of v0.1.8 by exactly
+the changes below and nothing else.
+
+### Fixed
+
+- **Gapless playback stuttered between tracks.** It was the equalizer, not the
+  handover: the audio engine rebuilds its filter chain at every track boundary,
+  and the FFT-based filter flax used dropped and audibly refilled its window
+  each time. With the EQ switched off there was never a stutter, which is what
+  gave it away.
+
+### Added
+
+- **A Filter choice on the Equalizer screen**, under the bands: *Parametric* or
+  *Graphic*. Parametric is the new default and is the one that survives a
+  gapless track change. Graphic is the filter every earlier build used, kept so
+  the two can be compared on real material — the curve you set is identical
+  either way, so only the sound of it differs. The choice is remembered and
+  takes effect on the track already playing.
+
+  Parametric costs roughly twice the processing of Graphic (measured at about
+  5% more of one CPU core on an Apple Silicon Mac), and unlike Graphic its cost
+  grows with the number of bands you have moved. Worth knowing on a phone.
+
 ## v0.1.8 — 2026-08-10
 
 ### Added
