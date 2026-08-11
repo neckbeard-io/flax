@@ -86,12 +86,25 @@ class EqState {
 /// so its preset files map onto these one-for-one by index.
 const _bandFrequencies = eqBandFrequencies;
 
+// Laid out 9 + 9 like [eqBandFrequencies], so a label sits above the frequency
+// it belongs to. The formatter would give each string a line of its own, which
+// is 18 lines that no longer say which band is which.
+// dart format off
 const _bandLabels = <String>[
   '65', '92', '131', '185', '262', '370', '523', '740', '1k',
   '1.5k', '2.1k', '3k', '4.2k', '5.9k', '8.4k', '12k', '17k', '20k',
 ];
+// dart format on
 
 /// Stock foobar2000 equalizer presets (`.feq` files are 18 dB values).
+///
+/// One row per preset, 18 values in band order. The formatter is off through
+/// the table because a row is meant to be read across: it keeps the short rows
+/// inline and explodes the rest into one integer per line, so comparing two
+/// presets — or a preset against the band labels above — stops working.
+/// `tool/verify_presets.dart` checks these against the source `.feq` files by
+/// index, and that check is far easier to trust against a grid.
+// dart format off
 const _presetGains = <String, List<double>>{
   'Flat': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   '1965': [-20, -16, -7, -4, -4, -4, -7, -7, 3, 3, -2, -4, 4, 1, 1, -4, -6, -12],
@@ -116,6 +129,7 @@ const _presetGains = <String, List<double>>{
   'Soft Bass': [3, 5, 4, 0, -13, -7, -5, -5, -1, 2, 5, 1, -1, -1, -2, -7, -9, -14],
   'Strings': [-3, -4, -4, -5, -5, -4, -4, -3, -2, -2, -2, -2, -1, 2, 3, 0, -2, -2],
 };
+// dart format on
 
 /// Build a band list from 18 dB gain values.
 List<EqBandState> _bandsFromGains(List<double> gains) => [
