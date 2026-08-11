@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.1.8 — 2026-08-10
+
 ### Added
 
 - **Albums now has tabs**, in the style Navidrome uses: All, Random, Recently
