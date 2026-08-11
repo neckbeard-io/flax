@@ -86,12 +86,13 @@ class TranscodingScreen extends ConsumerWidget {
               value: fmt,
               groupValue: config.transcodeFormat,
               onChanged: (v) {
-                if (v != null)
+                if (v != null) {
                   _updateConfig(
                     ref,
                     server,
                     config.copyWith(transcodeFormat: v),
                   );
+                }
               },
             ),
           ),
