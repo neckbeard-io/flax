@@ -79,6 +79,24 @@ class CoverArtImage extends ConsumerWidget {
 
         final requestSize = _requestSize(logical, dpr);
         final uri = client.getCoverArtUri(coverArtId!, size: requestSize);
+        final cacheKey = 'cover-$coverArtId-${requestSize ?? "orig"}';
+
+        // Nothing for the gate to protect: show it now. Without this, scrolling
+        // back over art you were just looking at stutters, which is a worse
+        // artifact than the one the gate was added to fix.
+        //
+        // [ImageCache.containsKey] is true for decoded *or* pending entries, and
+        // both are right here. Decoded means it paints this frame. Pending means a
+        // request for this exact key is already in flight, so mounting adds nothing
+        // to the download queue — which is the only thing the gate is rationing.
+        //
+        // The lookup is synchronous and cheap. CachedNetworkImageProvider's
+        // identity is `(cacheKey ?? url, scale, maxHeight, maxWidth)` and
+        // deliberately excludes the cache manager, so an equal provider built here
+        // finds the entry CachedNetworkImage put there.
+        final decoded = PaintingBinding.instance.imageCache.containsKey(
+          CachedNetworkImageProvider(uri.toString(), cacheKey: cacheKey),
+        );
 
         final image = CachedNetworkImage(
           imageUrl: uri.toString(),
@@ -86,9 +104,13 @@ class CoverArtImage extends ConsumerWidget {
           cacheManager: ArtCache.instance,
           // Keyed by the requested step, so the same art at different sizes is
           // cached separately rather than one size winning.
-          cacheKey: 'cover-$coverArtId-${requestSize ?? "orig"}',
+          cacheKey: cacheKey,
           fit: fit,
-          fadeInDuration: const Duration(milliseconds: 120),
+          // No fade for art that is already decoded — it is on screen this frame,
+          // and fading it in is the same flicker the gate bypass exists to avoid.
+          fadeInDuration: decoded
+              ? Duration.zero
+              : const Duration(milliseconds: 120),
           placeholder: (context, url) => _placeholder(context),
           errorWidget: (context, url, error) {
             developer.log(
@@ -99,10 +121,12 @@ class CoverArtImage extends ConsumerWidget {
           },
         );
 
-        // Held back if this was built mid-fling: the download queue underneath
+        // Held back if this was built mid-scroll: the download queue underneath
         // is FIFO and cannot be cancelled, so a request made for a row that is
-        // already gone delays the rows you stopped on. See [SettleGate].
+        // already gone delays the rows you stopped on. See [SettleGate]. Art
+        // already in memory has no request to make, so it skips the wait.
         return SettleGate(
+          bypass: decoded,
           placeholder: _placeholder(context),
           child: borderRadius == null
               ? image

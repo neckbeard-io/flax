@@ -68,6 +68,7 @@ class SettleGate extends StatefulWidget {
     required this.placeholder,
     this.quiet = const Duration(milliseconds: 150),
     this.maxWait = const Duration(milliseconds: 900),
+    this.bypass = false,
   });
 
   final Widget child;
@@ -84,6 +85,15 @@ class SettleGate extends StatefulWidget {
   /// drag still fills in. Long enough that a fast scroll disposes rows first.
   final Duration maxWait;
 
+  /// Opens the gate at once, for a [child] that has nothing to wait for.
+  ///
+  /// The gate exists to stop *network requests* being queued for rows you scroll
+  /// past. A child whose image is already decoded in memory makes no request, so
+  /// waiting buys nothing and costs a visible stutter every time you scroll back
+  /// over art you were just looking at. Callers that can tell cheaply — see
+  /// `CoverArtImage` asking [ImageCache] — should say so here.
+  final bool bypass;
+
   @override
   State<SettleGate> createState() => _SettleGateState();
 }
@@ -98,6 +108,10 @@ class _SettleGateState extends State<SettleGate> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_open) return;
+    if (widget.bypass) {
+      _open = true;
+      return;
+    }
 
     final position = Scrollable.maybeOf(context)?.position;
     // Nothing to scroll means nothing to wait for: a static screen must not pay
