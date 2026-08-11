@@ -202,6 +202,14 @@ which is the same check you can run locally before pushing. Just run
 `dart format .` on what you touched — reformatting no longer buries a diff,
 because there is nothing left for it to reformat.
 
+The sweep itself is listed in `.git-blame-ignore-revs`, so blame points at
+whoever wrote a line rather than at the reformat. GitHub's blame view honors
+that file already; locally it takes one command per clone:
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 Two things about that baseline:
 
 - **The formatter's output depends on the SDK version.** The check pins Dart
