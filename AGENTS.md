@@ -340,10 +340,17 @@ Prefer building macOS **locally** and attaching it — same ad-hoc-signed
 universal .dmg, ~90s, and it avoids the 10x runner:
 
 ```bash
-tool/release.sh              # macOS .dmg + Android .apk, into dist/
-tool/release.sh --mac        # just the .dmg
+tool/release.sh --mac --version 0.1.1   # just the .dmg
+tool/release.sh --version 0.1.1         # macOS .dmg + Android .apk, into dist/
 gh release upload v0.1.1 dist/flax-0.1.1-macos-universal.dmg
 ```
+
+**Always pass `--version` when cutting a release.** Without it the script takes
+the version from the latest **local** `v*` tag, and the workflow creates the tag
+on the runner — so a local build during a release names itself after the
+*previous* version and silently overwrites that .dmg in `dist/`. Nothing errors;
+you just get an artifact with the wrong version baked in. Either pass
+`--version`, or `git fetch --tags` after the workflow has created it.
 
 Windows cannot be cross-compiled from macOS, so it exists only on the runner —
 `tool/release.sh` deliberately has no Windows path.
