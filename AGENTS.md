@@ -191,12 +191,30 @@ a couple of minutes; expect it.
 ```bash
 flutter analyze                     # before finishing any change
 flutter test
+dart format .                       # the repo is formatter-clean; keep it that way
 dart run tool/verify_presets.dart   # equalizer preset table consistency
 ```
 
-The repo is **not** `dart format` clean. Running it over a file you touched will
-reformat unrelated lines and bury your diff — match the surrounding style by
-hand instead.
+The repo **is** `dart format` clean, as of the baseline commit that swept all
+108 files, and CI keeps it that way: `.github/workflows/format.yml` fails on
+unformatted code. It runs `dart format --output=none --set-exit-if-changed .`,
+which is the same check you can run locally before pushing. Just run
+`dart format .` on what you touched — reformatting no longer buries a diff,
+because there is nothing left for it to reformat.
+
+Two things about that baseline:
+
+- **The formatter's output depends on the SDK version.** The check pins Dart
+  3.12.2, matching the Flutter version in `release.yml`. A newer local SDK can
+  restyle code CI considers clean, which looks like your change breaking an
+  untouched file.
+- **A few numeric tables are deliberately exempt.** The band frequencies, band
+  labels and foobar2000 preset table in the equalizer are grids — 18 values per
+  row, in band order — and the formatter would give each number its own line.
+  They sit inside `// dart format off` / `// dart format on`. That marker must
+  read *exactly* `// dart format off` with nothing after it; append an
+  explanation to the line and the formatter silently ignores it and reformats
+  anyway, so the reasoning goes on the lines above.
 
 Prefer a widget test to a manual check whenever the behavior can be expressed as
 one. The pattern used throughout is to split a **dumb presentational widget**
