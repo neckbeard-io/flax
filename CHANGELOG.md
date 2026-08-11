@@ -18,8 +18,15 @@ Releases before v0.1.8 predate this file. Their notes are on the
   because every row scrolled past had already claimed a place in the download
   queue and nothing could take it back. Rows are now only fetched once they have
   stayed on screen briefly, so a fling asks for nothing and the rows you land on
-  come first. Album art was less affected only because more of it was already
-  cached from previous browsing.
+  come first. This now applies however you scroll — trackpad, mouse wheel, or a
+  flick on a phone. Album art was less affected only because more of it was
+  already cached from previous browsing.
+
+- **Cover art is kept instead of being thrown away and downloaded again.** The
+  art cache held only 200 images, which is a couple of screens for a library of
+  any size, so artwork you had already seen was constantly re-fetched. It now
+  holds 4000 and keeps them for a year. Expect the Artists list in particular to
+  get quicker the second time you visit it rather than starting over.
 
 - Dropdowns no longer keep a grey box behind the value after you pick something
   from them. It was a focus highlight, so only one per screen ever showed it —

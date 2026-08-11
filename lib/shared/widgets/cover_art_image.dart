@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/shared/widgets/art_cache.dart';
 import 'package:flax/shared/widgets/settle_gate.dart';
 
 /// Cover art for an album, artist, or track.
@@ -81,6 +82,8 @@ class CoverArtImage extends ConsumerWidget {
 
         final image = CachedNetworkImage(
           imageUrl: uri.toString(),
+          // Not the default 200-object cache — see [ArtCache].
+          cacheManager: ArtCache.instance,
           // Keyed by the requested step, so the same art at different sizes is
           // cached separately rather than one size winning.
           cacheKey: 'cover-$coverArtId-${requestSize ?? "orig"}',

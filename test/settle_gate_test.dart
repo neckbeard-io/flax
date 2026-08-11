@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -32,7 +33,9 @@ void main() {
     expect(mounted, [0]);
   });
 
-  testWidgets('rows visible at rest mount immediately', (tester) async {
+  testWidgets('rows in a stationary list load after the quiet window', (
+    tester,
+  ) async {
     final mounted = <int>[];
     await tester.pumpWidget(
       MaterialApp(
@@ -45,58 +48,111 @@ void main() {
       ),
     );
 
-    // The list is stationary on first build, so what is on screen loads at once.
+    // The accepted cost of watching for movement rather than asking whether the
+    // list is scrolling: a gate inside a scrollable cannot tell "at rest since
+    // startup" from "a wheel notch moved us a moment ago", so it waits either
+    // way. One quiet window against a network fetch of several hundred
+    // milliseconds, and it buys correctness for wheel scrolling.
+    expect(mounted, isEmpty, reason: 'not before the quiet window elapses');
+
+    await tester.pump(const Duration(milliseconds: 200));
     expect(mounted, isNotEmpty);
     expect(mounted.first, 0);
   });
 
-  testWidgets('a fling mounts far fewer rows than an open gate would', (
-    tester,
-  ) async {
-    // Measured against a zero-delay gate running the identical fling, rather
-    // than against a fixed number: what matters is how much the gate withholds,
-    // and a hard threshold would just pin Flutter's fling physics in place.
-    Future<int> mountsDuringFling(Duration delay) async {
-      final mounted = <int>[];
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ListView.builder(
-              itemCount: 2000,
-              itemBuilder: (context, i) => SizedBox(
+  /// Scrolls [how] and returns how many rows mounted during it. [gated] false
+  /// builds the child directly, which is the honest baseline: a zero-duration
+  /// timer still fires late enough to look like withholding.
+  Future<int> mountsWhileScrolling(
+    WidgetTester tester,
+    String how, {
+    required bool gated,
+  }) async {
+    final mounted = <int>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView.builder(
+            itemCount: 3000,
+            itemBuilder: (context, i) {
+              final child = _RecordMount(index: i, onMount: mounted.add);
+              return SizedBox(
                 height: 100,
-                child: SettleGate(
-                  delay: delay,
-                  placeholder: const SizedBox.expand(),
-                  child: _RecordMount(index: i, onMount: mounted.add),
-                ),
-              ),
-            ),
+                child: gated
+                    ? SettleGate(
+                        placeholder: const SizedBox.expand(),
+                        child: child,
+                      )
+                    : child,
+              );
+            },
           ),
         ),
-      );
-      final atRest = mounted.length;
-      await tester.fling(find.byType(ListView), const Offset(0, -8000), 12000);
-      await tester.pumpAndSettle();
-      return mounted.length - atRest;
+      ),
+    );
+    final atRest = mounted.length;
+    final centre = tester.getCenter(find.byType(ListView));
+
+    switch (how) {
+      case 'wheel':
+        // A mouse wheel, and a discrete trackpad scroll: PointerScrollEvents.
+        // This is the case an `isScrollingNotifier` check silently missed —
+        // pointerScroll sets that flag and clears it again inside the pointer
+        // handler, before layout builds the rows it just revealed.
+        final pointer = TestPointer(1, PointerDeviceKind.mouse);
+        await tester.sendEventToBinding(pointer.hover(centre));
+        for (var i = 0; i < 60; i++) {
+          await tester.sendEventToBinding(pointer.scroll(const Offset(0, 250)));
+          await tester.pump(const Duration(milliseconds: 8));
+        }
+        await tester.pumpAndSettle();
+      case 'trackpad':
+        // macOS two-finger scrolling arrives as pan/zoom events.
+        final pointer = TestPointer(1, PointerDeviceKind.trackpad);
+        await tester.sendEventToBinding(pointer.panZoomStart(centre));
+        var total = Offset.zero;
+        for (var i = 0; i < 60; i++) {
+          total += const Offset(0, -250);
+          await tester.sendEventToBinding(
+            pointer.panZoomUpdate(centre, pan: total),
+          );
+          await tester.pump(const Duration(milliseconds: 8));
+        }
+        await tester.sendEventToBinding(pointer.panZoomEnd());
+        await tester.pumpAndSettle();
+      case 'touchfling':
+        // A phone flick: drag plus momentum.
+        await tester.fling(
+          find.byType(ListView),
+          const Offset(0, -8000),
+          12000,
+        );
+        await tester.pumpAndSettle();
     }
+    return mounted.length - atRest;
+  }
 
-    final open = await mountsDuringFling(Duration.zero);
-    final gated = await mountsDuringFling(const Duration(milliseconds: 300));
+  // Every input, because they take different paths through ScrollPosition and
+  // the first version of this gate worked for only two of the three.
+  for (final how in ['touchfling', 'wheel', 'trackpad']) {
+    testWidgets('$how withholds most of what it scrolls past', (tester) async {
+      final open = await mountsWhileScrolling(tester, how, gated: false);
+      final gated = await mountsWhileScrolling(tester, how, gated: true);
 
-    expect(
-      open,
-      greaterThan(50),
-      reason: 'the fling has to travel for this test to mean anything',
-    );
-    // Every withheld mount is a download never queued ahead of the rows the
-    // list actually came to rest on.
-    expect(
-      gated,
-      lessThan(open ~/ 2),
-      reason: 'the gate must withhold most of what a fling flies past',
-    );
-  });
+      expect(
+        open,
+        greaterThan(50),
+        reason: '$how has to actually travel for this to mean anything',
+      );
+      // Compared against an ungated list rather than a fixed count, so the
+      // assertion measures the gate rather than pinning Flutter's scroll physics.
+      expect(
+        gated,
+        lessThan(open ~/ 2),
+        reason: 'most rows scrolled past must never have mounted ($how)',
+      );
+    });
+  }
 
   testWidgets('rows the list comes to rest on do mount', (tester) async {
     final mounted = <int>[];
