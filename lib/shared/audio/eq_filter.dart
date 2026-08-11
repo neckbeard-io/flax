@@ -41,10 +41,16 @@ enum EqEngine {
 /// Half-octave spacing: each is 2^0.5 times the one before it. The manual EQ,
 /// the preset table and the AutoEQ interpolation all sample the same list, so
 /// a band means the same frequency everywhere.
+// Two rows of nine, so the half-octave doubling is visible down the columns —
+// one frequency per line hides the pattern the spacing is the whole point of.
+// The marker has to read exactly `// dart format off` with nothing after it;
+// append a comment to that line and the formatter ignores it and reformats.
+// dart format off
 const eqBandFrequencies = <double>[
   65, 92, 131, 185, 262, 370, 523, 740, 1047,
   1480, 2093, 2960, 4186, 5920, 8372, 11840, 16744, 20000,
 ];
+// dart format on
 
 /// Number of bands, kept next to the frequencies so the two cannot disagree.
 /// Asserted against the list in the tests rather than derived from it, because
