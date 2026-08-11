@@ -34,6 +34,10 @@ dependencies:
 
   # Images
   cached_network_image: ^3.4.1
+  # Already pulled in by cached_network_image; declared directly because
+  # lib/shared/widgets/art_cache.dart configures the cache rather than taking
+  # the 200-object default.
+  flutter_cache_manager: ^3.4.1
   palette_generator: ^0.3.3+4
 
   # Auth
