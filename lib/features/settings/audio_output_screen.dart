@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flax/features/settings/playback_settings.dart';
+import 'package:flax/shared/widgets/flax_dropdown.dart';
 
 final exclusiveModeProvider = StateProvider<bool>((ref) => false);
 final sampleRateProvider = StateProvider<String>((ref) => 'Auto');
@@ -51,9 +52,8 @@ class AudioOutputScreen extends ConsumerWidget {
           _SectionTitle(title: 'Format'),
           ListTile(
             title: const Text('Sample Rate'),
-            trailing: DropdownButton<String>(
+            trailing: FlaxDropdown<String>(
               value: sampleRate,
-              underline: const SizedBox.shrink(),
               items: [
                 'Auto',
                 '44.1 kHz',
@@ -69,9 +69,8 @@ class AudioOutputScreen extends ConsumerWidget {
           ),
           ListTile(
             title: const Text('Bit Depth'),
-            trailing: DropdownButton<String>(
+            trailing: FlaxDropdown<String>(
               value: bitDepth,
-              underline: const SizedBox.shrink(),
               items: [
                 'Auto',
                 '16-bit',
@@ -91,9 +90,8 @@ class AudioOutputScreen extends ConsumerWidget {
             subtitle: const Text(
               "Levels tracks using the server's own loudness tags",
             ),
-            trailing: DropdownButton<ReplayGainMode>(
+            trailing: FlaxDropdown<ReplayGainMode>(
               value: playback.replayGain,
-              underline: const SizedBox.shrink(),
               items: ReplayGainMode.values
                   .map((m) => DropdownMenuItem(value: m, child: Text(m.label)))
                   .toList(),
