@@ -5,9 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flax/app/app.dart';
 import 'package:flax/services/platform/window_state.dart';
+import 'package:flax/shared/widgets/art_cache.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Needs the binding, and must happen before any art is decoded.
+  ArtCache.configureDecodedImageCache();
 
   if (WindowStateService.isSupported) {
     await windowManager.ensureInitialized();

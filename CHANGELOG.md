@@ -28,6 +28,12 @@ Releases before v0.1.8 predate this file. Their notes are on the
   holds 4000 and keeps them for a year. Expect the Artists list in particular to
   get quicker the second time you visit it rather than starting over.
 
+- **Scrolling back over art you just looked at is instant again.** Artwork
+  already in memory now appears immediately instead of waiting its turn, and
+  without a fade. Flax also keeps far more art decoded and ready — a hundred album
+  covers used to be enough to start evicting, so scrolling up a grid meant
+  decoding the same covers over again.
+
 - Dropdowns no longer keep a grey box behind the value after you pick something
   from them. It was a focus highlight, so only one per screen ever showed it —
   whichever you touched last — which read as a selection state that meant

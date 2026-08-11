@@ -210,6 +210,36 @@ void main() {
 
     expect(mounted.length, greaterThan(before));
   });
+
+  testWidgets('bypass mounts at once, even mid-scroll', (tester) async {
+    // What CoverArtImage passes when the artwork is already decoded in memory:
+    // there is no request to withhold, and making you watch a placeholder while
+    // scrolling back over art you were just looking at is the worse artifact.
+    final mounted = <int>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView.builder(
+            itemCount: 500,
+            itemBuilder: (context, i) => SizedBox(
+              height: 100,
+              child: SettleGate(
+                bypass: true,
+                placeholder: const SizedBox.expand(),
+                child: _RecordMount(index: i, onMount: mounted.add),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(mounted, isNotEmpty, reason: 'no quiet window when bypassed');
+
+    final before = mounted.length;
+    await tester.fling(find.byType(ListView), const Offset(0, -8000), 12000);
+    await tester.pumpAndSettle();
+    expect(mounted.length, greaterThan(before));
+  });
 }
 
 /// Reports the moment it mounts — the stand-in for a request being made.
