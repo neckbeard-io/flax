@@ -8,7 +8,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Both engines are fed the identical curve — the 18 band gains in dB, with the
 /// preamp and any AutoEQ correction already summed in — so this changes only
 /// how that curve is realized, never what it is asking for. That is what makes
-/// A/B-ing them meaningful: nothing above this line differs.
+/// comparing them meaningful: nothing above this line differs.
+///
+/// **Both engines are permanent, not an experiment awaiting a winner.** This
+/// started as an A/B to find the cause of the stutter between gapless tracks, and
+/// parametric won that argument and became the default — but offering the choice
+/// is the intended shape, the way Symfonium ships more than one filter engine.
+/// A future cleanup should not read [graphic] as dead scaffolding and delete it.
 enum EqEngine {
   /// `anequalizer`: a cascade of biquads, one per band per channel.
   parametric('Parametric', 'IIR biquads. Survives a gapless track change.'),
@@ -17,9 +23,10 @@ enum EqEngine {
   ///
   /// mpv rebuilds the filter chain at every track boundary, and this one drops
   /// its FFT window and audibly refills it each time — the stutter between
-  /// gapless tracks. Kept because it is what every tuning before this was
-  /// judged against, and because "different" and "worse" are not the same
-  /// thing to an ear that knows the material.
+  /// gapless tracks. Kept deliberately: it is what every tuning before this was
+  /// judged against, and "different" and "worse" are not the same thing to an ear
+  /// that knows the material. Someone who does not use gapless loses nothing by
+  /// preferring it.
   graphic('Graphic', 'FFT. Stutters at gapless track changes.');
 
   const EqEngine(this.label, this.description);

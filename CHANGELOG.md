@@ -10,6 +10,17 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.2.0 — 2026-08-11
+
+Artwork loading, and the equalizer work from v0.1.9 reaching everybody.
+
+If you are coming from v0.1.8, this also carries everything in v0.1.9 below —
+that was a test build cut off a branch for comparing the two equalizer filters by
+ear, so most people never saw it. The **Filter** choice on the Equalizer screen is
+here to stay: Parametric is the default and is the one that survives a gapless
+track change, Graphic is the filter every build before v0.1.9 used, and neither is
+going away.
+
 ### Fixed
 
 - **Artwork now loads for where you stopped scrolling, not for everywhere you
