@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/services/autoeq/autoeq_provider.dart';
+import 'package:flax/shared/audio/eq_filter.dart';
 
 /// Maximum boost/cut per band, in dB (matches foobar2000's range).
 const eqGainLimit = 20.0;
@@ -79,13 +80,11 @@ class EqState {
 
 /// The 18 band center frequencies, in Hz.
 ///
-/// These are the fixed bands of ffmpeg's `superequalizer` filter, which is what
-/// actually performs the filtering. foobar2000 uses 18 log-spaced bands too, so
-/// its preset files map onto these one-for-one by index.
-const _bandFrequencies = <double>[
-  65, 92, 131, 185, 262, 370, 523, 740, 1047,
-  1480, 2093, 2960, 4186, 5920, 8372, 11840, 16744, 20000,
-];
+/// Shared with the filter layer rather than restated here: whichever engine is
+/// selected samples the same list, and a second copy of these numbers is a
+/// silent mistuning waiting to happen. foobar2000 uses 18 log-spaced bands too,
+/// so its preset files map onto these one-for-one by index.
+const _bandFrequencies = eqBandFrequencies;
 
 const _bandLabels = <String>[
   '65', '92', '131', '185', '262', '370', '523', '740', '1k',
@@ -486,8 +485,47 @@ class EqualizerScreen extends ConsumerWidget {
               onTap: () => context.go('/settings/autoeq'),
             );
           }),
+          const _EqEngineTile(),
           const SizedBox(height: 8),
         ],
+      ),
+    );
+  }
+}
+
+/// Which filter the curve above is applied through.
+///
+/// Sits under the bands rather than beside the on/off switch because it is not
+/// a tuning control: the curve is the same either way, and this only decides
+/// how it is realized. Both are kept so the two can be compared by ear on
+/// real material — the parametric one is what stops the stutter at a gapless
+/// track change, but that is not on its own an argument about how they sound.
+class _EqEngineTile extends ConsumerWidget {
+  const _EqEngineTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final engine = ref.watch(eqEngineProvider);
+
+    return ListTile(
+      leading: const Icon(Icons.graphic_eq),
+      title: const Text('Filter'),
+      subtitle: Text(
+        engine.description,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: SegmentedButton<EqEngine>(
+        segments: [
+          for (final e in EqEngine.values)
+            ButtonSegment(value: e, label: Text(e.label)),
+        ],
+        selected: {engine},
+        showSelectedIcon: false,
+        onSelectionChanged: (s) =>
+            ref.read(eqEngineProvider.notifier).setEngine(s.first),
       ),
     );
   }
