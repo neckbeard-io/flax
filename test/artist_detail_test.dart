@@ -48,7 +48,8 @@ final _mbInfo = MusicBrainzArtistInfo(
 );
 
 /// Long enough to be visible in the layout, mirroring a real Last.fm bio.
-const _bio = 'A Canadian heavy metal band from Victoria, British Columbia, '
+const _bio =
+    'A Canadian heavy metal band from Victoria, British Columbia, '
     'formed in 2000. The group initially started as a solo project before '
     'expanding, and went on to sign with Roadrunner Records in 2004, '
     'releasing several albums over the following decade.';
@@ -76,16 +77,19 @@ Widget _harness({
 }
 
 void main() {
-  testWidgets('desktop header shows the artist contained, not as a banner',
-      (tester) async {
+  testWidgets('desktop header shows the artist contained, not as a banner', (
+    tester,
+  ) async {
     tester.view.physicalSize = const ui.Size(1400, 1000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(_harness(
-      info: Future.value(const ArtistInfo(biography: _bio)),
-      mb: Future.value(_mbInfo),
-    ));
+    await tester.pumpWidget(
+      _harness(
+        info: Future.value(const ArtistInfo(biography: _bio)),
+        mb: Future.value(_mbInfo),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
@@ -98,8 +102,11 @@ void main() {
     // controls over arbitrary artwork.
     final image = tester.getSize(find.byType(SizedBox).at(0));
     expect(find.text('Canada'), findsOneWidget, reason: 'country chip renders');
-    expect(image.width, lessThan(1400),
-        reason: 'header art must not span the window');
+    expect(
+      image.width,
+      lessThan(1400),
+      reason: 'header art must not span the window',
+    );
   });
 
   testWidgets('album list does not move when the bio arrives', (tester) async {
@@ -112,27 +119,31 @@ void main() {
     final infoCompleter = Completer<ArtistInfo?>();
     final mbCompleter = Completer<MusicBrainzArtistInfo?>();
 
-    await tester.pumpWidget(_harness(
-      info: infoCompleter.future,
-      mb: mbCompleter.future,
-    ));
+    await tester.pumpWidget(
+      _harness(info: infoCompleter.future, mb: mbCompleter.future),
+    );
     await tester.pumpAndSettle();
 
-    final before =
-        tester.getTopLeft(find.text('Battlecry Under a Winter Sun')).dy;
+    final before = tester
+        .getTopLeft(find.text('Battlecry Under a Winter Sun'))
+        .dy;
 
     // Metadata lands.
     infoCompleter.complete(const ArtistInfo(biography: _bio));
     mbCompleter.complete(_mbInfo);
     await tester.pumpAndSettle();
 
-    final after =
-        tester.getTopLeft(find.text('Battlecry Under a Winter Sun')).dy;
+    final after = tester
+        .getTopLeft(find.text('Battlecry Under a Winter Sun'))
+        .dy;
 
     // The regression this guards: the bio and chips collapsed to nothing while
     // loading, then pushed the album list down when they arrived — moving a row
     // out from under the pointer mid-click.
-    expect(after, closeTo(before, 1.0),
-        reason: 'album list shifted by ${after - before}px when info loaded');
+    expect(
+      after,
+      closeTo(before, 1.0),
+      reason: 'album list shifted by ${after - before}px when info loaded',
+    );
   });
 }

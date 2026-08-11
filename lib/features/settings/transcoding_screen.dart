@@ -44,8 +44,11 @@ class TranscodingScreen extends ConsumerWidget {
               ref,
               title: 'Wi-Fi Streaming Quality',
               current: config.wifiQuality,
-              options: StreamQuality.values.where((q) => q != StreamQuality.disabled).toList(),
-              onSelected: (q) => _updateConfig(ref, server, config.copyWith(wifiQuality: q)),
+              options: StreamQuality.values
+                  .where((q) => q != StreamQuality.disabled)
+                  .toList(),
+              onSelected: (q) =>
+                  _updateConfig(ref, server, config.copyWith(wifiQuality: q)),
             ),
           ),
           ListTile(
@@ -58,7 +61,11 @@ class TranscodingScreen extends ConsumerWidget {
               title: 'Cellular Streaming Quality',
               current: config.cellularQuality,
               options: StreamQuality.values.toList(),
-              onSelected: (q) => _updateConfig(ref, server, config.copyWith(cellularQuality: q)),
+              onSelected: (q) => _updateConfig(
+                ref,
+                server,
+                config.copyWith(cellularQuality: q),
+              ),
             ),
           ),
           const Divider(),
@@ -79,7 +86,12 @@ class TranscodingScreen extends ConsumerWidget {
               value: fmt,
               groupValue: config.transcodeFormat,
               onChanged: (v) {
-                if (v != null) _updateConfig(ref, server, config.copyWith(transcodeFormat: v));
+                if (v != null)
+                  _updateConfig(
+                    ref,
+                    server,
+                    config.copyWith(transcodeFormat: v),
+                  );
               },
             ),
           ),
@@ -96,9 +108,17 @@ class TranscodingScreen extends ConsumerWidget {
               title: 'Offline Download Quality',
               current: config.offlineQuality,
               options: StreamQuality.values
-                  .where((q) => q != StreamQuality.disabled && q != StreamQuality.kbps64)
+                  .where(
+                    (q) =>
+                        q != StreamQuality.disabled &&
+                        q != StreamQuality.kbps64,
+                  )
                   .toList(),
-              onSelected: (q) => _updateConfig(ref, server, config.copyWith(offlineQuality: q)),
+              onSelected: (q) => _updateConfig(
+                ref,
+                server,
+                config.copyWith(offlineQuality: q),
+              ),
             ),
           ),
         ],
@@ -107,9 +127,9 @@ class TranscodingScreen extends ConsumerWidget {
   }
 
   void _updateConfig(WidgetRef ref, Server server, TranscodingConfig config) {
-    ref.read(serverListProvider.notifier).updateServer(
-          server.copyWith(transcodingConfig: config),
-        );
+    ref
+        .read(serverListProvider.notifier)
+        .updateServer(server.copyWith(transcodingConfig: config));
   }
 
   void _showQualityPicker(
@@ -131,9 +151,9 @@ class TranscodingScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             ...options.map(
@@ -171,9 +191,9 @@ class _SectionTitle extends StatelessWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

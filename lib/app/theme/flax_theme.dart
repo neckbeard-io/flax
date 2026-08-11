@@ -4,7 +4,8 @@ class FlaxTheme {
   static const _seedColor = Color(0xFF6750A4);
 
   static ThemeData light({ColorScheme? dynamicScheme}) {
-    final colorScheme = dynamicScheme ??
+    final colorScheme =
+        dynamicScheme ??
         ColorScheme.fromSeed(
           seedColor: _seedColor,
           brightness: Brightness.light,
@@ -50,17 +51,15 @@ class FlaxTheme {
   }
 
   static ThemeData dark({ColorScheme? dynamicScheme, bool amoled = false}) {
-    final colorScheme = dynamicScheme ??
+    final colorScheme =
+        dynamicScheme ??
         ColorScheme.fromSeed(
           seedColor: _seedColor,
           brightness: Brightness.dark,
         );
 
     final effectiveScheme = amoled
-        ? colorScheme.copyWith(
-            surface: Colors.black,
-            onSurface: Colors.white,
-          )
+        ? colorScheme.copyWith(surface: Colors.black, onSurface: Colors.white)
         : colorScheme;
 
     return ThemeData(

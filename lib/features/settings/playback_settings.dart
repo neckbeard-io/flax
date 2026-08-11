@@ -57,18 +57,17 @@ class PlaybackSettings {
     bool? gapless,
     ReplayGainMode? replayGain,
     double? fadeSeconds,
-  }) =>
-      PlaybackSettings(
-        gapless: gapless ?? this.gapless,
-        replayGain: replayGain ?? this.replayGain,
-        fadeSeconds: fadeSeconds ?? this.fadeSeconds,
-      );
+  }) => PlaybackSettings(
+    gapless: gapless ?? this.gapless,
+    replayGain: replayGain ?? this.replayGain,
+    fadeSeconds: fadeSeconds ?? this.fadeSeconds,
+  );
 
   Map<String, dynamic> toJson() => {
-        'gapless': gapless,
-        'replayGain': replayGain.name,
-        'fadeSeconds': fadeSeconds,
-      };
+    'gapless': gapless,
+    'replayGain': replayGain.name,
+    'fadeSeconds': fadeSeconds,
+  };
 
   factory PlaybackSettings.fromJson(Map<String, dynamic> json) =>
       PlaybackSettings(
@@ -77,8 +76,10 @@ class PlaybackSettings {
           (m) => m.name == json['replayGain'],
           orElse: () => ReplayGainMode.off,
         ),
-        fadeSeconds: ((json['fadeSeconds'] as num?)?.toDouble() ?? 0)
-            .clamp(0, maxFadeSeconds),
+        fadeSeconds: ((json['fadeSeconds'] as num?)?.toDouble() ?? 0).clamp(
+          0,
+          maxFadeSeconds,
+        ),
       );
 }
 
@@ -165,8 +166,8 @@ double fadeOffsetDb({
 
 final playbackSettingsProvider =
     StateNotifierProvider<PlaybackSettingsNotifier, PlaybackSettings>(
-  (ref) => PlaybackSettingsNotifier(),
-);
+      (ref) => PlaybackSettingsNotifier(),
+    );
 
 class PlaybackSettingsNotifier extends StateNotifier<PlaybackSettings> {
   static const storageKey = 'flax_playback_settings';

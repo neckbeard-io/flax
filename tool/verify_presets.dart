@@ -5,8 +5,9 @@
 import 'dart:io';
 
 void main() {
-  final src = File('lib/features/settings/equalizer_screen.dart')
-      .readAsStringSync();
+  final src = File(
+    'lib/features/settings/equalizer_screen.dart',
+  ).readAsStringSync();
 
   // Extract the _presetGains map body
   final start = src.indexOf('const _presetGains');

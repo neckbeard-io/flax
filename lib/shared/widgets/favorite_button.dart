@@ -37,7 +37,8 @@ class FavoriteButton extends StatelessWidget {
           : theme.colorScheme.onSurfaceVariant,
       onTap: onToggle,
       tooltip:
-          tooltip ?? (isFavorite ? 'Remove from favorites' : 'Add to favorites'),
+          tooltip ??
+          (isFavorite ? 'Remove from favorites' : 'Add to favorites'),
     );
   }
 }

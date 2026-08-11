@@ -11,10 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// A/B-ing them meaningful: nothing above this line differs.
 enum EqEngine {
   /// `anequalizer`: a cascade of biquads, one per band per channel.
-  parametric(
-    'Parametric',
-    'IIR biquads. Survives a gapless track change.',
-  ),
+  parametric('Parametric', 'IIR biquads. Survives a gapless track change.'),
 
   /// `superequalizer`: an 18-band FFT graphic equalizer.
   ///
@@ -23,10 +20,7 @@ enum EqEngine {
   /// gapless tracks. Kept because it is what every tuning before this was
   /// judged against, and because "different" and "worse" are not the same
   /// thing to an ear that knows the material.
-  graphic(
-    'Graphic',
-    'FFT. Stutters at gapless track changes.',
-  );
+  graphic('Graphic', 'FFT. Stutters at gapless track changes.');
 
   const EqEngine(this.label, this.description);
 
@@ -124,8 +118,10 @@ Map<String, double> superequalizerParams(List<double> gainsDb) {
   final params = <String, double>{};
   for (var i = 0; i < eqBandCount; i++) {
     final gain = i < gainsDb.length ? gainsDb[i] : 0.0;
-    params['${i + 1}b'] =
-        math.pow(10.0, gain / 20.0).toDouble().clamp(0.0, 20.0);
+    params['${i + 1}b'] = math
+        .pow(10.0, gain / 20.0)
+        .toDouble()
+        .clamp(0.0, 20.0);
   }
   return params;
 }
@@ -135,8 +131,9 @@ Map<String, double> superequalizerParams(List<double> gainsDb) {
 /// Deliberately its own preference rather than a field on the EQ settings: that
 /// blob holds a carefully tuned curve, and widening its schema to carry an A/B
 /// switch risks the curve for the sake of the switch.
-final eqEngineProvider =
-    StateNotifierProvider<EqEngineNotifier, EqEngine>((ref) {
+final eqEngineProvider = StateNotifierProvider<EqEngineNotifier, EqEngine>((
+  ref,
+) {
   return EqEngineNotifier();
 });
 
@@ -175,6 +172,6 @@ class EqEngineNotifier extends StateNotifier<EqEngine> {
 /// Resolves a stored name back to an engine, falling back to the default for
 /// anything unrecognized.
 EqEngine decodeEqEngine(String name) => EqEngine.values.firstWhere(
-      (e) => e.name == name,
-      orElse: () => EqEngine.defaultEngine,
-    );
+  (e) => e.name == name,
+  orElse: () => EqEngine.defaultEngine,
+);

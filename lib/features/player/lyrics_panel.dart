@@ -16,7 +16,9 @@ class LyricsPanel extends ConsumerWidget {
     final song = ref.watch(playerProvider.select((s) => s.currentSong));
     if (song == null) return const _LyricsMessage('Nothing playing');
 
-    return ref.watch(currentLyricsProvider).when(
+    return ref
+        .watch(currentLyricsProvider)
+        .when(
           // Blank rather than a spinner: lyrics land in well under a second and
           // a spinner that appears and vanishes reads as a flicker.
           loading: () => const _LyricsMessage(''),
@@ -97,7 +99,8 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
 
   void _centerOn(int line) {
     if (line < 0 || line == _lastCenteredLine) return;
-    final handsOff = _scrolledByHandAt != null &&
+    final handsOff =
+        _scrolledByHandAt != null &&
         DateTime.now().difference(_scrolledByHandAt!) < _handsOff;
     if (handsOff) return;
 
@@ -118,8 +121,9 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final settings = ref.watch(lyricsSettingsProvider);
-    final current =
-        widget.lyrics.synced ? ref.watch(currentLyricLineProvider) : -1;
+    final current = widget.lyrics.synced
+        ? ref.watch(currentLyricLineProvider)
+        : -1;
     _centerOn(current);
 
     return NotificationListener<ScrollNotification>(
@@ -147,8 +151,8 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
                     onTap: widget.lyrics.lines[i].start == null
                         ? null
                         : () => ref
-                            .read(playerProvider.notifier)
-                            .seek(widget.lyrics.lines[i].start!),
+                              .read(playerProvider.notifier)
+                              .seek(widget.lyrics.lines[i].start!),
                     theme: theme,
                     settings: settings,
                   ),

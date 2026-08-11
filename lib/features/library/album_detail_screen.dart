@@ -11,15 +11,19 @@ import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
 
-final albumDetailProvider =
-    FutureProvider.family<Album, String>((ref, id) async {
+final albumDetailProvider = FutureProvider.family<Album, String>((
+  ref,
+  id,
+) async {
   final client = ref.watch(subsonicClientProvider);
   if (client == null) throw Exception('No server');
   return client.getAlbum(id);
 });
 
-final albumSongsProvider =
-    FutureProvider.family<List<Song>, String>((ref, albumId) async {
+final albumSongsProvider = FutureProvider.family<List<Song>, String>((
+  ref,
+  albumId,
+) async {
   final client = ref.watch(subsonicClientProvider);
   if (client == null) return [];
   return client.getAlbumSongs(albumId);
@@ -73,9 +77,8 @@ class AlbumDetailScreen extends ConsumerWidget {
               loading: () => const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
               ),
-              error: (e, _) => SliverFillRemaining(
-                child: Center(child: Text('Error: $e')),
-              ),
+              error: (e, _) =>
+                  SliverFillRemaining(child: Center(child: Text('Error: $e'))),
             ),
           ],
         ),
@@ -91,7 +94,11 @@ class AlbumDetailScreen extends ConsumerWidget {
 /// Both write straight through and then invalidate the album, which is cheap:
 /// one request, and the server stays the source of truth for what a star means.
 class _AlbumActions extends ConsumerWidget {
-  const _AlbumActions({required this.album, required this.albumId, this.size = 22});
+  const _AlbumActions({
+    required this.album,
+    required this.albumId,
+    this.size = 22,
+  });
 
   final Album album;
   final String albumId;
@@ -199,78 +206,79 @@ class _DesktopHeader extends StatelessWidget {
           // falls back to the album's artist, which is the page that contains
           // it. Hiding the button in that case left no way out at all.
           UpBackButton(
-            fallbackLocation:
-                album.artistId != null ? '/artists/${album.artistId}' : '/albums',
+            fallbackLocation: album.artistId != null
+                ? '/artists/${album.artistId}'
+                : '/albums',
           ),
           Padding(
             padding: const EdgeInsets.only(left: 8),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-          SizedBox(
-            width: 240,
-            height: 240,
-            child: CoverArtImage(
-              coverArtId: album.coverArtId,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ALBUM',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                    letterSpacing: 1.2,
-                    fontWeight: FontWeight.w600,
+                SizedBox(
+                  width: 240,
+                  height: 240,
+                  child: CoverArtImage(
+                    coverArtId: album.coverArtId,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  album.name,
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    height: 1.1,
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ALBUM',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        album.name,
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        [
+                          if (album.year != null) '${album.year}',
+                          '${album.songCount} '
+                              '${album.songCount == 1 ? "track" : "tracks"}',
+                          formatDuration(album.duration),
+                          if (album.genre != null) album.genre!,
+                        ].join(' · '),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      if (album.artistName != null)
+                        HoverLink(
+                          text: album.artistName!,
+                          onTap: album.artistId != null
+                              ? () => context.push('/artists/${album.artistId}')
+                              : null,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(child: _AlbumPlayActions(albumId: albumId)),
+                          _AlbumActions(album: album, albumId: albumId),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  [
-                    if (album.year != null) '${album.year}',
-                    '${album.songCount} '
-                        '${album.songCount == 1 ? "track" : "tracks"}',
-                    formatDuration(album.duration),
-                    if (album.genre != null) album.genre!,
-                  ].join(' · '),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (album.artistName != null)
-                  HoverLink(
-                    text: album.artistName!,
-                    onTap: album.artistId != null
-                        ? () => context.push('/artists/${album.artistId}')
-                        : null,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(child: _AlbumPlayActions(albumId: albumId)),
-                    _AlbumActions(album: album, albumId: albumId),
-                  ],
-                ),
-              ],
-            ),
-          ),
               ],
             ),
           ),
@@ -377,16 +385,25 @@ class _TrackTableHeader extends StatelessWidget {
               SizedBox(width: 32, child: Text('#', style: style)),
               const SizedBox(width: 8),
               Expanded(child: Text('TITLE', style: style)),
-              SizedBox(width: _TrackRow.ratingWidth, child: Text('RATING', style: style)),
+              SizedBox(
+                width: _TrackRow.ratingWidth,
+                child: Text('RATING', style: style),
+              ),
               SizedBox(
                 width: 56,
-                child: Icon(Icons.access_time,
-                    size: 14, color: theme.colorScheme.onSurfaceVariant),
+                child: Icon(
+                  Icons.access_time,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
               SizedBox(
                 width: 40,
-                child: Icon(Icons.favorite_border,
-                    size: 14, color: theme.colorScheme.onSurfaceVariant),
+                child: Icon(
+                  Icons.favorite_border,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -465,18 +482,18 @@ class _TrackRow extends ConsumerWidget {
           song.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: isPlaying
-              ? TextStyle(color: theme.colorScheme.primary)
-              : null,
+          style: isPlaying ? TextStyle(color: theme.colorScheme.primary) : null,
         ),
         subtitle: song.artistName != null
-            ? Text(song.artistName!,
+            ? Text(
+                song.artistName!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontSize: 12,
-                ))
+                ),
+              )
             : null,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -507,8 +524,11 @@ class _TrackRow extends ConsumerWidget {
             SizedBox(
               width: 32,
               child: isPlaying
-                  ? Icon(Icons.volume_up,
-                      size: 14, color: theme.colorScheme.primary)
+                  ? Icon(
+                      Icons.volume_up,
+                      size: 14,
+                      color: theme.colorScheme.primary,
+                    )
                   : Text(
                       '${song.track ?? index + 1}',
                       style: theme.textTheme.bodySmall?.copyWith(

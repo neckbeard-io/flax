@@ -121,12 +121,14 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
         _closePanel();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowDown:
-        setState(() => _highlighted =
-            _highlighted >= last ? 0 : _highlighted + 1);
+        setState(
+          () => _highlighted = _highlighted >= last ? 0 : _highlighted + 1,
+        );
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowUp:
-        setState(() => _highlighted =
-            _highlighted <= 0 ? last : _highlighted - 1);
+        setState(
+          () => _highlighted = _highlighted <= 0 ? last : _highlighted - 1,
+        );
         return KeyEventResult.handled;
       case LogicalKeyboardKey.enter:
       case LogicalKeyboardKey.numpadEnter:
@@ -145,7 +147,9 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
 
   Widget _buildPanel(BuildContext context) {
     final async = ref.watch(quickSearchResultsProvider);
-    final items = quickSearchItems(async.valueOrNull ?? QuickSearchResults.empty);
+    final items = quickSearchItems(
+      async.valueOrNull ?? QuickSearchResults.empty,
+    );
 
     return Stack(
       children: [
@@ -192,7 +196,10 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
         border: Border(
-          right: BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
+          right: BorderSide(
+            color: theme.colorScheme.outlineVariant,
+            width: 0.5,
+          ),
         ),
       ),
       child: Column(
@@ -300,9 +307,7 @@ class _SearchField extends StatelessWidget {
         context,
         hintText: 'Search',
         prefixIcon: const Icon(Icons.search, size: 18),
-      ).copyWith(
-        prefixIconConstraints: const BoxConstraints(minWidth: 36),
-      ),
+      ).copyWith(prefixIconConstraints: const BoxConstraints(minWidth: 36)),
     );
   }
 }
@@ -321,8 +326,9 @@ class _SidebarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color =
-        selected ? theme.colorScheme.primary : theme.colorScheme.onSurface;
+    final color = selected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurface;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),

@@ -6,14 +6,14 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/library/album_sort.dart';
 
 Album _album(String name, {int? year, int? rating}) => Album(
-      id: 'al-$name',
-      serverId: 'srv',
-      name: name,
-      songCount: 1,
-      duration: 100,
-      year: year,
-      userRating: rating,
-    );
+  id: 'al-$name',
+  serverId: 'srv',
+  name: name,
+  songCount: 1,
+  duration: 100,
+  year: year,
+  userRating: rating,
+);
 
 /// Waits for the notifier's async load to land.
 Future<AlbumSortMode> _restored() async {
@@ -100,8 +100,12 @@ void main() {
     test('year ascending puts an unknown year last', () {
       // An album with no year must not displace one that has a real year.
       final sorted = sortAlbums(albums, AlbumSortMode.yearAsc);
-      expect(sorted.map((a) => a.name),
-          ['Ritual', 'Cinder', 'Aurora', 'Beacon']);
+      expect(sorted.map((a) => a.name), [
+        'Ritual',
+        'Cinder',
+        'Aurora',
+        'Beacon',
+      ]);
     });
 
     test('year descending puts an unknown year first', () {
@@ -111,10 +115,12 @@ void main() {
     });
 
     test('title sorts alphabetically', () {
-      expect(
-        sortAlbums(albums, AlbumSortMode.title).map((a) => a.name),
-        ['Aurora', 'Beacon', 'Cinder', 'Ritual'],
-      );
+      expect(sortAlbums(albums, AlbumSortMode.title).map((a) => a.name), [
+        'Aurora',
+        'Beacon',
+        'Cinder',
+        'Ritual',
+      ]);
     });
 
     test('rating sorts highest first, unrated last', () {

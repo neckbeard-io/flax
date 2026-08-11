@@ -1,6 +1,14 @@
 enum DownloadState { none, queued, downloading, complete, error }
 
-enum FilterType { peaking, lowShelf, highShelf, lowPass, highPass, bandPass, notch }
+enum FilterType {
+  peaking,
+  lowShelf,
+  highShelf,
+  lowPass,
+  highPass,
+  bandPass,
+  notch,
+}
 
 enum StreamQuality {
   original,
@@ -13,26 +21,26 @@ enum StreamQuality {
   disabled;
 
   int? get maxBitRate => switch (this) {
-        StreamQuality.original => null,
-        StreamQuality.flac => null,
-        StreamQuality.kbps320 => 320,
-        StreamQuality.kbps256 => 256,
-        StreamQuality.kbps192 => 192,
-        StreamQuality.kbps128 => 128,
-        StreamQuality.kbps64 => 64,
-        StreamQuality.disabled => null,
-      };
+    StreamQuality.original => null,
+    StreamQuality.flac => null,
+    StreamQuality.kbps320 => 320,
+    StreamQuality.kbps256 => 256,
+    StreamQuality.kbps192 => 192,
+    StreamQuality.kbps128 => 128,
+    StreamQuality.kbps64 => 64,
+    StreamQuality.disabled => null,
+  };
 
   String get label => switch (this) {
-        StreamQuality.original => 'Original',
-        StreamQuality.flac => 'FLAC',
-        StreamQuality.kbps320 => '320 kbps',
-        StreamQuality.kbps256 => '256 kbps',
-        StreamQuality.kbps192 => '192 kbps',
-        StreamQuality.kbps128 => '128 kbps',
-        StreamQuality.kbps64 => '64 kbps',
-        StreamQuality.disabled => 'Disabled',
-      };
+    StreamQuality.original => 'Original',
+    StreamQuality.flac => 'FLAC',
+    StreamQuality.kbps320 => '320 kbps',
+    StreamQuality.kbps256 => '256 kbps',
+    StreamQuality.kbps192 => '192 kbps',
+    StreamQuality.kbps128 => '128 kbps',
+    StreamQuality.kbps64 => '64 kbps',
+    StreamQuality.disabled => 'Disabled',
+  };
 }
 
 enum TranscodeFormat {
@@ -56,19 +64,19 @@ enum AlbumListType {
   byGenre;
 
   String get apiValue => switch (this) {
-        AlbumListType.random => 'random',
-        AlbumListType.newest => 'newest',
-        AlbumListType.frequent => 'frequent',
-        AlbumListType.recent => 'recent',
-        AlbumListType.starred => 'starred',
-        // Rated, not favorited: `highest` reads userRating, `starred` reads the
-        // boolean favorite flag. The two are separate fields on the same album.
-        AlbumListType.highest => 'highest',
-        AlbumListType.alphabeticalByName => 'alphabeticalByName',
-        AlbumListType.alphabeticalByArtist => 'alphabeticalByArtist',
-        AlbumListType.byYear => 'byYear',
-        AlbumListType.byGenre => 'byGenre',
-      };
+    AlbumListType.random => 'random',
+    AlbumListType.newest => 'newest',
+    AlbumListType.frequent => 'frequent',
+    AlbumListType.recent => 'recent',
+    AlbumListType.starred => 'starred',
+    // Rated, not favorited: `highest` reads userRating, `starred` reads the
+    // boolean favorite flag. The two are separate fields on the same album.
+    AlbumListType.highest => 'highest',
+    AlbumListType.alphabeticalByName => 'alphabeticalByName',
+    AlbumListType.alphabeticalByArtist => 'alphabeticalByArtist',
+    AlbumListType.byYear => 'byYear',
+    AlbumListType.byGenre => 'byGenre',
+  };
 }
 
 enum RepeatMode { off, all, one }

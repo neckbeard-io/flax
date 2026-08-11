@@ -10,13 +10,13 @@ Artist _artist(String name) =>
     Artist(id: 'ar-$name', serverId: 'srv', name: name, albumCount: 1);
 
 Album _album(String name, String by) => Album(
-      id: 'al-$name',
-      serverId: 'srv',
-      name: name,
-      artistName: by,
-      songCount: 1,
-      duration: 100,
-    );
+  id: 'al-$name',
+  serverId: 'srv',
+  name: name,
+  artistName: by,
+  songCount: 1,
+  duration: 100,
+);
 
 void main() {
   group('the debounce', () {
@@ -107,17 +107,17 @@ void main() {
         // The rows draw cover art, which reads the server provider.
         ProviderScope(
           child: MaterialApp(
-          theme: ThemeData.dark(useMaterial3: true),
-          home: Scaffold(
-            body: QuickSearchPanel(
-              items: items,
-              highlighted: highlighted,
-              query: 'testament',
-              loading: loading,
-              onSelected: onSelected ?? (_) {},
-              onSearchEverything: onSearchEverything ?? () {},
+            theme: ThemeData.dark(useMaterial3: true),
+            home: Scaffold(
+              body: QuickSearchPanel(
+                items: items,
+                highlighted: highlighted,
+                query: 'testament',
+                loading: loading,
+                onSelected: onSelected ?? (_) {},
+                onSearchEverything: onSearchEverything ?? () {},
+              ),
             ),
-          ),
           ),
         ),
       );
@@ -125,10 +125,13 @@ void main() {
     }
 
     testWidgets('groups artists and albums under headings', (tester) async {
-      await pump(tester, items: [
-        QuickSearchItem.artist(_artist('Testament')),
-        QuickSearchItem.album(_album('Demonic', 'Testament')),
-      ]);
+      await pump(
+        tester,
+        items: [
+          QuickSearchItem.artist(_artist('Testament')),
+          QuickSearchItem.album(_album('Demonic', 'Testament')),
+        ],
+      );
 
       expect(find.text('ARTISTS'), findsOneWidget);
       expect(find.text('ALBUMS'), findsOneWidget);
@@ -139,14 +142,16 @@ void main() {
     testWidgets('never shows songs', (tester) async {
       // The whole point of the popup over the search screen: a library has far
       // more songs than albums, and they bury what you were reaching for.
-      await pump(tester, items: [
-        QuickSearchItem.album(_album('Demonic', 'Testament')),
-      ]);
+      await pump(
+        tester,
+        items: [QuickSearchItem.album(_album('Demonic', 'Testament'))],
+      );
       expect(find.text('SONGS'), findsNothing);
     });
 
-    testWidgets('always offers the full search, even with no results',
-        (tester) async {
+    testWidgets('always offers the full search, even with no results', (
+      tester,
+    ) async {
       var searched = false;
       await pump(
         tester,
@@ -161,8 +166,9 @@ void main() {
       expect(searched, isTrue);
     });
 
-    testWidgets('says it is working rather than flashing a spinner',
-        (tester) async {
+    testWidgets('says it is working rather than flashing a spinner', (
+      tester,
+    ) async {
       await pump(tester, items: const [], loading: true);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Searching…'), findsOneWidget);

@@ -45,31 +45,30 @@ class ShellScaffold extends ConsumerWidget {
     );
 
     return Scaffold(
-        body: content,
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const MiniPlayer(),
-            // With the sidebar showing, the destinations live there; keeping the
-            // bottom bar too would duplicate them.
-            if (!useSidebar)
-              NavigationBar(
-                height: 56,
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                selectedIndex: index,
-                destinations: [
-                  for (final d in navDestinations)
-                    NavigationDestination(
-                      icon: Icon(d.icon),
-                      selectedIcon: Icon(d.selectedIcon),
-                      label: d.label,
-                    ),
-                ],
-                onDestinationSelected: (i) =>
-                    context.go(navDestinations[i].path),
-              ),
-          ],
-        ),
-      );
+      body: content,
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const MiniPlayer(),
+          // With the sidebar showing, the destinations live there; keeping the
+          // bottom bar too would duplicate them.
+          if (!useSidebar)
+            NavigationBar(
+              height: 56,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              selectedIndex: index,
+              destinations: [
+                for (final d in navDestinations)
+                  NavigationDestination(
+                    icon: Icon(d.icon),
+                    selectedIcon: Icon(d.selectedIcon),
+                    label: d.label,
+                  ),
+              ],
+              onDestinationSelected: (i) => context.go(navDestinations[i].path),
+            ),
+        ],
+      ),
+    );
   }
 }

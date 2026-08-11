@@ -48,27 +48,28 @@ class LyricsSettings {
       );
 
   Map<String, dynamic> toJson() => {
-        'fontSize': fontSize,
-        'alignment': alignment.name,
-      };
+    'fontSize': fontSize,
+    'alignment': alignment.name,
+  };
 
   factory LyricsSettings.fromJson(Map<String, dynamic> json) => LyricsSettings(
-        fontSize: (json['fontSize'] as num?)?.toDouble().clamp(
-                  minFontSize,
-                  maxFontSize,
-                ) ??
-            defaultFontSize,
-        alignment: LyricsAlignment.values.firstWhere(
-          (a) => a.name == json['alignment'],
-          orElse: () => LyricsAlignment.left,
-        ),
-      );
+    fontSize:
+        (json['fontSize'] as num?)?.toDouble().clamp(
+          minFontSize,
+          maxFontSize,
+        ) ??
+        defaultFontSize,
+    alignment: LyricsAlignment.values.firstWhere(
+      (a) => a.name == json['alignment'],
+      orElse: () => LyricsAlignment.left,
+    ),
+  );
 }
 
 final lyricsSettingsProvider =
     StateNotifierProvider<LyricsSettingsNotifier, LyricsSettings>((ref) {
-  return LyricsSettingsNotifier();
-});
+      return LyricsSettingsNotifier();
+    });
 
 class LyricsSettingsNotifier extends StateNotifier<LyricsSettings> {
   static const _storageKey = 'flax_lyrics_settings';
@@ -82,9 +83,7 @@ class LyricsSettingsNotifier extends StateNotifier<LyricsSettings> {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_storageKey);
       if (raw == null) return;
-      state = LyricsSettings.fromJson(
-        jsonDecode(raw) as Map<String, dynamic>,
-      );
+      state = LyricsSettings.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (_) {
       // Corrupt prefs — keep defaults.
     }

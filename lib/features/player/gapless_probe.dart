@@ -5,8 +5,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' as mpv;
 
 /// Whether the probe runs. Off unless asked for:
 /// `tool/run_flax.sh --probe`, or `--dart-define=FLAX_GAPLESS_PROBE=true`.
-const bool gaplessProbeEnabled =
-    bool.fromEnvironment('FLAX_GAPLESS_PROBE');
+const bool gaplessProbeEnabled = bool.fromEnvironment('FLAX_GAPLESS_PROBE');
 
 /// Instrumentation for the boundary between two tracks.
 ///
@@ -82,59 +81,82 @@ class GaplessProbe {
   /// Subsystems worth keeping. mpv at debug level is far too chatty to print
   /// wholesale, and these are the ones that speak about the handover.
   static const _interestingPrefixes = {
-    'ao', 'ad', 'cplayer', 'demux', 'stream', 'ffmpeg', 'af',
+    'ao',
+    'ad',
+    'cplayer',
+    'demux',
+    'stream',
+    'ffmpeg',
+    'af',
   };
 
   void start() {
     log('probe started — boundary timing, prefetch state, output format');
 
-    _subs.add(_player.stream.position.listen((pos) {
-      // Backwards means a seek or a new track, neither of which is a gap.
-      if (pos >= _lastPos) {
-        _lastTick = DateTime.now();
-      }
-      _lastPos = pos;
-    }));
+    _subs.add(
+      _player.stream.position.listen((pos) {
+        // Backwards means a seek or a new track, neither of which is a gap.
+        if (pos >= _lastPos) {
+          _lastTick = DateTime.now();
+        }
+        _lastPos = pos;
+      }),
+    );
 
-    _subs.add(_player.stream.playlist.listen((playlist) {
-      if (playlist.index == _index) return;
-      final previous = _index;
-      _index = playlist.index;
-      if (previous != null) _reportBoundary(previous, playlist.index);
-    }));
+    _subs.add(
+      _player.stream.playlist.listen((playlist) {
+        if (playlist.index == _index) return;
+        final previous = _index;
+        _index = playlist.index;
+        if (previous != null) _reportBoundary(previous, playlist.index);
+      }),
+    );
 
-    _subs.add(_player.stream.prefetchState.listen((state) {
-      _prefetch = state;
-      log('prefetch → ${state.name}');
-    }));
+    _subs.add(
+      _player.stream.prefetchState.listen((state) {
+        _prefetch = state;
+        log('prefetch → ${state.name}');
+      }),
+    );
 
-    _subs.add(_player.stream.prefetchPlaylist.listen((on) {
-      _prefetchOn = on;
-      log('prefetch-playlist = $on');
-    }));
+    _subs.add(
+      _player.stream.prefetchPlaylist.listen((on) {
+        _prefetchOn = on;
+        log('prefetch-playlist = $on');
+      }),
+    );
 
-    _subs.add(_player.stream.gapless.listen((g) {
-      log('gapless-audio = ${g.mpvValue}');
-    }));
+    _subs.add(
+      _player.stream.gapless.listen((g) {
+        log('gapless-audio = ${g.mpvValue}');
+      }),
+    );
 
-    _subs.add(_player.stream.audioOutParams.listen((params) {
-      // The output side, not the decoder side: this is what the device is
-      // actually opened with, and a change here is a device reinitialization.
-      final previous = _outParams;
-      _outParams = params;
-      if (previous != null && !_sameFormat(previous, params)) {
-        log('!! output format changed: ${_describe(previous)} '
-            '→ ${_describe(params)} — the device was reopened');
-      }
-    }));
+    _subs.add(
+      _player.stream.audioOutParams.listen((params) {
+        // The output side, not the decoder side: this is what the device is
+        // actually opened with, and a change here is a device reinitialization.
+        final previous = _outParams;
+        _outParams = params;
+        if (previous != null && !_sameFormat(previous, params)) {
+          log(
+            '!! output format changed: ${_describe(previous)} '
+            '→ ${_describe(params)} — the device was reopened',
+          );
+        }
+      }),
+    );
 
-    _subs.add(_player.stream.log.listen((entry) {
-      if (!_interestingPrefixes.contains(entry.prefix)) return;
-      _recentMpvLog.add(
-        (at: DateTime.now(), line: '[${entry.prefix}] ${entry.text}'),
-      );
-      if (_recentMpvLog.length > _mpvLogKeep) _recentMpvLog.removeAt(0);
-    }));
+    _subs.add(
+      _player.stream.log.listen((entry) {
+        if (!_interestingPrefixes.contains(entry.prefix)) return;
+        _recentMpvLog.add((
+          at: DateTime.now(),
+          line: '[${entry.prefix}] ${entry.text}',
+        ));
+        if (_recentMpvLog.length > _mpvLogKeep) _recentMpvLog.removeAt(0);
+      }),
+    );
   }
 
   /// Waits for the transition to finish, then prints what it cost.
@@ -153,10 +175,14 @@ class GaplessProbe {
     final buffer = await _player.getRawProperty('audio-buffer') ?? '?';
 
     log('──── boundary $from → $to ────');
-    log('playhead gap ${silence?.inMilliseconds ?? -1}ms '
-        '(coarse — position ticks only)');
-    log('audio-buffer ${buffer}s, prefetch state=${_prefetch.name} '
-        'enabled=$_prefetchOn');
+    log(
+      'playhead gap ${silence?.inMilliseconds ?? -1}ms '
+      '(coarse — position ticks only)',
+    );
+    log(
+      'audio-buffer ${buffer}s, prefetch state=${_prefetch.name} '
+      'enabled=$_prefetchOn',
+    );
     log('output format: ${_describe(_outParams)}');
     log('mpv, with the pause before each line:');
 
@@ -194,7 +220,7 @@ class GaplessProbe {
   static String _describe(mpv.AudioParams? p) => p == null
       ? 'unknown'
       : '${p.format?.name ?? "?"} ${p.sampleRate ?? "?"}Hz '
-          '${p.channelCount ?? "?"}ch';
+            '${p.channelCount ?? "?"}ch';
 
   void dispose() {
     _reportTimer?.cancel();

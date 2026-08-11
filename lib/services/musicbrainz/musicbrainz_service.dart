@@ -2,15 +2,17 @@ import 'package:dio/dio.dart';
 import 'package:flax/domain/models/models.dart';
 
 class MusicBrainzService {
-  static final _dio = Dio(BaseOptions(
-    baseUrl: 'https://musicbrainz.org/ws/2',
-    headers: {
-      'User-Agent': 'Flax/1.0.0 (https://github.com/flax-music/flax)',
-      'Accept': 'application/json',
-    },
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 10),
-  ));
+  static final _dio = Dio(
+    BaseOptions(
+      baseUrl: 'https://musicbrainz.org/ws/2',
+      headers: {
+        'User-Agent': 'Flax/1.0.0 (https://github.com/flax-music/flax)',
+        'Accept': 'application/json',
+      },
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+    ),
+  );
 
   static final _cache = <String, MusicBrainzArtistInfo>{};
 
@@ -30,8 +32,9 @@ class MusicBrainzService {
       final tagList = data['tags'] as List<dynamic>? ?? [];
       // Sort tags by count descending, take top ones
       final sortedTags = List<Map<String, dynamic>>.from(tagList);
-      sortedTags.sort((a, b) =>
-          (b['count'] as int? ?? 0).compareTo(a['count'] as int? ?? 0));
+      sortedTags.sort(
+        (a, b) => (b['count'] as int? ?? 0).compareTo(a['count'] as int? ?? 0),
+      );
       for (final tag in sortedTags.take(8)) {
         tags.add(tag['name'] as String);
       }
@@ -44,7 +47,8 @@ class MusicBrainzService {
       // showed a country and others a city. A country-typed area also carries
       // its own iso-3166-1-codes, used when the top-level field is absent.
       final areaCodes = area?['iso-3166-1-codes'] as List<dynamic>?;
-      final code = data['country'] as String? ??
+      final code =
+          data['country'] as String? ??
           (areaCodes != null && areaCodes.isNotEmpty
               ? areaCodes.first as String?
               : null);
@@ -71,11 +75,7 @@ class MusicBrainzService {
     try {
       final response = await _dio.get(
         '/artist',
-        queryParameters: {
-          'query': 'artist:"$name"',
-          'fmt': 'json',
-          'limit': 1,
-        },
+        queryParameters: {'query': 'artist:"$name"', 'fmt': 'json', 'limit': 1},
       );
 
       final data = response.data as Map<String, dynamic>;

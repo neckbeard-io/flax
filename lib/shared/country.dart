@@ -8,7 +8,6 @@
 /// Windows does not render.
 library;
 
-
 /// Name for an alpha-2 code, or null if unrecognised.
 String? countryName(String? alpha2) {
   if (alpha2 == null || alpha2.length != 2) return null;

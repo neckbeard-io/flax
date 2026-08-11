@@ -31,12 +31,18 @@ class AutoEqProfile {
   String get brand {
     // Common multi-word brand prefixes
     const multiWordBrands = [
-      'Audio-Technica', 'Audio Technica',
-      'Dan Clark', 'Campfire Audio',
-      'Final Audio', 'Empire Ears',
-      'Noble Audio', 'Unique Melody',
-      'Rose Technics', 'Tin HiFi',
-      'KZ ', '64 Audio',
+      'Audio-Technica',
+      'Audio Technica',
+      'Dan Clark',
+      'Campfire Audio',
+      'Final Audio',
+      'Empire Ears',
+      'Noble Audio',
+      'Unique Melody',
+      'Rose Technics',
+      'Tin HiFi',
+      'KZ ',
+      '64 Audio',
       'Periodic Audio',
     ];
     for (final b in multiWordBrands) {
@@ -61,7 +67,10 @@ class AutoEqProfile {
   static List<GraphicEqPoint> parseGraphicEq(String raw) {
     final result = <GraphicEqPoint>[];
     // Strip "GraphicEQ: " prefix if present
-    var data = raw.replaceFirst(RegExp(r'^GraphicEQ:\s*', caseSensitive: false), '');
+    var data = raw.replaceFirst(
+      RegExp(r'^GraphicEQ:\s*', caseSensitive: false),
+      '',
+    );
     // Split by semicolons
     for (final pair in data.split(';')) {
       final trimmed = pair.trim();
@@ -79,16 +88,16 @@ class AutoEqProfile {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'source': source,
-        'rank': rank,
-      };
+    'id': id,
+    'name': name,
+    'source': source,
+    'rank': rank,
+  };
 
   factory AutoEqProfile.fromJson(Map<String, dynamic> json) => AutoEqProfile(
-        id: json['id'] as int,
-        name: json['name'] as String,
-        source: json['source'] as String,
-        rank: (json['rank'] as int?) ?? 0,
-      );
+    id: json['id'] as int,
+    name: json['name'] as String,
+    source: json['source'] as String,
+    rank: (json['rank'] as int?) ?? 0,
+  );
 }

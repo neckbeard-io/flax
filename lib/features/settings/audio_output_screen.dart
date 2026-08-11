@@ -31,7 +31,11 @@ class AudioOutputScreen extends ConsumerWidget {
             onTap: () {
               // TODO: enumerate devices from mpv_audio_kit
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Device selection requires mpv_audio_kit integration')),
+                const SnackBar(
+                  content: Text(
+                    'Device selection requires mpv_audio_kit integration',
+                  ),
+                ),
               );
             },
           ),
@@ -39,7 +43,8 @@ class AudioOutputScreen extends ConsumerWidget {
             title: const Text('Exclusive Mode'),
             subtitle: const Text('Lock audio device for bit-perfect output'),
             value: exclusive,
-            onChanged: (v) => ref.read(exclusiveModeProvider.notifier).state = v,
+            onChanged: (v) =>
+                ref.read(exclusiveModeProvider.notifier).state = v,
           ),
           const Divider(),
 
@@ -49,9 +54,14 @@ class AudioOutputScreen extends ConsumerWidget {
             trailing: DropdownButton<String>(
               value: sampleRate,
               underline: const SizedBox.shrink(),
-              items: ['Auto', '44.1 kHz', '48 kHz', '88.2 kHz', '96 kHz', '192 kHz']
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                  .toList(),
+              items: [
+                'Auto',
+                '44.1 kHz',
+                '48 kHz',
+                '88.2 kHz',
+                '96 kHz',
+                '192 kHz',
+              ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
               onChanged: (v) {
                 if (v != null) ref.read(sampleRateProvider.notifier).state = v;
               },
@@ -62,9 +72,12 @@ class AudioOutputScreen extends ConsumerWidget {
             trailing: DropdownButton<String>(
               value: bitDepth,
               underline: const SizedBox.shrink(),
-              items: ['Auto', '16-bit', '24-bit', '32-bit float']
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                  .toList(),
+              items: [
+                'Auto',
+                '16-bit',
+                '24-bit',
+                '32-bit float',
+              ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
               onChanged: (v) {
                 if (v != null) ref.read(bitDepthProvider.notifier).state = v;
               },
@@ -109,7 +122,7 @@ class AudioOutputScreen extends ConsumerWidget {
             subtitle: Text(
               playback.fading
                   ? '${playback.fadeSeconds.round()} seconds — fades out and in; '
-                      'tracks do not overlap'
+                        'tracks do not overlap'
                   : 'Off',
             ),
             trailing: SizedBox(
@@ -143,9 +156,9 @@ class _SectionTitle extends StatelessWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

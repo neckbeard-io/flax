@@ -26,19 +26,19 @@ final _album = Album(
 );
 
 List<Song> _songs() => [
-      for (var i = 1; i <= 4; i++)
-        Song(
-          id: 'song-$i',
-          serverId: 'srv',
-          albumId: _albumId,
-          title: ['Daniel', 'Jazzix', 'He Was (Clementine)', 'Fairytale'][i - 1],
-          artistName: 'Natasha Beller',
-          duration: 180 + i,
-          track: i,
-          starred: i == 1,
-          userRating: i == 2 ? 4 : null,
-        ),
-    ];
+  for (var i = 1; i <= 4; i++)
+    Song(
+      id: 'song-$i',
+      serverId: 'srv',
+      albumId: _albumId,
+      title: ['Daniel', 'Jazzix', 'He Was (Clementine)', 'Fairytale'][i - 1],
+      artistName: 'Natasha Beller',
+      duration: 180 + i,
+      track: i,
+      starred: i == 1,
+      userRating: i == 2 ? 4 : null,
+    ),
+];
 
 Widget _harness({required Size size}) {
   return ProviderScope(
@@ -57,8 +57,9 @@ Widget _harness({required Size size}) {
 }
 
 void main() {
-  testWidgets('desktop layout shows album and per-track rating and favorite',
-      (tester) async {
+  testWidgets('desktop layout shows album and per-track rating and favorite', (
+    tester,
+  ) async {
     tester.view.physicalSize = const ui.Size(1400, 1000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -83,13 +84,17 @@ void main() {
 
     // Every track is listed.
     for (final title in ['Daniel', 'Jazzix', 'He Was (Clementine)']) {
-      expect(find.text(title), findsOneWidget, reason: '$title should be listed');
+      expect(
+        find.text(title),
+        findsOneWidget,
+        reason: '$title should be listed',
+      );
     }
-
   });
 
-  testWidgets('desktop header has a back button when there is a route to pop',
-      (tester) async {
+  testWidgets('desktop header has a back button when there is a route to pop', (
+    tester,
+  ) async {
     tester.view.physicalSize = const ui.Size(1400, 1000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -134,8 +139,9 @@ void main() {
     );
   });
 
-  testWidgets('phone layout keeps favorites but drops per-track stars',
-      (tester) async {
+  testWidgets('phone layout keeps favorites but drops per-track stars', (
+    tester,
+  ) async {
     tester.view.physicalSize = const ui.Size(400, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);

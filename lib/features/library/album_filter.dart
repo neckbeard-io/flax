@@ -31,12 +31,12 @@ enum AlbumFilter {
   /// Shown instead of an empty grid. Several of these are legitimately empty on
   /// a fresh library, where a bare white page reads as a failed request.
   String get emptyMessage => switch (this) {
-        AlbumFilter.favorites => 'No favorite albums yet',
-        AlbumFilter.topRated => 'No rated albums yet',
-        AlbumFilter.recentlyPlayed => 'Nothing played yet',
-        AlbumFilter.mostPlayed => 'Nothing played yet',
-        _ => 'No albums',
-      };
+    AlbumFilter.favorites => 'No favorite albums yet',
+    AlbumFilter.topRated => 'No rated albums yet',
+    AlbumFilter.recentlyPlayed => 'Nothing played yet',
+    AlbumFilter.mostPlayed => 'Nothing played yet',
+    _ => 'No albums',
+  };
 
   static const AlbumFilter defaultFilter = AlbumFilter.all;
 }
@@ -48,5 +48,6 @@ const int albumFilterPageSize = 500;
 ///
 /// Not `autoDispose`: opening an album and coming back has to land on the tab
 /// you left, not reset to All.
-final albumFilterProvider =
-    StateProvider<AlbumFilter>((ref) => AlbumFilter.defaultFilter);
+final albumFilterProvider = StateProvider<AlbumFilter>(
+  (ref) => AlbumFilter.defaultFilter,
+);

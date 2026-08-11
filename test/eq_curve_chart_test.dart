@@ -50,8 +50,9 @@ void main() {
   });
 
   group('EqCurveChart', () {
-    testWidgets('renders a real curve without overflowing or throwing',
-        (tester) async {
+    testWidgets('renders a real curve without overflowing or throwing', (
+      tester,
+    ) async {
       final points = AutoEqProfile.parseGraphicEq(
         File(_fixture).readAsStringSync(),
       );
@@ -133,8 +134,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a single point is not enough to draw, and must not crash',
-        (tester) async {
+    testWidgets('a single point is not enough to draw, and must not crash', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

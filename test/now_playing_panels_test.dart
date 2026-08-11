@@ -12,8 +12,10 @@ class _Stub extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) =>
-      ColoredBox(color: Colors.black12, child: Center(child: Text(label)));
+  Widget build(BuildContext context) => ColoredBox(
+    color: Colors.black12,
+    child: Center(child: Text(label)),
+  );
 }
 
 Widget _harness({
@@ -55,8 +57,9 @@ final _queue = find.byKey(NowPlayingPanels.queueKey);
 
 void main() {
   group('background', () {
-    testWidgets('is opaque, so a route underneath cannot show through',
-        (tester) async {
+    testWidgets('is opaque, so a route underneath cannot show through', (
+      tester,
+    ) async {
       // These panels are the app's only screen that is not a Scaffold — the
       // shell supplies one — so nothing else gives them a background. Without
       // it the outgoing screen stayed visible through the lyrics for the whole
@@ -122,13 +125,20 @@ void main() {
     expect(_queue, findsOneWidget);
 
     // Left to right: artist, lyrics, queue.
-    expect(tester.getTopLeft(_artist).dx, lessThan(tester.getTopLeft(_lyrics).dx));
-    expect(tester.getTopLeft(_lyrics).dx, lessThan(tester.getTopLeft(_queue).dx));
+    expect(
+      tester.getTopLeft(_artist).dx,
+      lessThan(tester.getTopLeft(_lyrics).dx),
+    );
+    expect(
+      tester.getTopLeft(_lyrics).dx,
+      lessThan(tester.getTopLeft(_queue).dx),
+    );
     expect(tester.getSize(_queue).width, kQueuePanelWidth);
   });
 
-  testWidgets('a medium window shows lyrics and queue, artist collapsed',
-      (tester) async {
+  testWidgets('a medium window shows lyrics and queue, artist collapsed', (
+    tester,
+  ) async {
     _sizeWindow(tester, 1200);
     await tester.pumpWidget(_harness(width: 1200));
     await tester.pumpAndSettle();
@@ -156,9 +166,7 @@ void main() {
 
   testWidgets('the switcher sits in the middle of the window', (tester) async {
     _sizeWindow(tester, 900);
-    await tester.pumpWidget(
-      _harness(width: 900, leading: const BackButton()),
-    );
+    await tester.pumpWidget(_harness(width: 900, leading: const BackButton()));
     await tester.pumpAndSettle();
 
     // Centered against the window, not against what the controls leave over.
@@ -168,16 +176,15 @@ void main() {
     expect(box.center.dx, moreOrLessEquals(450, epsilon: 0.5));
   });
 
-  testWidgets('a cramped switcher drops its labels rather than wrapping them',
-      (tester) async {
+  testWidgets('a cramped switcher drops its labels rather than wrapping them', (
+    tester,
+  ) async {
     // A 700pt panel area leaves the switcher under 400pt once both sides have
     // reserved their width — enough for three icons, not for three icons and
     // their names. SegmentedButton's answer to that was to wrap mid-word
     // ("Artis / t") and overflow the fixed-height header.
     _sizeWindow(tester, 700);
-    await tester.pumpWidget(
-      _harness(width: 700, leading: const BackButton()),
-    );
+    await tester.pumpWidget(_harness(width: 700, leading: const BackButton()));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
@@ -189,12 +196,11 @@ void main() {
     }
   });
 
-  testWidgets('a roomier switcher keeps its labels on one line',
-      (tester) async {
+  testWidgets('a roomier switcher keeps its labels on one line', (
+    tester,
+  ) async {
     _sizeWindow(tester, 1050);
-    await tester.pumpWidget(
-      _harness(width: 1050, leading: const BackButton()),
-    );
+    await tester.pumpWidget(_harness(width: 1050, leading: const BackButton()));
     await tester.pumpAndSettle();
 
     for (final panel in NowPlayingPanel.values) {
@@ -203,8 +209,9 @@ void main() {
     }
   });
 
-  testWidgets('the switcher picks which panel fills a narrow window',
-      (tester) async {
+  testWidgets('the switcher picks which panel fills a narrow window', (
+    tester,
+  ) async {
     _sizeWindow(tester, 900);
     await tester.pumpWidget(
       _harness(width: 900, selected: NowPlayingPanel.queue),
@@ -216,8 +223,9 @@ void main() {
     expect(tester.getSize(_queue).width, 900);
   });
 
-  testWidgets('collapsing the artist panel hands its width to the lyrics',
-      (tester) async {
+  testWidgets('collapsing the artist panel hands its width to the lyrics', (
+    tester,
+  ) async {
     _sizeWindow(tester, 1500);
 
     await tester.pumpWidget(_harness(width: 1500, artistOpen: true));
@@ -238,7 +246,10 @@ void main() {
     expect(_artist, findsNothing);
     // Every pixel the artist column occupied, including its handle, goes to
     // the lyrics — not to a gap where the panel used to be.
-    expect(tester.getSize(_lyrics).width, lyricsOpen + artistWidth + handleWidth);
+    expect(
+      tester.getSize(_lyrics).width,
+      lyricsOpen + artistWidth + handleWidth,
+    );
     // And the queue does not move or resize.
     expect(tester.getSize(_queue).width, kQueuePanelWidth);
     expect(tester.getTopLeft(_queue).dx, 1500 - kQueuePanelWidth);

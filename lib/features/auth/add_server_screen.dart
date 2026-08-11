@@ -42,7 +42,9 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
     });
 
     try {
-      await ref.read(serverListProvider.notifier).addServer(
+      await ref
+          .read(serverListProvider.notifier)
+          .addServer(
             name: _nameController.text.trim(),
             url: _urlController.text.trim(),
             username: _usernameController.text.trim(),

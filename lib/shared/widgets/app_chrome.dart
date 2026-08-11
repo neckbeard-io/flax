@@ -157,7 +157,11 @@ class _AppChromeState extends ConsumerState<AppChrome> {
                     // Drag strip first, so the buttons above keep their taps.
                     if (Platform.isWindows)
                       const Positioned(
-                          top: 0, left: 0, right: 0, child: WindowDragArea()),
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: WindowDragArea(),
+                      ),
                     if (isDesktop)
                       Positioned(
                         top: top + 4,

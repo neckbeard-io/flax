@@ -16,8 +16,10 @@ import 'package:flax/shared/widgets/window_buttons.dart';
 /// back to a tab you already looked at should be instant, and Random in
 /// particular should show the same shuffle you were just browsing rather than
 /// reshuffling under you.
-final albumsProvider =
-    FutureProvider.family<List<Album>, AlbumFilter>((ref, filter) async {
+final albumsProvider = FutureProvider.family<List<Album>, AlbumFilter>((
+  ref,
+  filter,
+) async {
   final client = ref.watch(subsonicClientProvider);
   if (client == null) return [];
   return client.getAlbumList(filter.listType, count: albumFilterPageSize);

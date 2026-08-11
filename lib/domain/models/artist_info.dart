@@ -27,11 +27,7 @@ class SimilarArtist {
   final String name;
   final String? coverArtId;
 
-  const SimilarArtist({
-    required this.id,
-    required this.name,
-    this.coverArtId,
-  });
+  const SimilarArtist({required this.id, required this.name, this.coverArtId});
 }
 
 class MusicBrainzArtistInfo {

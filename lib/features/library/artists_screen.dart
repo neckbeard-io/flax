@@ -35,35 +35,41 @@ class ArtistsScreen extends ConsumerWidget {
             ),
             Expanded(
               child: artistsAsync.when(
-        data: (artists) => ListView.builder(
-          itemCount: artists.length,
-          itemBuilder: (context, index) {
-            final artist = artists[index];
-            return ListTile(
-              leading: ClipOval(
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: CoverArtImage(
-                    coverArtId: artist.coverArtId,
-                    size: 48,
-                  ),
+                data: (artists) => ListView.builder(
+                  itemCount: artists.length,
+                  itemBuilder: (context, index) {
+                    final artist = artists[index];
+                    return ListTile(
+                      leading: ClipOval(
+                        child: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: CoverArtImage(
+                            coverArtId: artist.coverArtId,
+                            size: 48,
+                          ),
+                        ),
+                      ),
+                      title: Text(artist.name),
+                      subtitle: Text(
+                        '${artist.albumCount} album${artist.albumCount != 1 ? 's' : ''}',
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      trailing: artist.starred
+                          ? Icon(
+                              Icons.favorite,
+                              color: theme.colorScheme.primary,
+                              size: 18,
+                            )
+                          : null,
+                      onTap: () => context.push('/artists/${artist.id}'),
+                    );
+                  },
                 ),
-              ),
-              title: Text(artist.name),
-              subtitle: Text(
-                '${artist.albumCount} album${artist.albumCount != 1 ? 's' : ''}',
-                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-              ),
-              trailing: artist.starred
-                  ? Icon(Icons.favorite, color: theme.colorScheme.primary, size: 18)
-                  : null,
-              onTap: () => context.push('/artists/${artist.id}'),
-            );
-          },
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
               ),
             ),
           ],

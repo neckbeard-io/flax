@@ -28,7 +28,7 @@ class MiniPlayer extends ConsumerWidget {
     final theme = Theme.of(context);
     final progress = playerState.duration.inMilliseconds > 0
         ? playerState.position.inMilliseconds /
-            playerState.duration.inMilliseconds
+              playerState.duration.inMilliseconds
         : 0.0;
 
     // The desktop now-playing screen keeps the shell, and so keeps this bar.
@@ -68,10 +68,7 @@ class MiniPlayer extends ConsumerWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHigh,
         border: Border(
-          top: BorderSide(
-            color: theme.colorScheme.outlineVariant,
-            width: 0.5,
-          ),
+          top: BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
         ),
       ),
       child: Column(
@@ -87,8 +84,7 @@ class MiniPlayer extends ConsumerWidget {
               valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
             ),
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
                 Expanded(
@@ -147,9 +143,10 @@ class MiniPlayer extends ConsumerWidget {
                                           overflow: TextOverflow.ellipsis,
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                            color: theme
-                                                .colorScheme.onSurfaceVariant,
-                                          ),
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
                                         ),
                                       ),
                                       if (_formatLabel(song) != null) ...[
@@ -157,23 +154,25 @@ class MiniPlayer extends ConsumerWidget {
                                           ' · ',
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                            color: theme
-                                                .colorScheme.onSurfaceVariant
-                                                .withValues(alpha: 0.5),
-                                          ),
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant
+                                                    .withValues(alpha: 0.5),
+                                              ),
                                         ),
                                         Text(
                                           _formatLabel(song)!,
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                            color: _isHiRes(song)
-                                                ? Colors.amber[700]
-                                                : theme.colorScheme
-                                                    .onSurfaceVariant,
-                                            fontWeight: _isHiRes(song)
-                                                ? FontWeight.w600
-                                                : null,
-                                          ),
+                                                color: _isHiRes(song)
+                                                    ? Colors.amber[700]
+                                                    : theme
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                fontWeight: _isHiRes(song)
+                                                    ? FontWeight.w600
+                                                    : null,
+                                              ),
                                         ),
                                       ],
                                     ],
@@ -196,8 +195,7 @@ class MiniPlayer extends ConsumerWidget {
                 ],
                 IconButton(
                   icon: const Icon(Icons.skip_previous),
-                  onPressed: () =>
-                      ref.read(playerProvider.notifier).previous(),
+                  onPressed: () => ref.read(playerProvider.notifier).previous(),
                   iconSize: 24,
                 ),
                 IconButton(
@@ -212,8 +210,7 @@ class MiniPlayer extends ConsumerWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.skip_next),
-                  onPressed: () =>
-                      ref.read(playerProvider.notifier).next(),
+                  onPressed: () => ref.read(playerProvider.notifier).next(),
                   iconSize: 24,
                 ),
                 // Rating and favorite for the playing track. Only where
@@ -250,7 +247,9 @@ class MiniPlayer extends ConsumerWidget {
     if (song.suffix != null) parts.add(song.suffix!.toUpperCase());
     if (song.bitDepth != null && song.sampleRate != null) {
       final rateKhz = song.sampleRate! >= 1000
-          ? (song.sampleRate! / 1000).toStringAsFixed(song.sampleRate! % 1000 == 0 ? 0 : 1)
+          ? (song.sampleRate! / 1000).toStringAsFixed(
+              song.sampleRate! % 1000 == 0 ? 0 : 1,
+            )
           : song.sampleRate.toString();
       parts.add('${song.bitDepth}/$rateKhz');
     }
