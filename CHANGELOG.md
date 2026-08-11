@@ -12,6 +12,15 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Fixed
 
+- **Artwork now loads for where you stopped scrolling, not for everywhere you
+  passed.** Racing down a long list — the Artists list especially — used to leave
+  the images filling in from wherever you started, working forward one at a time,
+  because every row scrolled past had already claimed a place in the download
+  queue and nothing could take it back. Rows are now only fetched once they have
+  stayed on screen briefly, so a fling asks for nothing and the rows you land on
+  come first. Album art was less affected only because more of it was already
+  cached from previous browsing.
+
 - Dropdowns no longer keep a grey box behind the value after you pick something
   from them. It was a focus highlight, so only one per screen ever showed it —
   whichever you touched last — which read as a selection state that meant

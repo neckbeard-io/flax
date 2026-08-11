@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/shared/widgets/settle_gate.dart';
 
 /// Cover art for an album, artist, or track.
 ///
@@ -95,8 +96,15 @@ class CoverArtImage extends ConsumerWidget {
           },
         );
 
-        if (borderRadius == null) return image;
-        return ClipRRect(borderRadius: borderRadius!, child: image);
+        // Held back if this was built mid-fling: the download queue underneath
+        // is FIFO and cannot be cancelled, so a request made for a row that is
+        // already gone delays the rows you stopped on. See [SettleGate].
+        return SettleGate(
+          placeholder: _placeholder(context),
+          child: borderRadius == null
+              ? image
+              : ClipRRect(borderRadius: borderRadius!, child: image),
+        );
       },
     );
   }
