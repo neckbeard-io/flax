@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final gaplessProvider = StateProvider<bool>((ref) => true);
+import 'package:flax/features/settings/playback_settings.dart';
+
 final exclusiveModeProvider = StateProvider<bool>((ref) => false);
-final crossfadeProvider = StateProvider<double>((ref) => 0);
 final sampleRateProvider = StateProvider<String>((ref) => 'Auto');
 final bitDepthProvider = StateProvider<String>((ref) => 'Auto');
-final replayGainProvider = StateProvider<String>((ref) => 'Off');
 
 class AudioOutputScreen extends ConsumerWidget {
   const AudioOutputScreen({super.key});
@@ -14,12 +13,11 @@ class AudioOutputScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final gapless = ref.watch(gaplessProvider);
     final exclusive = ref.watch(exclusiveModeProvider);
-    final crossfade = ref.watch(crossfadeProvider);
     final sampleRate = ref.watch(sampleRateProvider);
     final bitDepth = ref.watch(bitDepthProvider);
-    final replayGain = ref.watch(replayGainProvider);
+    final playback = ref.watch(playbackSettingsProvider);
+    final playbackNotifier = ref.read(playbackSettingsProvider.notifier);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Audio Output')),
@@ -77,34 +75,54 @@ class AudioOutputScreen extends ConsumerWidget {
           _SectionTitle(title: 'Playback'),
           ListTile(
             title: const Text('ReplayGain'),
-            trailing: DropdownButton<String>(
-              value: replayGain,
+            subtitle: const Text(
+              "Levels tracks using the server's own loudness tags",
+            ),
+            trailing: DropdownButton<ReplayGainMode>(
+              value: playback.replayGain,
               underline: const SizedBox.shrink(),
-              items: ['Off', 'Track', 'Album']
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+              items: ReplayGainMode.values
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m.label)))
                   .toList(),
               onChanged: (v) {
-                if (v != null) ref.read(replayGainProvider.notifier).state = v;
+                if (v != null) playbackNotifier.setReplayGain(v);
               },
             ),
           ),
           SwitchListTile(
             title: const Text('Gapless Playback'),
-            value: gapless,
-            onChanged: (v) => ref.read(gaplessProvider.notifier).state = v,
+            // Says so out loud rather than silently ignoring the switch: the
+            // two cannot both apply, and a toggle that is on while doing
+            // nothing is worse than one that explains itself.
+            subtitle: Text(
+              playback.fading
+                  ? 'Off while fading between tracks'
+                  : 'No silence between consecutive tracks',
+            ),
+            value: playback.gapless,
+            onChanged: playbackNotifier.setGapless,
           ),
           ListTile(
-            title: const Text('Crossfade'),
-            subtitle: Text(crossfade == 0 ? 'Off' : '${crossfade.round()} seconds'),
+            title: const Text('Fade Between Tracks'),
+            // Not called a crossfade, because it is not one: mpv decodes one
+            // track at a time, so the tail and the head cannot overlap.
+            subtitle: Text(
+              playback.fading
+                  ? '${playback.fadeSeconds.round()} seconds — fades out and in; '
+                      'tracks do not overlap'
+                  : 'Off',
+            ),
             trailing: SizedBox(
               width: 200,
               child: Slider(
-                value: crossfade,
+                value: playback.fadeSeconds,
                 min: 0,
-                max: 12,
-                divisions: 12,
-                label: crossfade == 0 ? 'Off' : '${crossfade.round()}s',
-                onChanged: (v) => ref.read(crossfadeProvider.notifier).state = v,
+                max: maxFadeSeconds,
+                divisions: maxFadeSeconds.round(),
+                label: playback.fading
+                    ? '${playback.fadeSeconds.round()}s'
+                    : 'Off',
+                onChanged: playbackNotifier.setFadeSeconds,
               ),
             ),
           ),
