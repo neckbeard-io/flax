@@ -10,6 +10,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
+import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
@@ -103,6 +104,14 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   int _lastSavedPositionSec = -1;
   ProviderSubscription<EqState>? _eqSub;
   ProviderSubscription<AutoEqState>? _autoEqSub;
+  ProviderSubscription<PlaybackSettings>? _playbackSub;
+  /// Fade attenuation last pushed to mpv, so the ramp only re-applies when it
+  /// has actually moved.
+  double _lastAppliedFadeDb = 0;
+  /// Song ids currently loaded into mpv's playlist, in order. Gapless needs the
+  /// queue to live in mpv rather than being fed one file at a time, and this is
+  /// how we know whether what mpv holds still matches [PlayerState.queue].
+  List<String> _mpvQueueIds = const [];
 
   PlayerNotifier(this._ref)
       : _player = mpv.Player(),
@@ -111,6 +120,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _initStreams();
     _initMediaKeys();
     _initEqListener();
+    _initPlaybackSettings();
     _restoreVolume();
     _restorePlayQueue();
   }
@@ -143,6 +153,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       if (mounted) {
         state = state.copyWith(position: pos);
         _maybeSubmitScrobble(pos);
+        _updateFadeGain();
         // Save queue position every 10 seconds of playback change
         final currentSec = pos.inSeconds;
         if ((currentSec - _lastSavedPositionSec).abs() >= 10) {
@@ -162,6 +173,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         _onTrackCompleted();
       }
     }));
+    // How a gapless advance reaches us: mpv moves to the next playlist entry on
+    // its own, and nothing else reports it.
+    _subs.add(_player.stream.playlist.listen((playlist) {
+      if (mounted) _onMpvPlaylistIndex(playlist.index);
+    }));
   }
 
   void _onTrackCompleted() {
@@ -173,6 +189,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       play();
       return;
     }
+    // Mid-queue, mpv advances by itself now that it holds the whole playlist,
+    // and _onMpvPlaylistIndex picks that up. Calling next() here as well would
+    // skip a track on every boundary. Only the end of the queue is ours.
+    if (_mpvQueueInSync && state.queueIndex < state.queue.length - 1) return;
     if (state.queueIndex < state.queue.length - 1) {
       next();
     } else if (state.repeatMode == RepeatMode.all && state.queue.isNotEmpty) {
@@ -212,6 +232,69 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     return client.getStreamUri(song.id);
   }
 
+  // ── The queue, as mpv holds it ─────────────────────────────────────
+  //
+  // The whole queue is loaded into mpv's playlist rather than fed to it one
+  // file at a time. That is what makes gapless possible at all: mpv can only
+  // prefetch, and hand one track's decoder to the next, across entries of a
+  // playlist it already holds. Feeding it a file at a time meant every
+  // boundary was a Dart round trip and a fresh network open — a gap by
+  // construction, whatever `--gapless-audio` was set to.
+  //
+  // [PlayerState.queue] stays the source of truth for the UI; [_mpvQueueIds]
+  // records what mpv was actually given, so the two can be checked against
+  // each other before an index from mpv is believed.
+
+  /// Whether mpv's playlist still holds exactly the queue we think it does.
+  bool get _mpvQueueInSync {
+    final queue = state.queue;
+    if (_mpvQueueIds.length != queue.length) return false;
+    for (var i = 0; i < queue.length; i++) {
+      if (_mpvQueueIds[i] != queue[i].id) return false;
+    }
+    return true;
+  }
+
+  /// Loads [songs] into mpv as one playlist, starting at [index].
+  ///
+  /// `openAll(play: true)` already asks mpv to unpause, but the follow-up
+  /// [Player.play] is deliberate rather than redundant: it is documented as
+  /// idempotent, and it makes "start playing" hold even when the player was
+  /// parked somewhere unusual beforehand — the end-of-queue case being the one
+  /// that actually bit. Cheap insurance against a load that lands paused.
+  Future<void> _openQueue(
+    List<Song> songs,
+    int index, {
+    required bool play,
+  }) async {
+    final medias = [
+      for (final song in songs) mpv.Media(_streamUri(song).toString()),
+    ];
+    _mpvQueueIds = [for (final song in songs) song.id];
+    await _player.openAll(medias, play: play, index: index);
+    if (play) await _player.play();
+  }
+
+  /// mpv moved to another entry by itself, which is what a gapless advance
+  /// looks like from here — there is no call of ours to hang the state change
+  /// off, so the playlist is the only thing that knows.
+  void _onMpvPlaylistIndex(int index) {
+    // An index is only meaningful while mpv holds the queue we think it does;
+    // mid-reload the two disagree and the index would name the wrong song.
+    if (!_mpvQueueInSync) return;
+    if (index < 0 || index >= state.queue.length) return;
+    if (index == state.queueIndex) return;
+
+    final song = state.queue[index];
+    _resetScrobble();
+    state = state.copyWith(queueIndex: index, currentSong: song);
+    _updateNowPlayingForSong(song);
+    // ReplayGain is per track, so the output gain has to be recomputed for the
+    // track mpv just moved to.
+    _applyVolumeGain();
+    _debounceSaveQueue();
+  }
+
   Future<void> _playIndex(int index) async {
     if (index < 0 || index >= state.queue.length) return;
     final song = state.queue[index];
@@ -220,22 +303,18 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       currentSong: song,
       queueIndex: index,
     );
-    final uri = _streamUri(song);
-    await _openAndPlay(uri);
+    // A jump inside the playlist mpv already holds, rather than a fresh load:
+    // reloading would throw away the prefetched next entry every time someone
+    // pressed skip.
+    if (_mpvQueueInSync) {
+      await _player.jump(index);
+      await _player.play();
+    } else {
+      await _openQueue(state.queue, index, play: true);
+    }
     _updateNowPlayingForSong(song);
+    _applyVolumeGain();
     _debounceSaveQueue();
-  }
-
-  /// Loads [uri] and starts it.
-  ///
-  /// `open(play: true)` already asks mpv to unpause, but the follow-up
-  /// [Player.play] is deliberate rather than redundant: it is documented as
-  /// idempotent, and it makes "start playing" hold even when the player was
-  /// parked somewhere unusual beforehand — the end-of-queue case being the one
-  /// that actually bit. Cheap insurance against a load that lands paused.
-  Future<void> _openAndPlay(Uri uri) async {
-    await _player.open(mpv.Media(uri.toString()), play: true);
-    await _player.play();
   }
 
   Future<void> playSong(Song song, {List<Song>? queue, int? index}) async {
@@ -247,9 +326,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       queueIndex: newIndex,
       currentSong: newQueue[newIndex],
     );
-    final uri = _streamUri(newQueue[newIndex]);
-    await _openAndPlay(uri);
+    await _openQueue(newQueue, newIndex, play: true);
     _updateNowPlayingForSong(newQueue[newIndex]);
+    _applyVolumeGain();
     _debounceSaveQueue();
   }
 
@@ -355,42 +434,51 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _applyEq();
   }
 
-  Future<void> _applyEq() async {
+  /// Per-band gain in dB for the manual curve plus any AutoEQ correction.
+  ///
+  /// Our 18 EQ bands are exactly the superequalizer bands, so band i maps to
+  /// key '${i + 1}b'.
+  List<double> _combinedEqGains() {
     final eq = _ref.read(eqProvider);
     final autoEq = _ref.read(autoEqProvider);
+    final gainsDb = List<double>.filled(_superEqBandCount, 0);
 
+    if (eq.enabled) {
+      for (var i = 0; i < eq.bands.length && i < _superEqBandCount; i++) {
+        gainsDb[i] += eq.bands[i].gain;
+      }
+    }
+
+    // AutoEQ correction sums on top of the manual curve.
+    final profile = autoEq.activeProfile;
+    if (profile != null && profile.points.isNotEmpty) {
+      for (var i = 0; i < _superEqBandCount; i++) {
+        gainsDb[i] += _interpolateGain(
+          profile.points,
+          _superEqBandFrequencies[i],
+        );
+      }
+    }
+    return gainsDb;
+  }
+
+  /// The EQ's share of the output gain: manual preamp, less headroom.
+  ///
+  /// superequalizer amplifies for real, and AutoEQ curves routinely carry bass
+  /// shelves of +6 dB or more, so a boosted band on already-loud material clips
+  /// audibly. Pull the whole chain down by the largest boost in the combined
+  /// curve, which costs loudness but is the only way a positive band can be
+  /// honoured cleanly.
+  double _eqGainDb(List<double> gainsDb) {
+    final eq = _ref.read(eqProvider);
+    final maxBoostDb = gainsDb.fold<double>(0, (m, g) => g > m ? g : m);
+    return (eq.enabled ? eq.preamp : 0.0) - maxBoostDb;
+  }
+
+  Future<void> _applyEq() async {
     try {
-      // Accumulate per-band gain in dB. Our 18 EQ bands are exactly the
-      // superequalizer bands, so band i maps to key '${i + 1}b'.
-      final gainsDb = List<double>.filled(_superEqBandCount, 0);
-
-      if (eq.enabled) {
-        for (var i = 0; i < eq.bands.length && i < _superEqBandCount; i++) {
-          gainsDb[i] += eq.bands[i].gain;
-        }
-      }
-
-      // AutoEQ correction sums on top of the manual curve.
-      final profile = autoEq.activeProfile;
-      if (profile != null && profile.points.isNotEmpty) {
-        for (var i = 0; i < _superEqBandCount; i++) {
-          gainsDb[i] += _interpolateGain(
-            profile.points,
-            _superEqBandFrequencies[i],
-          );
-        }
-      }
-
-      // Headroom. superequalizer amplifies for real, and AutoEQ curves
-      // routinely carry bass shelves of +6 dB or more, so a boosted band on
-      // already-loud material clips audibly. Pull the whole chain down by the
-      // largest boost in the combined curve, which costs loudness but is the
-      // only way a positive band can be honoured cleanly. Manual preamp is
-      // applied on top, and both go through mpv's volume-gain (dB).
-      final maxBoostDb =
-          gainsDb.fold<double>(0, (m, g) => g > m ? g : m);
-      final preampDb = (eq.enabled ? eq.preamp : 0.0) - maxBoostDb;
-      await _player.setVolumeGain(preampDb);
+      final gainsDb = _combinedEqGains();
+      await _applyVolumeGain();
 
       final active = gainsDb.any((g) => g != 0);
 
@@ -404,10 +492,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       }
 
       developer.log(
-        'EQ apply: enabled=${eq.enabled}, gain=${preampDb.toStringAsFixed(1)}dB '
-        '(headroom ${(-maxBoostDb).toStringAsFixed(1)}dB), active=$active, '
-        'autoEq=${profile?.name ?? "none"}'
-        '${profile != null ? " (${profile.points.length} pts)" : ""}, '
+        'EQ apply: active=$active, '
+        'eqGain=${_eqGainDb(gainsDb).toStringAsFixed(1)}dB, '
         'gainsDb=${gainsDb.map((g) => g.toStringAsFixed(1)).join(",")}',
         name: 'PlayerEQ',
       );
@@ -422,6 +508,108 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       );
     } catch (e, st) {
       developer.log('EQ apply FAILED: $e\n$st', name: 'PlayerEQ');
+    }
+  }
+
+  // ── Output gain, and ReplayGain ────────────────────────────────────
+  //
+  // mpv has exactly one volume-gain, and the last writer wins. The EQ owned it
+  // outright until ReplayGain needed a say, and a second `setVolumeGain` caller
+  // would not have layered on top — it would have silently thrown away the EQ's
+  // headroom and put a boosted curve straight into clipping. Everything that
+  // wants to move the output level goes through this one function.
+
+  /// Applies the EQ's preamp and headroom, the ReplayGain offset for the
+  /// playing track, and any fade currently in progress.
+  Future<void> _applyVolumeGain() async {
+    final total = _eqGainDb(_combinedEqGains()) +
+        (_replayGainDb() ?? 0) +
+        _fadeDb();
+    _lastAppliedFadeDb = _fadeDb();
+    await _player.setVolumeGain(total);
+  }
+
+  double _fadeDb() => fadeOffsetDb(
+        position: state.position,
+        duration: state.duration,
+        fadeSeconds: _ref.read(playbackSettingsProvider).fadeSeconds,
+      );
+
+  /// Rides the output gain while a fade is in progress.
+  ///
+  /// Called on every position tick, so it re-applies only once the ramp has
+  /// actually moved — a property set per frame for a value that has not changed
+  /// is pure noise on the mpv side.
+  void _updateFadeGain() {
+    if (!_ref.read(playbackSettingsProvider).fading) return;
+    if ((_fadeDb() - _lastAppliedFadeDb).abs() < 0.5) return;
+    _applyVolumeGain();
+  }
+
+  /// The ReplayGain offset from the server's tags for the playing track, or
+  /// null when the server gave none and mpv's own tag reading is in charge.
+  double? _replayGainDb() {
+    final song = state.currentSong;
+    if (song == null) return null;
+    return serverReplayGainDb(
+      mode: _ref.read(playbackSettingsProvider).replayGain,
+      trackGain: song.replayGainTrackGain,
+      trackPeak: song.replayGainTrackPeak,
+      albumGain: song.replayGainAlbumGain,
+      albumPeak: song.replayGainAlbumPeak,
+    );
+  }
+
+  // ── Transitions between tracks ─────────────────────────────────────
+
+  void _initPlaybackSettings() {
+    _playbackSub = _ref.listen<PlaybackSettings>(
+      playbackSettingsProvider,
+      (_, next) => _applyPlaybackSettings(next),
+    );
+    _applyPlaybackSettings(_ref.read(playbackSettingsProvider));
+  }
+
+  /// Pushes the transition settings at mpv.
+  ///
+  /// Prefetch is what actually buys gapless: it opens the next playlist entry
+  /// while the current one is still playing, so the boundary is a decoder
+  /// handover rather than a network round trip. It is only useful because the
+  /// whole queue lives in mpv's playlist — see [_openQueue].
+  Future<void> _applyPlaybackSettings(PlaybackSettings settings) async {
+    try {
+      await _player.setGapless(
+        // `weak` rather than `yes`: strict gapless demands identical format,
+        // sample rate and channel count across the boundary, and a library of
+        // mixed FLAC and Opus does not have that. `weak` keeps the output open
+        // when it can and tolerates the switch when it cannot, which is what a
+        // mixed queue needs.
+        settings.gaplessActive ? mpv.Gapless.weak : mpv.Gapless.no,
+      );
+      await _player.setPrefetchPlaylist(settings.gaplessActive);
+
+      // mpv's own ReplayGain is the fallback path, used only for tracks the
+      // server had no tags for. Where the server did supply them they are
+      // already in the volume-gain above, and leaving this set as well would
+      // apply the correction twice.
+      await _player.setReplayGain(
+        mpv.ReplayGainSettings(
+          mode: switch (settings.replayGain) {
+            ReplayGainMode.off => mpv.ReplayGain.no,
+            ReplayGainMode.track => mpv.ReplayGain.track,
+            ReplayGainMode.album => mpv.ReplayGain.album,
+          },
+          // Let mpv hold the level down rather than allowing it to clip; the
+          // server-tag path does the same thing with the peak value.
+          clip: false,
+        ),
+      );
+      await _applyVolumeGain();
+    } catch (e) {
+      developer.log(
+        'Playback settings apply failed: $e',
+        name: 'PlayerNotifier',
+      );
     }
   }
 
@@ -522,6 +710,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     final at = (state.queueIndex + 1).clamp(0, queue.length);
     queue.insertAll(at, songs);
     state = state.copyWith(queue: queue);
+    _insertIntoMpvQueue(songs, at);
     _debounceSaveQueue();
   }
 
@@ -529,15 +718,45 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (songs.isEmpty) return;
     final newQueue = [...state.queue, ...songs];
     state = state.copyWith(queue: newQueue);
+    _insertIntoMpvQueue(songs, state.queue.length - songs.length);
     _debounceSaveQueue();
+  }
+
+  /// Mirrors a queue insertion into mpv's playlist.
+  ///
+  /// Appended and then moved into place rather than reloaded: mpv has no
+  /// insert, and reloading the playlist to add one track would restart whatever
+  /// is playing. Anything that goes wrong here only costs the mirror, which
+  /// [_playIndex] rebuilds on the next skip.
+  Future<void> _insertIntoMpvQueue(List<Song> songs, int at) async {
+    if (_mpvQueueIds.length + songs.length != state.queue.length) {
+      // Already out of step with mpv; leave it to be rebuilt wholesale.
+      _mpvQueueIds = const [];
+      return;
+    }
+    try {
+      final ids = [..._mpvQueueIds];
+      for (var i = 0; i < songs.length; i++) {
+        await _player.add(mpv.Media(_streamUri(songs[i]).toString()));
+        final from = ids.length;
+        final to = at + i;
+        ids.insert(to, songs[i].id);
+        if (from != to) await _player.move(from, to);
+      }
+      _mpvQueueIds = ids;
+    } catch (e) {
+      developer.log('Queue insert into mpv failed: $e', name: 'PlayerNotifier');
+      _mpvQueueIds = const [];
+    }
   }
 
   Future<void> replaceQueue(List<Song> songs) async {
     if (songs.isEmpty) return;
+    _resetScrobble();
     state = state.copyWith(queue: songs, queueIndex: 0, currentSong: songs.first);
-    final uri = _streamUri(songs.first);
-    await _openAndPlay(uri);
+    await _openQueue(songs, 0, play: true);
     _updateNowPlayingForSong(songs.first);
+    _applyVolumeGain();
     _debounceSaveQueue();
   }
 
@@ -630,10 +849,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       duration: Duration(seconds: song.duration),
     );
 
-    // Open the track paused at the saved position
+    // Open the queue paused at the saved position. The whole queue rather than
+    // the one track, so pressing play resumes into a playlist mpv can already
+    // prefetch from.
     try {
-      final uri = _streamUri(song);
-      await _player.open(mpv.Media(uri.toString()), play: false);
+      await _openQueue(songs, idx, play: false);
       await Future<void>.delayed(const Duration(milliseconds: 300));
       await _player.seek(position);
     } catch (e) {
@@ -872,10 +1092,18 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
+  /// Toggles the shuffle flag.
+  ///
+  /// Deliberately does *not* call mpv's own shuffle any more. That call was
+  /// harmless while mpv only ever held the one file it was playing, but mpv now
+  /// holds the whole queue, and shuffling it server-side would reorder the
+  /// playlist out from under [_mpvQueueIds] — every index mpv reported after
+  /// that would name the wrong song.
+  ///
+  /// Shuffle therefore still only sets a flag; ordering by it is unimplemented,
+  /// exactly as it was before, and wants its own issue.
   Future<void> toggleShuffle() async {
-    final newShuffle = !state.shuffle;
-    state = state.copyWith(shuffle: newShuffle);
-    await _player.setShuffle(newShuffle);
+    state = state.copyWith(shuffle: !state.shuffle);
   }
 
   void cycleRepeatMode() {
@@ -910,6 +1138,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _nowPlaying.clear();
     _eqSub?.close();
     _autoEqSub?.close();
+    _playbackSub?.close();
     _player.dispose();
     super.dispose();
   }
