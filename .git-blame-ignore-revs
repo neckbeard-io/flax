@@ -1,0 +1,16 @@
+# Revisions that changed formatting only, and that `git blame` should look
+# through rather than stop at. Without this, every line the formatter reindented
+# blames to the sweep instead of to the commit that wrote the code.
+#
+# Not picked up automatically — it has to be configured once per clone:
+#
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# GitHub's blame view honors this file without any configuration.
+#
+# Only add a revision here if it changed no behavior whatsoever. A commit that
+# reformats *and* edits code cannot be ignored safely, which is the reason the
+# baseline below was kept mechanically pure.
+
+# Adopt a dart format baseline (#19) — `dart format .` across 89 files.
+41fd86e40f45b628b15de150d57c35f307429acb
