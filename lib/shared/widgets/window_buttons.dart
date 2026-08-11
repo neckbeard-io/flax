@@ -12,8 +12,9 @@ import 'package:window_manager/window_manager.dart';
 const _channel = MethodChannel('com.flax/window');
 
 /// Minimise the window.
-Future<void> _minimize() =>
-    Platform.isWindows ? windowManager.minimize() : _channel.invokeMethod('minimize');
+Future<void> _minimize() => Platform.isWindows
+    ? windowManager.minimize()
+    : _channel.invokeMethod('minimize');
 
 /// Toggle maximised (Windows) or full screen (macOS).
 ///
@@ -117,9 +118,12 @@ class WindowButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Only show on desktop platforms
-    if (!Platform.isMacOS && !Platform.isWindows) return const SizedBox.shrink();
+    if (!Platform.isMacOS && !Platform.isWindows)
+      return const SizedBox.shrink();
 
-    final color = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7);
+    final color = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: 0.7);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -176,7 +180,9 @@ class _WindowButtonState extends State<_WindowButton> {
   @override
   Widget build(BuildContext context) {
     final isHover = _hovering;
-    final fgColor = isHover ? (widget.hoverColor ?? Colors.white) : widget.color;
+    final fgColor = isHover
+        ? (widget.hoverColor ?? Colors.white)
+        : widget.color;
 
     return Tooltip(
       message: widget.tooltip,

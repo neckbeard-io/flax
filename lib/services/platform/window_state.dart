@@ -30,10 +30,14 @@ const Size _firstRunMaxSize = Size(1900, 1250);
 
 /// Window size to open at on a display of [screen], having never run before.
 Size firstRunWindowSize(Size screen) {
-  final width = (screen.width * _firstRunScreenFraction)
-      .clamp(kMinWindowSize.width, _firstRunMaxSize.width);
-  final height = (screen.height * _firstRunScreenFraction)
-      .clamp(kMinWindowSize.height, _firstRunMaxSize.height);
+  final width = (screen.width * _firstRunScreenFraction).clamp(
+    kMinWindowSize.width,
+    _firstRunMaxSize.width,
+  );
+  final height = (screen.height * _firstRunScreenFraction).clamp(
+    kMinWindowSize.height,
+    _firstRunMaxSize.height,
+  );
   return Size(width, height);
 }
 

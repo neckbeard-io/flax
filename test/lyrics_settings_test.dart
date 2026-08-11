@@ -28,8 +28,10 @@ void main() {
 
     test('a stored size survives a round trip', () {
       final restored = LyricsSettings.fromJson(
-        const LyricsSettings(fontSize: 22, alignment: LyricsAlignment.center)
-            .toJson(),
+        const LyricsSettings(
+          fontSize: 22,
+          alignment: LyricsAlignment.center,
+        ).toJson(),
       );
       expect(restored.fontSize, 22);
       expect(restored.alignment, LyricsAlignment.center);

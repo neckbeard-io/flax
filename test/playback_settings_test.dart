@@ -146,11 +146,7 @@ void main() {
 
     test('is silent at the very start and full by the end of the ramp', () {
       expect(
-        fadeOffsetDb(
-          position: Duration.zero,
-          duration: length,
-          fadeSeconds: 4,
-        ),
+        fadeOffsetDb(position: Duration.zero, duration: length, fadeSeconds: 4),
         fadeFloorDb,
       );
       expect(
@@ -183,8 +179,10 @@ void main() {
         ),
         fadeFloorDb / 2,
       );
-      expect(fadeOffsetDb(position: length, duration: length, fadeSeconds: 4),
-          fadeFloorDb);
+      expect(
+        fadeOffsetDb(position: length, duration: length, fadeSeconds: 4),
+        fadeFloorDb,
+      );
     });
 
     test('the middle of a track is untouched', () {
@@ -264,8 +262,9 @@ void main() {
       // Persisting the ordinal would remap every saved preference the first
       // time a value was added to ReplayGainMode.
       expect(
-        const PlaybackSettings(replayGain: ReplayGainMode.album)
-            .toJson()['replayGain'],
+        const PlaybackSettings(
+          replayGain: ReplayGainMode.album,
+        ).toJson()['replayGain'],
         'album',
       );
     });
@@ -276,8 +275,10 @@ void main() {
     });
 
     test('an out-of-range fade is clamped on the way in', () {
-      expect(PlaybackSettings.fromJson({'fadeSeconds': 900}).fadeSeconds,
-          maxFadeSeconds);
+      expect(
+        PlaybackSettings.fromJson({'fadeSeconds': 900}).fadeSeconds,
+        maxFadeSeconds,
+      );
       expect(PlaybackSettings.fromJson({'fadeSeconds': -5}).fadeSeconds, 0);
     });
 

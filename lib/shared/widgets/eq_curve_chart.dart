@@ -94,10 +94,7 @@ class EqCurveChart extends StatelessWidget {
     // magnified into dramatic-looking noise.
     final span = math.max(hi - lo, 6.0);
     final pad = span * 0.1;
-    return (
-      min: (lo - pad).floorToDouble(),
-      max: (hi + pad).ceilToDouble(),
-    );
+    return (min: (lo - pad).floorToDouble(), max: (hi + pad).ceilToDouble());
   }
 
   @override
@@ -112,9 +109,11 @@ class EqCurveChart extends StatelessWidget {
           height: height,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: backgroundColor ??
-                theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.45),
+            color:
+                backgroundColor ??
+                theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.45,
+                ),
             borderRadius: BorderRadius.circular(10),
           ),
           child: ClipRRect(
@@ -127,10 +126,12 @@ class EqCurveChart extends StatelessWidget {
                 minDb: bounds.min,
                 maxDb: bounds.max,
                 showGrid: showGrid,
-                gridColor: theme.colorScheme.outlineVariant
-                    .withValues(alpha: 0.35),
-                zeroLineColor: theme.colorScheme.outlineVariant
-                    .withValues(alpha: 0.7),
+                gridColor: theme.colorScheme.outlineVariant.withValues(
+                  alpha: 0.35,
+                ),
+                zeroLineColor: theme.colorScheme.outlineVariant.withValues(
+                  alpha: 0.7,
+                ),
               ),
             ),
           ),
@@ -153,11 +154,7 @@ class EqCurveChart extends StatelessWidget {
 
 /// Labels beneath the plot: the fitted dB range on the left, decade marks across.
 class _FrequencyAxis extends StatelessWidget {
-  const _FrequencyAxis({
-    required this.minDb,
-    required this.maxDb,
-    this.style,
-  });
+  const _FrequencyAxis({required this.minDb, required this.maxDb, this.style});
 
   final double minDb;
   final double maxDb;
@@ -209,7 +206,8 @@ class _EqCurvePainter extends CustomPainter {
   double _x(double freq, double width) {
     final logMin = math.log(minFrequency);
     final logMax = math.log(maxFrequency);
-    final t = (math.log(freq.clamp(minFrequency, maxFrequency)) - logMin) /
+    final t =
+        (math.log(freq.clamp(minFrequency, maxFrequency)) - logMin) /
         (logMax - logMin);
     return t * width;
   }
@@ -247,7 +245,9 @@ class _EqCurvePainter extends CustomPainter {
         canvas.drawLine(
           Offset(x, 0),
           Offset(x, size.height),
-          mult == 1 ? grid : (Paint()..color = gridColor.withValues(alpha: 0.12)),
+          mult == 1
+              ? grid
+              : (Paint()..color = gridColor.withValues(alpha: 0.12)),
         );
       }
     }

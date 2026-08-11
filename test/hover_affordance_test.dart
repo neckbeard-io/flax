@@ -13,9 +13,9 @@ import 'package:flax/shared/widgets/star_rating.dart';
 /// see. The heart in the mini player read as decoration.
 
 Widget _harness(Widget child) => MaterialApp(
-      theme: ThemeData.dark(useMaterial3: true),
-      home: Scaffold(body: Center(child: child)),
-    );
+  theme: ThemeData.dark(useMaterial3: true),
+  home: Scaffold(body: Center(child: child)),
+);
 
 /// Puts a mouse pointer over [target] and leaves it there.
 Future<void> _hover(WidgetTester tester, Finder target) async {
@@ -33,8 +33,8 @@ AnimatedScale _scaleOf(WidgetTester tester, Finder within) =>
     );
 
 Icon _iconOf(WidgetTester tester, Finder within) => tester.widget<Icon>(
-      find.descendant(of: within, matching: find.byType(Icon)).first,
-    );
+  find.descendant(of: within, matching: find.byType(Icon)).first,
+);
 
 void main() {
   group('the favorite heart', () {
@@ -49,14 +49,12 @@ void main() {
       final backdrop = tester.widget<AnimatedContainer>(
         find.descendant(of: heart, matching: find.byType(AnimatedContainer)),
       );
-      expect(
-        (backdrop.decoration as BoxDecoration).color,
-        Colors.transparent,
-      );
+      expect((backdrop.decoration as BoxDecoration).color, Colors.transparent);
     });
 
-    testWidgets('grows, brightens and gains a backdrop under the pointer',
-        (tester) async {
+    testWidgets('grows, brightens and gains a backdrop under the pointer', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _harness(FavoriteButton(isFavorite: false, onToggle: () {})),
       );
@@ -119,16 +117,18 @@ void main() {
       expect(_scaleOf(tester, find.byType(HoverIcon).at(0)).scale, 1.0);
     });
 
-    testWidgets('a read-only rating offers no affordance at all',
-        (tester) async {
+    testWidgets('a read-only rating offers no affordance at all', (
+      tester,
+    ) async {
       await tester.pumpWidget(_harness(const StarRating(rating: 3)));
       await tester.pumpAndSettle();
       expect(find.byType(HoverIcon), findsNothing);
     });
   });
 
-  testWidgets('hearts and stars share one hover implementation',
-      (tester) async {
+  testWidgets('hearts and stars share one hover implementation', (
+    tester,
+  ) async {
     // The point of the shared primitive: no call site hand-rolls its own feel,
     // so a heart in the mini player behaves like a heart in a track list.
     await tester.pumpWidget(

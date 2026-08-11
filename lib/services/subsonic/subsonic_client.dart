@@ -16,7 +16,8 @@ class SubsonicClient implements MusicBackend {
   static const String _clientName = 'flax';
 
   SubsonicClient({required this.server, Dio? dio})
-      : _dio = dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 10)));
+    : _dio =
+          dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 10)));
 
   // ── Auth helpers ──────────────────────────────────────────────────────
 
@@ -119,14 +120,13 @@ class SubsonicClient implements MusicBackend {
   Future<Map<String, int>> getOpenSubsonicExtensions() async {
     try {
       final data = await _get('getOpenSubsonicExtensions');
-      final extensions =
-          data['openSubsonicExtensions'] as List<dynamic>? ?? [];
+      final extensions = data['openSubsonicExtensions'] as List<dynamic>? ?? [];
       return {
         for (final ext in extensions)
-          (ext as Map<String, dynamic>)['name'] as String:
-              ext['versions'] is List
-                  ? ((ext['versions'] as List).last as int)
-                  : 1,
+          (ext as Map<String, dynamic>)['name']
+              as String: ext['versions'] is List
+              ? ((ext['versions'] as List).last as int)
+              : 1,
       };
     } catch (_) {
       return {};
@@ -141,7 +141,7 @@ class SubsonicClient implements MusicBackend {
     final artists = <Artist>[];
     final indexes =
         (data['artists'] as Map<String, dynamic>)['index'] as List<dynamic>? ??
-            [];
+        [];
     for (final index in indexes) {
       final artistList =
           (index as Map<String, dynamic>)['artist'] as List<dynamic>? ?? [];
@@ -169,9 +169,7 @@ class SubsonicClient implements MusicBackend {
     final data = await _get('getAlbum', {'id': albumId});
     final album = data['album'] as Map<String, dynamic>;
     final songs = album['song'] as List<dynamic>? ?? [];
-    return songs
-        .map((s) => _parseSong(s as Map<String, dynamic>))
-        .toList();
+    return songs.map((s) => _parseSong(s as Map<String, dynamic>)).toList();
   }
 
   @override
@@ -183,8 +181,8 @@ class SubsonicClient implements MusicBackend {
   @override
   Future<List<String>> getGenres() async {
     final data = await _get('getGenres');
-    final genres = (data['genres'] as Map<String, dynamic>)['genre']
-            as List<dynamic>? ??
+    final genres =
+        (data['genres'] as Map<String, dynamic>)['genre'] as List<dynamic>? ??
         [];
     return genres
         .map((g) => (g as Map<String, dynamic>)['value'] as String)
@@ -212,7 +210,8 @@ class SubsonicClient implements MusicBackend {
     if (genre != null) params['genre'] = genre;
 
     final data = await _get('getAlbumList2', params);
-    final list = (data['albumList2'] as Map<String, dynamic>)['album']
+    final list =
+        (data['albumList2'] as Map<String, dynamic>)['album']
             as List<dynamic>? ??
         [];
     return list.map((a) => _parseAlbum(a as Map<String, dynamic>)).toList();
@@ -255,29 +254,23 @@ class SubsonicClient implements MusicBackend {
 
   @override
   Uri getStreamUri(String songId, {int? maxBitRate, String? format}) {
-    final params = <String, String>{
-      ..._authParams(),
-      'id': songId,
-    };
+    final params = <String, String>{..._authParams(), 'id': songId};
     if (maxBitRate != null) params['maxBitRate'] = maxBitRate.toString();
     if (format != null) params['format'] = format;
 
-    return Uri.parse('${server.baseUrl}/rest/stream').replace(
-      queryParameters: params,
-    );
+    return Uri.parse(
+      '${server.baseUrl}/rest/stream',
+    ).replace(queryParameters: params);
   }
 
   @override
   Uri getCoverArtUri(String id, {int? size}) {
-    final params = <String, String>{
-      ..._authParams(),
-      'id': id,
-    };
+    final params = <String, String>{..._authParams(), 'id': id};
     if (size != null) params['size'] = size.toString();
 
-    return Uri.parse('${server.baseUrl}/rest/getCoverArt').replace(
-      queryParameters: params,
-    );
+    return Uri.parse(
+      '${server.baseUrl}/rest/getCoverArt',
+    ).replace(queryParameters: params);
   }
 
   // ── Lyrics ────────────────────────────────────────────────────────────
@@ -343,7 +336,8 @@ class SubsonicClient implements MusicBackend {
   @override
   Future<List<Playlist>> getPlaylists() async {
     final data = await _get('getPlaylists');
-    final list = (data['playlists'] as Map<String, dynamic>)['playlist']
+    final list =
+        (data['playlists'] as Map<String, dynamic>)['playlist']
             as List<dynamic>? ??
         [];
     return list.map((p) => _parsePlaylist(p as Map<String, dynamic>)).toList();
@@ -360,9 +354,7 @@ class SubsonicClient implements MusicBackend {
     final data = await _get('getPlaylist', {'id': playlistId});
     final playlist = data['playlist'] as Map<String, dynamic>;
     final entries = playlist['entry'] as List<dynamic>? ?? [];
-    return entries
-        .map((s) => _parseSong(s as Map<String, dynamic>))
-        .toList();
+    return entries.map((s) => _parseSong(s as Map<String, dynamic>)).toList();
   }
 
   @override
@@ -461,11 +453,14 @@ class SubsonicClient implements MusicBackend {
     final similarList = raw['similarArtist'] as List<dynamic>? ?? [];
     for (final s in similarList) {
       final m = s as Map<String, dynamic>;
-      similar.add(SimilarArtist(
-        id: m['id'] as String,
-        name: m['name'] as String? ?? '',
-        coverArtId: m['coverArt'] as String? ?? m['artistImageUrl'] as String?,
-      ));
+      similar.add(
+        SimilarArtist(
+          id: m['id'] as String,
+          name: m['name'] as String? ?? '',
+          coverArtId:
+              m['coverArt'] as String? ?? m['artistImageUrl'] as String?,
+        ),
+      );
     }
 
     return ArtistInfo(
@@ -484,7 +479,8 @@ class SubsonicClient implements MusicBackend {
   @override
   Future<List<Song>> getSimilarSongs(String id, {int count = 50}) async {
     final data = await _get('getSimilarSongs2', {'id': id, 'count': count});
-    final songs = (data['similarSongs2'] as Map<String, dynamic>)['song']
+    final songs =
+        (data['similarSongs2'] as Map<String, dynamic>)['song']
             as List<dynamic>? ??
         [];
     return songs.map((s) => _parseSong(s as Map<String, dynamic>)).toList();
@@ -492,9 +488,12 @@ class SubsonicClient implements MusicBackend {
 
   @override
   Future<List<Song>> getTopSongs(String artistName, {int count = 50}) async {
-    final data = await _get('getTopSongs', {'artist': artistName, 'count': count});
-    final songs = (data['topSongs'] as Map<String, dynamic>)['song']
-            as List<dynamic>? ??
+    final data = await _get('getTopSongs', {
+      'artist': artistName,
+      'count': count,
+    });
+    final songs =
+        (data['topSongs'] as Map<String, dynamic>)['song'] as List<dynamic>? ??
         [];
     return songs.map((s) => _parseSong(s as Map<String, dynamic>)).toList();
   }
@@ -506,7 +505,8 @@ class SubsonicClient implements MusicBackend {
     final params = <String, dynamic>{'size': count};
     if (genre != null) params['genre'] = genre;
     final data = await _get('getRandomSongs', params);
-    final songs = (data['randomSongs'] as Map<String, dynamic>)['song']
+    final songs =
+        (data['randomSongs'] as Map<String, dynamic>)['song']
             as List<dynamic>? ??
         [];
     return songs.map((s) => _parseSong(s as Map<String, dynamic>)).toList();
@@ -538,7 +538,8 @@ class SubsonicClient implements MusicBackend {
       serverId: server.id,
       name: json['name'] as String? ?? '',
       sortName: json['sortName'] as String?,
-      coverArtId: json['coverArt'] as String? ?? json['artistImageUrl'] as String?,
+      coverArtId:
+          json['coverArt'] as String? ?? json['artistImageUrl'] as String?,
       albumCount: json['albumCount'] as int? ?? 0,
       starred: json['starred'] != null,
       starredAt: json['starred'] != null
@@ -601,10 +602,18 @@ class SubsonicClient implements MusicBackend {
           : null,
       userRating: json['userRating'] as int?,
       playCount: json['playCount'] as int? ?? 0,
-      replayGainTrackGain: _toDouble((json['replayGain'] as Map<String, dynamic>?)?['trackGain']),
-      replayGainTrackPeak: _toDouble((json['replayGain'] as Map<String, dynamic>?)?['trackPeak']),
-      replayGainAlbumGain: _toDouble((json['replayGain'] as Map<String, dynamic>?)?['albumGain']),
-      replayGainAlbumPeak: _toDouble((json['replayGain'] as Map<String, dynamic>?)?['albumPeak']),
+      replayGainTrackGain: _toDouble(
+        (json['replayGain'] as Map<String, dynamic>?)?['trackGain'],
+      ),
+      replayGainTrackPeak: _toDouble(
+        (json['replayGain'] as Map<String, dynamic>?)?['trackPeak'],
+      ),
+      replayGainAlbumGain: _toDouble(
+        (json['replayGain'] as Map<String, dynamic>?)?['albumGain'],
+      ),
+      replayGainAlbumPeak: _toDouble(
+        (json['replayGain'] as Map<String, dynamic>?)?['albumPeak'],
+      ),
     );
   }
 

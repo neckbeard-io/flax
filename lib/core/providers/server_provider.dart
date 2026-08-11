@@ -8,8 +8,8 @@ import 'package:flax/services/subsonic/subsonic_client.dart';
 
 final serverListProvider =
     StateNotifierProvider<ServerListNotifier, List<Server>>((ref) {
-  return ServerListNotifier();
-});
+      return ServerListNotifier();
+    });
 
 final activeServerProvider = Provider<Server?>((ref) {
   final servers = ref.watch(serverListProvider);
@@ -85,10 +85,7 @@ class ServerListNotifier extends StateNotifier<List<Server>> {
     final wasActive = state.any((s) => s.id == id && s.isActive);
     state = state.where((s) => s.id != id).toList();
     if (wasActive && state.isNotEmpty) {
-      state = [
-        state.first.copyWith(isActive: true),
-        ...state.skip(1),
-      ];
+      state = [state.first.copyWith(isActive: true), ...state.skip(1)];
     }
     await _save();
   }

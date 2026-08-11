@@ -55,9 +55,9 @@ class NowPlayingLayout {
   });
 
   factory NowPlayingLayout.forWidth(double width) => NowPlayingLayout(
-        singlePanel: width < kNowPlayingSinglePanelMaxWidth,
-        artistOpenByDefault: width >= kNowPlayingArtistOpenMinWidth,
-      );
+    singlePanel: width < kNowPlayingSinglePanelMaxWidth,
+    artistOpenByDefault: width >= kNowPlayingArtistOpenMinWidth,
+  );
 
   /// Whether [width] gets panels at all, as opposed to the phone screen.
   static bool fitsAt(double width) => width >= kNowPlayingPanelsMinWidth;
@@ -159,14 +159,18 @@ class NowPlayingPanels extends StatelessWidget {
             onDelta: onArtistWidthChanged == null
                 ? null
                 : (dx) => onArtistWidthChanged!(
-                      (width + dx)
-                          .clamp(kArtistPanelMinWidth, kArtistPanelMaxWidth),
+                    (width + dx).clamp(
+                      kArtistPanelMinWidth,
+                      kArtistPanelMaxWidth,
                     ),
+                  ),
           ),
         ],
         // Lyrics take whatever the other two leave, so collapsing the artist
         // panel hands its width straight to them rather than to dead space.
-        Expanded(child: KeyedSubtree(key: lyricsKey, child: lyrics)),
+        Expanded(
+          child: KeyedSubtree(key: lyricsKey, child: lyrics),
+        ),
         const _PanelSeparator(),
         SizedBox(key: queueKey, width: kQueuePanelWidth, child: queue),
       ],
@@ -229,8 +233,9 @@ class _Header extends StatelessWidget {
                           ? Icons.view_sidebar
                           : Icons.view_sidebar_outlined,
                     ),
-                    tooltip:
-                        artistOpen ? 'Hide artist panel' : 'Show artist panel',
+                    tooltip: artistOpen
+                        ? 'Hide artist panel'
+                        : 'Show artist panel',
                     onPressed: () => onArtistOpenChanged(!artistOpen),
                   ),
               ],
@@ -318,10 +323,9 @@ class _PanelSeparator extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 1,
-      color: Theme.of(context)
-          .colorScheme
-          .outlineVariant
-          .withValues(alpha: 0.3),
+      color: Theme.of(
+        context,
+      ).colorScheme.outlineVariant.withValues(alpha: 0.3),
     );
   }
 }
@@ -340,8 +344,9 @@ class _ResizeHandle extends StatelessWidget {
     final line = Center(
       child: Container(
         width: 1,
-        color:
-            Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
+        color: Theme.of(
+          context,
+        ).colorScheme.outlineVariant.withValues(alpha: 0.3),
       ),
     );
 

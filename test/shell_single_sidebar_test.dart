@@ -68,8 +68,9 @@ Future<GoRouter> _pumpApp(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('opening now playing does not add a second sidebar',
-      (tester) async {
+  testWidgets('opening now playing does not add a second sidebar', (
+    tester,
+  ) async {
     final router = await _pumpApp(tester);
     expect(find.byType(DesktopSidebar), findsOneWidget);
 
@@ -83,8 +84,9 @@ void main() {
     );
   });
 
-  testWidgets('the "/" shortcut can still focus search after now playing',
-      (tester) async {
+  testWidgets('the "/" shortcut can still focus search after now playing', (
+    tester,
+  ) async {
     final router = await _pumpApp(tester);
     final container = ProviderScope.containerOf(
       tester.element(find.byType(DesktopSidebar)),

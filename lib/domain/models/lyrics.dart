@@ -82,12 +82,14 @@ class Lyrics {
     for (final raw in rawLines) {
       if (raw is! Map<String, dynamic>) continue;
       final start = raw['start'] as int?;
-      lines.add(LyricLine(
-        text: raw['value'] as String? ?? '',
-        start: synced && start != null
-            ? Duration(milliseconds: start) + offset
-            : null,
-      ));
+      lines.add(
+        LyricLine(
+          text: raw['value'] as String? ?? '',
+          start: synced && start != null
+              ? Duration(milliseconds: start) + offset
+              : null,
+        ),
+      );
     }
 
     return Lyrics(

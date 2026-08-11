@@ -8,29 +8,33 @@ Map<String, dynamic> _sheet({
   int? offset,
   String? lang,
   List<Map<String, dynamic>>? lines,
-}) =>
-    {
-      'synced': synced,
-      'offset': ?offset,
-      'lang': ?lang,
-      'displayArtist': 'Agalloch',
-      'displayTitle': 'Limbs',
-      'line': lines ??
-          [
-            {'start': 0, 'value': 'first'},
-            {'start': 5000, 'value': 'second'},
-            {'start': 12500, 'value': 'third'},
-          ],
-    };
+}) => {
+  'synced': synced,
+  'offset': ?offset,
+  'lang': ?lang,
+  'displayArtist': 'Agalloch',
+  'displayTitle': 'Limbs',
+  'line':
+      lines ??
+      [
+        {'start': 0, 'value': 'first'},
+        {'start': 5000, 'value': 'second'},
+        {'start': 12500, 'value': 'third'},
+      ],
+};
 
 void main() {
   group('lineIndexAt', () {
     final lyrics = Lyrics.fromJson(_sheet());
 
     test('nothing is current before the first line starts', () {
-      final early = Lyrics.fromJson(_sheet(lines: [
-        {'start': 3000, 'value': 'first'},
-      ]));
+      final early = Lyrics.fromJson(
+        _sheet(
+          lines: [
+            {'start': 3000, 'value': 'first'},
+          ],
+        ),
+      );
       expect(early.lineIndexAt(const Duration(milliseconds: 2999)), -1);
     });
 
@@ -56,11 +60,15 @@ void main() {
     });
 
     test('a line with no timestamp does not become current', () {
-      final gappy = Lyrics.fromJson(_sheet(lines: [
-        {'start': 0, 'value': 'first'},
-        {'value': 'no timestamp'},
-        {'start': 9000, 'value': 'third'},
-      ]));
+      final gappy = Lyrics.fromJson(
+        _sheet(
+          lines: [
+            {'start': 0, 'value': 'first'},
+            {'value': 'no timestamp'},
+            {'start': 9000, 'value': 'third'},
+          ],
+        ),
+      );
       expect(gappy.lineIndexAt(const Duration(seconds: 3)), 0);
       expect(gappy.lineIndexAt(const Duration(seconds: 9)), 2);
     });
@@ -89,10 +97,14 @@ void main() {
     });
 
     test('a sheet claiming to be synced but carrying no times is not', () {
-      final parsed = Lyrics.fromJson(_sheet(lines: [
-        {'value': 'first'},
-        {'value': 'second'},
-      ]));
+      final parsed = Lyrics.fromJson(
+        _sheet(
+          lines: [
+            {'value': 'first'},
+            {'value': 'second'},
+          ],
+        ),
+      );
       expect(parsed.synced, isFalse);
     });
 
@@ -129,11 +141,13 @@ void main() {
       );
     });
 
-    test('plain text becomes an unsynced sheet, blank text becomes nothing',
-        () {
-      expect(Lyrics.fromPlainText('one\ntwo')!.lines.length, 2);
-      expect(Lyrics.fromPlainText(null), isNull);
-      expect(Lyrics.fromPlainText('   \n  '), isNull);
-    });
+    test(
+      'plain text becomes an unsynced sheet, blank text becomes nothing',
+      () {
+        expect(Lyrics.fromPlainText('one\ntwo')!.lines.length, 2);
+        expect(Lyrics.fromPlainText(null), isNull);
+        expect(Lyrics.fromPlainText('   \n  '), isNull);
+      },
+    );
   });
 }

@@ -78,7 +78,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         prefixIcon: const Icon(Icons.search, size: 20),
                       ),
                       onChanged: (value) =>
@@ -103,91 +106,101 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             Expanded(
               child: resultAsync.when(
-        data: (result) {
-          if (result == null) {
-            return Center(
-              child: Text(
-                'Search your library',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            );
-          }
-          if (result.isEmpty) {
-            return Center(
-              child: Text(
-                'No results',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            );
-          }
-          return ListView(
-            children: [
-              if (result.artists.isNotEmpty) ...[
-                _SectionHeader(title: 'Artists'),
-                ...result.artists.map(
-                  (a) => ListTile(
-                    leading: ClipOval(
-                      child: SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CoverArtImage(coverArtId: a.coverArtId, size: 40),
+                data: (result) {
+                  if (result == null) {
+                    return Center(
+                      child: Text(
+                        'Search your library',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                    title: Text(a.name),
-                    onTap: () => context.push('/artists/${a.id}'),
-                  ),
-                ),
-              ],
-              if (result.albums.isNotEmpty) ...[
-                _SectionHeader(title: 'Albums'),
-                ...result.albums.map(
-                  (a) => ListTile(
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: CoverArtImage(coverArtId: a.coverArtId, size: 40),
-                      ),
-                    ),
-                    title: Text(a.name),
-                    subtitle: Text(a.artistName ?? ''),
-                    onTap: () => context.push('/albums/${a.id}'),
-                  ),
-                ),
-              ],
-              if (result.songs.isNotEmpty) ...[
-                _SectionHeader(title: 'Songs'),
-                ...result.songs.asMap().entries.map(
-                  (entry) {
-                    final song = entry.value;
-                    return ListTile(
-                      title: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text(
-                        '${song.artistName ?? ''} — ${song.albumName ?? ''}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onTap: () {
-                        ref.read(playerProvider.notifier).playSong(
-                              song,
-                              queue: result.songs,
-                              index: entry.key,
-                            );
-                      },
                     );
-                  },
-                ),
-              ],
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+                  }
+                  if (result.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No results',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    );
+                  }
+                  return ListView(
+                    children: [
+                      if (result.artists.isNotEmpty) ...[
+                        _SectionHeader(title: 'Artists'),
+                        ...result.artists.map(
+                          (a) => ListTile(
+                            leading: ClipOval(
+                              child: SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: CoverArtImage(
+                                  coverArtId: a.coverArtId,
+                                  size: 40,
+                                ),
+                              ),
+                            ),
+                            title: Text(a.name),
+                            onTap: () => context.push('/artists/${a.id}'),
+                          ),
+                        ),
+                      ],
+                      if (result.albums.isNotEmpty) ...[
+                        _SectionHeader(title: 'Albums'),
+                        ...result.albums.map(
+                          (a) => ListTile(
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: CoverArtImage(
+                                  coverArtId: a.coverArtId,
+                                  size: 40,
+                                ),
+                              ),
+                            ),
+                            title: Text(a.name),
+                            subtitle: Text(a.artistName ?? ''),
+                            onTap: () => context.push('/albums/${a.id}'),
+                          ),
+                        ),
+                      ],
+                      if (result.songs.isNotEmpty) ...[
+                        _SectionHeader(title: 'Songs'),
+                        ...result.songs.asMap().entries.map((entry) {
+                          final song = entry.value;
+                          return ListTile(
+                            title: Text(
+                              song.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              '${song.artistName ?? ''} — ${song.albumName ?? ''}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () {
+                              ref
+                                  .read(playerProvider.notifier)
+                                  .playSong(
+                                    song,
+                                    queue: result.songs,
+                                    index: entry.key,
+                                  );
+                            },
+                          );
+                        }),
+                      ],
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
               ),
             ),
           ],
@@ -207,9 +220,9 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
       ),
     );
   }

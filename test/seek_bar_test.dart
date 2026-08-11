@@ -45,7 +45,10 @@ void main() {
     await _pumpBar(tester);
     expect(find.text('0:30'), findsOneWidget);
     expect(find.text('4:00'), findsOneWidget);
-    expect(tester.widget<Slider>(find.byType(Slider)).value, closeTo(0.125, 0.001));
+    expect(
+      tester.widget<Slider>(find.byType(Slider)).value,
+      closeTo(0.125, 0.001),
+    );
   });
 
   testWidgets('dragging moves the thumb without seeking', (tester) async {
@@ -68,7 +71,9 @@ void main() {
     expect(seeks.single.inSeconds, greaterThan(120));
   });
 
-  testWidgets('the elapsed time follows the drag, not the track', (tester) async {
+  testWidgets('the elapsed time follows the drag, not the track', (
+    tester,
+  ) async {
     await _pumpBar(tester);
 
     final gesture = await tester.startGesture(
@@ -84,8 +89,9 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('a position arriving mid-drag does not move the thumb',
-      (tester) async {
+  testWidgets('a position arriving mid-drag does not move the thumb', (
+    tester,
+  ) async {
     // The exact failure a naive implementation has: the player ticks while you
     // are dragging and yanks the thumb back to the playhead.
     await _pumpBar(tester);
@@ -125,14 +131,19 @@ void main() {
     expect(tester.widget<Slider>(find.byType(Slider)).onChanged, isNull);
   });
 
-  testWidgets('inline labels put the times either side of the slider',
-      (tester) async {
+  testWidgets('inline labels put the times either side of the slider', (
+    tester,
+  ) async {
     await _pumpBar(tester, inlineLabels: true);
 
     final sliderBox = tester.getRect(find.byType(Slider));
-    expect(tester.getRect(find.text('0:30')).right,
-        lessThanOrEqualTo(sliderBox.left));
-    expect(tester.getRect(find.text('4:00')).left,
-        greaterThanOrEqualTo(sliderBox.right));
+    expect(
+      tester.getRect(find.text('0:30')).right,
+      lessThanOrEqualTo(sliderBox.left),
+    );
+    expect(
+      tester.getRect(find.text('4:00')).left,
+      greaterThanOrEqualTo(sliderBox.right),
+    );
   });
 }

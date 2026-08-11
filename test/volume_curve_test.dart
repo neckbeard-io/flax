@@ -32,16 +32,23 @@ void main() {
       // preamp read as the audio cutting out entirely. Square law gives -12 dB.
       final halfDb = gainToDb(mpvGainFor(0.5));
       expect(halfDb, closeTo(-12.04, 0.01));
-      expect(halfDb, greaterThan(-15),
-          reason: 'half travel must stay clearly audible');
+      expect(
+        halfDb,
+        greaterThan(-15),
+        reason: 'half travel must stay clearly audible',
+      );
     });
 
     test('amplitude follows pos^2', () {
       for (final pos in [0.1, 0.25, 0.5, 0.75, 0.9, 1.0]) {
-        final expectedGain =
-            math.pow(pos, PlayerNotifier.kFaderAmplitudeExponent).toDouble();
-        expect(mpvGainFor(pos), closeTo(expectedGain, 1e-9),
-            reason: 'gain at $pos should be pos^2');
+        final expectedGain = math
+            .pow(pos, PlayerNotifier.kFaderAmplitudeExponent)
+            .toDouble();
+        expect(
+          mpvGainFor(pos),
+          closeTo(expectedGain, 1e-9),
+          reason: 'gain at $pos should be pos^2',
+        );
       }
     });
 
@@ -57,16 +64,20 @@ void main() {
 
     test('faderToDb agrees with the gain that reaches the output', () {
       for (final pos in [0.05, 0.25, 0.5, 0.75, 1.0]) {
-        expect(PlayerNotifier.faderToDb(pos),
-            closeTo(gainToDb(mpvGainFor(pos)), 1e-6),
-            reason: 'readout must match reality at $pos');
+        expect(
+          PlayerNotifier.faderToDb(pos),
+          closeTo(gainToDb(mpvGainFor(pos)), 1e-6),
+          reason: 'readout must match reality at $pos',
+        );
       }
     });
 
     test('dbToFader inverts faderToDb', () {
       for (final pos in [0.05, 0.2, 0.5, 0.8, 1.0]) {
-        expect(PlayerNotifier.dbToFader(PlayerNotifier.faderToDb(pos)),
-            closeTo(pos, 1e-9));
+        expect(
+          PlayerNotifier.dbToFader(PlayerNotifier.faderToDb(pos)),
+          closeTo(pos, 1e-9),
+        );
       }
     });
 

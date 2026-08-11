@@ -50,12 +50,7 @@ class CountryFlagIcon extends StatelessWidget {
 
 /// One metadata item: a leading glyph and a label, aligned with its neighbours.
 class InfoChip extends StatelessWidget {
-  const InfoChip({
-    super.key,
-    required this.label,
-    this.icon,
-    this.countryCode,
-  });
+  const InfoChip({super.key, required this.label, this.icon, this.countryCode});
 
   final String label;
 
@@ -68,8 +63,9 @@ class InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final flagCode =
-        CountryFlagIcon.isSupported(countryCode) ? countryCode : null;
+    final flagCode = CountryFlagIcon.isSupported(countryCode)
+        ? countryCode
+        : null;
 
     return Row(
       mainAxisSize: MainAxisSize.min,

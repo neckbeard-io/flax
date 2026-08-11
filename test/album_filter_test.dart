@@ -54,20 +54,13 @@ void main() {
 
     test('opens on the full library', () {
       expect(AlbumFilter.defaultFilter, AlbumFilter.all);
-      expect(
-        AlbumFilter.all.listType,
-        AlbumListType.alphabeticalByName,
-      );
+      expect(AlbumFilter.all.listType, AlbumListType.alphabeticalByName);
     });
   });
 
   group('the tab row', () {
     testWidgets('shows every filter', (tester) async {
-      await _pumpTabs(
-        tester,
-        selected: AlbumFilter.all,
-        onSelected: (_) {},
-      );
+      await _pumpTabs(tester, selected: AlbumFilter.all, onSelected: (_) {});
 
       for (final filter in AlbumFilter.values) {
         expect(find.text(filter.label), findsOneWidget);
@@ -97,13 +90,19 @@ void main() {
 
       Text labelFor(AlbumFilter f) => tester.widget<Text>(find.text(f.label));
 
-      expect(labelFor(AlbumFilter.favorites).style?.fontWeight,
-          FontWeight.w600);
-      expect(labelFor(AlbumFilter.all).style?.fontWeight, isNot(FontWeight.w600));
+      expect(
+        labelFor(AlbumFilter.favorites).style?.fontWeight,
+        FontWeight.w600,
+      );
+      expect(
+        labelFor(AlbumFilter.all).style?.fontWeight,
+        isNot(FontWeight.w600),
+      );
     });
 
-    testWidgets('wraps rather than overflowing a narrow window',
-        (tester) async {
+    testWidgets('wraps rather than overflowing a narrow window', (
+      tester,
+    ) async {
       // Seven tabs do not fit one line at phone widths, and a horizontally
       // scrolling row across the top of the app's landing screen would make
       // BackSwipeTracker stand down for any swipe that started there.

@@ -80,9 +80,18 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Theme'),
             trailing: SegmentedButton<ThemeModeSetting>(
               segments: const [
-                ButtonSegment(value: ThemeModeSetting.system, label: Text('Auto')),
-                ButtonSegment(value: ThemeModeSetting.light, label: Text('Light')),
-                ButtonSegment(value: ThemeModeSetting.dark, label: Text('Dark')),
+                ButtonSegment(
+                  value: ThemeModeSetting.system,
+                  label: Text('Auto'),
+                ),
+                ButtonSegment(
+                  value: ThemeModeSetting.light,
+                  label: Text('Light'),
+                ),
+                ButtonSegment(
+                  value: ThemeModeSetting.dark,
+                  label: Text('Dark'),
+                ),
               ],
               selected: {themeMode},
               onSelectionChanged: (s) =>
@@ -93,8 +102,7 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('AMOLED Black'),
             subtitle: const Text('Pure black background for OLED screens'),
             value: amoled,
-            onChanged: (v) =>
-                ref.read(amoledProvider.notifier).state = v,
+            onChanged: (v) => ref.read(amoledProvider.notifier).state = v,
           ),
           const Divider(),
 
@@ -131,7 +139,7 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: Text(
               activeServer != null
                   ? 'Wi-Fi: ${activeServer.transcodingConfig.wifiQuality.label} · '
-                    'Cellular: ${activeServer.transcodingConfig.cellularQuality.label}'
+                        'Cellular: ${activeServer.transcodingConfig.cellularQuality.label}'
                   : 'No server',
             ),
             trailing: const Icon(Icons.chevron_right),
@@ -224,9 +232,8 @@ class _LyricsSettingsSection extends ConsumerWidget {
             value: settings.fontSize,
             min: LyricsSettings.minFontSize,
             max: LyricsSettings.maxFontSize,
-            divisions:
-                (LyricsSettings.maxFontSize - LyricsSettings.minFontSize)
-                    .round(),
+            divisions: (LyricsSettings.maxFontSize - LyricsSettings.minFontSize)
+                .round(),
             label: '${settings.fontSize.round()} pt',
             onChanged: notifier.setFontSize,
           ),
@@ -243,8 +250,9 @@ class _LyricsSettingsSection extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.4),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.4,
+              ),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -265,12 +273,12 @@ class _LyricsSettingsSection extends ConsumerWidget {
                         fontSize: active
                             ? settings.activeFontSize
                             : settings.fontSize,
-                        fontWeight:
-                            active ? FontWeight.w700 : FontWeight.w400,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w400,
                         color: active
                             ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurface
-                                .withValues(alpha: 0.45),
+                            : theme.colorScheme.onSurface.withValues(
+                                alpha: 0.45,
+                              ),
                       ),
                     ),
                   ),
@@ -294,9 +302,9 @@ class _SectionTitle extends StatelessWidget {
       child: Text(
         title,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

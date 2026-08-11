@@ -28,21 +28,24 @@ class TranscodingConfig {
   }
 
   Map<String, dynamic> toJson() => {
-        'wifiQuality': wifiQuality.name,
-        'cellularQuality': cellularQuality.name,
-        'transcodeFormat': transcodeFormat.name,
-        'offlineQuality': offlineQuality.name,
-      };
+    'wifiQuality': wifiQuality.name,
+    'cellularQuality': cellularQuality.name,
+    'transcodeFormat': transcodeFormat.name,
+    'offlineQuality': offlineQuality.name,
+  };
 
   factory TranscodingConfig.fromJson(Map<String, dynamic> json) {
     return TranscodingConfig(
       wifiQuality: StreamQuality.values.byName(json['wifiQuality'] as String),
-      cellularQuality:
-          StreamQuality.values.byName(json['cellularQuality'] as String),
-      transcodeFormat:
-          TranscodeFormat.values.byName(json['transcodeFormat'] as String),
-      offlineQuality:
-          StreamQuality.values.byName(json['offlineQuality'] as String),
+      cellularQuality: StreamQuality.values.byName(
+        json['cellularQuality'] as String,
+      ),
+      transcodeFormat: TranscodeFormat.values.byName(
+        json['transcodeFormat'] as String,
+      ),
+      offlineQuality: StreamQuality.values.byName(
+        json['offlineQuality'] as String,
+      ),
     );
   }
 }
@@ -98,20 +101,21 @@ class Server {
     );
   }
 
-  String get baseUrl => url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+  String get baseUrl =>
+      url.endsWith('/') ? url.substring(0, url.length - 1) : url;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'url': url,
-        'username': username,
-        'tokenHash': tokenHash,
-        'salt': salt,
-        'backendType': backendType,
-        'isActive': isActive,
-        'lastSync': lastSync?.toIso8601String(),
-        'transcodingConfig': transcodingConfig.toJson(),
-      };
+    'id': id,
+    'name': name,
+    'url': url,
+    'username': username,
+    'tokenHash': tokenHash,
+    'salt': salt,
+    'backendType': backendType,
+    'isActive': isActive,
+    'lastSync': lastSync?.toIso8601String(),
+    'transcodingConfig': transcodingConfig.toJson(),
+  };
 
   factory Server.fromJson(Map<String, dynamic> json) {
     return Server(
@@ -128,7 +132,8 @@ class Server {
           : null,
       transcodingConfig: json['transcodingConfig'] != null
           ? TranscodingConfig.fromJson(
-              json['transcodingConfig'] as Map<String, dynamic>)
+              json['transcodingConfig'] as Map<String, dynamic>,
+            )
           : const TranscodingConfig(),
     );
   }

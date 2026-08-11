@@ -27,16 +27,16 @@ class EqBandState {
       EqBandState(frequency: frequency, gain: gain ?? this.gain, label: label);
 
   Map<String, dynamic> toJson() => {
-        'frequency': frequency,
-        'gain': gain,
-        'label': label,
-      };
+    'frequency': frequency,
+    'gain': gain,
+    'label': label,
+  };
 
   factory EqBandState.fromJson(Map<String, dynamic> json) => EqBandState(
-        frequency: (json['frequency'] as num).toDouble(),
-        gain: (json['gain'] as num?)?.toDouble() ?? 0,
-        label: json['label'] as String,
-      );
+    frequency: (json['frequency'] as num).toDouble(),
+    gain: (json['gain'] as num?)?.toDouble() ?? 0,
+    label: json['label'] as String,
+  );
 }
 
 class EqState {
@@ -52,30 +52,35 @@ class EqState {
     this.presetName = 'Flat',
   });
 
-  EqState copyWith({bool? enabled, List<EqBandState>? bands, double? preamp, String? presetName}) =>
-      EqState(
-        enabled: enabled ?? this.enabled,
-        bands: bands ?? this.bands,
-        preamp: preamp ?? this.preamp,
-        presetName: presetName ?? this.presetName,
-      );
+  EqState copyWith({
+    bool? enabled,
+    List<EqBandState>? bands,
+    double? preamp,
+    String? presetName,
+  }) => EqState(
+    enabled: enabled ?? this.enabled,
+    bands: bands ?? this.bands,
+    preamp: preamp ?? this.preamp,
+    presetName: presetName ?? this.presetName,
+  );
 
   Map<String, dynamic> toJson() => {
-        'enabled': enabled,
-        'bands': bands.map((b) => b.toJson()).toList(),
-        'preamp': preamp,
-        'presetName': presetName,
-      };
+    'enabled': enabled,
+    'bands': bands.map((b) => b.toJson()).toList(),
+    'preamp': preamp,
+    'presetName': presetName,
+  };
 
   factory EqState.fromJson(Map<String, dynamic> json) => EqState(
-        enabled: json['enabled'] as bool? ?? false,
-        bands: (json['bands'] as List<dynamic>?)
-                ?.map((e) => EqBandState.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-        preamp: (json['preamp'] as num?)?.toDouble() ?? 0,
-        presetName: json['presetName'] as String? ?? 'Flat',
-      );
+    enabled: json['enabled'] as bool? ?? false,
+    bands:
+        (json['bands'] as List<dynamic>?)
+            ?.map((e) => EqBandState.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+    preamp: (json['preamp'] as num?)?.toDouble() ?? 0,
+    presetName: json['presetName'] as String? ?? 'Flat',
+  );
 }
 
 /// The 18 band center frequencies, in Hz.
@@ -133,13 +138,13 @@ const _presetGains = <String, List<double>>{
 
 /// Build a band list from 18 dB gain values.
 List<EqBandState> _bandsFromGains(List<double> gains) => [
-      for (var i = 0; i < _bandFrequencies.length; i++)
-        EqBandState(
-          frequency: _bandFrequencies[i],
-          gain: gains[i],
-          label: _bandLabels[i],
-        ),
-    ];
+  for (var i = 0; i < _bandFrequencies.length; i++)
+    EqBandState(
+      frequency: _bandFrequencies[i],
+      gain: gains[i],
+      label: _bandLabels[i],
+    ),
+];
 
 final _defaultBands = _bandsFromGains(_presetGains['Flat']!);
 
@@ -161,7 +166,9 @@ class EqNotifier extends StateNotifier<EqState> {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_storageKey);
       if (raw == null) return;
-      final restored = EqState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      final restored = EqState.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
       // Guard against a stale/empty band list from an older schema
       if (restored.bands.length != _defaultBands.length) return;
       state = restored;
@@ -186,8 +193,9 @@ class EqNotifier extends StateNotifier<EqState> {
 
   void setBandGain(int index, double gain) {
     final bands = List.of(state.bands);
-    bands[index] =
-        bands[index].copyWith(gain: gain.clamp(-eqGainLimit, eqGainLimit));
+    bands[index] = bands[index].copyWith(
+      gain: gain.clamp(-eqGainLimit, eqGainLimit),
+    );
     state = state.copyWith(bands: bands, presetName: 'Custom');
     _save();
   }
@@ -211,10 +219,7 @@ class EqNotifier extends StateNotifier<EqState> {
 
   /// Zero every band, leaving the preamp untouched.
   void zeroAll() {
-    state = state.copyWith(
-      bands: List.of(_defaultBands),
-      presetName: 'Flat',
-    );
+    state = state.copyWith(bands: List.of(_defaultBands), presetName: 'Flat');
     _save();
   }
 
@@ -255,15 +260,10 @@ class EqualizerScreen extends ConsumerWidget {
     // Preset dropdown entries, including a read-only 'Custom' marker
     // when band gains have been hand-adjusted.
     final isCustom = !_presetGains.containsKey(eq.presetName);
-    final dropdownItems = [
-      ..._presetNames,
-      if (isCustom) eq.presetName,
-    ];
+    final dropdownItems = [..._presetNames, if (isCustom) eq.presetName];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Equalizer'),
-      ),
+      appBar: AppBar(title: const Text('Equalizer')),
       body: Column(
         children: [
           // ── Enable + Preset + Reset ──
@@ -288,9 +288,7 @@ class EqualizerScreen extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: theme.colorScheme.outlineVariant,
-                    ),
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -305,10 +303,12 @@ class EqualizerScreen extends ConsumerWidget {
                         color: theme.colorScheme.onSurface,
                       ),
                       items: dropdownItems
-                          .map((name) => DropdownMenuItem(
-                                value: name,
-                                child: Text(name),
-                              ))
+                          .map(
+                            (name) => DropdownMenuItem(
+                              value: name,
+                              child: Text(name),
+                            ),
+                          )
                           .toList(),
                       onChanged: (name) {
                         if (name != null && _presetGains.containsKey(name)) {
@@ -343,9 +343,7 @@ class EqualizerScreen extends ConsumerWidget {
                     backgroundColor: theme.colorScheme.surfaceContainerHighest,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(
-                        color: theme.colorScheme.outlineVariant,
-                      ),
+                      side: BorderSide(color: theme.colorScheme.outlineVariant),
                     ),
                   ),
                 ),
@@ -375,7 +373,8 @@ class EqualizerScreen extends ConsumerWidget {
                     max: eqGainLimit,
                     divisions: (eqGainLimit * 4).round(),
                     label: '${eq.preamp.toStringAsFixed(1)} dB',
-                    onChanged: (v) => ref.read(eqProvider.notifier).setPreamp(v),
+                    onChanged: (v) =>
+                        ref.read(eqProvider.notifier).setPreamp(v),
                   ),
                 ),
                 SizedBox(
@@ -441,8 +440,8 @@ class EqualizerScreen extends ConsumerWidget {
                                   max: eqGainLimit,
                                   onChanged: eq.enabled
                                       ? (v) => ref
-                                          .read(eqProvider.notifier)
-                                          .setBandGain(i, v)
+                                            .read(eqProvider.notifier)
+                                            .setBandGain(i, v)
                                       : null,
                                 ),
                               ),
@@ -461,7 +460,7 @@ class EqualizerScreen extends ConsumerWidget {
                             band.gain == 0
                                 ? '0'
                                 : '${band.gain > 0 ? '+' : ''}'
-                                    '${band.gain.round()}',
+                                      '${band.gain.round()}',
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: band.gain == 0
                                   ? theme.colorScheme.onSurfaceVariant
@@ -483,22 +482,24 @@ class EqualizerScreen extends ConsumerWidget {
 
           // ── AutoEQ ──
           const Divider(height: 1),
-          Builder(builder: (context) {
-            final autoEq = ref.watch(autoEqProvider);
-            final profileName = autoEq.activeProfile?.name;
-            return ListTile(
-              leading: Icon(
-                Icons.headphones,
-                color: profileName != null
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
-              ),
-              title: const Text('AutoEQ Headphone Correction'),
-              subtitle: Text(profileName ?? 'None selected'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.go('/settings/autoeq'),
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final autoEq = ref.watch(autoEqProvider);
+              final profileName = autoEq.activeProfile?.name;
+              return ListTile(
+                leading: Icon(
+                  Icons.headphones,
+                  color: profileName != null
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
+                title: const Text('AutoEQ Headphone Correction'),
+                subtitle: Text(profileName ?? 'None selected'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go('/settings/autoeq'),
+              );
+            },
+          ),
           const _EqEngineTile(),
           const SizedBox(height: 8),
         ],

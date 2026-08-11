@@ -7,8 +7,9 @@ import 'package:flax/shared/widgets/up_back_button.dart';
 Widget _app(GoRouter router) => MaterialApp.router(routerConfig: router);
 
 void main() {
-  testWidgets('pops back to where you came from when there is history',
-      (tester) async {
+  testWidgets('pops back to where you came from when there is history', (
+    tester,
+  ) async {
     final router = GoRouter(
       initialLocation: '/home',
       routes: [
@@ -48,8 +49,9 @@ void main() {
     expect(find.text('artist page'), findsNothing);
   });
 
-  testWidgets('goes up to the parent when there is nothing to pop',
-      (tester) async {
+  testWidgets('goes up to the parent when there is nothing to pop', (
+    tester,
+  ) async {
     final router = GoRouter(
       // Straight onto the album, as a deep link or --route launch does.
       initialLocation: '/albums/1',

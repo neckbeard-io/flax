@@ -100,8 +100,9 @@ class _HoverArtworkState extends State<HoverArtwork> {
                             child: Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary
-                                    .withValues(alpha: 0.92),
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.92,
+                                ),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -324,9 +325,9 @@ class HoverSurface extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: borderRadius,
-        hoverColor: Theme.of(context).colorScheme.primary.withValues(
-              alpha: 0.07,
-            ),
+        hoverColor: Theme.of(
+          context,
+        ).colorScheme.primary.withValues(alpha: 0.07),
         child: child,
       ),
     );

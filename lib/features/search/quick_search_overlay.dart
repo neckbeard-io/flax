@@ -22,9 +22,9 @@ class QuickSearchItem {
 
 /// Flattens results into the order the popup draws them: artists, then albums.
 List<QuickSearchItem> quickSearchItems(QuickSearchResults results) => [
-      for (final a in results.artists) QuickSearchItem.artist(a),
-      for (final a in results.albums) QuickSearchItem.album(a),
-    ];
+  for (final a in results.artists) QuickSearchItem.artist(a),
+  for (final a in results.albums) QuickSearchItem.album(a),
+];
 
 /// The panel that drops out of the sidebar search field.
 ///
@@ -65,7 +65,10 @@ class QuickSearchPanel extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       color: theme.colorScheme.surfaceContainerHigh,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: maxHeight, maxWidth: width),
+        constraints: const BoxConstraints(
+          maxHeight: maxHeight,
+          maxWidth: width,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -79,8 +82,8 @@ class QuickSearchPanel extends StatelessWidget {
                       itemBuilder: (context, i) {
                         final item = items[i];
                         final first = i == 0;
-                        final firstAlbum = !item.isArtist &&
-                            (i == 0 || items[i - 1].isArtist);
+                        final firstAlbum =
+                            !item.isArtist && (i == 0 || items[i - 1].isArtist);
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -177,7 +180,9 @@ class _ResultRow extends StatelessWidget {
       width: 36,
       height: 36,
       child: CoverArtImage(
-        coverArtId: item.isArtist ? item.artist!.coverArtId : item.album!.coverArtId,
+        coverArtId: item.isArtist
+            ? item.artist!.coverArtId
+            : item.album!.coverArtId,
         size: 72,
       ),
     );

@@ -11,11 +11,7 @@ class AlbumContextMenu extends ConsumerWidget {
   final Album album;
   final Widget child;
 
-  const AlbumContextMenu({
-    super.key,
-    required this.album,
-    required this.child,
-  });
+  const AlbumContextMenu({super.key, required this.album, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -29,9 +25,11 @@ class AlbumContextMenu extends ConsumerWidget {
   }
 
   Future<void> _showMenu(
-      BuildContext context, WidgetRef ref, Offset position) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    BuildContext context,
+    WidgetRef ref,
+    Offset position,
+  ) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
 
     final result = await showMenu<String>(
       context: context,
@@ -99,11 +97,7 @@ class _MenuRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: [
-        Icon(icon, size: 18),
-        const SizedBox(width: 10),
-        Text(label),
-      ],
+      children: [Icon(icon, size: 18), const SizedBox(width: 10), Text(label)],
     );
   }
 }

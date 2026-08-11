@@ -61,11 +61,12 @@ Future<ProviderContainer> _pumpApp(WidgetTester tester) async {
 ///
 /// Selection is a tinted background rather than a distinct widget, so the check
 /// is on the icon actually used: `_SidebarItem` swaps to `selectedIcon`.
-bool _isSelected(WidgetTester tester, IconData selectedIcon) =>
-    tester.any(find.descendant(
-      of: find.byType(DesktopSidebar),
-      matching: find.byIcon(selectedIcon),
-    ));
+bool _isSelected(WidgetTester tester, IconData selectedIcon) => tester.any(
+  find.descendant(
+    of: find.byType(DesktopSidebar),
+    matching: find.byIcon(selectedIcon),
+  ),
+);
 
 void main() {
   group('navDestinationIndex', () {
@@ -93,10 +94,7 @@ void main() {
     test('Now Playing is not a bottom-bar destination', () {
       // It would be a sixth entry in the phone bar, where the mini player
       // already sits directly above and opens the same screen.
-      expect(
-        navDestinations.any((d) => d.path == '/now-playing'),
-        isFalse,
-      );
+      expect(navDestinations.any((d) => d.path == '/now-playing'), isFalse);
     });
   });
 
@@ -105,10 +103,12 @@ void main() {
       await _pumpApp(tester);
 
       final labels = tester
-          .widgetList<Text>(find.descendant(
-            of: find.byType(DesktopSidebar),
-            matching: find.byType(Text),
-          ))
+          .widgetList<Text>(
+            find.descendant(
+              of: find.byType(DesktopSidebar),
+              matching: find.byType(Text),
+            ),
+          )
           .map((t) => t.data)
           .whereType<String>()
           .toList();
@@ -125,20 +125,20 @@ void main() {
     testWidgets('navigates to the now playing screen', (tester) async {
       final container = await _pumpApp(tester);
 
-      await tester.tap(find.descendant(
-        of: find.byType(DesktopSidebar),
-        matching: find.text('Now Playing'),
-      ));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(DesktopSidebar),
+          matching: find.text('Now Playing'),
+        ),
+      );
       await _settle(tester);
 
-      expect(
-        container.read(routerProvider).state.uri.path,
-        '/now-playing',
-      );
+      expect(container.read(routerProvider).state.uri.path, '/now-playing');
     });
 
-    testWidgets('does not leave the landing screen looking selected',
-        (tester) async {
+    testWidgets('does not leave the landing screen looking selected', (
+      tester,
+    ) async {
       final container = await _pumpApp(tester);
       expect(_isSelected(tester, Icons.album), isTrue);
 

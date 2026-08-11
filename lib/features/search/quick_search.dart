@@ -46,8 +46,8 @@ class QuickSearchResults {
 /// nothing but the server call.
 final quickSearchProvider =
     StateNotifierProvider<QuickSearchController, String>((ref) {
-  return QuickSearchController();
-});
+      return QuickSearchController();
+    });
 
 class QuickSearchController extends StateNotifier<String> {
   QuickSearchController() : super('');
@@ -88,21 +88,21 @@ class QuickSearchController extends StateNotifier<String> {
 
 final quickSearchResultsProvider =
     FutureProvider.autoDispose<QuickSearchResults>((ref) async {
-  final query = ref.watch(quickSearchProvider);
-  if (query.length < kQuickSearchMinChars) return QuickSearchResults.empty;
+      final query = ref.watch(quickSearchProvider);
+      if (query.length < kQuickSearchMinChars) return QuickSearchResults.empty;
 
-  final client = ref.watch(subsonicClientProvider);
-  if (client == null) return QuickSearchResults.empty;
+      final client = ref.watch(subsonicClientProvider);
+      if (client == null) return QuickSearchResults.empty;
 
-  final result = await client.search(
-    query,
-    artistCount: kQuickSearchLimit,
-    albumCount: kQuickSearchLimit,
-    songCount: 0,
-  );
+      final result = await client.search(
+        query,
+        artistCount: kQuickSearchLimit,
+        albumCount: kQuickSearchLimit,
+        songCount: 0,
+      );
 
-  return QuickSearchResults(
-    artists: result.artists.take(kQuickSearchLimit).toList(),
-    albums: result.albums.take(kQuickSearchLimit).toList(),
-  );
-});
+      return QuickSearchResults(
+        artists: result.artists.take(kQuickSearchLimit).toList(),
+        albums: result.albums.take(kQuickSearchLimit).toList(),
+      );
+    });
