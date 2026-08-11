@@ -4,6 +4,7 @@
 #   tool/run_flax.sh            # kill → build (debug) → launch
 #   tool/run_flax.sh --release  # build a release bundle instead
 #   tool/run_flax.sh --no-build # just kill → relaunch the existing bundle
+#   tool/run_flax.sh --probe    # + instrument track boundaries (gapless)
 #
 # Flutter hot reload is deliberately NOT used here: a full kill + rebuild is the
 # only way to guarantee the window you are looking at reflects the current tree.
@@ -13,6 +14,7 @@ cd "$(dirname "$0")/.."
 MODE="debug"
 BUILD=1
 ROUTE=""
+PROBE=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --release) MODE="release" ;;
@@ -23,6 +25,11 @@ while [ $# -gt 0 ]; do
     # behind navigation be screenshotted, which is otherwise impossible because
     # synthetic clicks do not reach a Flutter window.
     --route) shift; ROUTE="${1:-}" ;;
+    # Log what happens between two tracks: the measured gap, whether mpv's
+    # prefetch was consumed, the output buffer, and whether the device was
+    # reopened. Also raises mpv's own log level to debug. Off by default
+    # because that log is far too chatty to live with.
+    --probe) PROBE=1 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
   shift
@@ -50,6 +57,7 @@ if [ "$BUILD" = 1 ]; then
   echo "==> Building flax ($MODE) ${VERSION}+${BUILD_NUMBER}…"
   DEFINES=()
   [ -n "$ROUTE" ] && DEFINES+=(--dart-define=FLAX_ROUTE="$ROUTE")
+  [ "$PROBE" = "1" ] && DEFINES+=(--dart-define=FLAX_GAPLESS_PROBE=true)
   flutter build macos --"$MODE" \
     --build-name="$VERSION" --build-number="$BUILD_NUMBER" \
     "${DEFINES[@]+"${DEFINES[@]}"}"

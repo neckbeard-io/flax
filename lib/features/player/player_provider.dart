@@ -9,12 +9,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/enums.dart';
+import 'package:flax/features/player/gapless_probe.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/platform/now_playing_service.dart';
+import 'package:flax/shared/audio/eq_filter.dart';
 
 class PlayerState {
   final Song? currentSong;
@@ -104,25 +106,41 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   int _lastSavedPositionSec = -1;
   ProviderSubscription<EqState>? _eqSub;
   ProviderSubscription<AutoEqState>? _autoEqSub;
+  ProviderSubscription<EqEngine>? _eqEngineSub;
   ProviderSubscription<PlaybackSettings>? _playbackSub;
   /// Fade attenuation last pushed to mpv, so the ramp only re-applies when it
   /// has actually moved.
   double _lastAppliedFadeDb = 0;
+  /// Output gain last pushed to mpv, so an unchanged value is not rewritten.
+  double? _lastAppliedGainDb;
   /// Song ids currently loaded into mpv's playlist, in order. Gapless needs the
   /// queue to live in mpv rather than being fed one file at a time, and this is
   /// how we know whether what mpv holds still matches [PlayerState.queue].
   List<String> _mpvQueueIds = const [];
+  GaplessProbe? _probe;
 
   PlayerNotifier(this._ref)
       : _player = mpv.Player(),
         _nowPlaying = _ref.read(nowPlayingServiceProvider),
         super(const PlayerState()) {
+    _initProbe();
     _initStreams();
     _initMediaKeys();
     _initEqListener();
     _initPlaybackSettings();
     _restoreVolume();
     _restorePlayQueue();
+  }
+
+  /// Starts the track-boundary instrumentation, when asked for.
+  ///
+  /// Before the stream subscriptions, so the probe sees the first transition
+  /// rather than joining halfway through it. Raising mpv's own log level is
+  /// part of the same opt-in: at debug it is far too chatty to leave on.
+  void _initProbe() {
+    if (!gaplessProbeEnabled) return;
+    _player.setLogLevel(mpv.LogLevel.debug);
+    _probe = GaplessProbe(_player)..start();
   }
 
   void _initMediaKeys() {
@@ -430,21 +448,23 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _autoEqSub = _ref.listen<AutoEqState>(autoEqProvider, (_, __) {
       _applyEq();
     });
+    // Switching engine has to rebuild the chain immediately: the point of the
+    // control is hearing the difference on the track already playing.
+    _eqEngineSub = _ref.listen<EqEngine>(eqEngineProvider, (_, __) {
+      _applyEq();
+    });
     // Apply initial state
     _applyEq();
   }
 
   /// Per-band gain in dB for the manual curve plus any AutoEQ correction.
-  ///
-  /// Our 18 EQ bands are exactly the superequalizer bands, so band i maps to
-  /// key '${i + 1}b'.
   List<double> _combinedEqGains() {
     final eq = _ref.read(eqProvider);
     final autoEq = _ref.read(autoEqProvider);
-    final gainsDb = List<double>.filled(_superEqBandCount, 0);
+    final gainsDb = List<double>.filled(eqBandCount, 0);
 
     if (eq.enabled) {
-      for (var i = 0; i < eq.bands.length && i < _superEqBandCount; i++) {
+      for (var i = 0; i < eq.bands.length && i < eqBandCount; i++) {
         gainsDb[i] += eq.bands[i].gain;
       }
     }
@@ -452,11 +472,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // AutoEQ correction sums on top of the manual curve.
     final profile = autoEq.activeProfile;
     if (profile != null && profile.points.isNotEmpty) {
-      for (var i = 0; i < _superEqBandCount; i++) {
-        gainsDb[i] += _interpolateGain(
-          profile.points,
-          _superEqBandFrequencies[i],
-        );
+      for (var i = 0; i < eqBandCount; i++) {
+        gainsDb[i] += _interpolateGain(profile.points, eqBandFrequencies[i]);
       }
     }
     return gainsDb;
@@ -464,7 +481,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   /// The EQ's share of the output gain: manual preamp, less headroom.
   ///
-  /// superequalizer amplifies for real, and AutoEQ curves routinely carry bass
+  /// The equalizer amplifies for real, and AutoEQ curves routinely carry bass
   /// shelves of +6 dB or more, so a boosted band on already-loud material clips
   /// audibly. Pull the whole chain down by the largest boost in the combined
   /// curve, which costs loudness but is the only way a positive band can be
@@ -480,32 +497,46 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       final gainsDb = _combinedEqGains();
       await _applyVolumeGain();
 
-      final active = gainsDb.any((g) => g != 0);
+      // The same curve, handed to one filter or the other. Both branches see
+      // the identical gainsDb, so switching engines cannot change what the EQ
+      // is asking for — only how it is realized, which is the whole point of
+      // being able to switch.
+      final engine = _ref.read(eqEngineProvider);
+      final bool active;
+      final mpv.AudioEffects effects;
 
-      // superequalizer takes LINEAR multipliers (0..20, 1.0 = 0 dB).
-      final params = <String, double>{};
-      if (active) {
-        for (var i = 0; i < _superEqBandCount; i++) {
-          params['${i + 1}b'] =
-              math.pow(10.0, gainsDb[i] / 20.0).toDouble().clamp(0.0, 20.0);
-        }
+      switch (engine) {
+        case EqEngine.parametric:
+          final params = anequalizerParams(gainsDb);
+          active = params.isNotEmpty;
+          effects = const mpv.AudioEffects().copyWith(
+            anequalizer: mpv.AnequalizerSettings(
+              enabled: active,
+              params: params,
+            ),
+          );
+        case EqEngine.graphic:
+          final params = superequalizerParams(gainsDb);
+          active = params.isNotEmpty;
+          effects = const mpv.AudioEffects().copyWith(
+            superequalizer: mpv.SuperequalizerSettings(
+              enabled: active,
+              params: params,
+            ),
+          );
       }
 
       developer.log(
-        'EQ apply: active=$active, '
+        'EQ apply: engine=${engine.name}, active=$active, '
         'eqGain=${_eqGainDb(gainsDb).toStringAsFixed(1)}dB, '
         'gainsDb=${gainsDb.map((g) => g.toStringAsFixed(1)).join(",")}',
         name: 'PlayerEQ',
       );
 
-      await _player.setAudioEffects(
-        const mpv.AudioEffects().copyWith(
-          superequalizer: mpv.SuperequalizerSettings(
-            enabled: active,
-            params: params,
-          ),
-        ),
-      );
+      // A fresh AudioEffects each time, so the engine that is not selected is
+      // left disabled rather than lingering in the chain alongside the one that
+      // is — both applying the same curve would double it.
+      await _player.setAudioEffects(effects);
     } catch (e, st) {
       developer.log('EQ apply FAILED: $e\n$st', name: 'PlayerEQ');
     }
@@ -526,6 +557,15 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         (_replayGainDb() ?? 0) +
         _fadeDb();
     _lastAppliedFadeDb = _fadeDb();
+    // Nothing to say when nothing moved. This is called on every track change
+    // for ReplayGain's sake, and mpv's own log showed the write landing inside
+    // the gapless handover — writing a value it already holds is one more thing
+    // touching the audio chain at the worst possible moment.
+    if (_lastAppliedGainDb != null &&
+        (total - _lastAppliedGainDb!).abs() < 0.01) {
+      return;
+    }
+    _lastAppliedGainDb = total;
     await _player.setVolumeGain(total);
   }
 
@@ -613,13 +653,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
-  static const _superEqBandCount = 18;
-
-  /// superequalizer band center frequencies (Hz).
-  static const _superEqBandFrequencies = <double>[
-    65, 92, 131, 185, 262, 370, 523, 740, 1047,
-    1480, 2093, 2960, 4186, 5920, 8372, 11840, 16744, 20000,
-  ];
 
   /// Sample an AutoEQ GraphicEQ curve at [freq], interpolating in log-frequency
   /// space between the two surrounding points.
@@ -1138,7 +1171,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _nowPlaying.clear();
     _eqSub?.close();
     _autoEqSub?.close();
+    _eqEngineSub?.close();
     _playbackSub?.close();
+    _probe?.dispose();
     _player.dispose();
     super.dispose();
   }
