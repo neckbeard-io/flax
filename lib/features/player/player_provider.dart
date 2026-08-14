@@ -16,6 +16,7 @@ import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/platform/now_playing_service.dart';
+import 'package:flax/shared/async/coalescing_runner.dart';
 import 'package:flax/shared/audio/eq_filter.dart';
 
 class PlayerState {
@@ -506,10 +507,33 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     return (eq.enabled ? eq.preamp : 0.0) - maxBoostDb;
   }
 
-  Future<void> _applyEq() async {
+  /// Serializes EQ applies so the last *request* wins, not the last completion.
+  ///
+  /// On startup the EQ read as on, with the right preset and engine, and was
+  /// audibly not applied (#35). Three applies race at launch — the initial one,
+  /// then one each as the stored EQ settings and AutoEQ profile finish loading
+  /// from SharedPreferences — and each awaits mpv part-way through. The earliest
+  /// ran before the stored settings had loaded, so it carried the default
+  /// "EQ off", and it reached mpv last:
+  ///
+  ///     #1 ENTER enabled=false        (defaults, prefs not loaded yet)
+  ///     #2 ENTER enabled=true  -> WRITE active=true
+  ///     #3 ENTER enabled=true  -> WRITE active=true  DONE
+  ///     #1                        WRITE active=false DONE   <- wins
+  ///
+  /// mpv keeps whatever landed last, so the filter was off while every provider
+  /// the screen reads said it was on. Toggling fixed it because that apply ran
+  /// with nothing to race.
+  final _eqApply = CoalescingRunner();
+
+  Future<void> _applyEq() => _eqApply.run(_applyEqOnce);
+
+  Future<void> _applyEqOnce() async {
     try {
-      final gainsDb = _combinedEqGains();
       await _applyVolumeGain();
+      // Read after the await, not before it, so the curve written to mpv is the
+      // one that is current at the moment of writing.
+      final gainsDb = _combinedEqGains();
 
       // The same curve, handed to one filter or the other. Both branches see
       // the identical gainsDb, so switching engines cannot change what the EQ
