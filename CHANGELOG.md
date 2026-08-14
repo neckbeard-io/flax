@@ -10,6 +10,11 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.2.1 — 2026-08-13
+
+One fix, worth its own release: the equalizer was not being applied at startup,
+which made v0.2.0 sound like it had no EQ at all until you touched the controls.
+
 ### Fixed
 
 - **The equalizer was silently off after every launch.** The Equalizer screen
