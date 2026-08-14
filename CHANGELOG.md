@@ -10,6 +10,16 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+
+- **The equalizer was silently off after every launch.** The Equalizer screen
+  said On, with your preset and filter, and nothing was being applied — until you
+  toggled it off and on, or switched filter. Settings are read from disk a moment
+  after the player starts, and the first attempt to apply the curve carried the
+  "off" default it saw before that read finished; it reached the audio engine
+  last, and so won. Nothing was wrong with your saved settings, and no filter
+  choice was affected more than the other.
+
 ## v0.2.0 — 2026-08-11
 
 Artwork loading, and the equalizer work from v0.1.9 reaching everybody.
