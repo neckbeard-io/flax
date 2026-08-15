@@ -10,6 +10,16 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.2.3 — 2026-08-15
+
+### Added
+
+- **Auto-switch to Now Playing:** A new setting in Settings → Playback automatically opens the Now Playing screen when you start a track or album from the library.
+
+### Fixed
+
+- **Artist Information panel persists:** The Artist panel on the Now Playing screen now remembers whether it was open and how wide you set it, even after navigating to other screens or restarting the app.
+
 ## v0.2.2 — 2026-08-15
 
 ### Changed

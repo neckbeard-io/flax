@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:go_router/go_router.dart';
 
 final randomSongsProvider = FutureProvider<List<Song>>((ref) async {
   final client = ref.watch(subsonicClientProvider);
@@ -89,6 +91,9 @@ class SongsScreen extends ConsumerWidget {
                         ref
                             .read(playerProvider.notifier)
                             .playSong(song, queue: songs, index: index);
+                        if (ref.read(playbackSettingsProvider).autoSwitchToNowPlaying) {
+                          context.push('/now-playing');
+                        }
                       },
                     );
                   },

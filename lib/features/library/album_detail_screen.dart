@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
@@ -161,6 +162,9 @@ class _AlbumPlayActions extends ConsumerWidget {
             ref
                 .read(playerProvider.notifier)
                 .playSong(songs.first, queue: songs, index: 0);
+            if (ref.read(playbackSettingsProvider).autoSwitchToNowPlaying) {
+              context.push('/now-playing');
+            }
           },
           icon: const Icon(Icons.play_arrow, size: 18),
           label: const Text('Play'),
@@ -435,9 +439,14 @@ class _TrackRow extends ConsumerWidget {
 
   static const ratingWidth = 96.0;
 
-  void _play(WidgetRef ref) => ref
-      .read(playerProvider.notifier)
-      .playSong(song, queue: songs, index: index);
+  void _play(BuildContext context, WidgetRef ref) {
+    ref
+        .read(playerProvider.notifier)
+        .playSong(song, queue: songs, index: index);
+    if (ref.read(playbackSettingsProvider).autoSwitchToNowPlaying) {
+      context.push('/now-playing');
+    }
+  }
 
   Future<void> _rate(WidgetRef ref, int rating) async {
     final client = ref.read(subsonicClientProvider);
@@ -511,12 +520,12 @@ class _TrackRow extends ConsumerWidget {
             ),
           ],
         ),
-        onTap: () => _play(ref),
+        onTap: () => _play(context, ref),
       );
     }
 
     return HoverSurface(
-      onTap: () => _play(ref),
+      onTap: () => _play(context, ref),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
         child: Row(

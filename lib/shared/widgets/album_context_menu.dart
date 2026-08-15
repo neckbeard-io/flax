@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/settings/playback_settings.dart';
 
 /// Wraps a child widget with a context menu (right-click / long-press)
 /// providing album-related actions.
@@ -70,6 +71,10 @@ class AlbumContextMenu extends ConsumerWidget {
         }
       case 'play_now':
         await _loadAndPlay(ref, replace: true);
+        if (context.mounted &&
+            ref.read(playbackSettingsProvider).autoSwitchToNowPlaying) {
+          context.push('/now-playing');
+        }
       case 'add_to_queue':
         await _loadAndPlay(ref, replace: false);
     }
