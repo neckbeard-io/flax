@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/artist_panel.dart';
@@ -33,6 +34,42 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   NowPlayingPanel _selected = NowPlayingPanel.lyrics;
 
   @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        if (prefs.containsKey('flax_artist_panel_open')) {
+          _artistOpen = prefs.getBool('flax_artist_panel_open');
+        }
+        _artistWidth = prefs.getDouble('flax_artist_panel_width') ??
+            kArtistPanelDefaultWidth;
+      });
+    } catch (_) {}
+  }
+
+  void _saveArtistOpen(bool open) async {
+    setState(() => _artistOpen = open);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('flax_artist_panel_open', open);
+    } catch (_) {}
+  }
+
+  void _saveArtistWidth(double width) async {
+    setState(() => _artistWidth = width);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('flax_artist_panel_width', width);
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     if (NowPlayingLayout.fitsAt(width)) return _buildPanels(context, width);
@@ -52,9 +89,9 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
       lyrics: const LyricsPanel(),
       queue: const QueuePanel(),
       artistOpen: _artistOpen ?? layout.artistOpenByDefault,
-      onArtistOpenChanged: (open) => setState(() => _artistOpen = open),
+      onArtistOpenChanged: _saveArtistOpen,
       artistWidth: _artistWidth,
-      onArtistWidthChanged: (w) => setState(() => _artistWidth = w),
+      onArtistWidthChanged: _saveArtistWidth,
       selected: _selected,
       onSelected: (p) => setState(() => _selected = p),
     );

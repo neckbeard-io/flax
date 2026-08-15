@@ -7,6 +7,7 @@ import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/features/settings/lyrics_settings.dart';
+import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -121,6 +122,15 @@ class SettingsScreen extends ConsumerWidget {
             value: scrobble,
             onChanged: (v) =>
                 ref.read(scrobbleEnabledProvider.notifier).setEnabled(v),
+          ),
+          SwitchListTile(
+            title: const Text('Auto-switch to Now Playing'),
+            subtitle: const Text(
+              'Automatically switch to the Now Playing screen when starting playback',
+            ),
+            value: ref.watch(playbackSettingsProvider).autoSwitchToNowPlaying,
+            onChanged: (v) =>
+                ref.read(playbackSettingsProvider.notifier).setAutoSwitchToNowPlaying(v),
           ),
           ListTile(
             title: const Text('Audio Output'),
