@@ -36,10 +36,14 @@ class PlaybackSettings {
   /// Seconds of fade between tracks; 0 is off.
   final double fadeSeconds;
 
+  /// Whether to switch to Now Playing screen when playback starts.
+  final bool autoSwitchToNowPlaying;
+
   const PlaybackSettings({
     this.gapless = true,
     this.replayGain = ReplayGainMode.off,
     this.fadeSeconds = 0,
+    this.autoSwitchToNowPlaying = false,
   });
 
   /// Whether a fade is wanted at all.
@@ -57,16 +61,19 @@ class PlaybackSettings {
     bool? gapless,
     ReplayGainMode? replayGain,
     double? fadeSeconds,
+    bool? autoSwitchToNowPlaying,
   }) => PlaybackSettings(
     gapless: gapless ?? this.gapless,
     replayGain: replayGain ?? this.replayGain,
     fadeSeconds: fadeSeconds ?? this.fadeSeconds,
+    autoSwitchToNowPlaying: autoSwitchToNowPlaying ?? this.autoSwitchToNowPlaying,
   );
 
   Map<String, dynamic> toJson() => {
     'gapless': gapless,
     'replayGain': replayGain.name,
     'fadeSeconds': fadeSeconds,
+    'autoSwitchToNowPlaying': autoSwitchToNowPlaying,
   };
 
   factory PlaybackSettings.fromJson(Map<String, dynamic> json) =>
@@ -80,6 +87,7 @@ class PlaybackSettings {
           0,
           maxFadeSeconds,
         ),
+        autoSwitchToNowPlaying: json['autoSwitchToNowPlaying'] as bool? ?? false,
       );
 }
 
@@ -210,6 +218,11 @@ class PlaybackSettingsNotifier extends StateNotifier<PlaybackSettings> {
 
   void setFadeSeconds(double seconds) {
     state = state.copyWith(fadeSeconds: seconds.clamp(0, maxFadeSeconds));
+    _save();
+  }
+
+  void setAutoSwitchToNowPlaying(bool value) {
+    state = state.copyWith(autoSwitchToNowPlaying: value);
     _save();
   }
 }

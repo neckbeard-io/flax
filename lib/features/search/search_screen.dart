@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 
@@ -192,6 +193,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                     queue: result.songs,
                                     index: entry.key,
                                   );
+                              if (ref.read(playbackSettingsProvider).autoSwitchToNowPlaying) {
+                                context.push('/now-playing');
+                              }
                             },
                           );
                         }),
