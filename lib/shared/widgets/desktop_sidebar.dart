@@ -305,7 +305,7 @@ class _SearchField extends StatelessWidget {
       style: theme.textTheme.bodyMedium,
       decoration: flaxInputDecoration(
         context,
-        hintText: 'Search',
+        hintText: '/ to search',
         prefixIcon: const Icon(Icons.search, size: 18),
       ).copyWith(prefixIconConstraints: const BoxConstraints(minWidth: 36)),
     );
