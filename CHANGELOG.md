@@ -10,6 +10,12 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.2.2 — 2026-08-15
+
+### Changed
+
+- The hint text inside the sidebar search field now reads `/ to search` rather than just `Search`, to make the global hotkey discoverable.
+
 ## v0.2.1 — 2026-08-13
 
 One fix, worth its own release: the equalizer was not being applied at startup,
