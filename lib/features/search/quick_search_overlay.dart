@@ -187,7 +187,16 @@ class _ResultRow extends StatelessWidget {
       ),
     );
 
+    // canRequestFocus: false is load-bearing, not tidiness.
+    //
+    // An InkWell takes focus when tapped. The query, the focus and the keyboard
+    // all live on the sidebar's text field, and that field closes this panel the
+    // moment it loses focus — so a row that steals focus tore the overlay down
+    // before its own onTap could run. The result was a click that dismissed the
+    // popup and navigated nowhere, and a search field still holding the query
+    // because the handler that clears it never fired.
     return InkWell(
+      canRequestFocus: false,
       onTap: onTap,
       child: Container(
         // The highlight is the keyboard's cursor, so it has to be visible
@@ -247,7 +256,16 @@ class _SearchEverythingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // canRequestFocus: false is load-bearing, not tidiness.
+    //
+    // An InkWell takes focus when tapped. The query, the focus and the keyboard
+    // all live on the sidebar's text field, and that field closes this panel the
+    // moment it loses focus — so a row that steals focus tore the overlay down
+    // before its own onTap could run. The result was a click that dismissed the
+    // popup and navigated nowhere, and a search field still holding the query
+    // because the handler that clears it never fired.
     return InkWell(
+      canRequestFocus: false,
       onTap: onTap,
       child: Container(
         color: highlighted
