@@ -17,6 +17,10 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 - **Background work is visible:** Long-running jobs now appear above Settings in the sidebar, with progress, transfer speed and a rough time remaining. Click it for a panel listing everything running, where each job can be canceled.
 
+### Fixed
+
+- **Clicking a result in the sidebar search now opens it.** It previously dismissed the dropdown and went nowhere, leaving what you had typed in the box.
+
 ### Changed
 
 - **Favorites and ratings apply everywhere at once.** Hearting an album on its own page now updates the same album in the queue, and rating a track updates it wherever that track appears — including the mini player. The heart or star also fills the instant you click it rather than after the server answers, and if the server cannot be reached the change is kept and retried instead of silently snapping back.

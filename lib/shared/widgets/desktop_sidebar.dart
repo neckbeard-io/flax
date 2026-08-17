@@ -169,14 +169,27 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
           offset: const Offset(0, 6),
           child: Align(
             alignment: Alignment.topLeft,
-            child: QuickSearchPanel(
-              items: items,
-              highlighted: _highlighted,
-              query: _controller.text.trim(),
-              loading: async.isLoading,
-              onSelected: _open,
-              onSearchEverything: () =>
-                  _searchEverything(_controller.text.trim()),
+            // Same tap-region group as the search field, and this is what makes
+            // clicking a result work at all.
+            //
+            // A TextField wraps itself in a TapRegion whose default
+            // onTapOutside unfocuses it. This panel lives in the Overlay, which
+            // is outside that region, so every click on it unfocused the field —
+            // and losing focus closes the panel, tearing the overlay down before
+            // the row's own onTap could run. Clicking a result dismissed the
+            // popup and went nowhere. Joining the group makes these taps count
+            // as inside the field.
+            child: TapRegion(
+              groupId: EditableText,
+              child: QuickSearchPanel(
+                items: items,
+                highlighted: _highlighted,
+                query: _controller.text.trim(),
+                loading: async.isLoading,
+                onSelected: _open,
+                onSearchEverything: () =>
+                    _searchEverything(_controller.text.trim()),
+              ),
             ),
           ),
         ),
