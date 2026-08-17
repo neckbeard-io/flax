@@ -10,6 +10,14 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+
+- **Background work is visible:** Long-running jobs now appear above Settings in the sidebar, with progress, transfer speed and a rough time remaining. Click it for a panel listing everything running, where each job can be canceled.
+
+### Changed
+
+- **Downloading the AutoEQ database shows real progress.** It reports megabytes transferred, how fast, and roughly how long is left, instead of a line of text — and it can now be canceled part-way. The download is around 100 MB, so this was worth knowing.
+
 ## v0.2.3 — 2026-08-15
 
 ### Added

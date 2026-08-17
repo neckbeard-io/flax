@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,8 +18,15 @@ class _StubDatabase extends AutoEqDatabase {
   final Directory dir;
 
   @override
-  Stream<String> downloadDatabase() async* {
+  Stream<String> downloadDatabase({
+    void Function(int received, int total)? onProgress,
+    CancelToken? cancelToken,
+  }) async* {
     yield 'Downloading...';
+    // Two readings so anything watching can compute a rate from them, and a
+    // known total so the bar is determinate — the real download reports both.
+    onProgress?.call(50, 100);
+    onProgress?.call(100, 100);
     // Mirrors what the real extraction leaves behind: curves keyed by index id,
     // an index, and metadata carrying the layout version that isAvailable
     // requires. The literal 2 tracks AutoEqDatabase's private _cacheVersion; if

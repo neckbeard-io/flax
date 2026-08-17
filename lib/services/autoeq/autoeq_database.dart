@@ -82,14 +82,26 @@ class AutoEqDatabase {
   bool get isDownloading => _downloading;
 
   /// Download and extract the AutoEQ database.
-  /// Returns a stream of progress strings for UI updates.
-  Stream<String> downloadDatabase() async* {
+  ///
+  /// Yields human-readable phase strings, which the settings screen shows
+  /// directly. [onProgress] carries the byte counts the phase strings cannot —
+  /// this is a ~100 MB transfer, and reporting it as prose was issue #43's
+  /// motivating example. [cancelToken] lets the task framework tear the
+  /// transfer down; a cancelled download surfaces as a `DioException` the
+  /// caller is expected to recognise.
+  Stream<String> downloadDatabase({
+    void Function(int received, int total)? onProgress,
+    CancelToken? cancelToken,
+  }) async* {
     if (_downloading) return;
     _downloading = true;
 
     try {
       yield 'Fetching version info...';
-      final versionResp = await _dio.get<String>(_versionUrl);
+      final versionResp = await _dio.get<String>(
+        _versionUrl,
+        cancelToken: cancelToken,
+      );
       final versionData = jsonDecode(versionResp.data!) as List;
       final packageUrl = versionData[0]['package_url'] as String;
       final commitTime = versionData[0]['commit_time'] as String;
@@ -101,6 +113,11 @@ class AutoEqDatabase {
       await _dio.download(
         packageUrl,
         archivePath,
+        cancelToken: cancelToken,
+        // total is -1 when the server sends no Content-Length. Passing that
+        // through unchanged would make the bar determinate against a negative
+        // total; the task layer treats a non-positive total as "unknown".
+        onReceiveProgress: onProgress,
         options: Options(followRedirects: true, maxRedirects: 5),
       );
 
