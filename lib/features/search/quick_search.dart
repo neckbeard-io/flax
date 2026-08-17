@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/models.dart';
 
 /// Shortest query worth asking the server about. One letter matches most of a
@@ -86,23 +86,48 @@ class QuickSearchController extends StateNotifier<String> {
   }
 }
 
+/// Quick search results: whatever is cached, immediately, then widened by the
+/// server. Issue #8.
+///
+/// Emitting twice is the point. The local query is instant and is the only
+/// answer available with no network; the server reaches things that have never
+/// been browsed. If the server call fails the local hits simply stand, which is
+/// what makes searching offline work rather than error.
 final quickSearchResultsProvider =
-    FutureProvider.autoDispose<QuickSearchResults>((ref) async {
+    StreamProvider.autoDispose<QuickSearchResults>((ref) async* {
       final query = ref.watch(quickSearchProvider);
-      if (query.length < kQuickSearchMinChars) return QuickSearchResults.empty;
+      if (query.length < kQuickSearchMinChars) {
+        yield QuickSearchResults.empty;
+        return;
+      }
 
-      final client = ref.watch(subsonicClientProvider);
-      if (client == null) return QuickSearchResults.empty;
+      final repo = ref.watch(libraryRepositoryProvider);
+      if (repo == null) {
+        yield QuickSearchResults.empty;
+        return;
+      }
 
-      final result = await client.search(
-        query,
-        artistCount: kQuickSearchLimit,
-        albumCount: kQuickSearchLimit,
-        songCount: 0,
+      Future<QuickSearchResults> local() async => QuickSearchResults(
+        artists: await repo
+            .watchArtistSearch(query, limit: kQuickSearchLimit)
+            .first,
+        albums: await repo
+            .watchAlbumSearch(query, limit: kQuickSearchLimit)
+            .first,
       );
 
-      return QuickSearchResults(
-        artists: result.artists.take(kQuickSearchLimit).toList(),
-        albums: result.albums.take(kQuickSearchLimit).toList(),
-      );
+      yield await local();
+
+      try {
+        await repo.cacheSearch(
+          query,
+          artistCount: kQuickSearchLimit,
+          albumCount: kQuickSearchLimit,
+          songCount: 0,
+        );
+      } catch (_) {
+        return;
+      }
+
+      yield await local();
     });

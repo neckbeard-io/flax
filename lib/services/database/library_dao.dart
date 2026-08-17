@@ -5,6 +5,15 @@ import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/services/database/database.dart';
 import 'package:flax/services/database/mappers.dart';
 
+/// An annotation written locally that the server has not accepted yet.
+class PendingWrite {
+  const PendingWrite(this.ref, {required this.favorite, this.rating});
+
+  final EntityRef ref;
+  final bool favorite;
+  final int? rating;
+}
+
 /// Every query and write against the local library. Issue #8.
 ///
 /// Reads return streams so the UI updates on any write, from anywhere. Writes
@@ -250,6 +259,69 @@ class LibraryDao {
     return q.watch().map((rows) => rows.map(songFromRow).toList());
   }
 
+  Stream<Song?> watchSong(String serverId, String songId) {
+    final q = _db.select(_db.songs)
+      ..where((t) => t.serverId.equals(serverId) & t.id.equals(songId));
+    return q.watchSingleOrNull().map((r) => r == null ? null : songFromRow(r));
+  }
+
+  /// Watch a specific set of songs, in the order given. The counterpart of
+  /// [watchAlbumsByIds], for lists whose order must not be persisted.
+  Stream<List<Song>> watchSongsByIds(String serverId, List<String> ids) {
+    if (ids.isEmpty) return Stream.value(const []);
+    final q = _db.select(_db.songs)
+      ..where((t) => t.serverId.equals(serverId) & t.id.isIn(ids));
+    return q.watch().map((rows) {
+      final byId = {for (final r in rows) r.id: songFromRow(r)};
+      return [
+        for (final id in ids)
+          if (byId[id] != null) byId[id]!,
+      ];
+    });
+  }
+
+  Stream<List<Song>> searchSongs(String serverId, String term, int limit) {
+    if (term.trim().isEmpty) return Stream.value(const []);
+    final q = _db.select(_db.songs)
+      ..where((t) => t.serverId.equals(serverId) & t.title.like('%$term%'))
+      ..orderBy([(t) => OrderingTerm(expression: t.title)])
+      ..limit(limit);
+    return q.watch().map((rows) => rows.map(songFromRow).toList());
+  }
+
+  Future<DateTime?> artistAlbumsFetchedAt(
+    String serverId,
+    String artistId,
+  ) async {
+    final q = _db.select(_db.albums)
+      ..where((t) => t.serverId.equals(serverId) & t.artistId.equals(artistId))
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.fetchedAt, mode: OrderingMode.desc),
+      ])
+      ..limit(1);
+    final row = await q.getSingleOrNull();
+    return row?.fetchedAt;
+  }
+
+  /// How many of an artist's albums are cached.
+  ///
+  /// Compared against the artist's own `albumCount` to tell a complete list from
+  /// a partial one. Album *lists* populate rows for arbitrary artists, so the
+  /// presence of some albums says nothing about whether the artist's own list was
+  /// ever fetched — which is how an artist page showed two of five albums and
+  /// never corrected itself.
+  Future<int> cachedArtistAlbumCount(String serverId, String artistId) async {
+    final count = _db.albums.id.count();
+    final q = _db.selectOnly(_db.albums)
+      ..addColumns([count])
+      ..where(
+        _db.albums.serverId.equals(serverId) &
+            _db.albums.artistId.equals(artistId),
+      );
+    final row = await q.getSingle();
+    return row.read(count) ?? 0;
+  }
+
   Future<void> upsertSongs(List<Song> songs, DateTime now) async {
     if (songs.isEmpty) return;
     await _db.batch((b) {
@@ -371,6 +443,131 @@ class LibraryDao {
               ..where((t) => t.serverId.equals(serverId) & t.id.equals(ref.id)))
             .write(SongsCompanion(userRating: value, dirty: Value(dirty)));
     }
+  }
+
+  /// Bring the local favorite flags in line with the server's starred set.
+  ///
+  /// Two-way: ids present are starred, and anything locally starred that the
+  /// server no longer lists is un-starred — that is how a heart removed in the
+  /// web UI arrives.
+  ///
+  /// **Dirty rows are skipped in both directions.** A favorite written here and
+  /// not yet accepted is the user's pending intent; letting the server's older
+  /// answer overwrite it would silently discard the thing they just did.
+  Future<void> reconcileFavorites(
+    String serverId, {
+    required Set<String> artistIds,
+    required Set<String> albumIds,
+    required Set<String> songIds,
+    required DateTime now,
+  }) async {
+    await _db.transaction(() async {
+      await (_db.update(_db.artists)..where(
+            (t) =>
+                t.serverId.equals(serverId) &
+                t.dirty.equals(false) &
+                t.id.isIn(artistIds),
+          ))
+          .write(ArtistsCompanion(starred: const Value(true)));
+      await (_db.update(_db.artists)..where(
+            (t) =>
+                t.serverId.equals(serverId) &
+                t.dirty.equals(false) &
+                t.starred.equals(true) &
+                t.id.isNotIn(artistIds),
+          ))
+          .write(
+            const ArtistsCompanion(
+              starred: Value(false),
+              starredAt: Value(null),
+            ),
+          );
+
+      await (_db.update(_db.albums)..where(
+            (t) =>
+                t.serverId.equals(serverId) &
+                t.dirty.equals(false) &
+                t.id.isIn(albumIds),
+          ))
+          .write(AlbumsCompanion(starred: const Value(true)));
+      await (_db.update(_db.albums)..where(
+            (t) =>
+                t.serverId.equals(serverId) &
+                t.dirty.equals(false) &
+                t.starred.equals(true) &
+                t.id.isNotIn(albumIds),
+          ))
+          .write(
+            const AlbumsCompanion(
+              starred: Value(false),
+              starredAt: Value(null),
+            ),
+          );
+
+      await (_db.update(_db.songs)..where(
+            (t) =>
+                t.serverId.equals(serverId) &
+                t.dirty.equals(false) &
+                t.id.isIn(songIds),
+          ))
+          .write(SongsCompanion(starred: const Value(true)));
+      await (_db.update(_db.songs)..where(
+            (t) =>
+                t.serverId.equals(serverId) &
+                t.dirty.equals(false) &
+                t.starred.equals(true) &
+                t.id.isNotIn(songIds),
+          ))
+          .write(
+            const SongsCompanion(starred: Value(false), starredAt: Value(null)),
+          );
+    });
+  }
+
+  /// Local annotation writes the server has not accepted yet.
+  Future<List<PendingWrite>> pendingWrites(String serverId) async {
+    final out = <PendingWrite>[];
+
+    for (final r
+        in await (_db.select(
+              _db.artists,
+            )..where((t) => t.serverId.equals(serverId) & t.dirty.equals(true)))
+            .get()) {
+      out.add(
+        PendingWrite(
+          EntityRef(EntityType.artist, r.id),
+          favorite: r.starred,
+          rating: r.userRating,
+        ),
+      );
+    }
+    for (final r
+        in await (_db.select(
+              _db.albums,
+            )..where((t) => t.serverId.equals(serverId) & t.dirty.equals(true)))
+            .get()) {
+      out.add(
+        PendingWrite(
+          EntityRef(EntityType.album, r.id),
+          favorite: r.starred,
+          rating: r.userRating,
+        ),
+      );
+    }
+    for (final r
+        in await (_db.select(
+              _db.songs,
+            )..where((t) => t.serverId.equals(serverId) & t.dirty.equals(true)))
+            .get()) {
+      out.add(
+        PendingWrite(
+          EntityRef(EntityType.song, r.id),
+          favorite: r.starred,
+          rating: r.userRating,
+        ),
+      );
+    }
+    return out;
   }
 
   // ── Sync state ───────────────────────────────────────────────────────────

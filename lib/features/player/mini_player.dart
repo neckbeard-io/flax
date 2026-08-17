@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/seek_bar.dart';
@@ -218,19 +219,7 @@ class MiniPlayer extends ConsumerWidget {
                 // belong on the now-playing screen there.
                 if (roomy) ...[
                   const SizedBox(width: 12),
-                  StarRating(
-                    rating: song.userRating ?? 0,
-                    size: 16,
-                    onRatingChanged: (r) =>
-                        ref.read(playerProvider.notifier).rateCurrentSong(r),
-                  ),
-                  const SizedBox(width: 4),
-                  FavoriteButton(
-                    isFavorite: song.starred,
-                    onToggle: () => ref
-                        .read(playerProvider.notifier)
-                        .toggleCurrentSongStarred(),
-                  ),
+                  _LiveAnnotations(song: song),
                 ],
                 const SizedBox(width: 4),
                 const VolumeControl(),
@@ -258,4 +247,40 @@ class MiniPlayer extends ConsumerWidget {
 
   bool _isHiRes(Song song) =>
       (song.bitDepth ?? 0) > 16 || (song.sampleRate ?? 0) > 48000;
+}
+
+/// The playing track's rating and favorite, read from the database.
+///
+/// Reads the row rather than the queue's copy of the track, so hearting the same
+/// track on its album page updates here too. Falls back to the queue's copy
+/// while the row is loading, so nothing flickers on the first frame.
+class _LiveAnnotations extends ConsumerWidget {
+  const _LiveAnnotations({required this.song});
+
+  final Song song;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final live = ref.watch(songAnnotationProvider(song.id)).valueOrNull;
+    final rating = live?.userRating ?? song.userRating ?? 0;
+    final starred = live?.starred ?? song.starred;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        StarRating(
+          rating: rating,
+          size: 16,
+          onRatingChanged: (r) =>
+              ref.read(playerProvider.notifier).rateCurrentSong(r),
+        ),
+        const SizedBox(width: 4),
+        FavoriteButton(
+          isFavorite: starred,
+          onToggle: () =>
+              ref.read(playerProvider.notifier).toggleCurrentSongStarred(),
+        ),
+      ],
+    );
+  }
 }

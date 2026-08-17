@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
@@ -10,12 +10,39 @@ import 'package:flax/shared/widgets/window_buttons.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-final searchResultsProvider = FutureProvider<SearchResult?>((ref) async {
+/// Full search: cached hits first, then widened by the server. Issue #8.
+///
+/// Same two-emission shape as the sidebar's quick search. A failed server call
+/// leaves the local hits in place rather than turning the screen into an error,
+/// so searching still works with no network — over whatever has been browsed.
+final searchResultsProvider = StreamProvider<SearchResult?>((ref) async* {
   final query = ref.watch(searchQueryProvider);
-  if (query.trim().isEmpty) return null;
-  final client = ref.watch(subsonicClientProvider);
-  if (client == null) return null;
-  return client.search(query);
+  if (query.trim().isEmpty) {
+    yield null;
+    return;
+  }
+
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) {
+    yield null;
+    return;
+  }
+
+  Future<SearchResult> local() async => SearchResult(
+    artists: await repo.watchArtistSearch(query).first,
+    albums: await repo.watchAlbumSearch(query).first,
+    songs: await repo.watchSongSearch(query).first,
+  );
+
+  yield await local();
+
+  try {
+    await repo.cacheSearch(query);
+  } catch (_) {
+    return;
+  }
+
+  yield await local();
 });
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -193,7 +220,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                     queue: result.songs,
                                     index: entry.key,
                                   );
-                              if (ref.read(playbackSettingsProvider).autoSwitchToNowPlaying) {
+                              if (ref
+                                  .read(playbackSettingsProvider)
+                                  .autoSwitchToNowPlaying) {
                                 context.push('/now-playing');
                               }
                             },

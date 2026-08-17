@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:go_router/go_router.dart';
 
-final randomSongsProvider = FutureProvider<List<Song>>((ref) async {
-  final client = ref.watch(subsonicClientProvider);
-  if (client == null) return [];
-  return client.getRandomSongs(count: 100);
+/// A shuffle of the library.
+///
+/// Like the Random album tab, the order is not persisted — it belongs to this
+/// subscription, so it stays put while being browsed and reshuffles on a fresh
+/// one. The rows themselves are watched, so hearting a track here updates it.
+final randomSongsProvider = StreamProvider<List<Song>>((ref) {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) return Stream.value(const []);
+  return repo.watchRandomSongs(count: 100);
 });
 
 class SongsScreen extends ConsumerWidget {
@@ -91,7 +96,9 @@ class SongsScreen extends ConsumerWidget {
                         ref
                             .read(playerProvider.notifier)
                             .playSong(song, queue: songs, index: index);
-                        if (ref.read(playbackSettingsProvider).autoSwitchToNowPlaying) {
+                        if (ref
+                            .read(playbackSettingsProvider)
+                            .autoSwitchToNowPlaying) {
                           context.push('/now-playing');
                         }
                       },

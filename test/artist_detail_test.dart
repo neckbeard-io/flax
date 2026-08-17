@@ -61,8 +61,12 @@ Widget _harness({
 }) {
   return ProviderScope(
     overrides: [
-      artistDetailProvider(_artistId).overrideWith((ref) async => _artist),
-      artistAlbumsProvider(_artistId).overrideWith((ref) async => _albums),
+      artistDetailProvider(
+        _artistId,
+      ).overrideWith((ref) => Stream.value(_artist)),
+      artistAlbumsProvider(
+        _artistId,
+      ).overrideWith((ref) => Stream.value(_albums)),
       artistInfoProvider(_artistId).overrideWith((ref) => info),
       musicBrainzInfoProvider(_artistId).overrideWith((ref) => mb),
     ],
