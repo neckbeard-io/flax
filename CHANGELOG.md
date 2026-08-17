@@ -12,6 +12,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Added
 
+- **Artists load instantly and work offline.** The artist list is now kept in a local database and refreshed in the background, so it paints immediately instead of waiting on the server — and it still opens with no network at all. flax also asks the server whether anything actually changed before refetching, so a library that has not been rescanned costs one tiny request rather than a full reload.
 - **Background work is visible:** Long-running jobs now appear above Settings in the sidebar, with progress, transfer speed and a rough time remaining. Click it for a panel listing everything running, where each job can be canceled.
 
 ### Changed

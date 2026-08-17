@@ -6,6 +6,15 @@ abstract class MusicBackend {
   Future<bool> ping();
   Future<Map<String, int>> getOpenSubsonicExtensions();
 
+  /// The library's change beacon: `lastScan`, a song `count`, and whether a scan
+  /// is running. 285 bytes against Navidrome, so it is cheap enough to poll.
+  ///
+  /// If `lastScan` and `count` are both unchanged, no library content changed —
+  /// which is what lets the local cache skip refreshing entirely. Returns null
+  /// when the server has no usable answer, and callers must treat that as
+  /// "assume changed" rather than as "nothing changed".
+  Future<Map<String, dynamic>?> getScanStatus();
+
   // Browsing
   Future<List<Artist>> getArtists();
   Future<Artist> getArtist(String id);
