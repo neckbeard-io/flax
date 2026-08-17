@@ -12,11 +12,13 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Added
 
-- **Artists load instantly and work offline.** The artist list is now kept in a local database and refreshed in the background, so it paints immediately instead of waiting on the server — and it still opens with no network at all. flax also asks the server whether anything actually changed before refetching, so a library that has not been rescanned costs one tiny request rather than a full reload.
+- **Artists, albums and album pages load instantly and work offline.** They are now kept in a local database and refreshed in the background, so they paint immediately instead of waiting on the server — and they still open with no network at all. flax also asks the server whether anything actually changed before refetching, so a library that has not been rescanned costs one tiny request rather than a full reload, and it re-checks whenever you come back to the window.
+
 - **Background work is visible:** Long-running jobs now appear above Settings in the sidebar, with progress, transfer speed and a rough time remaining. Click it for a panel listing everything running, where each job can be canceled.
 
 ### Changed
 
+- **Favorites and ratings apply everywhere at once.** Hearting an album on its own page now updates the same album in the queue, and rating a track updates it wherever that track appears. The heart or star also fills the instant you click it rather than after the server answers, and if the server cannot be reached the change is kept and retried instead of silently snapping back.
 - **Downloading the AutoEQ database shows real progress.** It reports megabytes transferred, how fast, and roughly how long is left, instead of a line of text — and it can now be canceled part-way. The download is around 100 MB, so this was worth knowing.
 
 ## v0.2.3 — 2026-08-15

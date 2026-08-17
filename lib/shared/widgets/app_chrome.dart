@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/shared/input/back_swipe.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/shared/input/global_keys.dart';
 import 'package:flax/shared/widgets/desktop_sidebar.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
@@ -29,10 +30,19 @@ class AppChrome extends ConsumerStatefulWidget {
   ConsumerState<AppChrome> createState() => _AppChromeState();
 }
 
-class _AppChromeState extends ConsumerState<AppChrome> {
+class _AppChromeState extends ConsumerState<AppChrome>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    // Ask the server whether the library changed whenever the window comes
+    // back to the foreground. This is one 285-byte `getScanStatus` against
+    // Navidrome, so it is cheap enough to do on every focus — and with a
+    // library that has not been rescanned it does nothing at all.
+    //
+    // AppChrome is the only widget that wraps every route, which makes it the
+    // one place this can live without being duplicated per screen.
+    WidgetsBinding.instance.addObserver(this);
     // A keyboard handler rather than a Shortcuts widget.
     //
     // Shortcuts only sees keys that bubble up through the focused node's
@@ -46,8 +56,18 @@ class _AppChromeState extends ConsumerState<AppChrome> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onKey);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // Fire and forget. A failure here is a no-op: the repository treats an
+    // unanswered beacon as "assume changed" and falls back to its TTLs, so a
+    // dropped check costs nothing.
+    ref.read(libraryRepositoryProvider)?.syncIfChanged();
   }
 
   /// Whether a text field currently has focus, in which case "/" is a character
