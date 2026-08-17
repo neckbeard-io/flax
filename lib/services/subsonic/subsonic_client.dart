@@ -436,6 +436,18 @@ class SubsonicClient implements MusicBackend {
   // ── Artist info ───────────────────────────────────────────────────────
 
   @override
+  Future<Map<String, dynamic>?> getScanStatus() async {
+    try {
+      final data = await _get('getScanStatus');
+      return data['scanStatus'] as Map<String, dynamic>?;
+    } catch (_) {
+      // Not every Subsonic server implements this. Null means "no answer", and
+      // the caller falls back to time-based staleness.
+      return null;
+    }
+  }
+
+  @override
   Future<Map<String, dynamic>?> getArtistInfo(String id) async {
     try {
       final data = await _get('getArtistInfo2', {'id': id, 'count': 10});

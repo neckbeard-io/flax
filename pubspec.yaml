@@ -21,7 +21,7 @@ dependencies:
   dio: ^5.7.0
 
   # Local database
-  drift: ^2.22.1
+  drift: ^2.34.3
   sqlite3_flutter_libs: ^0.5.28
   path_provider: ^2.1.5
   path: ^1.9.1
@@ -64,10 +64,15 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.14
-  drift_dev: ^2.22.1
-  freezed: ^2.5.7
-  json_serializable: ^6.9.0
-  riverpod_generator: ^2.6.3
+  drift_dev: ^2.34.5
+  # freezed, json_serializable and riverpod_generator were declared but never
+  # used — nothing in lib/ or test/ carries their annotations. They are removed
+  # rather than left dormant because they are not free: every builder joins the
+  # build_runner graph and analyzes all 130 inputs, and riverpod_generator 2.6
+  # pins analyzer 3.9, which cannot parse the dot-shorthand syntax a dependency
+  # now uses under Dart 3.12 — it crashed the build outright with "Missing
+  # implementation of visitDotShorthandInvocation". Re-add whichever one is
+  # actually adopted, at a version that supports the pinned SDK.
   mockito: ^5.4.5
   integration_test:
     sdk: flutter
