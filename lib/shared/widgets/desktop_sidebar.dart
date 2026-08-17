@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flax/app/nav_destinations.dart';
 import 'package:flax/features/search/quick_search.dart';
 import 'package:flax/features/search/quick_search_overlay.dart';
+import 'package:flax/shared/widgets/activity_indicator.dart';
 import 'package:flax/shared/widgets/flax_input.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
@@ -260,6 +261,10 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
               onTap: () => context.go(navDestinations[i].path),
             ),
           const Spacer(),
+          // Long-running work lives here: persistent, out of the way, and the
+          // one strip of the rail nothing else claims. It contributes no height
+          // when idle, so Settings does not shift as jobs come and go.
+          const ActivityIndicator(),
           _SidebarItem(
             destination: const NavDestination(
               path: '/settings',
