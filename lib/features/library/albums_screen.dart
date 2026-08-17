@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/library/album_filter.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
@@ -16,13 +17,36 @@ import 'package:flax/shared/widgets/window_buttons.dart';
 /// back to a tab you already looked at should be instant, and Random in
 /// particular should show the same shuffle you were just browsing rather than
 /// reshuffling under you.
-final albumsProvider = FutureProvider.family<List<Album>, AlbumFilter>((
+final albumsProvider = StreamProvider.family<List<Album>, AlbumFilter>((
   ref,
   filter,
-) async {
-  final client = ref.watch(subsonicClientProvider);
-  if (client == null) return [];
-  return client.getAlbumList(filter.listType, count: albumFilterPageSize);
+) async* {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) {
+    yield const [];
+    return;
+  }
+
+  final query = AlbumListQuery(filter.listType);
+
+  // Random has no cached ordering to read, so its stream does its own fetch.
+  // Asking for a refresh as well would fetch twice.
+  if (!query.isCacheable) {
+    yield* repo.watchAlbumList(query);
+    return;
+  }
+
+  final cached = await repo.watchAlbumList(query).first;
+  if (cached.isEmpty) {
+    // Nothing cached for this tab yet, so stay loading rather than showing the
+    // tab's empty message — "No albums" for a library that has plenty reads as
+    // a failure.
+    await repo.refreshAlbumList(query);
+  } else {
+    repo.refreshAlbumList(query);
+  }
+
+  yield* repo.watchAlbumList(query);
 });
 
 class AlbumsScreen extends ConsumerWidget {

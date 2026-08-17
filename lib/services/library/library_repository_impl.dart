@@ -1,3 +1,4 @@
+import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/domain/repositories/music_backend.dart';
@@ -50,8 +51,29 @@ class LibraryRepositoryImpl implements LibraryRepository {
       _dao.watchAlbumSongs(_serverId, albumId);
 
   @override
-  Stream<List<Album>> watchAlbumList(AlbumListQuery query) =>
-      _dao.watchAlbumList(_serverId, query);
+  Stream<List<Album>> watchAlbumList(AlbumListQuery query) {
+    if (query.isCacheable) return _dao.watchAlbumList(_serverId, query);
+    return _watchUncachedList(query);
+  }
+
+  /// Random, which is never persisted as an ordering.
+  ///
+  /// It still watches the entity rows rather than yielding the fetched objects,
+  /// so hearting an album in a Random shelf updates in place. The shuffle is
+  /// held for the lifetime of the subscription — which is what keeps Random from
+  /// reshuffling under someone who is browsing it, without a cached ordering
+  /// that would freeze it forever.
+  Stream<List<Album>> _watchUncachedList(AlbumListQuery query) async* {
+    final albums = await _backend.getAlbumList(
+      query.type,
+      count: 500,
+      genre: query.genre,
+      fromYear: query.fromYear,
+      toYear: query.toYear,
+    );
+    await _dao.upsertAlbums(albums, _clock());
+    yield* _dao.watchAlbumsByIds(_serverId, albums.map((a) => a.id).toList());
+  }
 
   @override
   Stream<List<Album>> watchAlbumSearch(String query, {int limit = 20}) =>
@@ -134,7 +156,27 @@ class LibraryRepositoryImpl implements LibraryRepository {
     if (!beacon.changedSince(stored)) return false;
 
     await _writeBeacon(beacon);
+
+    // Force, because recording the beacon above is what makes the next ordinary
+    // check answer "unchanged". Without forcing, this method would refresh
+    // artists and then convince every album tab it had nothing to do.
     await refreshArtists(force: true);
+
+    // Re-crawl the orderings that actually exist rather than every list type the
+    // UI might ask for. Album detail is deliberately left to refresh lazily on
+    // visit — re-fetching thousands of track listings on a scan is not worth it.
+    for (final (listType, filterKey) in await _dao.cachedAlbumLists(
+      _serverId,
+    )) {
+      final type = AlbumListType.values.firstWhere(
+        (t) => t.name == listType,
+        orElse: () => AlbumListType.newest,
+      );
+      await refreshAlbumList(
+        AlbumListQuery.fromFilterKey(type, filterKey),
+        force: true,
+      );
+    }
     return true;
   }
 

@@ -132,6 +132,24 @@ class LibraryDao {
     );
   }
 
+  /// Watch a specific set of albums, in the order given.
+  ///
+  /// For lists that must not be persisted as an ordering — Random — but whose
+  /// rows should still update live when a favorite is written. SQL `IN` does not
+  /// preserve argument order, so the ordering is reapplied in Dart.
+  Stream<List<Album>> watchAlbumsByIds(String serverId, List<String> ids) {
+    if (ids.isEmpty) return Stream.value(const []);
+    final q = _db.select(_db.albums)
+      ..where((t) => t.serverId.equals(serverId) & t.id.isIn(ids));
+    return q.watch().map((rows) {
+      final byId = {for (final r in rows) r.id: albumFromRow(r)};
+      return [
+        for (final id in ids)
+          if (byId[id] != null) byId[id]!,
+      ];
+    });
+  }
+
   Future<void> upsertAlbums(List<Album> albums, DateTime now) async {
     if (albums.isEmpty) return;
     await _db.batch((b) {
@@ -201,6 +219,22 @@ class LibraryDao {
       ..limit(1);
     final row = await q.getSingleOrNull();
     return row?.fetchedAt;
+  }
+
+  /// The orderings currently held for a server, as (listType, filterKey) pairs.
+  ///
+  /// Used to re-crawl what is actually cached when the beacon moves, rather than
+  /// guessing at every list type the UI might one day ask for.
+  Future<List<(String, String)>> cachedAlbumLists(String serverId) async {
+    final entries = _db.albumListEntries;
+    final q = _db.selectOnly(entries, distinct: true)
+      ..addColumns([entries.listType, entries.filterKey])
+      ..where(entries.serverId.equals(serverId));
+    final rows = await q.get();
+    return [
+      for (final r in rows)
+        (r.read(entries.listType)!, r.read(entries.filterKey)!),
+    ];
   }
 
   // ── Songs ────────────────────────────────────────────────────────────────

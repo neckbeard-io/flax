@@ -4,7 +4,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/library/album_sort.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
@@ -728,13 +730,21 @@ class _ArtistRatingRow extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Both write through the repository: local first, then pushed. The
+        // invalidates these replaced refetched the whole artist to see a single
+        // flag change.
         StarRating(
           rating: artist.userRating ?? 0,
           size: size,
           onRatingChanged: (rating) async {
-            final client = ref.read(subsonicClientProvider);
-            if (client == null) return;
-            await client.setRating(artist.id, rating);
+            await ref
+                .read(libraryRepositoryProvider)
+                ?.setRating(
+                  EntityRef(EntityType.artist, artist.id),
+                  rating: rating,
+                );
+            // This screen still reads the artist over the network, so it needs
+            // the nudge until it moves onto the database too.
             ref.invalidate(artistDetailProvider(artistId));
           },
         ),
@@ -743,13 +753,12 @@ class _ArtistRatingRow extends ConsumerWidget {
           isFavorite: artist.starred,
           size: size,
           onToggle: () async {
-            final client = ref.read(subsonicClientProvider);
-            if (client == null) return;
-            if (artist.starred) {
-              await client.unstar(artistId: artist.id);
-            } else {
-              await client.star(artistId: artist.id);
-            }
+            await ref
+                .read(libraryRepositoryProvider)
+                ?.setFavorite(
+                  EntityRef(EntityType.artist, artist.id),
+                  favorite: !artist.starred,
+                );
             ref.invalidate(artistDetailProvider(artistId));
           },
         ),

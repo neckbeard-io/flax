@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
@@ -12,22 +13,57 @@ import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
 
-final albumDetailProvider = FutureProvider.family<Album, String>((
+/// The album and its tracks, read from the local database. Issue #8.
+///
+/// Both are streams, so a favorite or a rating written anywhere — here, the
+/// queue header, the mini player — lands in this screen with no invalidation.
+/// The `ref.invalidate` calls these replaced existed only because each screen
+/// held its own copy of the same track.
+final albumDetailProvider = StreamProvider.family<Album, String>((
   ref,
   id,
-) async {
-  final client = ref.watch(subsonicClientProvider);
-  if (client == null) throw Exception('No server');
-  return client.getAlbum(id);
+) async* {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) throw Exception('No server');
+
+  // Album lists populate the entity row before the detail screen ever opens, so
+  // there is usually something to paint immediately. Wait only when there is
+  // not — emitting nothing would flash an empty screen.
+  final cached = await repo.watchAlbum(id).first;
+  if (cached == null) {
+    await repo.refreshAlbum(id);
+  } else {
+    repo.refreshAlbum(id);
+  }
+
+  // A null here means the album is genuinely gone from the cache, which for this
+  // screen is an error rather than an empty state.
+  yield* repo.watchAlbum(id).map((album) {
+    if (album == null) throw Exception('Album not found');
+    return album;
+  });
 });
 
-final albumSongsProvider = FutureProvider.family<List<Song>, String>((
+final albumSongsProvider = StreamProvider.family<List<Song>, String>((
   ref,
   albumId,
-) async {
-  final client = ref.watch(subsonicClientProvider);
-  if (client == null) return [];
-  return client.getAlbumSongs(albumId);
+) async* {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) {
+    yield const [];
+    return;
+  }
+
+  // Track listings only arrive with getAlbum, so unlike the album row itself
+  // an empty list here really does mean "not fetched yet".
+  final cached = await repo.watchAlbumSongs(albumId).first;
+  if (cached.isEmpty) {
+    await repo.refreshAlbum(albumId);
+  } else {
+    repo.refreshAlbum(albumId);
+  }
+
+  yield* repo.watchAlbumSongs(albumId);
 });
 
 class AlbumDetailScreen extends ConsumerWidget {
@@ -92,8 +128,9 @@ class AlbumDetailScreen extends ConsumerWidget {
 
 /// Album-level rating and favorite.
 ///
-/// Both write straight through and then invalidate the album, which is cheap:
-/// one request, and the server stays the source of truth for what a star means.
+/// Both write to the local database first and push to the server behind that, so
+/// the glyph responds immediately and a failed push leaves the row dirty for
+/// retry rather than reverting under the user.
 class _AlbumActions extends ConsumerWidget {
   const _AlbumActions({
     required this.album,
@@ -110,14 +147,20 @@ class _AlbumActions extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // No invalidate on either of these: the write lands in the database and
+        // the stream carries it back here and to every other view of the same
+        // album. It is also optimistic, so the glyph changes immediately rather
+        // than after a round trip.
         StarRating(
           rating: album.userRating ?? 0,
           size: size,
           onRatingChanged: (rating) async {
-            final client = ref.read(subsonicClientProvider);
-            if (client == null) return;
-            await client.setRating(album.id, rating);
-            ref.invalidate(albumDetailProvider(albumId));
+            await ref
+                .read(libraryRepositoryProvider)
+                ?.setRating(
+                  EntityRef(EntityType.album, album.id),
+                  rating: rating,
+                );
           },
         ),
         const SizedBox(width: 8),
@@ -125,14 +168,12 @@ class _AlbumActions extends ConsumerWidget {
           isFavorite: album.starred,
           size: size,
           onToggle: () async {
-            final client = ref.read(subsonicClientProvider);
-            if (client == null) return;
-            if (album.starred) {
-              await client.unstar(albumId: album.id);
-            } else {
-              await client.star(albumId: album.id);
-            }
-            ref.invalidate(albumDetailProvider(albumId));
+            await ref
+                .read(libraryRepositoryProvider)
+                ?.setFavorite(
+                  EntityRef(EntityType.album, album.id),
+                  favorite: !album.starred,
+                );
           },
         ),
       ],
@@ -448,24 +489,23 @@ class _TrackRow extends ConsumerWidget {
     }
   }
 
+  // The old versions of these refetched the whole track list, with the comment
+  // "the list is the only copy of this track, and the player may be holding a
+  // separate one for the same id". That is exactly the problem the database
+  // removes: there is now one row per track and every view watches it.
   Future<void> _rate(WidgetRef ref, int rating) async {
-    final client = ref.read(subsonicClientProvider);
-    if (client == null) return;
-    await client.setRating(song.id, rating);
-    // Refetch the album's songs: the list is the only copy of this track, and
-    // the player may be holding a separate one for the same id.
-    ref.invalidate(albumSongsProvider(albumId));
+    await ref
+        .read(libraryRepositoryProvider)
+        ?.setRating(EntityRef(EntityType.song, song.id), rating: rating);
   }
 
   Future<void> _toggleFavorite(WidgetRef ref) async {
-    final client = ref.read(subsonicClientProvider);
-    if (client == null) return;
-    if (song.starred) {
-      await client.unstar(id: song.id);
-    } else {
-      await client.star(id: song.id);
-    }
-    ref.invalidate(albumSongsProvider(albumId));
+    await ref
+        .read(libraryRepositoryProvider)
+        ?.setFavorite(
+          EntityRef(EntityType.song, song.id),
+          favorite: !song.starred,
+        );
   }
 
   @override

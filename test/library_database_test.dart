@@ -291,6 +291,25 @@ void main() {
       expect((await dao.watchAlbumList(sid, jazz).first).single.id, 'b');
     });
 
+    test('a filter key round-trips', () {
+      // The key is a genre|fromYear|toYear triple. Reading it back as a bare
+      // genre would silently mis-scope every year-filtered list.
+      const q = AlbumListQuery(
+        AlbumListType.byYear,
+        genre: 'doom',
+        fromYear: 1985,
+        toYear: 1994,
+      );
+      expect(
+        AlbumListQuery.fromFilterKey(AlbumListType.byYear, q.filterKey),
+        q,
+      );
+      expect(
+        AlbumListQuery.fromFilterKey(AlbumListType.newest, ''),
+        const AlbumListQuery(AlbumListType.newest),
+      );
+    });
+
     test('random is never cacheable', () {
       expect(const AlbumListQuery(AlbumListType.random).isCacheable, isFalse);
       expect(const AlbumListQuery(AlbumListType.newest).isCacheable, isTrue);
@@ -401,6 +420,37 @@ void main() {
         expect(await dao.watchArtists(sid).first, hasLength(1));
       },
     );
+
+    test('syncIfChanged re-crawls the orderings that exist', () async {
+      backend.scanStatus = status();
+      backend.artists = [artist('a1')];
+      backend.albums = [album('al1')];
+      final r = repo();
+
+      // Two tabs get browsed, so two orderings are cached.
+      await r.refreshAlbumList(const AlbumListQuery(AlbumListType.newest));
+      await r.refreshAlbumList(const AlbumListQuery(AlbumListType.starred));
+      final before = backend.getAlbumListCalls;
+
+      backend.scanStatus = status(lastScan: '2026-08-17T09:00:00Z');
+      expect(await r.syncIfChanged(), isTrue);
+
+      // Both are re-fetched. Without forcing, recording the new beacon inside
+      // syncIfChanged would convince every tab it had nothing to do.
+      expect(backend.getAlbumListCalls, before + 2);
+    });
+
+    test('syncIfChanged does not re-crawl orderings nobody cached', () async {
+      backend.scanStatus = status();
+      backend.artists = [artist('a1')];
+      final r = repo();
+      await r.refreshArtists();
+
+      backend.scanStatus = status(lastScan: '2026-08-17T09:00:00Z');
+      await r.syncIfChanged();
+
+      expect(backend.getAlbumListCalls, 0);
+    });
 
     test('syncIfChanged reports whether anything moved', () async {
       backend.scanStatus = status();

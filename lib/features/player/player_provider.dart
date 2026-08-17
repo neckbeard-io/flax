@@ -6,7 +6,9 @@ import 'dart:developer' as developer;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' as mpv;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/features/player/gapless_probe.dart';
@@ -719,14 +721,19 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   // is on screen.
 
   /// Sets the star rating (0-5) of the playing track.
+  ///
+  /// The queue is still this notifier's own list of [Song] objects rather than a
+  /// view of the database, so the local copy is patched here as well. Once the
+  /// queue reads from the database that second step goes away; until then a
+  /// repository write alone would update every other screen and not this one.
   Future<void> rateCurrentSong(int rating) async {
     final song = state.currentSong;
-    final client = _ref.read(subsonicClientProvider);
-    if (song == null || client == null) return;
+    final repo = _ref.read(libraryRepositoryProvider);
+    if (song == null || repo == null) return;
 
     _replaceSongInQueue(song.copyWith(userRating: rating));
     try {
-      await client.setRating(song.id, rating);
+      await repo.setRating(EntityRef(EntityType.song, song.id), rating: rating);
     } catch (e) {
       developer.log('setRating failed: $e', name: 'PlayerNotifier');
       _replaceSongInQueue(song);
@@ -736,17 +743,16 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// Toggles the favorite (starred) flag of the playing track.
   Future<void> toggleCurrentSongStarred() async {
     final song = state.currentSong;
-    final client = _ref.read(subsonicClientProvider);
-    if (song == null || client == null) return;
+    final repo = _ref.read(libraryRepositoryProvider);
+    if (song == null || repo == null) return;
 
     final next = !song.starred;
     _replaceSongInQueue(song.copyWith(starred: next));
     try {
-      if (next) {
-        await client.star(id: song.id);
-      } else {
-        await client.unstar(id: song.id);
-      }
+      await repo.setFavorite(
+        EntityRef(EntityType.song, song.id),
+        favorite: next,
+      );
     } catch (e) {
       developer.log('star/unstar failed: $e', name: 'PlayerNotifier');
       _replaceSongInQueue(song);

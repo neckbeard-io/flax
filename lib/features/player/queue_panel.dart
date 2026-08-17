@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/domain/models/album.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/library/album_detail_screen.dart';
@@ -219,43 +220,17 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
 /// Both act on the *album*, not the track — the mini player already carries the
 /// track's pair, and having two identical controls mean different things a few
 /// hundred pixels apart is worse than having neither.
-class _AlbumRatingRow extends ConsumerStatefulWidget {
+class _AlbumRatingRow extends ConsumerWidget {
   const _AlbumRatingRow({required this.album});
 
   final Album album;
 
   @override
-  ConsumerState<_AlbumRatingRow> createState() => _AlbumRatingRowState();
-}
-
-class _AlbumRatingRowState extends ConsumerState<_AlbumRatingRow> {
-  /// Shown in place of the server's answer until the round trip finishes, so
-  /// the heart fills on click rather than a refetch later.
-  bool? _pendingStarred;
-
-  Future<void> _toggleStarred() async {
-    final album = widget.album;
-    final next = !(_pendingStarred ?? album.starred);
-    final client = ref.read(subsonicClientProvider);
-    if (client == null) return;
-
-    setState(() => _pendingStarred = next);
-    try {
-      if (next) {
-        await client.star(albumId: album.id);
-      } else {
-        await client.unstar(albumId: album.id);
-      }
-      ref.invalidate(albumDetailProvider(album.id));
-    } catch (_) {
-      if (mounted) setState(() => _pendingStarred = null);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final album = widget.album;
-
+  Widget build(BuildContext context, WidgetRef ref) {
+    // This used to be a ConsumerStatefulWidget holding a `_pendingStarred` flag,
+    // so the heart could fill on click instead of after a round trip, plus an
+    // invalidate of the album so the change stuck. Both are gone: the repository
+    // writes locally first and every view of this album watches the same row.
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -263,17 +238,26 @@ class _AlbumRatingRowState extends ConsumerState<_AlbumRatingRow> {
           rating: album.userRating ?? 0,
           size: 20,
           onRatingChanged: (newRating) async {
-            final client = ref.read(subsonicClientProvider);
-            if (client == null) return;
-            await client.setRating(album.id, newRating);
-            ref.invalidate(albumDetailProvider(album.id));
+            await ref
+                .read(libraryRepositoryProvider)
+                ?.setRating(
+                  EntityRef(EntityType.album, album.id),
+                  rating: newRating,
+                );
           },
         ),
         const SizedBox(width: 4),
         FavoriteButton(
-          isFavorite: _pendingStarred ?? album.starred,
-          onToggle: _toggleStarred,
-          tooltip: (_pendingStarred ?? album.starred)
+          isFavorite: album.starred,
+          onToggle: () async {
+            await ref
+                .read(libraryRepositoryProvider)
+                ?.setFavorite(
+                  EntityRef(EntityType.album, album.id),
+                  favorite: !album.starred,
+                );
+          },
+          tooltip: album.starred
               ? 'Remove album from favorites'
               : 'Add album to favorites',
         ),
