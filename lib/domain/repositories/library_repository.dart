@@ -76,6 +76,24 @@ class AlbumListQuery {
   /// never cached and always goes to the network.
   bool get isCacheable => type != AlbumListType.random;
 
+  /// Rebuild a query from a [filterKey] read back out of the ordering table.
+  ///
+  /// The inverse of [filterKey]. Keeping the two together is the point: the key
+  /// is a `genre|fromYear|toYear` triple, and reading it back as a bare genre
+  /// silently mis-scopes every year-filtered list.
+  factory AlbumListQuery.fromFilterKey(AlbumListType type, String filterKey) {
+    if (filterKey.isEmpty) return AlbumListQuery(type);
+    final parts = filterKey.split('|');
+    String? at(int i) =>
+        i < parts.length && parts[i].isNotEmpty ? parts[i] : null;
+    return AlbumListQuery(
+      type,
+      genre: at(0),
+      fromYear: int.tryParse(at(1) ?? ''),
+      toYear: int.tryParse(at(2) ?? ''),
+    );
+  }
+
   /// Stable key for the ordering table. Two queries that differ only by filter
   /// must not share cached positions.
   String get filterKey {

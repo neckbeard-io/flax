@@ -43,8 +43,10 @@ List<Song> _songs() => [
 Widget _harness({required Size size}) {
   return ProviderScope(
     overrides: [
-      albumDetailProvider(_albumId).overrideWith((ref) async => _album),
-      albumSongsProvider(_albumId).overrideWith((ref) async => _songs()),
+      albumDetailProvider(_albumId).overrideWith((ref) => Stream.value(_album)),
+      albumSongsProvider(
+        _albumId,
+      ).overrideWith((ref) => Stream.value(_songs())),
     ],
     child: MaterialApp(
       theme: ThemeData.dark(useMaterial3: true),
@@ -106,8 +108,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          albumDetailProvider(_albumId).overrideWith((ref) async => _album),
-          albumSongsProvider(_albumId).overrideWith((ref) async => _songs()),
+          albumDetailProvider(
+            _albumId,
+          ).overrideWith((ref) => Stream.value(_album)),
+          albumSongsProvider(
+            _albumId,
+          ).overrideWith((ref) => Stream.value(_songs())),
         ],
         child: MaterialApp(
           theme: ThemeData.dark(useMaterial3: true),
