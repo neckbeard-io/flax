@@ -1,14 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 
-final artistsProvider = FutureProvider<List<Artist>>((ref) async {
-  final client = ref.watch(subsonicClientProvider);
-  if (client == null) return [];
-  return client.getArtists();
+/// Artists, read from the local database rather than the network. Issue #8.
+///
+/// A stream rather than a future, so this screen updates when a background
+/// refresh lands and when a favorite is written anywhere else in the app —
+/// without any invalidation code here.
+final artistsProvider = StreamProvider<List<Artist>>((ref) async* {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) {
+    yield const [];
+    return;
+  }
+
+  final cached = await repo.watchArtists().first;
+  if (cached.isEmpty) {
+    // Nothing to paint yet, so stay in the loading state until the first fetch
+    // lands. Emitting an empty list here would render a cold cache as an empty
+    // library, which looks like a broken server.
+    await repo.refreshArtists();
+  } else {
+    // Paint immediately and revalidate behind it. The refresh is deduplicated
+    // and usually suppressed outright by the scan beacon.
+    repo.refreshArtists();
+  }
+
+  yield* repo.watchArtists();
 });
 
 class ArtistsScreen extends ConsumerWidget {
