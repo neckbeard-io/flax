@@ -1,7 +1,11 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:flax/core/tasks/task.dart';
+import 'package:flax/core/tasks/task_registry.dart';
 
 import 'autoeq_database.dart';
 import 'autoeq_profile.dart';
@@ -75,7 +79,10 @@ class AutoEqState {
 final autoEqProvider = StateNotifierProvider<AutoEqNotifier, AutoEqState>((
   ref,
 ) {
-  return AutoEqNotifier(ref.read(autoEqDatabaseProvider));
+  return AutoEqNotifier(
+    ref.read(autoEqDatabaseProvider),
+    ref.read(taskRegistryProvider.notifier),
+  );
 });
 
 class AutoEqNotifier extends StateNotifier<AutoEqState> {
@@ -83,7 +90,11 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
 
   final AutoEqDatabase _db;
 
-  AutoEqNotifier(this._db) : super(const AutoEqState()) {
+  /// Optional so the notifier can be tested without a registry. When absent the
+  /// download still works; it just reports nowhere.
+  final TaskRegistry? _tasks;
+
+  AutoEqNotifier(this._db, [this._tasks]) : super(const AutoEqState()) {
     _checkAvailability();
   }
 
@@ -139,12 +150,44 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
     if (state.downloading) return;
     state = state.copyWith(downloading: true, clearError: true);
 
+    final cancelToken = CancelToken();
+    final task = _tasks?.start(
+      kind: TaskKind.autoEqDatabase,
+      label: 'AutoEQ database',
+      onCancel: cancelToken.cancel,
+    );
+
+    // The transfer is the only phase with a byte count. Until it starts, and
+    // again once it finishes and extraction begins, the phase string is the
+    // only thing worth showing — otherwise unpacking ~8,850 profiles renders as
+    // a bar stuck at 100%.
+    var totalKnown = false;
+    var transferring = false;
+
     try {
-      await for (final status in _db.downloadDatabase()) {
+      await for (final status in _db.downloadDatabase(
+        cancelToken: cancelToken,
+        onProgress: (received, total) {
+          if (!transferring) {
+            task?.note(null);
+            transferring = true;
+          }
+          // -1 when the server sends no Content-Length; leaving the total unset
+          // keeps the bar honestly indeterminate.
+          if (!totalKnown && total > 0) {
+            task?.enumerated(bytes: total);
+            totalKnown = true;
+          }
+          task?.progress(bytes: received);
+        },
+      )) {
+        transferring = false;
+        task?.note(status);
         if (mounted) {
           state = state.copyWith(downloadStatus: status);
         }
       }
+      task?.complete();
       if (mounted) {
         final meta = await _db.getMeta();
         state = state.copyWith(
@@ -169,10 +212,18 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
         }
       }
     } catch (e) {
+      // A cancel arrives here as a DioException. The registry already moved the
+      // task to canceled, so reporting it again as a failure would be wrong —
+      // and so would showing the user an error for something they asked for.
+      final canceled = cancelToken.isCancelled;
+      if (!canceled) task?.fail(e);
       if (mounted) {
         state = state.copyWith(
           downloading: false,
-          error: e.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''),
+          downloadStatus: canceled ? 'Download canceled' : null,
+          error: canceled
+              ? null
+              : e.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''),
         );
       }
     }
