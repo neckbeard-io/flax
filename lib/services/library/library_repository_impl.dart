@@ -51,6 +51,16 @@ class LibraryRepositoryImpl implements LibraryRepository {
       _dao.watchAlbumSongs(_serverId, albumId);
 
   @override
+  Stream<Song?> watchSong(String songId) => _dao.watchSong(_serverId, songId);
+
+  @override
+  Stream<List<Song>> watchRandomSongs({int count = 100}) async* {
+    final songs = await _backend.getRandomSongs(count: count);
+    await _dao.upsertSongs(songs, _clock());
+    yield* _dao.watchSongsByIds(_serverId, songs.map((s) => s.id).toList());
+  }
+
+  @override
   Stream<List<Album>> watchAlbumList(AlbumListQuery query) {
     if (query.isCacheable) return _dao.watchAlbumList(_serverId, query);
     return _watchUncachedList(query);
@@ -83,6 +93,10 @@ class LibraryRepositoryImpl implements LibraryRepository {
   Stream<List<Artist>> watchArtistSearch(String query, {int limit = 20}) =>
       _dao.searchArtists(_serverId, query, limit);
 
+  @override
+  Stream<List<Song>> watchSongSearch(String query, {int limit = 20}) =>
+      _dao.searchSongs(_serverId, query, limit);
+
   // ── Refresh ──────────────────────────────────────────────────────────────
 
   @override
@@ -95,6 +109,36 @@ class LibraryRepositoryImpl implements LibraryRepository {
       final artists = await _backend.getArtists();
       await _dao.upsertArtists(artists, _clock());
     });
+  }
+
+  @override
+  Future<void> refreshArtist(String artistId, {bool force = false}) {
+    return _once('artist:$artistId', () async {
+      if (!force && !await _artistAlbumsIncomplete(artistId)) {
+        final fetchedAt = await _dao.artistAlbumsFetchedAt(_serverId, artistId);
+        if (!await _shouldFetch(SyncPolicy.artistDetail, fetchedAt)) return;
+      }
+      // One `getArtist` gives both, where this used to be a getArtist plus a
+      // name search whose results were filtered by matching artist name.
+      final artist = await _backend.getArtist(artistId);
+      final albums = await _backend.getArtistAlbums(artistId);
+      final now = _clock();
+      await _dao.upsertArtists([artist], now);
+      await _dao.upsertAlbums(albums, now);
+    });
+  }
+
+  /// Whether fewer of an artist's albums are cached than the artist claims.
+  ///
+  /// A timestamp cannot answer this. Album lists cache albums for whichever
+  /// artists happen to appear in them, so an artist can have rows — recently
+  /// written ones — while its own list has never been fetched. Counting is the
+  /// only check that self-corrects.
+  Future<bool> _artistAlbumsIncomplete(String artistId) async {
+    final artist = await _dao.watchArtist(_serverId, artistId).first;
+    if (artist == null || artist.albumCount <= 0) return false;
+    final cached = await _dao.cachedArtistAlbumCount(_serverId, artistId);
+    return cached < artist.albumCount;
   }
 
   @override
@@ -146,6 +190,27 @@ class LibraryRepositoryImpl implements LibraryRepository {
   }
 
   @override
+  Future<void> cacheSearch(
+    String query, {
+    int artistCount = 20,
+    int albumCount = 20,
+    int songCount = 20,
+  }) {
+    return _once('search:$query', () async {
+      final result = await _backend.search(
+        query,
+        artistCount: artistCount,
+        albumCount: albumCount,
+        songCount: songCount,
+      );
+      final now = _clock();
+      await _dao.upsertArtists(result.artists, now);
+      await _dao.upsertAlbums(result.albums, now);
+      await _dao.upsertSongs(result.songs, now);
+    });
+  }
+
+  @override
   Future<bool> syncIfChanged() async {
     final beacon = await _readBeacon();
     // Mid-scan the server's own view is inconsistent; caching it captures a
@@ -178,6 +243,67 @@ class LibraryRepositoryImpl implements LibraryRepository {
       );
     }
     return true;
+  }
+
+  @override
+  Future<void> syncAnnotations({bool force = false}) {
+    return _once('annotations', () async {
+      // Push first. Reconciling before retrying would compare the server's older
+      // answer against local intent that has not reached it yet, and dirty rows
+      // are skipped by the reconcile — so the retry would be pointless until the
+      // next pass.
+      await _retryPendingWrites();
+
+      if (!force) {
+        final last = await _dao.syncValue(
+          _serverId,
+          SyncKeys.lastStarredSyncAt,
+        );
+        final at = last == null ? null : DateTime.tryParse(last);
+        if (!SyncPolicy.isStale(at, SyncPolicy.starred, _clock())) return;
+      }
+
+      final starred = await _backend.getStarred();
+      final now = _clock();
+      // Upsert first so favorites on entities never seen before have rows to
+      // land on, then reconcile the flags across everything.
+      await _dao.upsertArtists(starred.artists, now);
+      await _dao.upsertAlbums(starred.albums, now);
+      await _dao.upsertSongs(starred.songs, now);
+      await _dao.reconcileFavorites(
+        _serverId,
+        artistIds: starred.artists.map((a) => a.id).toSet(),
+        albumIds: starred.albums.map((a) => a.id).toSet(),
+        songIds: starred.songs.map((s) => s.id).toSet(),
+        now: now,
+      );
+      await _dao.putSyncValue(
+        _serverId,
+        SyncKeys.lastStarredSyncAt,
+        now.toIso8601String(),
+        now,
+      );
+    });
+  }
+
+  /// Re-push annotations the server has not accepted. Rows that fail again stay
+  /// dirty, so this is safe to call repeatedly.
+  Future<void> _retryPendingWrites() async {
+    for (final pending in await _dao.pendingWrites(_serverId)) {
+      await setFavorite(pending.ref, favorite: pending.favorite);
+      final rating = pending.rating;
+      if (rating != null) {
+        await setRating(pending.ref, rating: rating);
+      }
+    }
+  }
+
+  @override
+  Future<int> collectGarbage() {
+    // Thirty days of not being mentioned by any response. Long enough that a
+    // server which drops a folder for one scan does not lose the cache for it.
+    final before = _clock().subtract(const Duration(days: 30));
+    return _dao.collectGarbage(_serverId, before);
   }
 
   // ── Writes ───────────────────────────────────────────────────────────────

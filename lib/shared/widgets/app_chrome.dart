@@ -64,10 +64,25 @@ class _AppChromeState extends ConsumerState<AppChrome>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
-    // Fire and forget. A failure here is a no-op: the repository treats an
-    // unanswered beacon as "assume changed" and falls back to its TTLs, so a
+    final repo = ref.read(libraryRepositoryProvider);
+    if (repo == null) return;
+
+    // All three are fire-and-forget. A failure is a no-op: the repository treats
+    // an unanswered beacon as "assume changed" and falls back to its TTLs, so a
     // dropped check costs nothing.
-    ref.read(libraryRepositoryProvider)?.syncIfChanged();
+
+    // Library content. One 285-byte call, and nothing at all if unchanged.
+    repo.syncIfChanged();
+
+    // Annotations, which the beacon cannot see — a heart added in the web UI or
+    // a play on another device. Rate-limited inside the repository, because
+    // getStarred2 is the expensive call here.
+    repo.syncAnnotations();
+
+    // Sweep entities the server has stopped mentioning. Nothing favorited,
+    // rated, or still in a cached list is touched, so this is safe to run
+    // unattended.
+    repo.collectGarbage();
   }
 
   /// Whether a text field currently has focus, in which case "/" is a character

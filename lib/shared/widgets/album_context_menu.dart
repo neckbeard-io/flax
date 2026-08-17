@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
@@ -81,9 +81,15 @@ class AlbumContextMenu extends ConsumerWidget {
   }
 
   Future<void> _loadAndPlay(WidgetRef ref, {required bool replace}) async {
-    final client = ref.read(subsonicClientProvider);
-    if (client == null) return;
-    final songs = await client.getAlbumSongs(album.id);
+    final repo = ref.read(libraryRepositoryProvider);
+    if (repo == null) return;
+    // Cached tracks first, so queuing an album you have already opened works
+    // with no network. Only fetch when there is nothing to queue.
+    var songs = await repo.watchAlbumSongs(album.id).first;
+    if (songs.isEmpty) {
+      await repo.refreshAlbum(album.id);
+      songs = await repo.watchAlbumSongs(album.id).first;
+    }
     if (songs.isEmpty) return;
     final player = ref.read(playerProvider.notifier);
     if (replace) {
