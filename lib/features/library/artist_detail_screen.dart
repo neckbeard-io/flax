@@ -20,31 +20,53 @@ import 'package:flax/shared/widgets/hover_effects.dart';
 
 // ── Providers ─────────────────────────────────────────────────────────
 
-final artistDetailProvider = FutureProvider.family<Artist, String>((
+/// The artist, from the local database. Issue #8.
+final artistDetailProvider = StreamProvider.family<Artist, String>((
   ref,
   id,
-) async {
-  final client = ref.watch(subsonicClientProvider);
-  if (client == null) throw Exception('No server');
-  return client.getArtist(id);
+) async* {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) throw Exception('No server');
+
+  // The artist list populates this row, so opening an artist from Artists paints
+  // immediately. Arriving by any other route may not have it yet.
+  final cached = await repo.watchArtist(id).first;
+  if (cached == null) {
+    await repo.refreshArtist(id);
+  } else {
+    repo.refreshArtist(id);
+  }
+
+  yield* repo.watchArtist(id).map((artist) {
+    if (artist == null) throw Exception('Artist not found');
+    return artist;
+  });
 });
 
-final artistAlbumsProvider = FutureProvider.family<List<Album>, String>((
+/// The artist's albums.
+///
+/// One `getArtist` now supplies these. The previous version fetched the artist,
+/// then searched the whole library for its name, then kept whatever came back
+/// whose `artistId` or `artistName` matched — two requests, and it quietly
+/// claimed albums belonging to any artist with an overlapping name.
+final artistAlbumsProvider = StreamProvider.family<List<Album>, String>((
   ref,
   artistId,
-) async {
-  final client = ref.watch(subsonicClientProvider);
-  if (client == null) return [];
-  final artist = await client.getArtist(artistId);
-  final result = await client.search(
-    artist.name,
-    albumCount: 50,
-    songCount: 0,
-    artistCount: 0,
-  );
-  return result.albums
-      .where((a) => a.artistId == artistId || a.artistName == artist.name)
-      .toList();
+) async* {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) {
+    yield const [];
+    return;
+  }
+
+  final cached = await repo.watchArtistAlbums(artistId).first;
+  if (cached.isEmpty) {
+    await repo.refreshArtist(artistId);
+  } else {
+    repo.refreshArtist(artistId);
+  }
+
+  yield* repo.watchArtistAlbums(artistId);
 });
 
 final artistInfoProvider = FutureProvider.family<ArtistInfo?, String>((
@@ -730,9 +752,9 @@ class _ArtistRatingRow extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Both write through the repository: local first, then pushed. The
-        // invalidates these replaced refetched the whole artist to see a single
-        // flag change.
+        // Both write through the repository: local first, then pushed, and the
+        // stream carries the change back here. No invalidate — that refetched
+        // the whole artist to see one flag change.
         StarRating(
           rating: artist.userRating ?? 0,
           size: size,
@@ -743,9 +765,6 @@ class _ArtistRatingRow extends ConsumerWidget {
                   EntityRef(EntityType.artist, artist.id),
                   rating: rating,
                 );
-            // This screen still reads the artist over the network, so it needs
-            // the nudge until it moves onto the database too.
-            ref.invalidate(artistDetailProvider(artistId));
           },
         ),
         const SizedBox(width: 8),
@@ -759,7 +778,6 @@ class _ArtistRatingRow extends ConsumerWidget {
                   EntityRef(EntityType.artist, artist.id),
                   favorite: !artist.starred,
                 );
-            ref.invalidate(artistDetailProvider(artistId));
           },
         ),
       ],

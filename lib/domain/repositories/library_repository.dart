@@ -18,15 +18,25 @@ abstract class LibraryRepository {
   Stream<List<Album>> watchAlbumList(AlbumListQuery query);
   Stream<Album?> watchAlbum(String albumId);
   Stream<List<Song>> watchAlbumSongs(String albumId);
+  Stream<Song?> watchSong(String songId);
+
+  /// A shuffle of the library. Like the Random album tab, this is never cached
+  /// as an ordering — the rows are watched so annotations stay live, but the
+  /// order belongs to the subscription.
+  Stream<List<Song>> watchRandomSongs({int count = 100});
 
   /// Local substring search over cached entities. Instant, and works offline.
   /// The server is still asked separately to widen the result set.
   Stream<List<Album>> watchAlbumSearch(String query, {int limit = 20});
   Stream<List<Artist>> watchArtistSearch(String query, {int limit = 20});
+  Stream<List<Song>> watchSongSearch(String query, {int limit = 20});
 
   /// Bring the artist list up to date if it is stale. Cheap when it is not —
   /// see [syncIfChanged].
   Future<void> refreshArtists({bool force = false});
+
+  /// One artist and the albums `getArtist` returns alongside it.
+  Future<void> refreshArtist(String artistId, {bool force = false});
   Future<void> refreshAlbumList(AlbumListQuery query, {bool force = false});
   Future<void> refreshAlbum(String albumId, {bool force = false});
 
@@ -34,7 +44,32 @@ abstract class LibraryRepository {
   ///
   /// Returns true when the beacon moved. This is one 285-byte call against
   /// Navidrome, so it is cheap enough to run on app focus.
+  /// Run the server's search and cache whatever entities it returns.
+  ///
+  /// The *results* are deliberately not cached — queries are unbounded, and a
+  /// results table would grow without limit. Caching the entities is what makes
+  /// the local search widen as the library gets browsed, and what lets search
+  /// work at all with no network.
+  Future<void> cacheSearch(
+    String query, {
+    int artistCount = 20,
+    int albumCount = 20,
+    int songCount = 20,
+  });
+
   Future<bool> syncIfChanged();
+
+  /// Reconcile favorites with the server, and retry anything still pending.
+  ///
+  /// Separate from [syncIfChanged] because annotations are the change domain the
+  /// scan beacon cannot see. Rate-limited internally, because `getStarred2` is
+  /// the one expensive call here.
+  Future<void> syncAnnotations({bool force = false});
+
+  /// Sweep entities the server has stopped mentioning. Cheap, and safe to call
+  /// on a schedule — favorites, ratings and anything still in a cached list are
+  /// kept regardless of age.
+  Future<int> collectGarbage();
 
   /// Stars are ratings, hearts are favorites — two independent fields. These
   /// two methods must never write each other's column.

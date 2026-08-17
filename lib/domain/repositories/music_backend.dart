@@ -19,6 +19,13 @@ abstract class MusicBackend {
   Future<List<Artist>> getArtists();
   Future<Artist> getArtist(String id);
   Future<Album> getAlbum(String id);
+
+  /// An artist's albums, from the array `getArtist` already returns.
+  ///
+  /// [getArtist] discards it, which is why callers used to search by artist name
+  /// and filter the results — two requests, and it mis-attributes albums by
+  /// artists whose names overlap.
+  Future<List<Album>> getArtistAlbums(String artistId);
   Future<List<Song>> getAlbumSongs(String albumId);
   Future<Song> getSong(String id);
   Future<List<String>> getGenres();
@@ -53,6 +60,16 @@ abstract class MusicBackend {
   Future<void> star({String? id, String? albumId, String? artistId});
   Future<void> unstar({String? id, String? albumId, String? artistId});
   Future<void> setRating(String id, int rating);
+
+  /// Everything the user has favorited, in one call.
+  ///
+  /// The only bulk annotation endpoint Subsonic offers. Annotations change
+  /// without a library scan — hearting something in the web UI, playing a track
+  /// on a phone — so the scan beacon is blind to them and this is the only way
+  /// to notice. Measured at ~2s against a real server for a 4 KiB payload: an
+  /// expensive query, so call it on app focus or an explicit refresh, never on a
+  /// timer.
+  Future<SearchResult> getStarred();
   Future<void> scrobble(String id, {bool submission = true});
 
   // Playlists

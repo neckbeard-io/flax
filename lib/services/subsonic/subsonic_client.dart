@@ -159,6 +159,19 @@ class SubsonicClient implements MusicBackend {
   }
 
   @override
+  Future<List<Album>> getArtistAlbums(String artistId) async {
+    final data = await _get('getArtist', {'id': artistId});
+    final artist = data['artist'] as Map<String, dynamic>;
+    final albums = artist['album'] as List<dynamic>? ?? [];
+    return albums
+        .map((a) => _parseAlbum(a as Map<String, dynamic>))
+        // Subsonic includes artistId on each album, but not every server does.
+        // Stamping it guarantees the rows are reachable by the artist query.
+        .map((a) => a.artistId == null ? a.copyWith(artistId: artistId) : a)
+        .toList();
+  }
+
+  @override
   Future<Album> getAlbum(String id) async {
     final data = await _get('getAlbum', {'id': id});
     return _parseAlbum(data['album'] as Map<String, dynamic>);
@@ -319,6 +332,23 @@ class SubsonicClient implements MusicBackend {
     if (albumId != null) params['albumId'] = albumId;
     if (artistId != null) params['artistId'] = artistId;
     await _get('unstar', params);
+  }
+
+  @override
+  Future<SearchResult> getStarred() async {
+    final data = await _get('getStarred2');
+    final starred = data['starred2'] as Map<String, dynamic>? ?? const {};
+    return SearchResult(
+      artists: (starred['artist'] as List<dynamic>? ?? [])
+          .map((a) => _parseArtist(a as Map<String, dynamic>))
+          .toList(),
+      albums: (starred['album'] as List<dynamic>? ?? [])
+          .map((a) => _parseAlbum(a as Map<String, dynamic>))
+          .toList(),
+      songs: (starred['song'] as List<dynamic>? ?? [])
+          .map((s) => _parseSong(s as Map<String, dynamic>))
+          .toList(),
+    );
   }
 
   @override

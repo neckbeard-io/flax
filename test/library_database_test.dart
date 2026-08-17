@@ -61,6 +61,27 @@ class _FakeBackend implements MusicBackend {
   @override
   Future<List<Song>> getAlbumSongs(String albumId) async => songs;
 
+  SearchResult starred = const SearchResult();
+  int getStarredCalls = 0;
+  Artist? artist;
+  List<Album> artistAlbums = const [];
+  int getArtistCalls = 0;
+
+  @override
+  Future<Artist> getArtist(String id) async {
+    getArtistCalls++;
+    return artist!;
+  }
+
+  @override
+  Future<List<Album>> getArtistAlbums(String artistId) async => artistAlbums;
+
+  @override
+  Future<SearchResult> getStarred() async {
+    getStarredCalls++;
+    return starred;
+  }
+
   @override
   Future<Map<String, dynamic>?> getScanStatus() async {
     if (scanStatusThrows) throw Exception('no such endpoint');
@@ -585,6 +606,147 @@ void main() {
       );
       expect(rating, 5);
       expect(await _dirty(db, sid, 'al1'), isTrue);
+    });
+  });
+
+  group('artist albums', () {
+    test(
+      'an incomplete list is refetched even when the beacon is unchanged',
+      () async {
+        backend.scanStatus = {
+          'lastScan': '2026-08-07T23:55:56Z',
+          'count': 48605,
+          'scanning': false,
+        };
+        // The artist says five albums; an album list has cached two of them, with
+        // a fresh timestamp. A timestamp check would call that done forever.
+        await dao.upsertArtists([artist('ar1', albumCount: 5)], now);
+        await dao.upsertAlbums([
+          album('a', artistId: 'ar1'),
+          album('b', artistId: 'ar1'),
+        ], now);
+
+        backend.artistAlbums = [
+          album('a', artistId: 'ar1'),
+          album('b', artistId: 'ar1'),
+          album('c', artistId: 'ar1'),
+          album('d', artistId: 'ar1'),
+          album('e', artistId: 'ar1'),
+        ];
+        backend.artist = artist('ar1', albumCount: 5);
+
+        await repo().refreshArtist('ar1');
+
+        expect(await dao.watchArtistAlbums(sid, 'ar1').first, hasLength(5));
+      },
+    );
+
+    test('a complete list is left alone', () async {
+      backend.scanStatus = {
+        'lastScan': '2026-08-07T23:55:56Z',
+        'count': 48605,
+        'scanning': false,
+      };
+      await dao.upsertArtists([artist('ar1', albumCount: 2)], now);
+      await dao.upsertAlbums([
+        album('a', artistId: 'ar1'),
+        album('b', artistId: 'ar1'),
+      ], now);
+      backend.artist = artist('ar1', albumCount: 2);
+      backend.artistAlbums = const [];
+
+      final r = repo();
+      await r.refreshArtist('ar1');
+      final first = backend.getArtistCalls;
+      await r.refreshArtist('ar1');
+      expect(backend.getArtistCalls, first);
+    });
+  });
+
+  group('annotation reconciliation', () {
+    test('a favorite added elsewhere arrives', () async {
+      await dao.upsertAlbums([album('al1')], now);
+      backend.starred = SearchResult(albums: [album('al1')]);
+
+      await repo().syncAnnotations();
+
+      expect((await dao.watchAlbum(sid, 'al1').first)!.starred, isTrue);
+    });
+
+    test('a favorite removed elsewhere is cleared', () async {
+      await dao.upsertAlbums([album('al1')], now);
+      await dao.setFavorite(
+        sid,
+        const EntityRef(EntityType.album, 'al1'),
+        favorite: true,
+        now: now,
+      );
+      // Server no longer lists it.
+      backend.starred = const SearchResult();
+
+      await repo().syncAnnotations();
+
+      expect((await dao.watchAlbum(sid, 'al1').first)!.starred, isFalse);
+    });
+
+    test(
+      'a pending local favorite is not clobbered by an older server answer',
+      () async {
+        await dao.upsertAlbums([album('al1')], now);
+        // The user hearts it while offline, so the push fails and it stays dirty.
+        backend.starThrows = true;
+        await repo().setFavorite(
+          const EntityRef(EntityType.album, 'al1'),
+          favorite: true,
+        );
+        expect(await _dirty(db, sid, 'al1'), isTrue);
+
+        // The server has not heard about it yet and does not list it.
+        backend.starred = const SearchResult();
+        await repo().syncAnnotations();
+
+        // Reconciling must skip dirty rows in both directions, or it silently
+        // discards the thing the user just did.
+        expect((await dao.watchAlbum(sid, 'al1').first)!.starred, isTrue);
+      },
+    );
+
+    test('a pending write is retried and clears once accepted', () async {
+      await dao.upsertAlbums([album('al1')], now);
+      backend.starThrows = true;
+      await repo().setFavorite(
+        const EntityRef(EntityType.album, 'al1'),
+        favorite: true,
+      );
+      expect(await _dirty(db, sid, 'al1'), isTrue);
+
+      backend.starThrows = false;
+      backend.starred = SearchResult(albums: [album('al1')]);
+      await repo().syncAnnotations();
+
+      expect(await _dirty(db, sid, 'al1'), isFalse);
+      expect(backend.starCalls, contains('star:al1'));
+    });
+
+    test('getStarred is rate limited', () async {
+      final r = repo();
+      await r.syncAnnotations();
+      expect(backend.getStarredCalls, 1);
+
+      await r.syncAnnotations();
+      expect(backend.getStarredCalls, 1);
+
+      now = now.add(SyncPolicy.starred + const Duration(minutes: 1));
+      await r.syncAnnotations();
+      expect(backend.getStarredCalls, 2);
+    });
+
+    test('a favorite on an entity never seen before still lands', () async {
+      // Nothing cached at all; the upsert has to happen before the reconcile or
+      // there is no row for the flag to sit on.
+      backend.starred = SearchResult(albums: [album('brand-new')]);
+      await repo().syncAnnotations();
+      expect((await dao.watchAlbum(sid, 'brand-new').first)?.starred, isTrue);
     });
   });
 
