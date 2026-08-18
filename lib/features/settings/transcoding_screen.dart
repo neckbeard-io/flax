@@ -37,35 +37,41 @@ class TranscodingScreen extends ConsumerWidget {
           ),
           ListTile(
             title: const Text('Wi-Fi Quality'),
-            subtitle: Text(config.wifiQuality.label),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showQualityPicker(
-              context,
-              ref,
-              title: 'Wi-Fi Streaming Quality',
-              current: config.wifiQuality,
-              options: StreamQuality.values
+            subtitle: const Text('Streaming quality on Wi-Fi or Ethernet'),
+            trailing: DropdownButton<StreamQuality>(
+              value: config.wifiQuality,
+              underline: const SizedBox.shrink(),
+              borderRadius: BorderRadius.circular(8),
+              items: StreamQuality.values
                   .where((q) => q != StreamQuality.disabled)
+                  .map((q) => DropdownMenuItem(value: q, child: Text(q.label)))
                   .toList(),
-              onSelected: (q) =>
-                  _updateConfig(ref, server, config.copyWith(wifiQuality: q)),
+              onChanged: (q) {
+                if (q != null) {
+                  _updateConfig(ref, server, config.copyWith(wifiQuality: q));
+                }
+              },
             ),
           ),
           ListTile(
             title: const Text('Cellular Quality'),
-            subtitle: Text(config.cellularQuality.label),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showQualityPicker(
-              context,
-              ref,
-              title: 'Cellular Streaming Quality',
-              current: config.cellularQuality,
-              options: StreamQuality.values.toList(),
-              onSelected: (q) => _updateConfig(
-                ref,
-                server,
-                config.copyWith(cellularQuality: q),
-              ),
+            subtitle: const Text('Streaming quality on mobile data'),
+            trailing: DropdownButton<StreamQuality>(
+              value: config.cellularQuality,
+              underline: const SizedBox.shrink(),
+              borderRadius: BorderRadius.circular(8),
+              items: StreamQuality.values
+                  .map((q) => DropdownMenuItem(value: q, child: Text(q.label)))
+                  .toList(),
+              onChanged: (q) {
+                if (q != null) {
+                  _updateConfig(
+                    ref,
+                    server,
+                    config.copyWith(cellularQuality: q),
+                  );
+                }
+              },
             ),
           ),
           const Divider(),
@@ -74,25 +80,30 @@ class TranscodingScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
-              'Format used when server transcodes audio. Only applies when quality is not Original.',
+              'Audio format used when server transcodes. Only applies when quality is not Original.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ),
-          ...TranscodeFormat.values.map(
-            (fmt) => RadioListTile<TranscodeFormat>(
-              title: Text(fmt.name.toUpperCase()),
-              value: fmt,
-              groupValue: config.transcodeFormat,
-              onChanged: (v) {
-                if (v != null) {
-                  _updateConfig(
-                    ref,
-                    server,
-                    config.copyWith(transcodeFormat: v),
-                  );
-                }
+          ListTile(
+            title: const Text('Format'),
+            trailing: SegmentedButton<TranscodeFormat>(
+              segments: TranscodeFormat.values
+                  .map(
+                    (fmt) => ButtonSegment(
+                      value: fmt,
+                      label: Text(fmt.name.toUpperCase()),
+                    ),
+                  )
+                  .toList(),
+              selected: {config.transcodeFormat},
+              onSelectionChanged: (s) {
+                _updateConfig(
+                  ref,
+                  server,
+                  config.copyWith(transcodeFormat: s.first),
+                );
               },
             ),
           ),
@@ -110,42 +121,56 @@ class TranscodingScreen extends ConsumerWidget {
           ),
           ListTile(
             title: const Text('Download Quality'),
-            subtitle: Text(config.offlineQuality.label),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showQualityPicker(
-              context,
-              ref,
-              title: 'Offline Download Quality',
-              current: config.offlineQuality,
-              options: StreamQuality.values
+            subtitle: const Text('Audio quality for offline tracks'),
+            trailing: DropdownButton<StreamQuality>(
+              value: config.offlineQuality,
+              underline: const SizedBox.shrink(),
+              borderRadius: BorderRadius.circular(8),
+              items: StreamQuality.values
                   .where(
                     (q) =>
                         q != StreamQuality.disabled &&
                         q != StreamQuality.kbps64,
                   )
+                  .map((q) => DropdownMenuItem(value: q, child: Text(q.label)))
                   .toList(),
-              onSelected: (q) => _updateConfig(
-                ref,
-                server,
-                config.copyWith(offlineQuality: q),
-              ),
+              onChanged: (q) {
+                if (q != null) {
+                  _updateConfig(
+                    ref,
+                    server,
+                    config.copyWith(offlineQuality: q),
+                  );
+                }
+              },
             ),
           ),
           ListTile(
             title: const Text('Transcode & Download Threads'),
-            subtitle: Text(
-              '${config.offlineConcurrency} parallel ${config.offlineConcurrency == 1 ? "track" : "tracks"} during offline sync',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showConcurrencyPicker(
-              context,
-              ref,
-              current: config.offlineConcurrency,
-              onSelected: (c) => _updateConfig(
-                ref,
-                server,
-                config.copyWith(offlineConcurrency: c),
-              ),
+            subtitle: const Text('Parallel track conversions during sync'),
+            trailing: DropdownButton<int>(
+              value: config.offlineConcurrency,
+              underline: const SizedBox.shrink(),
+              borderRadius: BorderRadius.circular(8),
+              items: [1, 2, 3, 4, 5, 6]
+                  .map(
+                    (threads) => DropdownMenuItem(
+                      value: threads,
+                      child: Text(
+                        '$threads ${threads == 1 ? "thread" : "threads"}${threads == 2 ? " (default)" : ""}',
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (c) {
+                if (c != null) {
+                  _updateConfig(
+                    ref,
+                    server,
+                    config.copyWith(offlineConcurrency: c),
+                  );
+                }
+              },
             ),
           ),
         ],
@@ -157,96 +182,6 @@ class TranscodingScreen extends ConsumerWidget {
     ref
         .read(serverListProvider.notifier)
         .updateServer(server.copyWith(transcodingConfig: config));
-  }
-
-  void _showQualityPicker(
-    BuildContext context,
-    WidgetRef ref, {
-    required String title,
-    required StreamQuality current,
-    required List<StreamQuality> options,
-    required ValueChanged<StreamQuality> onSelected,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                title,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-            ...options.map(
-              (q) => RadioListTile<StreamQuality>(
-                title: Text(q.label),
-                subtitle: q == StreamQuality.disabled
-                    ? const Text('No streaming on this network')
-                    : null,
-                value: q,
-                groupValue: current,
-                onChanged: (v) {
-                  if (v != null) {
-                    onSelected(v);
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showConcurrencyPicker(
-    BuildContext context,
-    WidgetRef ref, {
-    required int current,
-    required ValueChanged<int> onSelected,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Transcode & Download Threads',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-            ...[1, 2, 3, 4, 5, 6].map(
-              (threads) => RadioListTile<int>(
-                title: Text('$threads ${threads == 1 ? "thread" : "threads"}'),
-                subtitle: threads == 2 ? const Text('Default') : null,
-                value: threads,
-                groupValue: current,
-                onChanged: (v) {
-                  if (v != null) {
-                    onSelected(v);
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
   }
 }
 
