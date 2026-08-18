@@ -445,8 +445,16 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _debounceSaveQueue();
   }
 
-  void _updateNowPlayingForSong(Song song) {
-    if (song.id == _lastNowPlayingSongId) return;
+  void _updateNowPlayingForSong(
+    Song song, {
+    bool? isPlaying,
+    Duration? position,
+  }) {
+    if (song.id == _lastNowPlayingSongId &&
+        isPlaying == null &&
+        position == null) {
+      return;
+    }
     _lastNowPlayingSongId = song.id;
 
     String? artUrl;
@@ -459,9 +467,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
     _nowPlaying.updateNowPlaying(
       song: song,
-      position: Duration.zero,
-      duration: state.duration,
-      isPlaying: true,
+      position: position ?? Duration.zero,
+      duration: Duration(seconds: song.duration),
+      isPlaying: isPlaying ?? true,
       artUrl: artUrl,
     );
   }
@@ -1024,8 +1032,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       );
     }
 
-    _lastNowPlayingSongId = song.id;
     _lastSavedPositionSec = position.inSeconds;
+    _lastNowPlayingSongId = null;
+    _updateNowPlayingForSong(song, isPlaying: false, position: position);
   }
 
   void _debounceSaveQueue() {

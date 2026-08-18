@@ -18,6 +18,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Fixed
 
+- **Media keys and macOS playback integration restored.** Hardware play/pause and media keys now reliably control Flax instead of defaulting to Apple Music, thanks to guaranteed bridge initialization on launch, proper Now Playing playback state reporting, and immediate session registration when restoring saved queues.
 - **Album pages fetch the full track listing if only a partial set of songs was cached.** If single songs were previously cached into the local database from search, queues, or playback, opening the album now detects the missing tracks and fetches the complete track list instead of showing a truncated track list.
 - **Window position restores to the correct monitor on multi-monitor setups.** Flax now detects all connected displays and restores the window onto the secondary monitor where it was last placed (or safely returns to the primary monitor if that display is unplugged).
 

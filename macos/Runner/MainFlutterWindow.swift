@@ -67,6 +67,11 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
+    if let appDelegate = NSApplication.shared.delegate as? AppDelegate,
+       appDelegate.nowPlayingBridge == nil {
+      appDelegate.nowPlayingBridge = NowPlayingBridge(messenger: flutterViewController.engine.binaryMessenger)
+    }
+
     super.awakeFromNib()
   }
 }
