@@ -177,7 +177,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
   @override
   Future<void> refreshAlbum(String albumId, {bool force = false}) {
     return _once('album:$albumId', () async {
-      if (!force) {
+      if (!force && !await _albumSongsIncomplete(albumId)) {
         final fetchedAt = await _dao.albumDetailFetchedAt(_serverId, albumId);
         if (!await _shouldFetch(SyncPolicy.albumDetail, fetchedAt)) return;
       }
@@ -187,6 +187,19 @@ class LibraryRepositoryImpl implements LibraryRepository {
       await _dao.upsertAlbums([album], now);
       await _dao.upsertSongs(songs, now);
     });
+  }
+
+  /// Whether fewer of an album's songs are cached than the album claims.
+  ///
+  /// A timestamp cannot answer this. Individual song plays, queues, and search
+  /// results cache songs with an albumId, so an album can have fresh rows while
+  /// its complete track listing has never been fetched. Counting is the only check
+  /// that self-corrects.
+  Future<bool> _albumSongsIncomplete(String albumId) async {
+    final album = await _dao.watchAlbum(_serverId, albumId).first;
+    if (album == null || album.songCount <= 0) return false;
+    final cached = await _dao.cachedAlbumSongCount(_serverId, albumId);
+    return cached < album.songCount;
   }
 
   @override
