@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.4.0 — 2026-08-18
+
 ### Added
 
 - **Windows standalone installer:** Windows releases now provide a full Inno Setup installer (`flax-<version>-windows-x64-setup.exe`) that installs Flax into Program Files, creates Start menu/desktop shortcuts, and registers a standard uninstaller in Windows Settings.
