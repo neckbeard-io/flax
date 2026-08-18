@@ -152,9 +152,11 @@ Three rules, in order of how often they are got wrong:
   under `Changed`. That is the section people actually read.
 
 Cutting a release renames `## Unreleased` to `## v<version> — <YYYY-MM-DD>` and
-starts a fresh `## Unreleased` above it. The release notes on GitHub are that
-section plus the standing install instructions — see the maintainer section
-below.
+starts a fresh `## Unreleased` above it. **That section becomes the GitHub
+release body verbatim** — the workflow extracts it and fails the run if it is
+missing — followed by the standing install instructions. So a line written badly
+here is the line testers read; there is no second pass where someone tidies it
+up. See the maintainer section below.
 
 ---
 
@@ -328,13 +330,28 @@ itself. The run number becomes the build-number. **Never bump `version:` in
 build path. Re-running the same version uploads assets to the existing release
 (`--clobber`) rather than failing.
 
+### The release body is the changelog. This is enforced, not a convention.
+
 Close off the changelog **before** starting the run, in its own commit on
 `main`: rename `## Unreleased` to `## v<version> — <YYYY-MM-DD>` and open a
 fresh `## Unreleased`. The workflow tags whatever `main` points at, so a
-changelog landed afterwards is not in the release it describes. The GitHub
-release body is that section followed by the standing install instructions
-(quarantine, SmartScreen, sideloading) carried over from the previous release —
-those do not change between builds and are not part of the changelog.
+changelog landed afterwards is not in the release it describes.
+
+`release.yml` then reads `CHANGELOG.md`, extracts the `## v<version>` section,
+and publishes it as the release body followed by the standing install
+instructions (quarantine, SmartScreen, sideloading). Those instructions live in
+the workflow, do not change between builds, and are not part of the changelog.
+
+**If the section is missing or empty the run fails**, deliberately and before
+anything is published. Do not work around it by editing the workflow — write the
+changelog entry, which should have been written as part of the change anyway.
+
+This is enforced because it silently failed for a long time. Every release up to
+and including v0.2.3 shipped with the install instructions as its *entire* body:
+the workflow built a `notes.md` containing only those, passed it to
+`--notes-file`, and never read `CHANGELOG.md` at all. The entries existed; they
+just never reached anyone. Re-runs are covered too — an existing release has its
+body refreshed rather than keeping whatever it was created with.
 
 Prefer building macOS **locally** and attaching it — same ad-hoc-signed
 universal .dmg, ~90s, and it avoids the 10x runner:

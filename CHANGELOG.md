@@ -10,16 +10,13 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.3.0 — 2026-08-17
+
 ### Added
 
 - **Browsing loads instantly and works offline.** Artists, albums, artist and album pages, the shuffle on Songs, and search are all kept in a local database and refreshed in the background, so they paint immediately instead of waiting on the server — and they still open with no network at all. flax asks the server whether anything actually changed before refetching, so a library that has not been rescanned costs one tiny request rather than a full reload, and it re-checks whenever you come back to the window.
 - **Search finds cached music with no connection**, and still widens to the whole library when the server is reachable.
-
 - **Background work is visible:** Long-running jobs now appear above Settings in the sidebar, with progress, transfer speed and a rough time remaining. Click it for a panel listing everything running, where each job can be canceled.
-
-### Fixed
-
-- **Clicking a result in the sidebar search now opens it.** It previously dismissed the dropdown and went nowhere, leaving what you had typed in the box.
 
 ### Changed
 
@@ -27,6 +24,10 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - **Favorites you change elsewhere now show up.** Hearting something in Navidrome's web interface, or on your phone, is picked up when flax next comes to the foreground — in both directions, so a heart you removed is removed here too.
 - **Artist pages list all of an artist's albums.** They previously searched the library for the artist's name and kept whatever matched, which both missed albums and could claim albums belonging to a different artist with a similar name.
 - **Downloading the AutoEQ database shows real progress.** It reports megabytes transferred, how fast, and roughly how long is left, instead of a line of text — and it can now be canceled part-way. The download is around 100 MB, so this was worth knowing.
+
+### Fixed
+
+- **Clicking a result in the sidebar search now opens it.** It previously dismissed the dropdown and went nowhere, leaving what you had typed in the box.
 
 ## v0.2.3 — 2026-08-15
 
