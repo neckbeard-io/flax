@@ -10,6 +10,10 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Removed
+
+- **Removed redundant "Go to Album" option** from the right-click context menu on albums.
+
 ## v0.3.0 — 2026-08-17
 
 ### Added
