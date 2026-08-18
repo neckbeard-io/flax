@@ -464,6 +464,7 @@ class _CacheStatusCard extends StatelessWidget {
               cachedCount: summary.artistInfoCached,
               totalCount: summary.artistInfoTotal,
               bytes: summary.artistInfoBytes,
+              emptyCount: summary.artistInfoEmptyCount,
               enabled: config.cacheArtistInfo,
             ),
           ],
@@ -488,6 +489,7 @@ class _StatusRow extends StatelessWidget {
   final int cachedCount;
   final int totalCount;
   final int bytes;
+  final int emptyCount;
   final bool enabled;
 
   const _StatusRow({
@@ -496,13 +498,25 @@ class _StatusRow extends StatelessWidget {
     required this.cachedCount,
     required this.totalCount,
     required this.bytes,
+    this.emptyCount = 0,
     required this.enabled,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isComplete = enabled && totalCount > 0 && cachedCount >= totalCount;
+    final isComplete =
+        enabled && totalCount > 0 && (cachedCount + emptyCount) >= totalCount;
+
+    String subtitle;
+    if (!enabled) {
+      subtitle = 'Disabled';
+    } else if (emptyCount > 0 && isComplete) {
+      subtitle =
+          '$cachedCount of $totalCount cached (${formatBytes(bytes)}) · $emptyCount without online bio';
+    } else {
+      subtitle = '$cachedCount of $totalCount cached (${formatBytes(bytes)})';
+    }
 
     return Row(
       children: [
@@ -538,9 +552,7 @@ class _StatusRow extends StatelessWidget {
                 ],
               ),
               Text(
-                enabled
-                    ? '$cachedCount of $totalCount cached (${formatBytes(bytes)})'
-                    : 'Disabled',
+                subtitle,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

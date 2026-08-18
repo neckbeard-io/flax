@@ -27,6 +27,7 @@ class MetadataCacheSummary {
   final int artistInfoCached;
   final int artistInfoTotal;
   final int artistInfoBytes;
+  final int artistInfoEmptyCount;
 
   final DateTime? lastSyncedAt;
 
@@ -40,6 +41,7 @@ class MetadataCacheSummary {
     this.artistInfoCached = 0,
     this.artistInfoTotal = 0,
     this.artistInfoBytes = 0,
+    this.artistInfoEmptyCount = 0,
     this.lastSyncedAt,
   });
 
@@ -50,7 +52,8 @@ class MetadataCacheSummary {
     final artistArtOk =
         artistArtTotal == 0 || artistArtCached >= artistArtTotal;
     final artistInfoOk =
-        artistInfoTotal == 0 || artistInfoCached >= artistInfoTotal;
+        artistInfoTotal == 0 ||
+        (artistInfoCached + artistInfoEmptyCount) >= artistInfoTotal;
     return albumOk && artistArtOk && artistInfoOk;
   }
 }
@@ -151,13 +154,18 @@ class MetadataSyncService {
       }
 
       int artistInfoCached = 0;
+      int artistInfoEmptyCount = 0;
       int artistInfoBytes = 0;
       final artistInfoTotal = artists.length;
 
       for (final a in artists) {
-        if (a.biography != null && a.biography!.isNotEmpty) {
-          artistInfoCached++;
-          artistInfoBytes += utf8.encode(a.biography!).length;
+        if (a.biography != null) {
+          if (a.biography!.isNotEmpty) {
+            artistInfoCached++;
+            artistInfoBytes += utf8.encode(a.biography!).length;
+          } else {
+            artistInfoEmptyCount++;
+          }
         }
       }
 
@@ -171,6 +179,7 @@ class MetadataSyncService {
         artistInfoCached: artistInfoCached,
         artistInfoTotal: artistInfoTotal,
         artistInfoBytes: artistInfoBytes,
+        artistInfoEmptyCount: artistInfoEmptyCount,
         lastSyncedAt: config.lastSyncedAt,
       );
     } catch (e) {
@@ -331,7 +340,7 @@ class MetadataSyncService {
       if (config.cacheArtistInfo) {
         for (final artist in artists) {
           if (_isCanceled || handle.isCanceled) return;
-          if (artist.biography == null || artist.biography!.isEmpty) {
+          if (artist.biography == null) {
             workItems.add(_ArtistInfoWorkItem(artist: artist));
           }
         }
@@ -511,17 +520,16 @@ class _ArtistInfoWorkItem extends _SyncWorkItem {
     BaseCacheManager cacheManager,
   ) async {
     final info = await client.getArtistInfoParsed(artist.id);
-    if (info != null) {
-      final updated = artist.copyWith(
-        biography: info.biography,
-        musicBrainzId: info.musicBrainzId,
-        imageUrl:
-            info.largeImageUrl ?? info.mediumImageUrl ?? info.smallImageUrl,
-      );
-      await dao.upsertArtists([updated], DateTime.now());
-      return 512;
-    }
-    return 0;
+    final updated = artist.copyWith(
+      biography: info?.biography ?? '',
+      musicBrainzId: info?.musicBrainzId,
+      imageUrl:
+          info?.largeImageUrl ?? info?.mediumImageUrl ?? info?.smallImageUrl,
+    );
+    await dao.upsertArtists([updated], DateTime.now());
+    return (info?.biography != null && info!.biography!.isNotEmpty)
+        ? utf8.encode(info.biography!).length
+        : 0;
   }
 }
 
