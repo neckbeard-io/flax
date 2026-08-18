@@ -28,6 +28,21 @@ class MetadataCachingScreen extends ConsumerWidget {
         body: const Center(child: Text('No server connected')),
       );
     }
+    ref.listen<List<Task>>(taskRegistryProvider, (prev, next) {
+      final prevActive =
+          prev
+              ?.where(
+                (t) => t.kind == TaskKind.metadataCrawl && t.state.isActive,
+              )
+              .isNotEmpty ??
+          false;
+      final nextActive = next
+          .where((t) => t.kind == TaskKind.metadataCrawl && t.state.isActive)
+          .isNotEmpty;
+      if (prevActive && !nextActive) {
+        ref.invalidate(metadataCacheSummaryProvider(server.id));
+      }
+    });
 
     final summaryAsync = ref.watch(metadataCacheSummaryProvider(server.id));
     final config = server.metadataCacheConfig;
@@ -41,6 +56,7 @@ class MetadataCachingScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: summaryAsync.when(
+              skipLoadingOnReload: true,
               loading: () => const Card(
                 child: Padding(
                   padding: EdgeInsets.all(16),

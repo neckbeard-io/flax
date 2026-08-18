@@ -538,8 +538,5 @@ final metadataCacheSummaryProvider =
       final dao = ref.watch(libraryDaoProvider);
       final service = ref.watch(metadataSyncServiceProvider);
 
-      // Invalidate when tasks finish
-      ref.watch(taskRegistryProvider);
-
       return service.getSummary(server, dao);
     });
