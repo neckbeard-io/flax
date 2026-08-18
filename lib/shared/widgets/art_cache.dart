@@ -42,8 +42,8 @@ class ArtCache {
   static final CacheManager instance = CacheManager(
     Config(
       key,
-      stalePeriod: const Duration(days: 365),
-      maxNrOfCacheObjects: 50000,
+      stalePeriod: const Duration(days: 365 * 100),
+      maxNrOfCacheObjects: 1000000000,
     ),
   );
 
