@@ -314,12 +314,11 @@ contributor cannot run it, and does not need to — open a PR and leave releases
 to a maintainer.
 
 `.github/workflows/release.yml` is **manual and opt-in per platform**. It has no
-push or tag trigger: this is a private repo, so runner minutes are billed at a
-multiplier (macOS 10x, Windows 2x, Linux 1x) and nothing expensive should ever
-fire by accident. Every platform defaults to off.
+push or tag trigger so releases are triggered deliberately. Since the repo is
+public, GitHub Actions runner minutes are free across macOS, Windows, and Linux.
 
 ```bash
-gh workflow run release.yml -f version=0.1.1 -f windows=true -f android=true
+gh workflow run release.yml -f version=0.4.1 -f macos=true -f windows=true -f android=true
 gh run watch $(gh run list --workflow=release.yml -L1 --json databaseId --jq '.[0].databaseId')
 ```
 
@@ -353,13 +352,12 @@ the workflow built a `notes.md` containing only those, passed it to
 just never reached anyone. Re-runs are covered too — an existing release has its
 body refreshed rather than keeping whatever it was created with.
 
-Prefer building macOS **locally** and attaching it — same ad-hoc-signed
-universal .dmg, ~90s, and it avoids the 10x runner:
+macOS builds can also be built locally via `tool/release.sh --mac` (~90s on Apple Silicon):
 
 ```bash
-tool/release.sh --mac --version 0.1.1   # just the .dmg
-tool/release.sh --version 0.1.1         # macOS .dmg + Android .apk, into dist/
-gh release upload v0.1.1 dist/flax-0.1.1-macos-universal.dmg
+tool/release.sh --mac --version 0.4.1   # just the .dmg
+tool/release.sh --version 0.4.1         # macOS .dmg + Android .apk, into dist/
+gh release upload v0.4.1 dist/flax-0.4.1-macos-universal.dmg
 ```
 
 **Always pass `--version` when cutting a release.** Without it the script takes
