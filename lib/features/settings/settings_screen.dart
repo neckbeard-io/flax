@@ -129,8 +129,9 @@ class SettingsScreen extends ConsumerWidget {
               'Automatically switch to the Now Playing screen when starting playback',
             ),
             value: ref.watch(playbackSettingsProvider).autoSwitchToNowPlaying,
-            onChanged: (v) =>
-                ref.read(playbackSettingsProvider.notifier).setAutoSwitchToNowPlaying(v),
+            onChanged: (v) => ref
+                .read(playbackSettingsProvider.notifier)
+                .setAutoSwitchToNowPlaying(v),
           ),
           ListTile(
             title: const Text('Audio Output'),

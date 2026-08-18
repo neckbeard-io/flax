@@ -104,20 +104,56 @@ Store licensing.
 
 In order:
 
-1. Obtain a `libmpv` built `--enable-lgpl`, with FFmpeg also built LGPL (no
-   `--enable-gpl`). Today's binaries come from `mpv_audio_kit`'s GitHub releases
-   with no licence statement anywhere, and their FFmpeg configuration string is
-   stripped, so this means asking upstream or building libmpv here.
+1. Obtain a `libmpv` built `-Dgpl=false`, **with FFmpeg also built LGPL** (no
+   `--enable-gpl`, no `--enable-version3`). Today's binaries are neither — see
+   [License](#license) for the flags and how they are known. Three specific
+   changes to upstream's build get there, and none is speculative:
+   - **Drop `--enable-librubberband`.** It is the only thing pulling
+     `--enable-gpl`, and flax uses neither time-stretch nor pitch-shift — there
+     is no `speed` or `pitch` call anywhere in `lib/`. Free to lose.
+   - **Replace OpenSSL.** Apache-2.0 is what forces `--enable-version3`, and
+     mbedTLS is Apache-2.0 too, so it is not the swap. GnuTLS (LGPL-2.1+) or
+     the platform TLS backends are.
+   - **Flip `-Dgpl=false`.** Only meaningful once the two above are done.
 2. Audit for GPL-only components. The one that matters today is already clear:
    `af_superequalizer.c`, which the 18-band EQ runs on, is LGPL-2.1-or-later and
    is not gated behind FFmpeg's `CONFIG_GPL`. Re-check when adopting further
    effects — some FFmpeg filters *are* GPL-gated.
 3. Link it dynamically and be able to supply source and objects, so a user can
-   relink a modified library (LGPL-2.1 §6).
+   relink a modified library (LGPL-2.1 §6). The shape of this is already in
+   place: libmpv ships as a dynamic `.xcframework` / `.dll` / `.so` and is
+   loaded through `DynamicLibrary.open`, never statically linked.
 4. Then relicense. Target **LGPL-2.1**, never LGPL-3: v3 carries the same
    anti-tivoization problem as GPLv3 and lands back at the start. VLC took
    exactly this route after being pulled from the App Store for being GPL, so it
    is a travelled path rather than a theory.
+
+Two things about step 1, both from [mpv's own `Copyright`
+file](https://github.com/mpv-player/mpv/blob/master/Copyright), because the flag
+is easy to over-read:
+
+- **The switch is not a license grant.** Upstream is explicit that "the build
+  system is provided 'as is' and using the `-Dgpl=false` configure switch does
+  not in itself create a LGPLv2.1+ license grant." It excludes GPL-only files;
+  it does not hand you permission. (`-Dgpl=false` is the meson option. Older
+  material says `--enable-lgpl`, which was the retired waf build.)
+- **FFmpeg can undo it.** "Linked libraries still can affect the final license
+  (for example if FFmpeg was built as GPL)." An LGPL mpv linked against a GPL
+  FFmpeg is still GPL, and prebuilt FFmpeg is usually GPL — so FFmpeg, not the
+  mpv flag, is the hard half of step 1.
+
+What LGPL mode gives up does not touch flax. The disabled set is X11 and Xv
+video output, OSS and jack audio, VDPAU/VAAPI, CACA, direct3d, and DVD/DVB/CDDA
+streaming — Linux and BSD video paths and legacy disc sources. flax is audio
+only, on macOS, Windows and Android. Upstream also says LGPL mode is intended
+for libmpv and discourages it for the mpv CLI; libmpv is exactly what flax uses.
+
+Delivering a replacement library needs no patching of the plugin. Each platform
+hook (`macos/mpv_audio_kit.podspec`, `windows/CMakeLists.txt`,
+`android/build.gradle.kts`) checks for a local binary first and only downloads
+when one is absent or fails its SHA-256 — the plugin calls this LOCAL mode, and
+the macOS path skips the hash check outright when the `.xcframework` is already
+vendored. A self-built libmpv dropped in place is used as-is.
 
 Timing is the one real constraint. flax has a single copyright holder today, so
 relicensing is unilateral; once outside contributions are accepted under GPL that
@@ -233,13 +269,29 @@ table.
 [GNU General Public License v3.0 or later](LICENSE).
 
 This is not a free choice: flax ships prebuilt `libmpv` binaries inside every
-artifact, and mpv is copyleft. Upstream mpv is GPLv2-or-later unless it is
-deliberately built `--enable-lgpl`, the binaries flax downloads carry no licence
-statement either in the archive or in the plugin that publishes them, and the
-FFmpeg configuration string is stripped from them — so there is no way to
-confirm they are the LGPL variant. Assuming the GPL build is the safe reading,
-and a GPL-licensed whole is valid whichever variant they turn out to be, since
-LGPL is one-way compatible with GPL.
+artifact, and those binaries are GPL. This is confirmed, not assumed — the
+binaries carry no license statement and their FFmpeg configuration string is
+stripped, but `mpv_audio_kit`'s author publishes the build scripts at
+[ales-drnz/libmpv-scripts](https://github.com/ales-drnz/libmpv-scripts), and
+`scripts/shared/_audio_only.sh` settles it:
+
+| Build | Flag | Effect |
+| --- | --- | --- |
+| FFmpeg | `--enable-gpl` | GPLv2+ |
+| FFmpeg | `--enable-version3` | upgrades that to **GPLv3** |
+| mpv | `-Dgpl=true` | GPL mode, not the LGPL build |
+
+So the bundled library is **GPLv3**, and the combined work flax distributes has
+to be GPLv3-or-later. That is what `LICENSE` already says, which is fortunate
+rather than planned — the version was a cautious guess before the build scripts
+existed.
+
+Neither flag is incidental; each is pulled in by one dependency:
+
+- `--enable-gpl` is required by **librubberband**, a GPLv2 library FFmpeg lists
+  as GPL-only. It provides time-stretch and pitch-shift.
+- `--enable-version3` is required by **OpenSSL 3**, which is Apache-2.0 —
+  incompatible with GPLv2 but fine with v3. `_versions.sh` says as much.
 
 Practical consequences, since handing a build to someone else is distribution:
 
@@ -249,7 +301,7 @@ Practical consequences, since handing a build to someone else is distribution:
   distribution — GPLv3's anti-tivoization terms conflict with App Store
   licensing. Neither is planned.
 
-If the bundled libmpv is ever confirmed to be the LGPL build, or is replaced with
-one, this could be relaxed to a permissive licence — see
+If the bundled libmpv is ever replaced with an LGPL build, this could be relaxed
+to a permissive license — see
 [Relicensing](#relicensing) for what that actually takes, and why it has to
 happen in that order. Until then, GPL is the defensible choice.
