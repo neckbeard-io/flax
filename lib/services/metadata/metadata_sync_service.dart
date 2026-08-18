@@ -156,13 +156,12 @@ class MetadataSyncService {
     }
   }
 
-  /// Cancels an in-progress metadata sync.
+  /// Cancels an in-progress metadata sync immediately.
   void cancel() {
     _isCanceled = true;
     final handle = _activeHandle;
     if (handle != null) {
       _ref.read(taskRegistryProvider.notifier).cancel(handle.id);
-      _activeHandle = null;
     }
   }
 
@@ -180,7 +179,9 @@ class MetadataSyncService {
       kind: TaskKind.metadataCrawl,
       label: 'Syncing metadata & cover art',
       serverId: server.id,
-      onCancel: () => cancel(),
+      onCancel: () {
+        _isCanceled = true;
+      },
     );
     _activeHandle = handle;
     handle.enumerating();
@@ -207,7 +208,7 @@ class MetadataSyncService {
           if (page.length < pageSize) break;
           offset += pageSize;
         }
-        if (allFetched.isNotEmpty) {
+        if (!_isCanceled && !handle.isCanceled && allFetched.isNotEmpty) {
           await dao.upsertAlbums(allFetched, DateTime.now());
           albums = allFetched;
         }
@@ -221,7 +222,7 @@ class MetadataSyncService {
       if (artists.isEmpty) {
         try {
           final fetchedArtists = await client.getArtists();
-          if (fetchedArtists.isNotEmpty) {
+          if (!_isCanceled && !handle.isCanceled && fetchedArtists.isNotEmpty) {
             await dao.upsertArtists(fetchedArtists, DateTime.now());
             artists = fetchedArtists;
           }
@@ -242,6 +243,7 @@ class MetadataSyncService {
       if (config.albumArtQuality != MetadataQuality.disabled) {
         final reqSize = config.albumArtQuality.requestSize;
         for (final album in albums) {
+          if (_isCanceled || handle.isCanceled) return;
           if (album.coverArtId != null && album.coverArtId!.isNotEmpty) {
             final key = 'cover-${album.coverArtId}-${reqSize ?? "orig"}';
             final cached = await _artCache.getFileFromCache(key);
@@ -260,6 +262,7 @@ class MetadataSyncService {
       if (config.artistArtQuality != MetadataQuality.disabled) {
         final reqSize = config.artistArtQuality.requestSize;
         for (final artist in artists) {
+          if (_isCanceled || handle.isCanceled) return;
           if (artist.coverArtId != null && artist.coverArtId!.isNotEmpty) {
             final key = 'cover-${artist.coverArtId}-${reqSize ?? "orig"}';
             final cached = await _artCache.getFileFromCache(key);
@@ -277,11 +280,14 @@ class MetadataSyncService {
 
       if (config.cacheArtistInfo) {
         for (final artist in artists) {
+          if (_isCanceled || handle.isCanceled) return;
           if (artist.biography == null || artist.biography!.isEmpty) {
             workItems.add(_ArtistInfoWorkItem(artist: artist));
           }
         }
       }
+
+      if (_isCanceled || handle.isCanceled) return;
 
       handle.enumerated(items: workItems.length);
 
@@ -298,7 +304,6 @@ class MetadataSyncService {
             );
         handle.note(null);
         handle.complete();
-        _activeHandle = null;
         return;
       }
 
@@ -309,14 +314,13 @@ class MetadataSyncService {
       int bytesDone = 0;
 
       Future<void> worker() async {
-        while (currentIndex < workItems.length &&
-            !_isCanceled &&
-            !handle.isCanceled) {
+        while (!_isCanceled && !handle.isCanceled) {
           final itemIndex = currentIndex++;
           if (itemIndex >= workItems.length) break;
           final item = workItems[itemIndex];
 
           try {
+            if (_isCanceled || handle.isCanceled) break;
             handle.note(item.description);
             final bytes = await item.execute(client, dao, server.id, _artCache);
             if (!_isCanceled && !handle.isCanceled) {
