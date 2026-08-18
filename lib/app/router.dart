@@ -15,6 +15,7 @@ import 'package:flax/features/settings/audio_output_screen.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/transcoding_screen.dart';
 import 'package:flax/features/settings/autoeq_screen.dart';
+import 'package:flax/features/settings/metadata_caching_screen.dart';
 import 'package:flax/features/player/now_playing_screen.dart';
 import 'package:flax/shared/widgets/shell_scaffold.dart';
 
@@ -131,6 +132,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'autoeq',
                 builder: (context, state) => const AutoEqScreen(),
+              ),
+              GoRoute(
+                path: 'metadata-cache',
+                builder: (context, state) => const MetadataCachingScreen(),
               ),
             ],
           ),
