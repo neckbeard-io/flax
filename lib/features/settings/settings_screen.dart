@@ -156,6 +156,17 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.go('/settings/transcoding'),
           ),
+          ListTile(
+            title: const Text('Metadata Caching'),
+            subtitle: Text(
+              activeServer != null
+                  ? 'Covers: ${activeServer.metadataCacheConfig.albumArtQuality.label} · '
+                        'Artist Info: ${activeServer.metadataCacheConfig.cacheArtistInfo ? "On" : "Off"}'
+                  : 'No server',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go('/settings/metadata-cache'),
+          ),
           const Divider(),
 
           // ── About ──
