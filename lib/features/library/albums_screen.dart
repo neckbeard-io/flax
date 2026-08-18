@@ -233,7 +233,6 @@ class AlbumGrid extends StatelessWidget {
                     aspectRatio: 1,
                     child: HoverArtwork(
                       onTap: () => context.push('/albums/${album.id}'),
-                      showPlayBadge: true,
                       // No explicit size: CoverArtImage measures its own box and
                       // fetches to match, so a wider desktop tile pulls a
                       // correspondingly larger image.
