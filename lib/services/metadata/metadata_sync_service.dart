@@ -235,41 +235,68 @@ class MetadataSyncService {
 
       if (_isCanceled || handle.isCanceled) return;
 
-      // 2. Build sync work items
+      // 2. Build sync work items for MISSING metadata & artwork only
+      handle.note('Checking for missing artwork and metadata...');
       final workItems = <_SyncWorkItem>[];
 
       if (config.albumArtQuality != MetadataQuality.disabled) {
+        final reqSize = config.albumArtQuality.requestSize;
         for (final album in albums) {
           if (album.coverArtId != null && album.coverArtId!.isNotEmpty) {
-            workItems.add(
-              _AlbumArtWorkItem(album: album, quality: config.albumArtQuality),
-            );
+            final key = 'cover-${album.coverArtId}-${reqSize ?? "orig"}';
+            final cached = await _artCache.getFileFromCache(key);
+            if (cached == null) {
+              workItems.add(
+                _AlbumArtWorkItem(
+                  album: album,
+                  quality: config.albumArtQuality,
+                ),
+              );
+            }
           }
         }
       }
 
       if (config.artistArtQuality != MetadataQuality.disabled) {
+        final reqSize = config.artistArtQuality.requestSize;
         for (final artist in artists) {
           if (artist.coverArtId != null && artist.coverArtId!.isNotEmpty) {
-            workItems.add(
-              _ArtistArtWorkItem(
-                artist: artist,
-                quality: config.artistArtQuality,
-              ),
-            );
+            final key = 'cover-${artist.coverArtId}-${reqSize ?? "orig"}';
+            final cached = await _artCache.getFileFromCache(key);
+            if (cached == null) {
+              workItems.add(
+                _ArtistArtWorkItem(
+                  artist: artist,
+                  quality: config.artistArtQuality,
+                ),
+              );
+            }
           }
         }
       }
 
       if (config.cacheArtistInfo) {
         for (final artist in artists) {
-          workItems.add(_ArtistInfoWorkItem(artist: artist));
+          if (artist.biography == null || artist.biography!.isEmpty) {
+            workItems.add(_ArtistInfoWorkItem(artist: artist));
+          }
         }
       }
 
       handle.enumerated(items: workItems.length);
 
       if (workItems.isEmpty) {
+        // Record timestamp on completion
+        _ref
+            .read(serverListProvider.notifier)
+            .updateServer(
+              server.copyWith(
+                metadataCacheConfig: config.copyWith(
+                  lastSyncedAt: DateTime.now(),
+                ),
+              ),
+            );
+        handle.note(null);
         handle.complete();
         _activeHandle = null;
         return;
