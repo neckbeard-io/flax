@@ -39,10 +39,7 @@ Without that, macOS 15+ reports the app as *damaged*.
 
 ### Windows
 
-Extract **the whole folder** somewhere permanent and run `flax.exe` from inside
-it — the executable needs the sibling DLLs and the `data/` directory, so
-copying out just the `.exe` will not start. SmartScreen will warn: *More info* →
-*Run anyway*.
+Download and run the installer `flax-<version>-windows-x64-setup.exe` (or extract the portable `.zip` archive whole). The installer automatically places Flax into `Program Files`, adds Start menu shortcuts, and bundles all runtime DLLs. SmartScreen will warn on first launch: *More info* → *Run anyway*.
 
 ### Android
 
@@ -154,32 +151,23 @@ dart run tool/verify_presets.dart   # equalizer preset table consistency
 
 ## Releasing
 
-Release builds are **manual and opt-in per platform**, because the repo is
-private and runner minutes bill at a multiplier (macOS 10×, Windows 2×). Nothing
-fires on push or on a tag.
+Release builds are triggered via the manual GitHub Actions workflow:
 
 ```bash
-gh workflow run release.yml -f version=0.1.2 -f windows=true -f android=true
+gh workflow run release.yml -f version=0.4.1 -f macos=true -f windows=true -f android=true
 ```
 
 The `version` input drives everything: it becomes the build name, the
 `v`-prefixed tag, and the release title. Never bump `version:` in
 `pubspec.yaml` — it is overridden on every build path.
 
-Prefer building macOS locally and attaching it, which avoids the 10× runner:
+Since the repository is public, GitHub Actions runners for all platforms (macOS,
+Windows, and Linux/Android) run for free with unlimited standard runner minutes.
+macOS and Android builds can also be built locally via `tool/release.sh`.
 
-```bash
-tool/release.sh --mac
-gh release upload v0.1.2 dist/flax-0.1.2-macos-universal.dmg
-```
-
-Windows cannot be cross-compiled from macOS, so it only exists on CI.
-
-Android release signing needs `android/key.properties` and a keystore, both
-gitignored; CI restores them from repository secrets. Without them Gradle
-silently falls back to a per-machine debug key, and the resulting APKs cannot be
-installed over a real test build — `tool/release.sh` refuses to build rather
-than ship one.
+Android release signing uses `android/key.properties` and a keystore, both
+gitignored; CI restores them from repository secrets so test APKs upgrade in
+place seamlessly across releases.
 
 ---
 
