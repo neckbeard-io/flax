@@ -188,26 +188,34 @@ class MetadataSyncService {
     try {
       final config = server.metadataCacheConfig;
 
-      // 1. Gather all entities from local database or fetch if empty
+      // 1. Gather all entities from local database or fetch if missing/incomplete
       var albums = await dao.watchAllAlbums(server.id).first;
       var artists = await dao.watchArtists(server.id).first;
 
-      if (albums.isEmpty) {
-        try {
-          final fetchedAlbums = await client.getAlbumList(
+      try {
+        var offset = 0;
+        const pageSize = 500;
+        final allFetched = <Album>[];
+        while (!_isCanceled && !handle.isCanceled) {
+          handle.note('Indexing library: ${allFetched.length} albums found');
+          final page = await client.getAlbumList(
             AlbumListType.alphabeticalByName,
-            count: 2000,
+            count: pageSize,
+            offset: offset,
           );
-          if (fetchedAlbums.isNotEmpty) {
-            await dao.upsertAlbums(fetchedAlbums, DateTime.now());
-            albums = fetchedAlbums;
-          }
-        } catch (e) {
-          developer.log(
-            'Error fetching albums: $e',
-            name: 'MetadataSyncService',
-          );
+          allFetched.addAll(page);
+          if (page.length < pageSize) break;
+          offset += pageSize;
         }
+        if (allFetched.isNotEmpty) {
+          await dao.upsertAlbums(allFetched, DateTime.now());
+          albums = allFetched;
+        }
+      } catch (e) {
+        developer.log(
+          'Error fetching full album list: $e',
+          name: 'MetadataSyncService',
+        );
       }
 
       if (artists.isEmpty) {

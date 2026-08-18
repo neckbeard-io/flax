@@ -91,6 +91,13 @@ void main() {
       mockDao.watchAllAlbums('srv-1'),
     ).thenAnswer((_) => Stream.value(testAlbums));
     when(
+      mockClient.getAlbumList(
+        any,
+        count: anyNamed('count'),
+        offset: anyNamed('offset'),
+      ),
+    ).thenAnswer((_) async => testAlbums);
+    when(
       mockClient.getCoverArtUri(any, size: anyNamed('size')),
     ).thenReturn(Uri.parse('https://music.example.com/cover'));
     when(
