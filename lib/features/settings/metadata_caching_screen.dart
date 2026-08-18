@@ -8,6 +8,7 @@ import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/metadata/metadata_sync_service.dart';
+import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 
 class MetadataCachingScreen extends ConsumerWidget {
@@ -340,15 +341,9 @@ class MetadataCachingScreen extends ConsumerWidget {
     Server server,
   ) async {
     final syncService = ref.read(metadataSyncServiceProvider);
-    final client = ref.read(subsonicClientProvider);
+    final client =
+        ref.read(subsonicClientProvider) ?? SubsonicClient(server: server);
     final dao = ref.read(libraryDaoProvider);
-
-    if (client == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Server client not available')),
-      );
-      return;
-    }
 
     final isCellular = await syncService.isCellularConnection();
     if (isCellular && context.mounted) {
