@@ -55,36 +55,52 @@ class NowPlayingBridge: NSObject {
         }
     }
 
+    private var lastMediaCommandTime: TimeInterval = 0
+
+    private func throttleMediaEvent() -> Bool {
+        let now = ProcessInfo.processInfo.systemUptime
+        if now - lastMediaCommandTime < 0.35 {
+            return true
+        }
+        lastMediaCommandTime = now
+        return false
+    }
+
     private func setupRemoteCommands() {
         let commandCenter = MPRemoteCommandCenter.shared()
 
         commandCenter.playCommand.isEnabled = true
         commandCenter.playCommand.addTarget { [weak self] _ in
-            self?.channel.invokeMethod("onPlay", arguments: nil)
+            guard let self = self, !self.throttleMediaEvent() else { return .success }
+            self.channel.invokeMethod("onPlay", arguments: nil)
             return .success
         }
 
         commandCenter.pauseCommand.isEnabled = true
         commandCenter.pauseCommand.addTarget { [weak self] _ in
-            self?.channel.invokeMethod("onPause", arguments: nil)
+            guard let self = self, !self.throttleMediaEvent() else { return .success }
+            self.channel.invokeMethod("onPause", arguments: nil)
             return .success
         }
 
         commandCenter.togglePlayPauseCommand.isEnabled = true
         commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
-            self?.channel.invokeMethod("onTogglePlayPause", arguments: nil)
+            guard let self = self, !self.throttleMediaEvent() else { return .success }
+            self.channel.invokeMethod("onTogglePlayPause", arguments: nil)
             return .success
         }
 
         commandCenter.nextTrackCommand.isEnabled = true
         commandCenter.nextTrackCommand.addTarget { [weak self] _ in
-            self?.channel.invokeMethod("onNext", arguments: nil)
+            guard let self = self, !self.throttleMediaEvent() else { return .success }
+            self.channel.invokeMethod("onNext", arguments: nil)
             return .success
         }
 
         commandCenter.previousTrackCommand.isEnabled = true
         commandCenter.previousTrackCommand.addTarget { [weak self] _ in
-            self?.channel.invokeMethod("onPrevious", arguments: nil)
+            guard let self = self, !self.throttleMediaEvent() else { return .success }
+            self.channel.invokeMethod("onPrevious", arguments: nil)
             return .success
         }
 
@@ -190,6 +206,7 @@ class NowPlayingBridge: NSObject {
         let isKeyDown = ((keyFlags & 0xFF00) >> 8) == 0xA
 
         guard isKeyDown else { return false }
+        guard !throttleMediaEvent() else { return true }
 
         switch keyCode {
         case 16: // NX_KEYTYPE_PLAY / PAUSE (F8)

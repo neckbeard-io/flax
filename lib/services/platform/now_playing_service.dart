@@ -23,7 +23,19 @@ class NowPlayingService {
     }
   }
 
+  DateTime? _lastTransportEventTime;
+
   Future<void> _handleMethod(MethodCall call) async {
+    if (call.method != 'onSeek') {
+      final now = DateTime.now();
+      if (_lastTransportEventTime != null &&
+          now.difference(_lastTransportEventTime!) <
+              const Duration(milliseconds: 300)) {
+        return;
+      }
+      _lastTransportEventTime = now;
+    }
+
     switch (call.method) {
       case 'onPlay':
         onPlay?.call();
