@@ -17,7 +17,9 @@ import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flax/services/platform/now_playing_service.dart';
+import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/async/coalescing_runner.dart';
 import 'package:flax/shared/audio/eq_filter.dart';
 
@@ -37,6 +39,13 @@ class PlayerState {
   final RepeatMode repeatMode;
   final bool buffering;
 
+  /// Active transcoding parameters for the current stream, or null if playing
+  /// at original source quality.
+  final TranscodeParameters? activeTranscode;
+
+  /// Human-readable error if playback was prevented (e.g. streaming disabled).
+  final String? playbackError;
+
   const PlayerState({
     this.currentSong,
     this.queue = const [],
@@ -49,6 +58,8 @@ class PlayerState {
     this.shuffle = false,
     this.repeatMode = RepeatMode.off,
     this.buffering = false,
+    this.activeTranscode,
+    this.playbackError,
   });
 
   /// Attenuation the current fader position corresponds to, in dB, or null at
@@ -67,6 +78,10 @@ class PlayerState {
     bool? shuffle,
     RepeatMode? repeatMode,
     bool? buffering,
+    TranscodeParameters? activeTranscode,
+    bool clearActiveTranscode = false,
+    String? playbackError,
+    bool clearPlaybackError = false,
   }) {
     return PlayerState(
       currentSong: currentSong ?? this.currentSong,
@@ -80,6 +95,12 @@ class PlayerState {
       shuffle: shuffle ?? this.shuffle,
       repeatMode: repeatMode ?? this.repeatMode,
       buffering: buffering ?? this.buffering,
+      activeTranscode: clearActiveTranscode
+          ? null
+          : (activeTranscode ?? this.activeTranscode),
+      playbackError: clearPlaybackError
+          ? null
+          : (playbackError ?? this.playbackError),
     );
   }
 }
@@ -262,12 +283,41 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     state = state.copyWith(position: Duration.zero, isPlaying: false);
   }
 
-  Uri _streamUri(Song song) {
+  Future<List<ConnectivityResult>> _getConnectivity() async {
+    try {
+      return await Connectivity().checkConnectivity();
+    } catch (_) {
+      return [ConnectivityResult.wifi];
+    }
+  }
+
+  TranscodeParameters? _resolveTranscode(
+    List<ConnectivityResult> connectivity,
+  ) {
+    final server = _ref.read(activeServerProvider);
+    if (server == null) return null;
+    try {
+      return TranscodingService.resolveStreamParameters(
+        server: server,
+        connectivity: connectivity,
+      );
+    } on StreamingDisabledException {
+      rethrow;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Uri _streamUri(Song song, [TranscodeParameters? transcode]) {
     final client = _ref.read(subsonicClientProvider);
     if (client == null) {
       throw Exception('No server connected');
     }
-    return client.getStreamUri(song.id);
+    return client.getStreamUri(
+      song.id,
+      maxBitRate: transcode?.maxBitRate,
+      format: transcode?.format,
+    );
   }
 
   // ── The queue, as mpv holds it ─────────────────────────────────────
@@ -305,10 +355,38 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     int index, {
     required bool play,
   }) async {
+    final connectivity = await _getConnectivity();
+    TranscodeParameters? transcode;
+    try {
+      transcode = _resolveTranscode(connectivity);
+    } on StreamingDisabledException catch (e) {
+      if (!mounted) return;
+      state = state.copyWith(
+        queue: songs,
+        queueIndex: index,
+        currentSong: songs.isNotEmpty && index < songs.length
+            ? songs[index]
+            : null,
+        isPlaying: false,
+        clearActiveTranscode: true,
+        playbackError: e.message,
+      );
+      developer.log('Streaming disabled: ${e.message}', name: 'PlayerNotifier');
+      return;
+    }
+
     final medias = [
-      for (final song in songs) mpv.Media(_streamUri(song).toString()),
+      for (final song in songs)
+        mpv.Media(_streamUri(song, transcode).toString()),
     ];
     _mpvQueueIds = [for (final song in songs) song.id];
+    if (mounted) {
+      state = state.copyWith(
+        activeTranscode: transcode,
+        clearActiveTranscode: transcode == null,
+        clearPlaybackError: true,
+      );
+    }
     await _player.openAll(medias, play: play, index: index);
     if (play) await _player.play();
   }
@@ -810,9 +888,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       return;
     }
     try {
+      final transcode = state.activeTranscode;
       final ids = [..._mpvQueueIds];
       for (var i = 0; i < songs.length; i++) {
-        await _player.add(mpv.Media(_streamUri(songs[i]).toString()));
+        await _player.add(
+          mpv.Media(_streamUri(songs[i], transcode).toString()),
+        );
         final from = ids.length;
         final to = at + i;
         ids.insert(to, songs[i].id);
