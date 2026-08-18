@@ -1,45 +1,37 @@
 name: Release
 
-# Manual, opt-in release builds. Nothing here fires on its own — no push or tag
-# trigger — because this is a PRIVATE repo and runner minutes are billed at a
-# multiplier (macOS 10x, Windows 2x, Linux 1x). Every platform is off by default
-# and must be ticked on for the run that needs it.
+# Manual release builds across macOS, Windows, and Android.
 #
 # Run it from the Actions tab ("Release" -> "Run workflow"), or:
 #
-#   gh workflow run release.yml -f version=0.1.1 -f windows=true -f android=true
+#   gh workflow run release.yml -f version=0.4.1
 #
 # The `version` input is the whole version story: it becomes the build-name, the
 # git tag (v<version>), and the release title. The workflow run number becomes
 # the build-number so two builds of the same version stay distinguishable
 # on-device. Nothing in pubspec.yaml is ever bumped.
-#
-# macOS is deliberately the expensive one to opt into. A local
-# `tool/release.sh --mac` produces an identical ad-hoc-signed universal .dmg in
-# ~90s on an Apple Silicon Mac; you can attach it to the release afterwards with
-#   gh release upload v<version> dist/flax-<version>-macos-universal.dmg
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version, without the leading v (e.g. 0.1.1)'
+        description: 'Version, without the leading v (e.g. 0.4.1)'
         required: true
         type: string
       macos:
-        description: 'Build macOS .dmg (billed at 10x — prefer tool/release.sh --mac)'
+        description: 'Build macOS .dmg'
         required: false
-        default: false
+        default: true
         type: boolean
       windows:
-        description: 'Build Windows .zip (billed at 2x)'
+        description: 'Build Windows installer (.exe) & portable (.zip)'
         required: false
-        default: false
+        default: true
         type: boolean
       android:
-        description: 'Build Android .apk (billed at 1x)'
+        description: 'Build Android .apk'
         required: false
-        default: false
+        default: true
         type: boolean
       publish:
         description: 'Create the tag + GitHub Release from whatever was built'
