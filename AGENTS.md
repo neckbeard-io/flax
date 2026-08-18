@@ -384,9 +384,10 @@ first launch. This is expected; don't debug it as breakage.
   clean double-click install later: Apple Developer Program, a Developer ID
   Application cert, enable Hardened Runtime, then `notarytool submit --wait`
   and `stapler staple` the .dmg. Only the packaging step changes.
-- **Windows** — unsigned; SmartScreen warns, *More info* → *Run anyway*. The zip
-  must be extracted whole: `flax.exe` will not start without the sibling DLLs
-  and `data/` directory.
+- **Windows** — unsigned; SmartScreen warns, *More info* → *Run anyway*. The
+  standalone installer (`flax-<version>-windows-x64-setup.exe`) registers Flax in
+  the Start menu and handles all runtime dependencies automatically (or extract
+  the portable `.zip` whole).
 - **Android** — signed with a shared *test* keystore so builds upgrade in place.
   `android/key.properties` and `android/flax-test.jks` are gitignored; CI
   rebuilds them from the `FLAX_KEYSTORE_BASE64` and `FLAX_KEYSTORE_PASSWORD`

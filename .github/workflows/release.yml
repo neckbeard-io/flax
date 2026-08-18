@@ -119,20 +119,33 @@ jobs:
             --build-name=${{ inputs.version }} `
             --build-number=${{ github.run_number }}
 
-      # The whole Release folder must ship: flax.exe alone will not start. It
-      # needs the Flutter DLLs, libmpv.dll, and the data/ directory beside it.
-      - name: Package .zip
+      - name: Setup Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            choco install innosetup --no-progress -y
+            echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+      - name: Package Windows installer and portable archive
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
+          
+          # 1. Compile Inno Setup installer (.exe)
+          iscc /DAppVersion="${{ inputs.version }}" packaging\windows\flax.iss
+
+          # 2. Package portable .zip alongside installer
           Compress-Archive `
             -Path build\windows\x64\runner\Release\* `
             -DestinationPath dist\flax-${{ inputs.version }}-windows-x64.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-zip
-          path: dist/*.zip
+          name: windows-artifacts
+          path: |
+            dist/*.exe
+            dist/*.zip
 
   android:
     name: Android (.apk)
@@ -282,9 +295,9 @@ jobs:
           Without that, macOS 15+ reports the app as damaged.
 
           ### Windows 10/11 (x64)
-          Unzip **the whole folder** somewhere permanent and run `flax.exe` from
-          inside it — the .exe needs the DLLs and `data/` folder next to it.
-          SmartScreen will warn: *More info* -> *Run anyway*.
+          Download and run the installer `flax-<version>-windows-x64-setup.exe`
+          (or extract the portable `.zip` whole).
+          SmartScreen will warn on first launch: *More info* -> *Run anyway*.
 
           ### Android (7.0+, arm64/armv7/x86_64)
           Sideload the `.apk`. Enable "install unknown apps" for your browser or
