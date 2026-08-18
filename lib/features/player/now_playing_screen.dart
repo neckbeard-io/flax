@@ -11,6 +11,7 @@ import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/queue_panel.dart';
 import 'package:flax/features/player/seek_bar.dart';
 import 'package:flax/features/player/volume_control.dart';
+import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
@@ -290,8 +291,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             const SizedBox(height: 8),
 
             // ── Audio format info ──
-            if (song.suffix != null || song.bitRate != null)
-              _AudioFormatBadge(song: song),
+            if (song.suffix != null ||
+                song.bitRate != null ||
+                state.activeTranscode?.isTranscoded == true)
+              _AudioFormatBadge(song: song, transcode: state.activeTranscode),
 
             const SizedBox(height: 8),
 
@@ -382,17 +385,20 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 
 class _AudioFormatBadge extends StatelessWidget {
   final Song song;
+  final TranscodeParameters? transcode;
 
-  const _AudioFormatBadge({required this.song});
+  const _AudioFormatBadge({required this.song, this.transcode});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final parts = <String>[];
+    final isTranscoded = transcode?.isTranscoded ?? false;
+
+    final originalParts = <String>[];
 
     // Format name (e.g. FLAC, MP3, AAC)
     if (song.suffix != null) {
-      parts.add(song.suffix!.toUpperCase());
+      originalParts.add(song.suffix!.toUpperCase());
     }
 
     // Bit depth / sample rate (e.g. 24/96)
@@ -402,20 +408,20 @@ class _AudioFormatBadge extends StatelessWidget {
               song.sampleRate! % 1000 == 0 ? 0 : 1,
             )
           : song.sampleRate.toString();
-      parts.add('${song.bitDepth}/$rateKhz');
+      originalParts.add('${song.bitDepth}/$rateKhz');
     } else if (song.sampleRate != null) {
       final rateKhz = song.sampleRate! >= 1000
           ? '${(song.sampleRate! / 1000).toStringAsFixed(song.sampleRate! % 1000 == 0 ? 0 : 1)}kHz'
           : '${song.sampleRate}Hz';
-      parts.add(rateKhz);
+      originalParts.add(rateKhz);
     }
 
-    // Bitrate (e.g. 1268kbps)
-    if (song.bitRate != null) {
-      parts.add('${song.bitRate}kbps');
+    // Bitrate (e.g. 1268kbps) - only on original if not transcoded
+    if (song.bitRate != null && !isTranscoded) {
+      originalParts.add('${song.bitRate}kbps');
     }
 
-    if (parts.isEmpty) return const SizedBox.shrink();
+    if (originalParts.isEmpty && !isTranscoded) return const SizedBox.shrink();
 
     final isHiRes = (song.bitDepth ?? 0) > 16 || (song.sampleRate ?? 0) > 48000;
     final isLossless = const [
@@ -426,6 +432,64 @@ class _AudioFormatBadge extends StatelessWidget {
       'dsf',
       'dff',
     ].contains(song.suffix?.toLowerCase());
+
+    if (isTranscoded) {
+      final sourceText = originalParts.join(' ');
+      final targetText = transcode!.displayLabel;
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: theme.colorScheme.secondary.withValues(alpha: 0.4),
+            width: 0.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.transform_rounded,
+              size: 13,
+              color: theme.colorScheme.onSecondaryContainer,
+            ),
+            const SizedBox(width: 5),
+            if (sourceText.isNotEmpty) ...[
+              Text(
+                sourceText,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSecondaryContainer.withValues(
+                    alpha: 0.75,
+                  ),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  '→',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+            Text(
+              targetText,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSecondaryContainer,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -453,7 +517,7 @@ class _AudioFormatBadge extends StatelessWidget {
             const SizedBox(width: 4),
           ],
           Text(
-            parts.join(' · '),
+            originalParts.join(' · '),
             style: theme.textTheme.labelSmall?.copyWith(
               color: isHiRes
                   ? Colors.amber[800]

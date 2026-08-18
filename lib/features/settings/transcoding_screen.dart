@@ -99,6 +99,15 @@ class TranscodingScreen extends ConsumerWidget {
           const Divider(),
 
           _SectionTitle(title: 'Offline Downloads'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              'Quality and concurrency settings for offline caching.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
           ListTile(
             title: const Text('Download Quality'),
             subtitle: Text(config.offlineQuality.label),
@@ -119,6 +128,23 @@ class TranscodingScreen extends ConsumerWidget {
                 ref,
                 server,
                 config.copyWith(offlineQuality: q),
+              ),
+            ),
+          ),
+          ListTile(
+            title: const Text('Transcode & Download Threads'),
+            subtitle: Text(
+              '${config.offlineConcurrency} parallel ${config.offlineConcurrency == 1 ? "track" : "tracks"} during offline sync',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showConcurrencyPicker(
+              context,
+              ref,
+              current: config.offlineConcurrency,
+              onSelected: (c) => _updateConfig(
+                ref,
+                server,
+                config.copyWith(offlineConcurrency: c),
               ),
             ),
           ),
@@ -164,6 +190,49 @@ class TranscodingScreen extends ConsumerWidget {
                     ? const Text('No streaming on this network')
                     : null,
                 value: q,
+                groupValue: current,
+                onChanged: (v) {
+                  if (v != null) {
+                    onSelected(v);
+                    Navigator.pop(ctx);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showConcurrencyPicker(
+    BuildContext context,
+    WidgetRef ref, {
+    required int current,
+    required ValueChanged<int> onSelected,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Transcode & Download Threads',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            ...[1, 2, 3, 4, 5, 6].map(
+              (threads) => RadioListTile<int>(
+                title: Text('$threads ${threads == 1 ? "thread" : "threads"}'),
+                subtitle: threads == 2 ? const Text('Default') : null,
+                value: threads,
                 groupValue: current,
                 onChanged: (v) {
                   if (v != null) {

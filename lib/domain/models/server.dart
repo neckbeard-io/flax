@@ -5,12 +5,14 @@ class TranscodingConfig {
   final StreamQuality cellularQuality;
   final TranscodeFormat transcodeFormat;
   final StreamQuality offlineQuality;
+  final int offlineConcurrency;
 
   const TranscodingConfig({
     this.wifiQuality = StreamQuality.original,
     this.cellularQuality = StreamQuality.kbps256,
     this.transcodeFormat = TranscodeFormat.opus,
     this.offlineQuality = StreamQuality.original,
+    this.offlineConcurrency = 2,
   });
 
   TranscodingConfig copyWith({
@@ -18,12 +20,14 @@ class TranscodingConfig {
     StreamQuality? cellularQuality,
     TranscodeFormat? transcodeFormat,
     StreamQuality? offlineQuality,
+    int? offlineConcurrency,
   }) {
     return TranscodingConfig(
       wifiQuality: wifiQuality ?? this.wifiQuality,
       cellularQuality: cellularQuality ?? this.cellularQuality,
       transcodeFormat: transcodeFormat ?? this.transcodeFormat,
       offlineQuality: offlineQuality ?? this.offlineQuality,
+      offlineConcurrency: offlineConcurrency ?? this.offlineConcurrency,
     );
   }
 
@@ -32,20 +36,24 @@ class TranscodingConfig {
     'cellularQuality': cellularQuality.name,
     'transcodeFormat': transcodeFormat.name,
     'offlineQuality': offlineQuality.name,
+    'offlineConcurrency': offlineConcurrency,
   };
 
   factory TranscodingConfig.fromJson(Map<String, dynamic> json) {
     return TranscodingConfig(
-      wifiQuality: StreamQuality.values.byName(json['wifiQuality'] as String),
-      cellularQuality: StreamQuality.values.byName(
-        json['cellularQuality'] as String,
-      ),
-      transcodeFormat: TranscodeFormat.values.byName(
-        json['transcodeFormat'] as String,
-      ),
-      offlineQuality: StreamQuality.values.byName(
-        json['offlineQuality'] as String,
-      ),
+      wifiQuality: json['wifiQuality'] != null
+          ? StreamQuality.values.byName(json['wifiQuality'] as String)
+          : StreamQuality.original,
+      cellularQuality: json['cellularQuality'] != null
+          ? StreamQuality.values.byName(json['cellularQuality'] as String)
+          : StreamQuality.kbps256,
+      transcodeFormat: json['transcodeFormat'] != null
+          ? TranscodeFormat.values.byName(json['transcodeFormat'] as String)
+          : TranscodeFormat.opus,
+      offlineQuality: json['offlineQuality'] != null
+          ? StreamQuality.values.byName(json['offlineQuality'] as String)
+          : StreamQuality.original,
+      offlineConcurrency: (json['offlineConcurrency'] as num?)?.toInt() ?? 2,
     );
   }
 }
