@@ -66,7 +66,8 @@ class PlaybackSettings {
     gapless: gapless ?? this.gapless,
     replayGain: replayGain ?? this.replayGain,
     fadeSeconds: fadeSeconds ?? this.fadeSeconds,
-    autoSwitchToNowPlaying: autoSwitchToNowPlaying ?? this.autoSwitchToNowPlaying,
+    autoSwitchToNowPlaying:
+        autoSwitchToNowPlaying ?? this.autoSwitchToNowPlaying,
   );
 
   Map<String, dynamic> toJson() => {
@@ -87,7 +88,8 @@ class PlaybackSettings {
           0,
           maxFadeSeconds,
         ),
-        autoSwitchToNowPlaying: json['autoSwitchToNowPlaying'] as bool? ?? false,
+        autoSwitchToNowPlaying:
+            json['autoSwitchToNowPlaying'] as bool? ?? false,
       );
 }
 

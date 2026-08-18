@@ -13,7 +13,6 @@ class AudioOutputScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final exclusive = ref.watch(exclusiveModeProvider);
     final sampleRate = ref.watch(sampleRateProvider);
     final bitDepth = ref.watch(bitDepthProvider);

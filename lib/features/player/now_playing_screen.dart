@@ -47,7 +47,8 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         if (prefs.containsKey('flax_artist_panel_open')) {
           _artistOpen = prefs.getBool('flax_artist_panel_open');
         }
-        _artistWidth = prefs.getDouble('flax_artist_panel_width') ??
+        _artistWidth =
+            prefs.getDouble('flax_artist_panel_width') ??
             kArtistPanelDefaultWidth;
       });
     } catch (_) {}
