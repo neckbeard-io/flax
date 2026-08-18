@@ -6,6 +6,7 @@ import 'package:flax/domain/models/album.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/library/album_detail_screen.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
@@ -117,6 +118,7 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final playerState = ref.watch(playerProvider);
     final albumAsync = song.albumId != null
         ? ref.watch(albumDetailProvider(song.albumId!))
         : null;
@@ -167,11 +169,12 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (song.suffix != null)
+                if (song.suffix != null ||
+                    playerState.activeTranscode?.isTranscoded == true)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      _formatInfo(song),
+                      _formatInfo(song, playerState.activeTranscode),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 11,
@@ -199,7 +202,7 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
     );
   }
 
-  String _formatInfo(Song song) {
+  String _formatInfo(Song song, [TranscodeParameters? transcode]) {
     final parts = <String>[];
     if (song.suffix != null) parts.add(song.suffix!.toUpperCase());
     if (song.bitDepth != null && song.sampleRate != null) {
@@ -209,6 +212,11 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
             )
           : song.sampleRate.toString();
       parts.add('${song.bitDepth}/$rateKhz');
+    }
+    if (transcode?.isTranscoded == true) {
+      final source = parts.join(' ');
+      final target = transcode!.shortLabel;
+      return source.isNotEmpty ? '$source → $target' : target;
     }
     if (song.bitRate != null) parts.add('${song.bitRate}kbps');
     return parts.join(' · ');

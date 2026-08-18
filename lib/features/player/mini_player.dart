@@ -6,6 +6,7 @@ import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/player/seek_bar.dart';
 import 'package:flax/features/player/volume_control.dart';
+import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
@@ -150,7 +151,11 @@ class MiniPlayer extends ConsumerWidget {
                                               ),
                                         ),
                                       ),
-                                      if (_formatLabel(song) != null) ...[
+                                      if (_formatLabel(
+                                            song,
+                                            playerState.activeTranscode,
+                                          ) !=
+                                          null) ...[
                                         Text(
                                           ' · ',
                                           style: theme.textTheme.bodySmall
@@ -162,7 +167,10 @@ class MiniPlayer extends ConsumerWidget {
                                               ),
                                         ),
                                         Text(
-                                          _formatLabel(song)!,
+                                          _formatLabel(
+                                            song,
+                                            playerState.activeTranscode,
+                                          )!,
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
                                                 color: _isHiRes(song)
@@ -231,7 +239,7 @@ class MiniPlayer extends ConsumerWidget {
     );
   }
 
-  String? _formatLabel(Song song) {
+  String? _formatLabel(Song song, [TranscodeParameters? transcode]) {
     final parts = <String>[];
     if (song.suffix != null) parts.add(song.suffix!.toUpperCase());
     if (song.bitDepth != null && song.sampleRate != null) {
@@ -241,6 +249,11 @@ class MiniPlayer extends ConsumerWidget {
             )
           : song.sampleRate.toString();
       parts.add('${song.bitDepth}/$rateKhz');
+    }
+    if (transcode?.isTranscoded == true) {
+      final source = parts.join(' ');
+      final target = transcode!.shortLabel;
+      return source.isNotEmpty ? '$source → $target' : target;
     }
     return parts.isEmpty ? null : parts.join(' ');
   }

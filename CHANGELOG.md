@@ -10,6 +10,10 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+
+- **Streaming and offline transcoding support.** Transcoding settings (bitrate caps, format, and Wi-Fi vs. cellular preferences) are now actively passed to the server on stream requests. Now Playing, Queue, and Mini Player display original vs. active transcode formats (e.g. `FLAC 24/96 → OPUS 256kbps`), and settings include offline caching transcode thread limits.
+
 ### Fixed
 
 - **Window position restores to the correct monitor on multi-monitor setups.** Flax now detects all connected displays and restores the window onto the secondary monitor where it was last placed (or safely returns to the primary monitor if that display is unplugged).
