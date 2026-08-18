@@ -159,6 +159,14 @@ class LibraryDao {
     });
   }
 
+  /// All cached albums for a server.
+  Stream<List<Album>> watchAllAlbums(String serverId) {
+    final q = _db.select(_db.albums)
+      ..where((t) => t.serverId.equals(serverId))
+      ..orderBy([(t) => OrderingTerm(expression: t.name)]);
+    return q.watch().map((rows) => rows.map(albumFromRow).toList());
+  }
+
   Future<void> upsertAlbums(List<Album> albums, DateTime now) async {
     if (albums.isEmpty) return;
     await _db.batch((b) {

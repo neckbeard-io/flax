@@ -58,6 +58,54 @@ class TranscodingConfig {
   }
 }
 
+class MetadataCacheConfig {
+  final MetadataQuality albumArtQuality;
+  final MetadataQuality artistArtQuality;
+  final bool cacheArtistInfo;
+  final int concurrency;
+
+  const MetadataCacheConfig({
+    this.albumArtQuality = MetadataQuality.medium,
+    this.artistArtQuality = MetadataQuality.medium,
+    this.cacheArtistInfo = true,
+    this.concurrency = 4,
+  });
+
+  MetadataCacheConfig copyWith({
+    MetadataQuality? albumArtQuality,
+    MetadataQuality? artistArtQuality,
+    bool? cacheArtistInfo,
+    int? concurrency,
+  }) {
+    return MetadataCacheConfig(
+      albumArtQuality: albumArtQuality ?? this.albumArtQuality,
+      artistArtQuality: artistArtQuality ?? this.artistArtQuality,
+      cacheArtistInfo: cacheArtistInfo ?? this.cacheArtistInfo,
+      concurrency: concurrency ?? this.concurrency,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'albumArtQuality': albumArtQuality.name,
+    'artistArtQuality': artistArtQuality.name,
+    'cacheArtistInfo': cacheArtistInfo,
+    'concurrency': concurrency,
+  };
+
+  factory MetadataCacheConfig.fromJson(Map<String, dynamic> json) {
+    return MetadataCacheConfig(
+      albumArtQuality: json['albumArtQuality'] != null
+          ? MetadataQuality.values.byName(json['albumArtQuality'] as String)
+          : MetadataQuality.medium,
+      artistArtQuality: json['artistArtQuality'] != null
+          ? MetadataQuality.values.byName(json['artistArtQuality'] as String)
+          : MetadataQuality.medium,
+      cacheArtistInfo: json['cacheArtistInfo'] as bool? ?? true,
+      concurrency: ((json['concurrency'] as num?)?.toInt() ?? 4).clamp(1, 8),
+    );
+  }
+}
+
 class Server {
   final String id;
   final String name;
@@ -69,6 +117,7 @@ class Server {
   final bool isActive;
   final DateTime? lastSync;
   final TranscodingConfig transcodingConfig;
+  final MetadataCacheConfig metadataCacheConfig;
 
   const Server({
     required this.id,
@@ -81,6 +130,7 @@ class Server {
     this.isActive = false,
     this.lastSync,
     this.transcodingConfig = const TranscodingConfig(),
+    this.metadataCacheConfig = const MetadataCacheConfig(),
   });
 
   Server copyWith({
@@ -94,6 +144,7 @@ class Server {
     bool? isActive,
     DateTime? lastSync,
     TranscodingConfig? transcodingConfig,
+    MetadataCacheConfig? metadataCacheConfig,
   }) {
     return Server(
       id: id ?? this.id,
@@ -106,6 +157,7 @@ class Server {
       isActive: isActive ?? this.isActive,
       lastSync: lastSync ?? this.lastSync,
       transcodingConfig: transcodingConfig ?? this.transcodingConfig,
+      metadataCacheConfig: metadataCacheConfig ?? this.metadataCacheConfig,
     );
   }
 
@@ -123,6 +175,7 @@ class Server {
     'isActive': isActive,
     'lastSync': lastSync?.toIso8601String(),
     'transcodingConfig': transcodingConfig.toJson(),
+    'metadataCacheConfig': metadataCacheConfig.toJson(),
   };
 
   factory Server.fromJson(Map<String, dynamic> json) {
@@ -143,6 +196,11 @@ class Server {
               json['transcodingConfig'] as Map<String, dynamic>,
             )
           : const TranscodingConfig(),
+      metadataCacheConfig: json['metadataCacheConfig'] != null
+          ? MetadataCacheConfig.fromJson(
+              json['metadataCacheConfig'] as Map<String, dynamic>,
+            )
+          : const MetadataCacheConfig(),
     );
   }
 }
