@@ -63,6 +63,14 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
       - run: flutter pub get
 
       - name: Build macOS release
@@ -103,6 +111,24 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\Pub\Cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Setup Inno Setup path
+        shell: pwsh
+        run: |
+          if (Test-Path "C:\Program Files (x86)\Inno Setup 6") {
+            echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          } elseif (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            choco install innosetup --no-progress -y
+            echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
       - run: flutter pub get
 
       - name: Build Windows release
@@ -110,14 +136,6 @@ jobs:
           flutter build windows --release `
             --build-name=${{ inputs.version }} `
             --build-number=${{ github.run_number }}
-
-      - name: Setup Inno Setup
-        shell: pwsh
-        run: |
-          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
-            choco install innosetup --no-progress -y
-            echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          }
 
       - name: Package Windows installer and portable archive
         shell: pwsh
@@ -149,11 +167,22 @@ jobs:
         with:
           distribution: zulu
           java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+
+      - name: Cache pub dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
 
       - run: flutter pub get
 
