@@ -39,16 +39,13 @@ class AlbumContextMenu extends ConsumerWidget {
         Offset.zero & overlay.size,
       ),
       items: [
-        const PopupMenuItem(
-          value: 'go_album',
-          child: _MenuRow(icon: Icons.album, label: 'Go to Album'),
-        ),
-        if (album.artistId != null)
+        if (album.artistId != null) ...[
           const PopupMenuItem(
             value: 'go_artist',
             child: _MenuRow(icon: Icons.person, label: 'Go to Artist'),
           ),
-        const PopupMenuDivider(),
+          const PopupMenuDivider(),
+        ],
         const PopupMenuItem(
           value: 'play_now',
           child: _MenuRow(icon: Icons.play_arrow, label: 'Play Now'),
@@ -63,8 +60,6 @@ class AlbumContextMenu extends ConsumerWidget {
     if (result == null || !context.mounted) return;
 
     switch (result) {
-      case 'go_album':
-        context.push('/albums/${album.id}');
       case 'go_artist':
         if (album.artistId != null) {
           context.push('/artists/${album.artistId}');
