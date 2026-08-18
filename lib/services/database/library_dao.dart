@@ -37,6 +37,16 @@ class LibraryDao {
     return q.watch().map((rows) => rows.map(artistFromRow).toList());
   }
 
+  Future<List<Artist>> getAllArtists(String serverId) async {
+    final q = _db.select(_db.artists)
+      ..where((t) => t.serverId.equals(serverId))
+      ..orderBy([
+        (t) => OrderingTerm(expression: coalesce([t.sortName, t.name])),
+      ]);
+    final rows = await q.get();
+    return rows.map(artistFromRow).toList();
+  }
+
   Stream<Artist?> watchArtist(String serverId, String artistId) {
     final q = _db.select(_db.artists)
       ..where((t) => t.serverId.equals(serverId) & t.id.equals(artistId));
@@ -165,6 +175,14 @@ class LibraryDao {
       ..where((t) => t.serverId.equals(serverId))
       ..orderBy([(t) => OrderingTerm(expression: t.name)]);
     return q.watch().map((rows) => rows.map(albumFromRow).toList());
+  }
+
+  Future<List<Album>> getAllAlbums(String serverId) async {
+    final q = _db.select(_db.albums)
+      ..where((t) => t.serverId.equals(serverId))
+      ..orderBy([(t) => OrderingTerm(expression: t.name)]);
+    final rows = await q.get();
+    return rows.map(albumFromRow).toList();
   }
 
   Future<void> upsertAlbums(List<Album> albums, DateTime now) async {

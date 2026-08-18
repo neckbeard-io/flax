@@ -90,6 +90,8 @@ void main() {
     when(
       mockDao.watchAllAlbums('srv-1'),
     ).thenAnswer((_) => Stream.value(testAlbums));
+    when(mockDao.getAllArtists('srv-1')).thenAnswer((_) async => testArtists);
+    when(mockDao.getAllAlbums('srv-1')).thenAnswer((_) async => testAlbums);
     when(
       mockClient.getAlbumList(
         any,

@@ -629,6 +629,17 @@ class MockLibraryDao extends _i1.Mock implements _i9.LibraryDao {
           as _i7.Stream<List<_i2.Artist>>);
 
   @override
+  _i7.Future<List<_i2.Artist>> getAllArtists(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getAllArtists, [serverId]),
+            returnValue: _i7.Future<List<_i2.Artist>>.value(<_i2.Artist>[]),
+            returnValueForMissingStub: _i7.Future<List<_i2.Artist>>.value(
+              <_i2.Artist>[],
+            ),
+          )
+          as _i7.Future<List<_i2.Artist>>);
+
+  @override
   _i7.Stream<_i2.Artist?> watchArtist(String? serverId, String? artistId) =>
       (super.noSuchMethod(
             Invocation.method(#watchArtist, [serverId, artistId]),
@@ -734,6 +745,17 @@ class MockLibraryDao extends _i1.Mock implements _i9.LibraryDao {
             returnValueForMissingStub: _i7.Stream<List<_i2.Album>>.empty(),
           )
           as _i7.Stream<List<_i2.Album>>);
+
+  @override
+  _i7.Future<List<_i2.Album>> getAllAlbums(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getAllAlbums, [serverId]),
+            returnValue: _i7.Future<List<_i2.Album>>.value(<_i2.Album>[]),
+            returnValueForMissingStub: _i7.Future<List<_i2.Album>>.value(
+              <_i2.Album>[],
+            ),
+          )
+          as _i7.Future<List<_i2.Album>>);
 
   @override
   _i7.Future<void> upsertAlbums(List<_i2.Album>? albums, DateTime? now) =>

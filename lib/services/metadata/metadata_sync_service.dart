@@ -85,8 +85,8 @@ class MetadataSyncService {
   /// Computes cache status breakdown (counts and disk usage) for all metadata groups.
   Future<MetadataCacheSummary> getSummary(Server server, LibraryDao dao) async {
     try {
-      final albums = await dao.watchAllAlbums(server.id).first;
-      final artists = await dao.watchArtists(server.id).first;
+      final albums = await dao.getAllAlbums(server.id);
+      final artists = await dao.getAllArtists(server.id);
       final config = server.metadataCacheConfig;
 
       int albumArtCached = 0;
@@ -100,7 +100,7 @@ class MetadataSyncService {
         final validAlbums = albums
             .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
             .toList();
-        const chunkSize = 50;
+        const chunkSize = 200;
         for (var i = 0; i < validAlbums.length; i += chunkSize) {
           final chunk = validAlbums.sublist(
             i,
@@ -132,7 +132,7 @@ class MetadataSyncService {
         final validArtists = artists
             .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
             .toList();
-        const chunkSize = 50;
+        const chunkSize = 200;
         for (var i = 0; i < validArtists.length; i += chunkSize) {
           final chunk = validArtists.sublist(
             i,
