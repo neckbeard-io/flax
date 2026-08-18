@@ -4,6 +4,8 @@ import MediaPlayer
 
 class NowPlayingBridge: NSObject {
     private let channel: FlutterMethodChannel
+    private var localMonitor: Any?
+    private var globalMonitor: Any?
 
     init(messenger: FlutterBinaryMessenger) {
         channel = FlutterMethodChannel(name: "com.flax/now_playing", binaryMessenger: messenger)
@@ -11,6 +13,16 @@ class NowPlayingBridge: NSObject {
 
         channel.setMethodCallHandler(handleMethodCall)
         setupRemoteCommands()
+        setupMediaKeyMonitoring()
+    }
+
+    deinit {
+        if let local = localMonitor {
+            NSEvent.removeMonitor(local)
+        }
+        if let global = globalMonitor {
+            NSEvent.removeMonitor(global)
+        }
     }
 
     private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -153,5 +165,50 @@ class NowPlayingBridge: NSObject {
             let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
             DispatchQueue.main.async { completion(artwork) }
         }.resume()
+    }
+
+    private func setupMediaKeyMonitoring() {
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .systemDefined) { [weak self] event in
+            guard let self = self else { return event }
+            if self.handleSystemDefinedEvent(event) {
+                return nil
+            }
+            return event
+        }
+
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .systemDefined) { [weak self] event in
+            self?.handleSystemDefinedEvent(event)
+        }
+    }
+
+    @discardableResult
+    private func handleSystemDefinedEvent(_ event: NSEvent) -> Bool {
+        guard event.type == .systemDefined, event.subtype.rawValue == 8 else { return false }
+        let data1 = event.data1
+        let keyCode = Int32((data1 & 0xFFFF0000) >> 16)
+        let keyFlags = (data1 & 0x0000FFFF)
+        let isKeyDown = ((keyFlags & 0xFF00) >> 8) == 0xA
+
+        guard isKeyDown else { return false }
+
+        switch keyCode {
+        case 16: // NX_KEYTYPE_PLAY / PAUSE (F8)
+            DispatchQueue.main.async { [weak self] in
+                self?.channel.invokeMethod("onTogglePlayPause", arguments: nil)
+            }
+            return true
+        case 17, 19: // NX_KEYTYPE_NEXT, NX_KEYTYPE_FAST (F9)
+            DispatchQueue.main.async { [weak self] in
+                self?.channel.invokeMethod("onNext", arguments: nil)
+            }
+            return true
+        case 18, 20: // NX_KEYTYPE_PREVIOUS, NX_KEYTYPE_REWIND (F7)
+            DispatchQueue.main.async { [weak self] in
+                self?.channel.invokeMethod("onPrevious", arguments: nil)
+            }
+            return true
+        default:
+            return false
+        }
     }
 }

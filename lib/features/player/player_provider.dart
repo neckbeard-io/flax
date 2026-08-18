@@ -1087,7 +1087,15 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   Future<void> play() async {
-    await _player.play();
+    if (state.queue.isNotEmpty && !_mpvQueueInSync) {
+      await _openQueue(state.queue, state.queueIndex, play: true);
+      if (state.position > Duration.zero) {
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await _player.seek(state.position);
+      }
+    } else {
+      await _player.play();
+    }
   }
 
   Future<void> pause() async {
