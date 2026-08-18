@@ -181,11 +181,35 @@ class MetadataCachingScreen extends ConsumerWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Text(
-                            '${activeTask.itemsDone} / ${activeTask.itemsTotal ?? "?"}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${activeTask.itemsDone} / ${activeTask.itemsTotal ?? "?"}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (activeTask.ratePerSecond != null &&
+                                  activeTask.state == TaskState.running) ...[
+                                Text(
+                                  ' · ${activeTask.ratePerSecond! < 10 ? activeTask.ratePerSecond!.toStringAsFixed(1) : activeTask.ratePerSecond!.round()} items/s',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                              if (activeTask.eta != null &&
+                                  activeTask.state == TaskState.running) ...[
+                                Text(
+                                  ' · ${formatEta(activeTask.eta!)}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
                       ),
@@ -197,7 +221,7 @@ class MetadataCachingScreen extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              formatProgressLine(activeTask),
+                              activeTask.note ?? 'Processing...',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
