@@ -55,9 +55,13 @@ final albumSongsProvider = StreamProvider.family<List<Song>, String>((
   }
 
   // Track listings only arrive with getAlbum, so unlike the album row itself
-  // an empty list here really does mean "not fetched yet".
+  // an empty or partial list here means "not fully fetched yet".
   final cached = await repo.watchAlbumSongs(albumId).first;
-  if (cached.isEmpty) {
+  final album = await repo.watchAlbum(albumId).first;
+  final isIncomplete =
+      album != null && album.songCount > 0 && cached.length < album.songCount;
+
+  if (cached.isEmpty || isIncomplete) {
     await repo.refreshAlbum(albumId);
   } else {
     repo.refreshAlbum(albumId);

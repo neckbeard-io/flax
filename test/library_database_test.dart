@@ -137,12 +137,19 @@ void main() {
     starred: starred,
   );
 
-  Album album(String id, {String? name, String? artistId, int? year}) => Album(
+  Album album(
+    String id, {
+    String? name,
+    String? artistId,
+    int? year,
+    int songCount = 0,
+  }) => Album(
     id: id,
     serverId: sid,
     name: name ?? 'Album $id',
     artistId: artistId,
     year: year,
+    songCount: songCount,
   );
 
   Song song(
@@ -660,6 +667,56 @@ void main() {
       final first = backend.getArtistCalls;
       await r.refreshArtist('ar1');
       expect(backend.getArtistCalls, first);
+    });
+  });
+
+  group('album songs', () {
+    test(
+      'an incomplete track list is refetched even when the beacon is unchanged',
+      () async {
+        backend.scanStatus = {
+          'lastScan': '2026-08-07T23:55:56Z',
+          'count': 48605,
+          'scanning': false,
+        };
+        // The album says four tracks; playback or search has cached one of them, with
+        // a fresh timestamp. A timestamp check would call that done forever.
+        await dao.upsertAlbums([album('al1', songCount: 4)], now);
+        await dao.upsertSongs([song('s1', albumId: 'al1', track: 1)], now);
+
+        backend.songs = [
+          song('s1', albumId: 'al1', track: 1),
+          song('s2', albumId: 'al1', track: 2),
+          song('s3', albumId: 'al1', track: 3),
+          song('s4', albumId: 'al1', track: 4),
+        ];
+        backend.album = album('al1', songCount: 4);
+
+        await repo().refreshAlbum('al1');
+
+        expect(await dao.watchAlbumSongs(sid, 'al1').first, hasLength(4));
+      },
+    );
+
+    test('a complete track list is left alone', () async {
+      backend.scanStatus = {
+        'lastScan': '2026-08-07T23:55:56Z',
+        'count': 48605,
+        'scanning': false,
+      };
+      await dao.upsertAlbums([album('al1', songCount: 2)], now);
+      await dao.upsertSongs([
+        song('s1', albumId: 'al1', track: 1),
+        song('s2', albumId: 'al1', track: 2),
+      ], now);
+      backend.album = album('al1', songCount: 2);
+      backend.songs = const [];
+
+      final r = repo();
+      await r.refreshAlbum('al1');
+      final first = backend.getAlbumCalls;
+      await r.refreshAlbum('al1');
+      expect(backend.getAlbumCalls, first);
     });
   });
 

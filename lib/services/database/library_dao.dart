@@ -349,6 +349,23 @@ class LibraryDao {
     return row?.fetchedAt;
   }
 
+  /// How many of an album's songs are cached.
+  ///
+  /// Compared against the album's own `songCount` to tell a complete track list
+  /// from a partial one. Individual song plays, search results, or queues cache
+  /// song rows with an `albumId`, so the presence of some songs does not mean the
+  /// album's full track listing was ever fetched.
+  Future<int> cachedAlbumSongCount(String serverId, String albumId) async {
+    final count = _db.songs.id.count();
+    final q = _db.selectOnly(_db.songs)
+      ..addColumns([count])
+      ..where(
+        _db.songs.serverId.equals(serverId) & _db.songs.albumId.equals(albumId),
+      );
+    final row = await q.getSingle();
+    return row.read(count) ?? 0;
+  }
+
   // ── Playlists ────────────────────────────────────────────────────────────
 
   Stream<List<Playlist>> watchPlaylists(String serverId) {
