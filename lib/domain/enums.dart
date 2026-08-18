@@ -82,3 +82,15 @@ enum AlbumListType {
 enum RepeatMode { off, all, one }
 
 enum ThemeModeSetting { system, light, dark }
+
+enum MetadataQuality {
+  low('Low (256px)', 256),
+  medium('Medium (512px)', 512),
+  original('Original (Full)', null),
+  disabled('Disabled', 0);
+
+  const MetadataQuality(this.label, this.requestSize);
+
+  final String label;
+  final int? requestSize;
+}
