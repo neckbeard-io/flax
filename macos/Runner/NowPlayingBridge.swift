@@ -33,6 +33,9 @@ class NowPlayingBridge: NSObject {
 
         case "clearNowPlaying":
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            if #available(macOS 10.13, *) {
+                MPNowPlayingInfoCenter.default().playbackState = .stopped
+            }
             result(nil)
 
         default:
@@ -103,6 +106,9 @@ class NowPlayingBridge: NSObject {
         }
         if let rate = args["rate"] as? Double {
             info[MPNowPlayingInfoPropertyPlaybackRate] = rate
+            if #available(macOS 10.13, *) {
+                MPNowPlayingInfoCenter.default().playbackState = rate > 0 ? .playing : .paused
+            }
         }
         if let trackNumber = args["trackNumber"] as? Int {
             info[MPMediaItemPropertyAlbumTrackNumber] = trackNumber
@@ -130,6 +136,9 @@ class NowPlayingBridge: NSObject {
         }
         if let rate = args["rate"] as? Double {
             info[MPNowPlayingInfoPropertyPlaybackRate] = rate
+            if #available(macOS 10.13, *) {
+                MPNowPlayingInfoCenter.default().playbackState = rate > 0 ? .playing : .paused
+            }
         }
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info

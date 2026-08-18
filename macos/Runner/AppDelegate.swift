@@ -6,8 +6,9 @@ class AppDelegate: FlutterAppDelegate {
   var nowPlayingBridge: NowPlayingBridge?
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
-    if let window = NSApplication.shared.mainWindow,
-       let flutterViewController = window.contentViewController as? FlutterViewController {
+    let window = NSApplication.shared.windows.first ?? NSApplication.shared.mainWindow
+    if let flutterViewController = window?.contentViewController as? FlutterViewController,
+       nowPlayingBridge == nil {
       nowPlayingBridge = NowPlayingBridge(messenger: flutterViewController.engine.binaryMessenger)
     }
   }
