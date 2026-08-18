@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/domain/models/song.dart';
@@ -52,6 +53,9 @@ class NowPlayingService {
         onSeek?.call(Duration(milliseconds: (seconds * 1000).toInt()));
     }
   }
+
+  @visibleForTesting
+  Future<void> handleMethodForTesting(MethodCall call) => _handleMethod(call);
 
   Future<void> updateNowPlaying({
     required Song song,
