@@ -27,7 +27,6 @@ class MetadataCacheSummary {
   final int artistInfoCached;
   final int artistInfoTotal;
   final int artistInfoBytes;
-  final int artistInfoEmptyCount;
 
   final DateTime? lastSyncedAt;
 
@@ -41,7 +40,6 @@ class MetadataCacheSummary {
     this.artistInfoCached = 0,
     this.artistInfoTotal = 0,
     this.artistInfoBytes = 0,
-    this.artistInfoEmptyCount = 0,
     this.lastSyncedAt,
   });
 
@@ -52,8 +50,7 @@ class MetadataCacheSummary {
     final artistArtOk =
         artistArtTotal == 0 || artistArtCached >= artistArtTotal;
     final artistInfoOk =
-        artistInfoTotal == 0 ||
-        (artistInfoCached + artistInfoEmptyCount) >= artistInfoTotal;
+        artistInfoTotal == 0 || artistInfoCached >= artistInfoTotal;
     return albumOk && artistArtOk && artistInfoOk;
   }
 }
@@ -154,17 +151,14 @@ class MetadataSyncService {
       }
 
       int artistInfoCached = 0;
-      int artistInfoEmptyCount = 0;
       int artistInfoBytes = 0;
       final artistInfoTotal = artists.length;
 
       for (final a in artists) {
         if (a.biography != null) {
+          artistInfoCached++;
           if (a.biography!.isNotEmpty) {
-            artistInfoCached++;
             artistInfoBytes += utf8.encode(a.biography!).length;
-          } else {
-            artistInfoEmptyCount++;
           }
         }
       }
@@ -179,7 +173,6 @@ class MetadataSyncService {
         artistInfoCached: artistInfoCached,
         artistInfoTotal: artistInfoTotal,
         artistInfoBytes: artistInfoBytes,
-        artistInfoEmptyCount: artistInfoEmptyCount,
         lastSyncedAt: config.lastSyncedAt,
       );
     } catch (e) {
