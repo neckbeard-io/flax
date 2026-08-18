@@ -12,6 +12,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Added
 
+- **Similar artists in Now Playing:** The artist panel in Now Playing now shows a strip of similar artists below the biography, complete with cover artwork and click-through navigation to each artist's library page.
 - **Streaming and offline transcoding support.** Transcoding settings (bitrate caps, format, and Wi-Fi vs. cellular preferences) are now actively passed to the server on stream requests. Now Playing, Queue, and Mini Player display original vs. active transcode formats (e.g. `FLAC 24/96 → OPUS 256kbps`), and settings include offline caching transcode thread limits.
 - **Metadata and artwork caching tiers with cellular warnings.** A dedicated "Metadata Caching" menu allows choosing resolution tiers (Low 256px, Medium 512px, Original) for album covers and artist images, as well as offline artist info (biographies, genres, and metadata). Caching jobs run in the background with live progress in the sidebar, and mobile connections trigger a data-usage warning before syncing.
 
