@@ -94,13 +94,26 @@ class MetadataSyncService {
 
       if (config.albumArtQuality != MetadataQuality.disabled) {
         final reqSize = config.albumArtQuality.requestSize;
-        for (final a in albums) {
-          if (a.coverArtId == null || a.coverArtId!.isEmpty) continue;
-          final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
-          final cached = await _artCache.getFileFromCache(key);
-          if (cached != null) {
-            albumArtCached++;
-            albumArtBytes += await cached.file.length();
+        final validAlbums = albums
+            .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
+            .toList();
+        const chunkSize = 50;
+        for (var i = 0; i < validAlbums.length; i += chunkSize) {
+          final chunk = validAlbums.sublist(
+            i,
+            (i + chunkSize).clamp(0, validAlbums.length),
+          );
+          final files = await Future.wait(
+            chunk.map((a) {
+              final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+              return _artCache.getFileFromCache(key);
+            }),
+          );
+          for (final f in files) {
+            if (f != null) {
+              albumArtCached++;
+              albumArtBytes += await f.file.length();
+            }
           }
         }
       }
@@ -113,13 +126,26 @@ class MetadataSyncService {
 
       if (config.artistArtQuality != MetadataQuality.disabled) {
         final reqSize = config.artistArtQuality.requestSize;
-        for (final a in artists) {
-          if (a.coverArtId == null || a.coverArtId!.isEmpty) continue;
-          final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
-          final cached = await _artCache.getFileFromCache(key);
-          if (cached != null) {
-            artistArtCached++;
-            artistArtBytes += await cached.file.length();
+        final validArtists = artists
+            .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
+            .toList();
+        const chunkSize = 50;
+        for (var i = 0; i < validArtists.length; i += chunkSize) {
+          final chunk = validArtists.sublist(
+            i,
+            (i + chunkSize).clamp(0, validArtists.length),
+          );
+          final files = await Future.wait(
+            chunk.map((a) {
+              final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+              return _artCache.getFileFromCache(key);
+            }),
+          );
+          for (final f in files) {
+            if (f != null) {
+              artistArtCached++;
+              artistArtBytes += await f.file.length();
+            }
           }
         }
       }
@@ -236,21 +262,33 @@ class MetadataSyncService {
 
       if (_isCanceled || handle.isCanceled) return;
 
-      // 2. Build sync work items for MISSING metadata & artwork only
+      // 2. Build sync work items for MISSING metadata & artwork only (parallel checks)
       handle.note('Checking for missing artwork and metadata...');
       final workItems = <_SyncWorkItem>[];
 
       if (config.albumArtQuality != MetadataQuality.disabled) {
         final reqSize = config.albumArtQuality.requestSize;
-        for (final album in albums) {
+        final validAlbums = albums
+            .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
+            .toList();
+        const chunkSize = 50;
+        for (var i = 0; i < validAlbums.length; i += chunkSize) {
           if (_isCanceled || handle.isCanceled) return;
-          if (album.coverArtId != null && album.coverArtId!.isNotEmpty) {
-            final key = 'cover-${album.coverArtId}-${reqSize ?? "orig"}';
-            final cached = await _artCache.getFileFromCache(key);
-            if (cached == null) {
+          final chunk = validAlbums.sublist(
+            i,
+            (i + chunkSize).clamp(0, validAlbums.length),
+          );
+          final files = await Future.wait(
+            chunk.map((a) {
+              final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+              return _artCache.getFileFromCache(key);
+            }),
+          );
+          for (var j = 0; j < chunk.length; j++) {
+            if (files[j] == null) {
               workItems.add(
                 _AlbumArtWorkItem(
-                  album: album,
+                  album: chunk[j],
                   quality: config.albumArtQuality,
                 ),
               );
@@ -261,15 +299,27 @@ class MetadataSyncService {
 
       if (config.artistArtQuality != MetadataQuality.disabled) {
         final reqSize = config.artistArtQuality.requestSize;
-        for (final artist in artists) {
+        final validArtists = artists
+            .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
+            .toList();
+        const chunkSize = 50;
+        for (var i = 0; i < validArtists.length; i += chunkSize) {
           if (_isCanceled || handle.isCanceled) return;
-          if (artist.coverArtId != null && artist.coverArtId!.isNotEmpty) {
-            final key = 'cover-${artist.coverArtId}-${reqSize ?? "orig"}';
-            final cached = await _artCache.getFileFromCache(key);
-            if (cached == null) {
+          final chunk = validArtists.sublist(
+            i,
+            (i + chunkSize).clamp(0, validArtists.length),
+          );
+          final files = await Future.wait(
+            chunk.map((a) {
+              final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+              return _artCache.getFileFromCache(key);
+            }),
+          );
+          for (var j = 0; j < chunk.length; j++) {
+            if (files[j] == null) {
               workItems.add(
                 _ArtistArtWorkItem(
-                  artist: artist,
+                  artist: chunk[j],
                   quality: config.artistArtQuality,
                 ),
               );
@@ -307,8 +357,8 @@ class MetadataSyncService {
         return;
       }
 
-      // 3. Process work items with worker concurrency pool
-      final concurrency = config.concurrency.clamp(1, 8);
+      // 3. Process work items with worker concurrency pool (up to 24 workers)
+      final concurrency = config.concurrency.clamp(1, 24);
       int currentIndex = 0;
       int itemsDone = 0;
       int bytesDone = 0;

@@ -141,7 +141,7 @@ class MetadataCachingScreen extends ConsumerWidget {
               value: config.concurrency,
               underline: const SizedBox.shrink(),
               borderRadius: BorderRadius.circular(8),
-              items: [1, 2, 3, 4, 6, 8]
+              items: [1, 2, 3, 4, 6, 8, 12, 16, 24]
                   .map(
                     (t) => DropdownMenuItem(
                       value: t,

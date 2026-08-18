@@ -43,7 +43,7 @@ class ArtCache {
     Config(
       key,
       stalePeriod: const Duration(days: 365),
-      maxNrOfCacheObjects: 4000,
+      maxNrOfCacheObjects: 50000,
     ),
   );
 
