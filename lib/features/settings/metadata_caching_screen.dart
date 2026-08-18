@@ -29,12 +29,43 @@ class MetadataCachingScreen extends ConsumerWidget {
       );
     }
 
+    final summaryAsync = ref.watch(metadataCacheSummaryProvider(server.id));
     final config = server.metadataCacheConfig;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Metadata Caching')),
       body: ListView(
         children: [
+          // ── Cache Status Overview ──
+          _SectionTitle(title: 'Cache Status'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: summaryAsync.when(
+              loading: () => const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(
+                    child: SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+              ),
+              error: (err, _) => Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('Error reading cache status: $err'),
+                ),
+              ),
+              data: (summary) =>
+                  _CacheStatusCard(summary: summary, config: config),
+            ),
+          ),
+          const Divider(),
+
+          // ── Artwork Quality Tiers ──
           _SectionTitle(title: 'Offline Artwork Quality'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -91,6 +122,7 @@ class MetadataCachingScreen extends ConsumerWidget {
           ),
           const Divider(),
 
+          // ── Artist Info & Concurrency ──
           _SectionTitle(title: 'Artist Information'),
           SwitchListTile(
             title: const Text('Cache Artist Info'),
@@ -128,11 +160,13 @@ class MetadataCachingScreen extends ConsumerWidget {
           ),
           const Divider(),
 
+          // ── Synchronization Controls ──
           _SectionTitle(title: 'Synchronization'),
           if (activeTask != null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Card(
+                color: theme.colorScheme.surfaceContainerHighest,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -149,7 +183,9 @@ class MetadataCachingScreen extends ConsumerWidget {
                           ),
                           Text(
                             '${activeTask.itemsDone} / ${activeTask.itemsTotal ?? "?"}',
-                            style: theme.textTheme.bodySmall,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -159,10 +195,13 @@ class MetadataCachingScreen extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            formatProgressLine(activeTask),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                          Expanded(
+                            child: Text(
+                              formatProgressLine(activeTask),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           TextButton(
@@ -181,11 +220,27 @@ class MetadataCachingScreen extends ConsumerWidget {
           ] else ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: FilledButton.icon(
-                onPressed: () =>
-                    _startSyncWithNetworkCheck(context, ref, server),
-                icon: const Icon(Icons.sync),
-                label: const Text('Sync Metadata & Art Now'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () =>
+                        _startSyncWithNetworkCheck(context, ref, server),
+                    icon: const Icon(Icons.sync),
+                    label: Text(
+                      summaryAsync.valueOrNull?.isFullyCached ?? false
+                          ? 'Sync Again (Incremental)'
+                          : 'Sync Metadata & Art Now',
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Sync is incremental: only missing or updated artwork and metadata are downloaded. Already cached items are skipped.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -214,6 +269,7 @@ class MetadataCachingScreen extends ConsumerWidget {
                 );
                 if (confirm == true) {
                   await ArtCache.instance.emptyCache();
+                  ref.invalidate(metadataCacheSummaryProvider(server.id));
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Artwork cache cleared')),
@@ -235,6 +291,7 @@ class MetadataCachingScreen extends ConsumerWidget {
     ref
         .read(serverListProvider.notifier)
         .updateServer(server.copyWith(metadataCacheConfig: config));
+    ref.invalidate(metadataCacheSummaryProvider(server.id));
   }
 
   Future<void> _startSyncWithNetworkCheck(
@@ -278,7 +335,181 @@ class MetadataCachingScreen extends ConsumerWidget {
       if (proceed != true) return;
     }
 
-    syncService.startSync(server: server, client: client, dao: dao);
+    await syncService.startSync(server: server, client: client, dao: dao);
+    ref.invalidate(metadataCacheSummaryProvider(server.id));
+  }
+}
+
+class _CacheStatusCard extends StatelessWidget {
+  final MetadataCacheSummary summary;
+  final MetadataCacheConfig config;
+
+  const _CacheStatusCard({required this.summary, required this.config});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Cached',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      formatBytes(summary.totalBytes),
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                if (summary.lastSyncedAt != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Last Synced',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatTimestamp(summary.lastSyncedAt!),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            const Divider(height: 24),
+            _StatusRow(
+              icon: Icons.album_outlined,
+              label: 'Album Covers',
+              cachedCount: summary.albumArtCached,
+              totalCount: summary.albumArtTotal,
+              bytes: summary.albumArtBytes,
+              enabled: config.albumArtQuality != MetadataQuality.disabled,
+            ),
+            const SizedBox(height: 10),
+            _StatusRow(
+              icon: Icons.person_outline,
+              label: 'Artist Photos',
+              cachedCount: summary.artistArtCached,
+              totalCount: summary.artistArtTotal,
+              bytes: summary.artistArtBytes,
+              enabled: config.artistArtQuality != MetadataQuality.disabled,
+            ),
+            const SizedBox(height: 10),
+            _StatusRow(
+              icon: Icons.description_outlined,
+              label: 'Artist Biographies',
+              cachedCount: summary.artistInfoCached,
+              totalCount: summary.artistInfoTotal,
+              bytes: summary.artistInfoBytes,
+              enabled: config.cacheArtistInfo,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTimestamp(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+class _StatusRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int cachedCount;
+  final int totalCount;
+  final int bytes;
+  final bool enabled;
+
+  const _StatusRow({
+    required this.icon,
+    required this.label,
+    required this.cachedCount,
+    required this.totalCount,
+    required this.bytes,
+    required this.enabled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isComplete = enabled && totalCount > 0 && cachedCount >= totalCount;
+
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: enabled
+              ? theme.colorScheme.onSurface
+              : theme.colorScheme.outline,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    label,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: enabled ? null : theme.colorScheme.outline,
+                    ),
+                  ),
+                  if (isComplete) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ],
+                ],
+              ),
+              Text(
+                enabled
+                    ? '$cachedCount of $totalCount cached (${formatBytes(bytes)})'
+                    : 'Disabled',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 

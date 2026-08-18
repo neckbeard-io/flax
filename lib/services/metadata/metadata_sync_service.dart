@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
@@ -11,6 +14,46 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/database/library_dao.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
+
+class MetadataCacheSummary {
+  final int albumArtCached;
+  final int albumArtTotal;
+  final int albumArtBytes;
+
+  final int artistArtCached;
+  final int artistArtTotal;
+  final int artistArtBytes;
+
+  final int artistInfoCached;
+  final int artistInfoTotal;
+  final int artistInfoBytes;
+
+  final DateTime? lastSyncedAt;
+
+  const MetadataCacheSummary({
+    this.albumArtCached = 0,
+    this.albumArtTotal = 0,
+    this.albumArtBytes = 0,
+    this.artistArtCached = 0,
+    this.artistArtTotal = 0,
+    this.artistArtBytes = 0,
+    this.artistInfoCached = 0,
+    this.artistInfoTotal = 0,
+    this.artistInfoBytes = 0,
+    this.lastSyncedAt,
+  });
+
+  int get totalBytes => albumArtBytes + artistArtBytes + artistInfoBytes;
+
+  bool get isFullyCached {
+    final albumOk = albumArtTotal == 0 || albumArtCached >= albumArtTotal;
+    final artistArtOk =
+        artistArtTotal == 0 || artistArtCached >= artistArtTotal;
+    final artistInfoOk =
+        artistInfoTotal == 0 || artistInfoCached >= artistInfoTotal;
+    return albumOk && artistArtOk && artistInfoOk;
+  }
+}
 
 class MetadataSyncService {
   final Ref _ref;
@@ -33,6 +76,83 @@ class MetadataSyncService {
           !results.contains(ConnectivityResult.ethernet);
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Computes cache status breakdown (counts and disk usage) for all metadata groups.
+  Future<MetadataCacheSummary> getSummary(Server server, LibraryDao dao) async {
+    try {
+      final albums = await dao.watchAllAlbums(server.id).first;
+      final artists = await dao.watchArtists(server.id).first;
+      final config = server.metadataCacheConfig;
+
+      int albumArtCached = 0;
+      int albumArtBytes = 0;
+      final albumArtTotal = albums
+          .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
+          .length;
+
+      if (config.albumArtQuality != MetadataQuality.disabled) {
+        final reqSize = config.albumArtQuality.requestSize;
+        for (final a in albums) {
+          if (a.coverArtId == null || a.coverArtId!.isEmpty) continue;
+          final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+          final cached = await _artCache.getFileFromCache(key);
+          if (cached != null) {
+            albumArtCached++;
+            albumArtBytes += await cached.file.length();
+          }
+        }
+      }
+
+      int artistArtCached = 0;
+      int artistArtBytes = 0;
+      final artistArtTotal = artists
+          .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
+          .length;
+
+      if (config.artistArtQuality != MetadataQuality.disabled) {
+        final reqSize = config.artistArtQuality.requestSize;
+        for (final a in artists) {
+          if (a.coverArtId == null || a.coverArtId!.isEmpty) continue;
+          final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+          final cached = await _artCache.getFileFromCache(key);
+          if (cached != null) {
+            artistArtCached++;
+            artistArtBytes += await cached.file.length();
+          }
+        }
+      }
+
+      int artistInfoCached = 0;
+      int artistInfoBytes = 0;
+      final artistInfoTotal = artists.length;
+
+      for (final a in artists) {
+        if (a.biography != null && a.biography!.isNotEmpty) {
+          artistInfoCached++;
+          artistInfoBytes += utf8.encode(a.biography!).length;
+        }
+      }
+
+      return MetadataCacheSummary(
+        albumArtCached: albumArtCached,
+        albumArtTotal: albumArtTotal,
+        albumArtBytes: albumArtBytes,
+        artistArtCached: artistArtCached,
+        artistArtTotal: artistArtTotal,
+        artistArtBytes: artistArtBytes,
+        artistInfoCached: artistInfoCached,
+        artistInfoTotal: artistInfoTotal,
+        artistInfoBytes: artistInfoBytes,
+        lastSyncedAt: config.lastSyncedAt,
+      );
+    } catch (e) {
+      developer.log(
+        'Error calculating metadata cache summary: $e',
+        name: 'MetadataSyncService',
+      );
+      return const MetadataCacheSummary();
     }
   }
 
@@ -162,6 +282,7 @@ class MetadataSyncService {
           final item = workItems[itemIndex];
 
           try {
+            handle.note(item.description);
             final bytes = await item.execute(client, dao, server.id, _artCache);
             if (!_isCanceled && !handle.isCanceled) {
               itemsDone++;
@@ -186,6 +307,17 @@ class MetadataSyncService {
       await Future.wait(workers);
 
       if (!_isCanceled && !handle.isCanceled) {
+        // Record timestamp on completion
+        _ref
+            .read(serverListProvider.notifier)
+            .updateServer(
+              server.copyWith(
+                metadataCacheConfig: config.copyWith(
+                  lastSyncedAt: DateTime.now(),
+                ),
+              ),
+            );
+        handle.note(null);
         handle.complete();
       }
     } catch (e) {
@@ -199,6 +331,7 @@ class MetadataSyncService {
 }
 
 sealed class _SyncWorkItem {
+  String get description;
   Future<int> execute(
     SubsonicClient client,
     LibraryDao dao,
@@ -212,6 +345,9 @@ class _AlbumArtWorkItem extends _SyncWorkItem {
   final MetadataQuality quality;
 
   _AlbumArtWorkItem({required this.album, required this.quality});
+
+  @override
+  String get description => 'Album art: ${album.name}';
 
   @override
   Future<int> execute(
@@ -244,6 +380,9 @@ class _ArtistArtWorkItem extends _SyncWorkItem {
   _ArtistArtWorkItem({required this.artist, required this.quality});
 
   @override
+  String get description => 'Artist photo: ${artist.name}';
+
+  @override
   Future<int> execute(
     SubsonicClient client,
     LibraryDao dao,
@@ -273,6 +412,9 @@ class _ArtistInfoWorkItem extends _SyncWorkItem {
   _ArtistInfoWorkItem({required this.artist});
 
   @override
+  String get description => 'Artist bio: ${artist.name}';
+
+  @override
   Future<int> execute(
     SubsonicClient client,
     LibraryDao dao,
@@ -297,3 +439,18 @@ class _ArtistInfoWorkItem extends _SyncWorkItem {
 final metadataSyncServiceProvider = Provider<MetadataSyncService>((ref) {
   return MetadataSyncService(ref);
 });
+
+final metadataCacheSummaryProvider =
+    FutureProvider.family<MetadataCacheSummary, String>((ref, serverId) async {
+      final servers = ref.watch(serverListProvider);
+      final server = servers.where((s) => s.id == serverId).firstOrNull;
+      if (server == null) return const MetadataCacheSummary();
+
+      final dao = ref.watch(libraryDaoProvider);
+      final service = ref.watch(metadataSyncServiceProvider);
+
+      // Invalidate when tasks finish
+      ref.watch(taskRegistryProvider);
+
+      return service.getSummary(server, dao);
+    });

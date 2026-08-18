@@ -1,10 +1,12 @@
 import 'package:file/file.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
@@ -23,17 +25,22 @@ import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'metadata_sync_service_test.mocks.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late ProviderContainer container;
   late MockSubsonicClient mockClient;
   late MockLibraryDao mockDao;
   late MockBaseCacheManager mockCache;
   late MetadataSyncService service;
 
-  setUp(() {
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
     mockClient = MockSubsonicClient();
     mockDao = MockLibraryDao();
     mockCache = MockBaseCacheManager();
     container = ProviderContainer();
+    container.read(serverListProvider.notifier);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
     service = MetadataSyncService(
       container.read(providerElementProvider),
       cacheManager: mockCache,

@@ -63,12 +63,14 @@ class MetadataCacheConfig {
   final MetadataQuality artistArtQuality;
   final bool cacheArtistInfo;
   final int concurrency;
+  final DateTime? lastSyncedAt;
 
   const MetadataCacheConfig({
     this.albumArtQuality = MetadataQuality.medium,
     this.artistArtQuality = MetadataQuality.medium,
     this.cacheArtistInfo = true,
     this.concurrency = 4,
+    this.lastSyncedAt,
   });
 
   MetadataCacheConfig copyWith({
@@ -76,12 +78,17 @@ class MetadataCacheConfig {
     MetadataQuality? artistArtQuality,
     bool? cacheArtistInfo,
     int? concurrency,
+    DateTime? lastSyncedAt,
+    bool clearLastSyncedAt = false,
   }) {
     return MetadataCacheConfig(
       albumArtQuality: albumArtQuality ?? this.albumArtQuality,
       artistArtQuality: artistArtQuality ?? this.artistArtQuality,
       cacheArtistInfo: cacheArtistInfo ?? this.cacheArtistInfo,
       concurrency: concurrency ?? this.concurrency,
+      lastSyncedAt: clearLastSyncedAt
+          ? null
+          : (lastSyncedAt ?? this.lastSyncedAt),
     );
   }
 
@@ -90,6 +97,7 @@ class MetadataCacheConfig {
     'artistArtQuality': artistArtQuality.name,
     'cacheArtistInfo': cacheArtistInfo,
     'concurrency': concurrency,
+    'lastSyncedAt': lastSyncedAt?.toIso8601String(),
   };
 
   factory MetadataCacheConfig.fromJson(Map<String, dynamic> json) {
@@ -102,6 +110,9 @@ class MetadataCacheConfig {
           : MetadataQuality.medium,
       cacheArtistInfo: json['cacheArtistInfo'] as bool? ?? true,
       concurrency: ((json['concurrency'] as num?)?.toInt() ?? 4).clamp(1, 8),
+      lastSyncedAt: json['lastSyncedAt'] != null
+          ? DateTime.tryParse(json['lastSyncedAt'] as String)
+          : null,
     );
   }
 }
