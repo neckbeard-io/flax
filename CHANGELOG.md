@@ -13,6 +13,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ### Removed
 
 - **Removed redundant "Go to Album" option** from the right-click context menu on albums.
+- **Removed misleading play icon** that appeared when hovering over album covers, as clicking an album opens its page rather than starting playback.
 
 ## v0.3.0 — 2026-08-17
 
