@@ -232,6 +232,33 @@ jobs:
           fi
           ls -lh dist/
 
+      # The release body is the changelog's section for this version, followed
+      # by the standing install instructions. Extracting it here is what stops
+      # the body silently reverting to install-notes-only — which is what every
+      # release before this one shipped, because nothing read CHANGELOG.md at
+      # all. Missing section is a hard failure, not a quiet fallback.
+      - name: Extract changelog section
+        run: |
+          VERSION="${{ inputs.version }}"
+          python3 - "$VERSION" <<'PY' > changelog.md
+          import re, sys
+          version = sys.argv[1]
+          text = open('CHANGELOG.md').read()
+          # The section runs from its own heading to the next release heading.
+          match = re.search(
+              r'^## v%s\b.*?$(.*?)(?=^## |\Z)' % re.escape(version),
+              text, re.S | re.M)
+          if not match or not match.group(1).strip():
+              sys.exit(
+                  'CHANGELOG.md has no content under "## v%s".\n'
+                  'Close the Unreleased section off before releasing: rename it '
+                  'to "## v%s — <YYYY-MM-DD>" and open a fresh Unreleased above '
+                  'it, in its own commit.' % (version, version))
+          print(match.group(1).strip())
+          PY
+          echo "--- release notes ---"
+          cat changelog.md
+
       - name: Write install notes
         run: |
           cat > notes.md <<'EOF'
@@ -267,6 +294,11 @@ jobs:
           Not every platform is necessarily attached to every release — builds
           are opted into per run to control CI cost.
           EOF
+          # What actually gets published: this version's changelog, then the
+          # standing instructions.
+          cat changelog.md > body.md
+          printf '\n\n---\n\n' >> body.md
+          cat notes.md >> body.md
 
       - name: Create or update release
         env:
@@ -277,12 +309,15 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG exists — uploading/replacing assets."
             gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+            # Re-runs refresh the body too. Without this a release created from
+            # an earlier commit keeps its old notes forever.
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file body.md
           else
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "flax $TAG" \
-              --notes-file notes.md \
+              --notes-file body.md \
               --prerelease \
               dist/*
           fi
