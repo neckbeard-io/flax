@@ -10,6 +10,10 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+
+- **Window position restores to the correct monitor on multi-monitor setups.** Flax now detects all connected displays and restores the window onto the secondary monitor where it was last placed (or safely returns to the primary monitor if that display is unplugged).
+
 ### Removed
 
 - **Removed redundant "Go to Album" option** from the right-click context menu on albums.

@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 
 import 'package:flax/services/platform/window_state.dart';
 
@@ -93,5 +94,84 @@ void main() {
         );
       }
     });
+  });
+
+  group('multi-monitor support', () {
+    const primary = Rect.fromLTWH(0, 0, 1920, 1080);
+    const secondaryRight = Rect.fromLTWH(1920, 0, 2560, 1440);
+    const secondaryLeft = Rect.fromLTWH(-1920, 0, 1920, 1080);
+
+    test('findTargetScreen picks the display the window is currently on', () {
+      const savedOnSecondary = Rect.fromLTWH(2000, 100, 1200, 800);
+      final target = findTargetScreen(savedOnSecondary, [
+        primary,
+        secondaryRight,
+      ]);
+      expect(target, secondaryRight);
+    });
+
+    test('findTargetScreen picks display with negative coordinate space', () {
+      const savedOnLeft = Rect.fromLTWH(-1500, 100, 1200, 800);
+      final target = findTargetScreen(savedOnLeft, [primary, secondaryLeft]);
+      expect(target, secondaryLeft);
+    });
+
+    test('findTargetScreen picks display with largest overlap', () {
+      // 900px of width on primary, 300px on secondaryRight
+      const straddling = Rect.fromLTWH(1020, 100, 1200, 800);
+      final target = findTargetScreen(straddling, [primary, secondaryRight]);
+      expect(target, primary);
+    });
+
+    test(
+      'findTargetScreen falls back to primary when second display was unplugged',
+      () {
+        // Saved on secondary monitor that is no longer in the screens list
+        const savedOnOldSecondary = Rect.fromLTWH(2400, 200, 1200, 800);
+        final target = findTargetScreen(savedOnOldSecondary, [primary]);
+        expect(target, primary);
+      },
+    );
+
+    test('window restores exactly onto second monitor when present', () {
+      const saved = Rect.fromLTWH(2000, 100, 1200, 800);
+      final target = findTargetScreen(saved, [primary, secondaryRight]);
+      final fitted = fitToScreen(saved, target);
+      expect(fitted, saved);
+    });
+
+    test(
+      'window restores within bounds on second monitor if slightly overflowing',
+      () {
+        const saved = Rect.fromLTWH(4000, 100, 1200, 800);
+        final target = findTargetScreen(saved, [primary, secondaryRight]);
+        final fitted = fitToScreen(saved, target);
+        expect(fitted.right, secondaryRight.right);
+        expect(fitted.left, secondaryRight.right - 1200);
+      },
+    );
+
+    test('displayBounds converts visible position and size', () {
+      const display = Display(
+        id: '1',
+        name: 'Secondary',
+        size: Size(2560, 1440),
+        visiblePosition: Offset(1920, 25),
+        visibleSize: Size(2560, 1415),
+      );
+      expect(displayBounds(display), const Rect.fromLTWH(1920, 25, 2560, 1415));
+    });
+
+    test(
+      'displayBounds falls back to size when visiblePosition is missing',
+      () {
+        const display = Display(
+          id: '2',
+          name: 'Fallback',
+          size: Size(1920, 1080),
+        );
+        expect(displayBounds(display), const Rect.fromLTWH(0, 0, 1920, 1080));
+      },
+    );
   });
 }

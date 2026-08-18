@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -39,6 +40,45 @@ Size firstRunWindowSize(Size screen) {
     _firstRunMaxSize.height,
   );
   return Size(width, height);
+}
+
+/// Converts a [Display] into its usable bounds rectangle in logical pixels.
+Rect displayBounds(Display display) {
+  final pos = display.visiblePosition;
+  final size = display.visibleSize ?? display.size;
+  if (pos != null) {
+    return Rect.fromLTWH(pos.dx, pos.dy, size.width, size.height);
+  }
+  return Rect.fromLTWH(0, 0, display.size.width, display.size.height);
+}
+
+/// Finds the best display bounds in [screens] for [wanted] window bounds.
+///
+/// If [wanted] overlaps with one or more screens, returns the screen with the
+/// largest overlapping area. If it overlaps none (e.g. the secondary monitor was
+/// unplugged), returns [fallback] or the first screen in [screens].
+Rect findTargetScreen(
+  Rect wanted,
+  List<Rect> screens, {
+  Rect fallback = const Rect.fromLTWH(0, 0, 1440, 900),
+}) {
+  if (screens.isEmpty) return fallback;
+
+  Rect? bestScreen;
+  double maxOverlapArea = 0;
+
+  for (final screen in screens) {
+    final intersection = wanted.intersect(screen);
+    if (!intersection.isEmpty) {
+      final area = intersection.width * intersection.height;
+      if (area > maxOverlapArea) {
+        maxOverlapArea = area;
+        bestScreen = screen;
+      }
+    }
+  }
+
+  return bestScreen ?? screens.firstOrNull ?? fallback;
 }
 
 /// Fits [wanted] onto [screen], so a restored window is always reachable.
@@ -86,21 +126,42 @@ class WindowStateService with WindowListener {
   static bool get isSupported =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
+  /// Retrieves the bounds of all currently connected displays in logical
+  /// coordinates. Falls back to the primary display from Flutter's platform
+  /// dispatcher if screen_retriever fails or returns no displays.
+  Future<List<Rect>> getScreens() async {
+    try {
+      final displays = await screenRetriever.getAllDisplays();
+      if (displays.isNotEmpty) {
+        return [for (final d in displays) displayBounds(d)];
+      }
+    } catch (_) {
+      // If screen_retriever fails, fall back to Flutter's dispatcher.
+    }
+    return [_screenBounds()];
+  }
+
   /// Sizes the window before the first frame. Call after
   /// [WindowManager.ensureInitialized].
   Future<void> restore() async {
     if (!isSupported) return;
 
-    final screen = _screenBounds();
+    final screens = await getScreens();
+    final primaryScreen = screens.firstOrNull ?? _screenBounds();
     final prefs = await SharedPreferences.getInstance();
     final saved = decodeWindowBounds(prefs.getString(_boundsKey));
 
     await windowManager.setMinimumSize(kMinWindowSize);
 
     if (saved != null) {
-      await windowManager.setBounds(fitToScreen(saved, screen));
+      final targetScreen = findTargetScreen(
+        saved,
+        screens,
+        fallback: primaryScreen,
+      );
+      await windowManager.setBounds(fitToScreen(saved, targetScreen));
     } else {
-      final size = firstRunWindowSize(screen.size);
+      final size = firstRunWindowSize(primaryScreen.size);
       await windowManager.setSize(size);
       await windowManager.center();
     }
