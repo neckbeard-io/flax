@@ -267,6 +267,7 @@ class EqualizerScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Equalizer')),
       body: SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Enable + Preset + Reset ──
             Padding(
@@ -289,13 +290,59 @@ class EqualizerScreen extends ConsumerWidget {
                       if (!isNarrow) const Spacer(),
                       if (isNarrow) const SizedBox(width: 6),
                       // Preset selector
-                      Flexible(
-                        child: Container(
-                          height: 40,
-                          constraints: BoxConstraints(
-                            maxWidth: isNarrow ? 120 : 160,
+                      if (isNarrow)
+                        Expanded(
+                          child: Container(
+                            height: 40,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: theme.colorScheme.outlineVariant,
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: FlaxDropdown<String>(
+                                value: eq.presetName,
+                                isDense: true,
+                                isExpanded: true,
+                                borderRadius: BorderRadius.circular(10),
+                                icon: const Padding(
+                                  padding: EdgeInsets.only(left: 4),
+                                  child: Icon(Icons.arrow_drop_down, size: 20),
+                                ),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                                items: dropdownItems
+                                    .map(
+                                      (name) => DropdownMenuItem(
+                                        value: name,
+                                        child: Text(
+                                          name,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (name) {
+                                  if (name != null &&
+                                      _presetGains.containsKey(name)) {
+                                    ref
+                                        .read(eqProvider.notifier)
+                                        .applyPreset(name);
+                                  }
+                                },
+                              ),
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                        )
+                      else
+                        Container(
+                          height: 40,
+                          constraints: const BoxConstraints(maxWidth: 160),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(10),
@@ -338,7 +385,6 @@ class EqualizerScreen extends ConsumerWidget {
                             ),
                           ),
                         ),
-                      ),
                       const SizedBox(width: 8),
                       // Auto level — drops the curve so the peak sits at 0 dB
                       _EqActionButton(
