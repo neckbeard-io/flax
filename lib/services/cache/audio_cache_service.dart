@@ -22,7 +22,7 @@ class AudioCacheConfig {
 
   const AudioCacheConfig({
     this.rollingCacheLimitMb = 2048,
-    this.autoCacheStreamed = true,
+    this.autoCacheStreamed = false,
     this.offlineOnlyMode = false,
   });
 
@@ -53,7 +53,7 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
       final prefs = await SharedPreferences.getInstance();
       state = AudioCacheConfig(
         rollingCacheLimitMb: prefs.getInt(_limitKey) ?? 2048,
-        autoCacheStreamed: prefs.getBool(_autoCacheKey) ?? true,
+        autoCacheStreamed: prefs.getBool(_autoCacheKey) ?? false,
         offlineOnlyMode: prefs.getBool(_offlineOnlyKey) ?? false,
       );
     } catch (_) {}
