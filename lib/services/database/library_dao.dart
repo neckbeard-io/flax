@@ -681,30 +681,36 @@ class LibraryDao {
   }
 
   Stream<Set<String>> watchDownloadedAlbumIds(String serverId) {
-    final q = _db.selectOnly(_db.songs, distinct: true)
-      ..addColumns([_db.songs.albumId])
-      ..where(
-        _db.songs.serverId.equals(serverId) &
-            _db.songs.albumId.isNotNull() &
-            _db.songs.localPath.isNotNull() &
-            _db.songs.downloadState.equals(DownloadState.complete.index),
-      );
-    return q.watch().map(
-      (rows) => rows.map((r) => r.read(_db.songs.albumId)!).toSet(),
+    final query = _db.customSelect(
+      'SELECT album_id FROM songs '
+      'WHERE server_id = ? AND album_id IS NOT NULL '
+      'GROUP BY album_id '
+      'HAVING COUNT(*) > 0 AND COUNT(*) = SUM(CASE WHEN download_state = ? AND local_path IS NOT NULL THEN 1 ELSE 0 END)',
+      variables: [
+        Variable<String>(serverId),
+        Variable<int>(DownloadState.complete.index),
+      ],
+      readsFrom: {_db.songs},
+    );
+    return query.watch().map(
+      (rows) => rows.map((r) => r.read<String>('album_id')).toSet(),
     );
   }
 
   Stream<Set<String>> watchDownloadedArtistIds(String serverId) {
-    final q = _db.selectOnly(_db.songs, distinct: true)
-      ..addColumns([_db.songs.artistId])
-      ..where(
-        _db.songs.serverId.equals(serverId) &
-            _db.songs.artistId.isNotNull() &
-            _db.songs.localPath.isNotNull() &
-            _db.songs.downloadState.equals(DownloadState.complete.index),
-      );
-    return q.watch().map(
-      (rows) => rows.map((r) => r.read(_db.songs.artistId)!).toSet(),
+    final query = _db.customSelect(
+      'SELECT artist_id FROM songs '
+      'WHERE server_id = ? AND artist_id IS NOT NULL '
+      'GROUP BY artist_id '
+      'HAVING COUNT(*) > 0 AND COUNT(*) = SUM(CASE WHEN download_state = ? AND local_path IS NOT NULL THEN 1 ELSE 0 END)',
+      variables: [
+        Variable<String>(serverId),
+        Variable<int>(DownloadState.complete.index),
+      ],
+      readsFrom: {_db.songs},
+    );
+    return query.watch().map(
+      (rows) => rows.map((r) => r.read<String>('artist_id')).toSet(),
     );
   }
 
