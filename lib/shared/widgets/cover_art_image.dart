@@ -71,7 +71,7 @@ class CoverArtImage extends ConsumerWidget {
         final candidates = <double>[
           if (constraints.hasBoundedWidth) constraints.maxWidth,
           if (constraints.hasBoundedHeight) constraints.maxHeight,
-          if (size != null) size!,
+          ?size,
         ];
         final logical = candidates.isEmpty
             ? 256.0

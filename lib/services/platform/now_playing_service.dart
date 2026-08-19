@@ -75,7 +75,7 @@ class NowPlayingService {
         'position': position.inMilliseconds / 1000.0,
         'rate': isPlaying ? 1.0 : 0.0,
         if (song.track != null) 'trackNumber': song.track!,
-        if (artUrl != null) 'artUrl': artUrl,
+        'artUrl': ?artUrl,
       });
     } catch (_) {
       // Silently ignore if channel not available

@@ -545,15 +545,15 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   // ── EQ ────────────────────────────────────────────────────────────
 
   void _initEqListener() {
-    _eqSub = _ref.listen<EqState>(eqProvider, (_, __) {
+    _eqSub = _ref.listen<EqState>(eqProvider, (_, _) {
       _applyEq();
     });
-    _autoEqSub = _ref.listen<AutoEqState>(autoEqProvider, (_, __) {
+    _autoEqSub = _ref.listen<AutoEqState>(autoEqProvider, (_, _) {
       _applyEq();
     });
     // Switching engine has to rebuild the chain immediately: the point of the
     // control is hearing the difference on the track already playing.
-    _eqEngineSub = _ref.listen<EqEngine>(eqEngineProvider, (_, __) {
+    _eqEngineSub = _ref.listen<EqEngine>(eqEngineProvider, (_, _) {
       _applyEq();
     });
     // Apply initial state
