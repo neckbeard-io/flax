@@ -317,7 +317,15 @@ class AudioCacheService {
           )
         : null;
 
-    handle?.enumerated(items: songs.length);
+    final totalBytesKnown = songs.fold<int>(0, (sum, s) => sum + (s.size ?? 0));
+    final hasTotalBytes =
+        totalBytesKnown > 0 &&
+        songs.every((s) => s.size != null && s.size! > 0);
+
+    handle?.enumerated(
+      items: songs.length,
+      bytes: hasTotalBytes ? totalBytesKnown : null,
+    );
     var doneCount = 0;
     var totalBytes = 0;
 
@@ -383,7 +391,18 @@ class AudioCacheService {
           )
         : null;
 
-    handle?.enumerated(items: allSongs.length);
+    final totalBytesKnown = allSongs.fold<int>(
+      0,
+      (sum, s) => sum + (s.size ?? 0),
+    );
+    final hasTotalBytes =
+        totalBytesKnown > 0 &&
+        allSongs.every((s) => s.size != null && s.size! > 0);
+
+    handle?.enumerated(
+      items: allSongs.length,
+      bytes: hasTotalBytes ? totalBytesKnown : null,
+    );
     var doneCount = 0;
     var totalBytes = 0;
 
