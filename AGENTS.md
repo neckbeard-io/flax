@@ -51,6 +51,25 @@ scoped yet. Do not start one.
 These are the portable rules. They apply on every platform and are the part of
 this document most likely to matter to a change you are making.
 
+### Conventional commits
+
+All commits and pull request titles must adhere to the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+`<type>[optional scope]: <description>`
+
+Common types:
+- `feat`: A new user-facing feature or capability.
+- `fix`: A bug fix.
+- `docs`: Documentation changes only (`AGENTS.md`, `README.md`, docstrings).
+- `style`: Formatting, missing semicolons, whitespace (no code behavior change).
+- `refactor`: Code refactoring without behavior change.
+- `perf`: Performance improvements.
+- `test`: Adding or updating tests.
+- `chore`: Tooling, build scripts, dependencies, CI configuration.
+
+Rules:
+- Subject line must be imperative and lowercase (e.g. `feat(player): add crossfade support`).
+
 ### Stars are ratings, hearts are favorites
 
 These are **two independent fields** on the same entity, not two views of one.
