@@ -48,7 +48,7 @@ void main() {
     );
 
     expect(find.text('v0.4.6'), findsOneWidget);
-    expect(find.byIcon(Icons.auto_awesome), findsOneWidget);
+    expect(find.byIcon(Icons.download_rounded), findsOneWidget);
   });
 
   testWidgets('WhatsNewDialog renders version and highlights', (tester) async {

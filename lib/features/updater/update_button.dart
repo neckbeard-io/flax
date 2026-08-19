@@ -49,7 +49,7 @@ class UpdateButton extends ConsumerWidget {
                       ? Icons.check_circle
                       : state.isDownloading
                       ? Icons.downloading
-                      : Icons.auto_awesome,
+                      : Icons.download_rounded,
                   size: 14,
                   color: theme.colorScheme.onPrimaryContainer,
                 ),
