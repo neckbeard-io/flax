@@ -293,6 +293,8 @@ jobs:
 
   release:
     name: Publish GitHub Release
+    permissions:
+      contents: write
     needs: [macos, windows, android, linux]
     # always() so that platforms left opted-out (skipped) don't block the
     # release, but a genuine build failure still does.
