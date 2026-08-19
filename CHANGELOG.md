@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.4.8 — 2026-08-19
+
 ### Added
 - Automatic update modal prompt on launch and resume for mobile platforms.
 - Update notification badge on Settings bottom navigation tab.
