@@ -59,7 +59,7 @@ At all
     test('default configuration values', () {
       const config = AudioCacheConfig();
       expect(config.rollingCacheLimitMb, equals(2048));
-      expect(config.autoCacheStreamed, isTrue);
+      expect(config.autoCacheStreamed, isFalse);
       expect(config.offlineOnlyMode, isFalse);
     });
 
@@ -67,10 +67,10 @@ At all
       const config = AudioCacheConfig();
       final updated = config.copyWith(
         rollingCacheLimitMb: 5120,
-        autoCacheStreamed: false,
+        autoCacheStreamed: true,
       );
       expect(updated.rollingCacheLimitMb, equals(5120));
-      expect(updated.autoCacheStreamed, isFalse);
+      expect(updated.autoCacheStreamed, isTrue);
       expect(updated.offlineOnlyMode, isFalse);
     });
   });
