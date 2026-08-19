@@ -7,6 +7,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/library/album_sort.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/country_chip.dart';
@@ -763,6 +764,11 @@ class _ArtistRatingRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final downloadedArtistIds =
+        ref.watch(downloadedArtistIdsProvider).valueOrNull ?? const {};
+    final isCached = downloadedArtistIds.contains(artist.id);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -792,6 +798,25 @@ class _ArtistRatingRow extends ConsumerWidget {
                   EntityRef(EntityType.artist, artist.id),
                   favorite: !artist.starred,
                 );
+          },
+        ),
+        const SizedBox(width: 8),
+        HoverIcon(
+          icon: isCached ? Icons.offline_pin : Icons.download,
+          size: size,
+          color: isCached
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurfaceVariant,
+          tooltip: isCached
+              ? 'Remove artist from cache'
+              : 'Cache artist offline',
+          onTap: () {
+            final cacheService = ref.read(audioCacheServiceProvider);
+            if (isCached) {
+              cacheService.removeCachedArtist(artist.id);
+            } else {
+              cacheService.cacheArtist(artist.id);
+            }
           },
         ),
       ],
