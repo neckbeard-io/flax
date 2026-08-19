@@ -265,247 +265,285 @@ class EqualizerScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Equalizer')),
-      body: Column(
-        children: [
-          // ── Enable + Preset + Reset ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Row(
-              children: [
-                Switch(
-                  value: eq.enabled,
-                  onChanged: (_) => ref.read(eqProvider.notifier).toggle(),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  eq.enabled ? 'EQ On' : 'EQ Off',
-                  style: theme.textTheme.titleSmall,
-                ),
-                const Spacer(),
-                // Preset selector
-                Container(
-                  height: 40,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: theme.colorScheme.outlineVariant),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: FlaxDropdown<String>(
-                      value: eq.presetName,
-                      isDense: true,
-                      // Matches the enclosing container's radius, not the
-                      // default 8.
-                      borderRadius: BorderRadius.circular(10),
-                      icon: const Padding(
-                        padding: EdgeInsets.only(left: 4),
-                        child: Icon(Icons.arrow_drop_down, size: 20),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // ── Enable + Preset + Reset ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 450;
+                  return Row(
+                    children: [
+                      Switch(
+                        value: eq.enabled,
+                        onChanged: (_) =>
+                            ref.read(eqProvider.notifier).toggle(),
                       ),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface,
+                      const SizedBox(width: 8),
+                      Text(
+                        eq.enabled ? 'EQ On' : 'EQ Off',
+                        style: theme.textTheme.titleSmall,
                       ),
-                      items: dropdownItems
-                          .map(
-                            (name) => DropdownMenuItem(
-                              value: name,
-                              child: Text(name),
+                      if (!isNarrow) const Spacer(),
+                      if (isNarrow) const SizedBox(width: 6),
+                      // Preset selector
+                      Flexible(
+                        child: Container(
+                          height: 40,
+                          constraints: BoxConstraints(
+                            maxWidth: isNarrow ? 120 : 160,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: theme.colorScheme.outlineVariant,
                             ),
-                          )
-                          .toList(),
-                      onChanged: (name) {
-                        if (name != null && _presetGains.containsKey(name)) {
-                          ref.read(eqProvider.notifier).applyPreset(name);
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Auto level — drops the curve so the peak sits at 0 dB
-                _EqActionButton(
-                  label: 'Auto level',
-                  icon: Icons.vertical_align_bottom,
-                  onPressed: () => ref.read(eqProvider.notifier).autoLevel(),
-                  tooltip: 'Lower the whole curve so the loudest band is 0 dB',
-                ),
-                const SizedBox(width: 8),
-                _EqActionButton(
-                  label: 'Zero all',
-                  icon: Icons.horizontal_rule,
-                  onPressed: () => ref.read(eqProvider.notifier).zeroAll(),
-                  tooltip: 'Flatten all bands',
-                ),
-                const SizedBox(width: 8),
-                // Reset
-                IconButton(
-                  onPressed: () => ref.read(eqProvider.notifier).reset(),
-                  icon: const Icon(Icons.restart_alt),
-                  tooltip: 'Reset bands and preamp',
-                  style: IconButton.styleFrom(
-                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(color: theme.colorScheme.outlineVariant),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-
-          // ── Preamp ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 56,
-                  child: Text(
-                    'Pre',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Slider(
-                    value: eq.preamp,
-                    min: -eqGainLimit,
-                    max: eqGainLimit,
-                    divisions: (eqGainLimit * 4).round(),
-                    label: '${eq.preamp.toStringAsFixed(1)} dB',
-                    onChanged: (v) =>
-                        ref.read(eqProvider.notifier).setPreamp(v),
-                  ),
-                ),
-                SizedBox(
-                  width: 56,
-                  child: Text(
-                    '${eq.preamp.toStringAsFixed(1)} dB',
-                    style: theme.textTheme.bodySmall,
-                    textAlign: TextAlign.end,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-
-          // ── Band sliders ──
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // dB scale — aligned to the slider track, not the labels below
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 26),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('+20', style: theme.textTheme.labelSmall),
-                        Text('0', style: theme.textTheme.labelSmall),
-                        Text('-20', style: theme.textTheme.labelSmall),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  // Band sliders
-                  ...List.generate(eq.bands.length, (i) {
-                    final band = eq.bands[i];
-                    return Expanded(
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: RotatedBox(
-                              quarterTurns: 3,
-                              child: SliderTheme(
-                                data: SliderThemeData(
-                                  trackHeight: 2,
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 5,
-                                    disabledThumbRadius: 4,
-                                  ),
-                                  overlayShape: const RoundSliderOverlayShape(
-                                    overlayRadius: 12,
-                                  ),
-                                  activeTrackColor: theme.colorScheme.primary,
-                                  inactiveTrackColor:
-                                      theme.colorScheme.surfaceContainerHighest,
-                                ),
-                                child: Slider(
-                                  value: band.gain,
-                                  min: -eqGainLimit,
-                                  max: eqGainLimit,
-                                  onChanged: eq.enabled
-                                      ? (v) => ref
-                                            .read(eqProvider.notifier)
-                                            .setBandGain(i, v)
-                                      : null,
-                                ),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: FlaxDropdown<String>(
+                              value: eq.presetName,
+                              isDense: true,
+                              isExpanded: true,
+                              borderRadius: BorderRadius.circular(10),
+                              icon: const Padding(
+                                padding: EdgeInsets.only(left: 4),
+                                child: Icon(Icons.arrow_drop_down, size: 20),
                               ),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                              ),
+                              items: dropdownItems
+                                  .map(
+                                    (name) => DropdownMenuItem(
+                                      value: name,
+                                      child: Text(
+                                        name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (name) {
+                                if (name != null &&
+                                    _presetGains.containsKey(name)) {
+                                  ref
+                                      .read(eqProvider.notifier)
+                                      .applyPreset(name);
+                                }
+                              },
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            band.label,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontSize: 9,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.visible,
-                          ),
-                          Text(
-                            band.gain == 0
-                                ? '0'
-                                : '${band.gain > 0 ? '+' : ''}'
-                                      '${band.gain.round()}',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: band.gain == 0
-                                  ? theme.colorScheme.onSurfaceVariant
-                                  : theme.colorScheme.primary,
-                              fontSize: 9,
-                              fontWeight: band.gain == 0
-                                  ? FontWeight.normal
-                                  : FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    );
-                  }),
+                      const SizedBox(width: 8),
+                      // Auto level — drops the curve so the peak sits at 0 dB
+                      _EqActionButton(
+                        label: 'Auto level',
+                        icon: Icons.vertical_align_bottom,
+                        iconOnly: isNarrow,
+                        onPressed: () =>
+                            ref.read(eqProvider.notifier).autoLevel(),
+                        tooltip:
+                            'Lower the whole curve so the loudest band is 0 dB',
+                      ),
+                      const SizedBox(width: 8),
+                      // Reset
+                      IconButton(
+                        onPressed: () => ref.read(eqProvider.notifier).reset(),
+                        icon: const Icon(Icons.restart_alt),
+                        tooltip: 'Reset bands and preamp to flat',
+                        style: IconButton.styleFrom(
+                          backgroundColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: theme.colorScheme.outlineVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const Divider(height: 1),
+
+            // ── Preamp ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 56,
+                    child: Text(
+                      'Pre',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Slider(
+                      value: eq.preamp,
+                      min: -eqGainLimit,
+                      max: eqGainLimit,
+                      divisions: (eqGainLimit * 4).round(),
+                      label: '${eq.preamp.toStringAsFixed(1)} dB',
+                      onChanged: (v) =>
+                          ref.read(eqProvider.notifier).setPreamp(v),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 56,
+                    child: Text(
+                      '${eq.preamp.toStringAsFixed(1)} dB',
+                      style: theme.textTheme.bodySmall,
+                      textAlign: TextAlign.end,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
+            const Divider(height: 1),
 
-          // ── AutoEQ ──
-          const Divider(height: 1),
-          Builder(
-            builder: (context) {
-              final autoEq = ref.watch(autoEqProvider);
-              final profileName = autoEq.activeProfile?.name;
-              return ListTile(
-                leading: Icon(
-                  Icons.headphones,
-                  color: profileName != null
-                      ? Theme.of(context).colorScheme.primary
-                      : null,
+            // ── Band sliders ──
+            SizedBox(
+              height: 280,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // dB scale — aligned to the slider track, not the labels below
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 26),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('+20', style: theme.textTheme.labelSmall),
+                          Text('0', style: theme.textTheme.labelSmall),
+                          Text('-20', style: theme.textTheme.labelSmall),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Band sliders
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < eq.bands.length; i++) ...[
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Expanded(
+                                    child: RotatedBox(
+                                      quarterTurns: 3,
+                                      child: SliderTheme(
+                                        data: SliderThemeData(
+                                          trackHeight: 2,
+                                          thumbShape:
+                                              const RoundSliderThumbShape(
+                                                enabledThumbRadius: 5,
+                                                disabledThumbRadius: 4,
+                                              ),
+                                          overlayShape:
+                                              const RoundSliderOverlayShape(
+                                                overlayRadius: 10,
+                                              ),
+                                          activeTrackColor:
+                                              theme.colorScheme.primary,
+                                          inactiveTrackColor: theme
+                                              .colorScheme
+                                              .surfaceContainerHighest,
+                                        ),
+                                        child: Slider(
+                                          value: eq.bands[i].gain,
+                                          min: -eqGainLimit,
+                                          max: eqGainLimit,
+                                          onChanged: eq.enabled
+                                              ? (v) => ref
+                                                    .read(eqProvider.notifier)
+                                                    .setBandGain(i, v)
+                                              : null,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      eq.bands[i].label,
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(fontSize: 8),
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      eq.bands[i].gain == 0
+                                          ? '0'
+                                          : '${eq.bands[i].gain > 0 ? '+' : ''}'
+                                                '${eq.bands[i].gain.round()}',
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                            color: eq.bands[i].gain == 0
+                                                ? theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant
+                                                : theme.colorScheme.primary,
+                                            fontSize: 8,
+                                            fontWeight: eq.bands[i].gain == 0
+                                                ? FontWeight.normal
+                                                : FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                title: const Text('AutoEQ Headphone Correction'),
-                subtitle: Text(profileName ?? 'None selected'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.go('/settings/autoeq'),
-              );
-            },
-          ),
-          const _EqEngineTile(),
-          const SizedBox(height: 8),
-        ],
+              ),
+            ),
+
+            // ── AutoEQ ──
+            const Divider(height: 1),
+            Builder(
+              builder: (context) {
+                final autoEq = ref.watch(autoEqProvider);
+                final profileName = autoEq.activeProfile?.name;
+                return ListTile(
+                  leading: Icon(
+                    Icons.headphones,
+                    color: profileName != null
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                  title: const Text('AutoEQ Headphone Correction'),
+                  subtitle: Text(profileName ?? 'None selected'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.go('/settings/autoeq'),
+                );
+              },
+            ),
+            const _EqEngineTile(),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -517,7 +555,7 @@ class EqualizerScreen extends ConsumerWidget {
 /// a tuning control: the curve is the same either way, and this only decides
 /// how it is realized. Both are kept so the two can be compared by ear on
 /// real material — the parametric one is what stops the stutter at a gapless
-/// track change, but that is not on its own an argument about how they sound.
+/// track change, but that is not an argument about how they sound.
 class _EqEngineTile extends ConsumerWidget {
   const _EqEngineTile();
 
@@ -526,25 +564,65 @@ class _EqEngineTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final engine = ref.watch(eqEngineProvider);
 
-    return ListTile(
-      leading: const Icon(Icons.graphic_eq),
-      title: const Text('Filter'),
-      subtitle: Text(
-        engine.description,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-      trailing: SegmentedButton<EqEngine>(
-        segments: [
-          for (final e in EqEngine.values)
-            ButtonSegment(value: e, label: Text(e.label)),
-        ],
-        selected: {engine},
-        showSelectedIcon: false,
-        onSelectionChanged: (s) =>
-            ref.read(eqEngineProvider.notifier).setEngine(s.first),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 520;
+        final segmentedButton = SegmentedButton<EqEngine>(
+          segments: [
+            for (final e in EqEngine.values)
+              ButtonSegment(value: e, label: Text(e.label)),
+          ],
+          selected: {engine},
+          showSelectedIcon: false,
+          onSelectionChanged: (s) =>
+              ref.read(eqEngineProvider.notifier).setEngine(s.first),
+        );
+
+        if (isNarrow) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.graphic_eq),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Filter', style: theme.textTheme.bodyLarge),
+                          Text(
+                            engine.description,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(width: double.infinity, child: segmentedButton),
+              ],
+            ),
+          );
+        }
+
+        return ListTile(
+          leading: const Icon(Icons.graphic_eq),
+          title: const Text('Filter'),
+          subtitle: Text(
+            engine.description,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          trailing: segmentedButton,
+        );
+      },
     );
   }
 }
@@ -555,12 +633,14 @@ class _EqActionButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
   final String tooltip;
+  final bool iconOnly;
 
   const _EqActionButton({
     required this.label,
     required this.icon,
     required this.onPressed,
     required this.tooltip,
+    this.iconOnly = false,
   });
 
   @override
@@ -570,21 +650,33 @@ class _EqActionButton extends StatelessWidget {
       message: tooltip,
       child: SizedBox(
         height: 40,
-        child: OutlinedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 16),
-          label: Text(label),
-          style: OutlinedButton.styleFrom(
-            backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            foregroundColor: theme.colorScheme.onSurface,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            textStyle: theme.textTheme.bodyMedium,
-            side: BorderSide(color: theme.colorScheme.outlineVariant),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
+        child: iconOnly
+            ? IconButton(
+                onPressed: onPressed,
+                icon: Icon(icon, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(color: theme.colorScheme.outlineVariant),
+                  ),
+                ),
+              )
+            : OutlinedButton.icon(
+                onPressed: onPressed,
+                icon: Icon(icon, size: 16),
+                label: Text(label),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  foregroundColor: theme.colorScheme.onSurface,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  textStyle: theme.textTheme.bodyMedium,
+                  side: BorderSide(color: theme.colorScheme.outlineVariant),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
       ),
     );
   }

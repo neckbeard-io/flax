@@ -30,6 +30,7 @@ class FlaxDropdown<T> extends StatelessWidget {
     required this.items,
     required this.onChanged,
     this.isDense = false,
+    this.isExpanded = false,
     this.icon,
     this.style,
     this.borderRadius,
@@ -39,6 +40,7 @@ class FlaxDropdown<T> extends StatelessWidget {
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?>? onChanged;
   final bool isDense;
+  final bool isExpanded;
   final Widget? icon;
   final TextStyle? style;
 
@@ -55,6 +57,7 @@ class FlaxDropdown<T> extends StatelessWidget {
       items: items,
       onChanged: onChanged,
       isDense: isDense,
+      isExpanded: isExpanded,
       icon: icon,
       style: style,
       borderRadius: radius,
