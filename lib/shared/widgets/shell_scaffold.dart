@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +5,8 @@ import 'package:flax/app/nav_destinations.dart';
 import 'package:flax/features/player/mini_player.dart';
 import 'package:flax/features/player/now_playing_panels.dart';
 import 'package:flax/shared/widgets/desktop_sidebar.dart';
+
+import 'package:flax/shared/widgets/layout_metrics.dart';
 
 /// Below this width the sidebar is dropped for the bottom bar even on desktop —
 /// a 220px rail out of a narrow window leaves too little for content.
@@ -15,7 +16,7 @@ class ShellScaffold extends ConsumerWidget {
   final Widget child;
   const ShellScaffold({super.key, required this.child});
 
-  static bool _isDesktop() => Platform.isMacOS || Platform.isWindows;
+  static bool _isDesktop() => isDesktopPlatform;
 
   /// Routes that take the whole window, with no navigation chrome around them.
   ///

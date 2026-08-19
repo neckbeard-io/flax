@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Flax
+GenericName=Music Player
+Comment=A high-fidelity music player for self-hosted Subsonic and Navidrome servers
+Exec=flax %U
+Icon=com.flaxplayer.flax
+Terminal=false
+Categories=AudioVideo;Audio;Player;Music;
+Keywords=music;player;subsonic;navidrome;audio;flac;mpv;
+StartupWMClass=flax

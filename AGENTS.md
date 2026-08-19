@@ -1,6 +1,6 @@
 # flax — contributor and agent guide
 
-A Flutter desktop (macOS, Windows) and Android client for a Subsonic-compatible
+A Flutter desktop (macOS, Windows, Linux) and Android client for a Subsonic-compatible
 music server. State is managed with Riverpod; routing with go_router; audio via
 `mpv_audio_kit` (libmpv).
 
@@ -318,7 +318,7 @@ push or tag trigger so releases are triggered deliberately. Since the repo is
 public, GitHub Actions runner minutes are free across macOS, Windows, and Linux.
 
 ```bash
-gh workflow run release.yml -f version=0.4.1 -f macos=true -f windows=true -f android=true
+gh workflow run release.yml -f version=0.4.1 -f macos=true -f windows=true -f linux=true -f android=true
 gh run watch $(gh run list --workflow=release.yml -L1 --json databaseId --jq '.[0].databaseId')
 ```
 
