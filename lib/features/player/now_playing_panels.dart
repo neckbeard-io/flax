@@ -225,7 +225,7 @@ class _Header extends StatelessWidget {
             width: _sideWidth,
             child: Row(
               children: [
-                if (leading != null) leading!,
+                ?leading,
                 if (!layout.singlePanel)
                   IconButton(
                     icon: Icon(

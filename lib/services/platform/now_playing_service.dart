@@ -11,6 +11,8 @@ typedef SeekCallback = void Function(Duration position);
 class NowPlayingService {
   static const _channel = MethodChannel('com.flax/now_playing');
 
+  final bool _isSupported;
+
   MediaCallback? onPlay;
   MediaCallback? onPause;
   MediaCallback? onTogglePlayPause;
@@ -18,11 +20,14 @@ class NowPlayingService {
   MediaCallback? onPrevious;
   SeekCallback? onSeek;
 
-  NowPlayingService() {
-    if (Platform.isMacOS) {
+  NowPlayingService({bool? isSupported})
+    : _isSupported = isSupported ?? Platform.isMacOS {
+    if (_isSupported) {
       _channel.setMethodCallHandler(_handleMethod);
     }
   }
+
+  bool get isSupported => _isSupported;
 
   DateTime? _lastTransportEventTime;
 
@@ -64,7 +69,7 @@ class NowPlayingService {
     required bool isPlaying,
     String? artUrl,
   }) async {
-    if (!Platform.isMacOS) return;
+    if (!_isSupported) return;
 
     try {
       await _channel.invokeMethod('updateNowPlaying', {
@@ -75,7 +80,7 @@ class NowPlayingService {
         'position': position.inMilliseconds / 1000.0,
         'rate': isPlaying ? 1.0 : 0.0,
         if (song.track != null) 'trackNumber': song.track!,
-        if (artUrl != null) 'artUrl': artUrl,
+        'artUrl': ?artUrl,
       });
     } catch (_) {
       // Silently ignore if channel not available
@@ -86,7 +91,7 @@ class NowPlayingService {
     required Duration position,
     required bool isPlaying,
   }) async {
-    if (!Platform.isMacOS) return;
+    if (!_isSupported) return;
 
     try {
       await _channel.invokeMethod('updatePlaybackState', {
@@ -99,7 +104,7 @@ class NowPlayingService {
   }
 
   Future<void> clear() async {
-    if (!Platform.isMacOS) return;
+    if (!_isSupported) return;
     try {
       await _channel.invokeMethod('clearNowPlaying');
     } catch (_) {}

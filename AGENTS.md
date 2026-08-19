@@ -198,8 +198,9 @@ dart run tool/verify_presets.dart   # equalizer preset table consistency
 ```
 
 The repo **is** `dart format` clean, as of the baseline commit that swept all
-108 files, and CI keeps it that way: `.github/workflows/format.yml` fails on
-unformatted code. It runs `dart format --output=none --set-exit-if-changed .`,
+108 files, and CI keeps it that way: `.github/workflows/ci.yml` validates formatting,
+static analysis (`flutter analyze --fatal-infos`), and the test suite on every push
+and pull request. It runs `dart format --output=none --set-exit-if-changed .`,
 which is the same check you can run locally before pushing. Just run
 `dart format .` on what you touched — reformatting no longer buries a diff,
 because there is nothing left for it to reformat.
