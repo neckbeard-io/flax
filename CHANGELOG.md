@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.4.7 — 2026-08-19
+
 ### Added
 - Settings tab in mobile bottom navigation bar.
 
