@@ -21,22 +21,26 @@ class AudioCacheConfig {
   final int rollingCacheLimitMb;
   final bool autoCacheStreamed;
   final bool offlineOnlyMode;
+  final int downloadConcurrency;
 
   const AudioCacheConfig({
     this.rollingCacheLimitMb = 2048,
     this.autoCacheStreamed = false,
     this.offlineOnlyMode = false,
+    this.downloadConcurrency = 2,
   });
 
   AudioCacheConfig copyWith({
     int? rollingCacheLimitMb,
     bool? autoCacheStreamed,
     bool? offlineOnlyMode,
+    int? downloadConcurrency,
   }) {
     return AudioCacheConfig(
       rollingCacheLimitMb: rollingCacheLimitMb ?? this.rollingCacheLimitMb,
       autoCacheStreamed: autoCacheStreamed ?? this.autoCacheStreamed,
       offlineOnlyMode: offlineOnlyMode ?? this.offlineOnlyMode,
+      downloadConcurrency: downloadConcurrency ?? this.downloadConcurrency,
     );
   }
 }
@@ -45,6 +49,7 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
   static const _limitKey = 'flax_rolling_cache_limit_mb';
   static const _autoCacheKey = 'flax_auto_cache_streamed';
   static const _offlineOnlyKey = 'flax_offline_only_mode';
+  static const _concurrencyKey = 'flax_audio_download_concurrency';
 
   AudioCacheConfigNotifier() : super(const AudioCacheConfig()) {
     _load();
@@ -57,6 +62,7 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
         rollingCacheLimitMb: prefs.getInt(_limitKey) ?? 2048,
         autoCacheStreamed: prefs.getBool(_autoCacheKey) ?? false,
         offlineOnlyMode: prefs.getBool(_offlineOnlyKey) ?? false,
+        downloadConcurrency: prefs.getInt(_concurrencyKey) ?? 2,
       );
     } catch (_) {}
   }
@@ -77,6 +83,12 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
     state = state.copyWith(offlineOnlyMode: offlineOnly);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_offlineOnlyKey, offlineOnly);
+  }
+
+  Future<void> setDownloadConcurrency(int concurrency) async {
+    state = state.copyWith(downloadConcurrency: concurrency);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_concurrencyKey, concurrency);
   }
 }
 
@@ -326,28 +338,39 @@ class AudioCacheService {
       items: songs.length,
       bytes: hasTotalBytes ? totalBytesKnown : null,
     );
+    final concurrency = _ref
+        .read(audioCacheConfigProvider)
+        .downloadConcurrency
+        .clamp(1, 16);
+    var currentIndex = 0;
     var doneCount = 0;
     var totalBytes = 0;
 
-    for (var i = 0; i < songs.length; i++) {
-      if (cancelToken.isCancelled || handle?.isCanceled == true) break;
-      final song = songs[i];
-      handle?.note('Track ${i + 1}/${songs.length}: "${song.title}"');
-      final path = await cacheSong(
-        song,
-        isPinned: isPinned,
-        parentHandle: handle,
-        cancelToken: cancelToken,
-        onProgressDelta: (bytesDelta) {
-          totalBytes += bytesDelta;
-          handle?.progress(items: doneCount, bytes: totalBytes);
-        },
-      );
-      if (path != null) {
-        doneCount++;
+    Future<void> worker() async {
+      while (!cancelToken.isCancelled && handle?.isCanceled != true) {
+        final i = currentIndex++;
+        if (i >= songs.length) break;
+        final song = songs[i];
+        handle?.note('Track ${doneCount + 1}/${songs.length}: "${song.title}"');
+        final path = await cacheSong(
+          song,
+          isPinned: isPinned,
+          parentHandle: handle,
+          cancelToken: cancelToken,
+          onProgressDelta: (bytesDelta) {
+            totalBytes += bytesDelta;
+            handle?.progress(items: doneCount, bytes: totalBytes);
+          },
+        );
+        if (path != null) {
+          doneCount++;
+        }
+        handle?.progress(items: doneCount, bytes: totalBytes);
       }
-      handle?.progress(items: doneCount, bytes: totalBytes);
     }
+
+    final workerCount = concurrency.clamp(1, songs.length);
+    await Future.wait(List.generate(workerCount, (_) => worker()));
 
     if (cancelToken.isCancelled || handle?.isCanceled == true) {
       // Canceled
@@ -403,28 +426,41 @@ class AudioCacheService {
       items: allSongs.length,
       bytes: hasTotalBytes ? totalBytesKnown : null,
     );
+    final concurrency = _ref
+        .read(audioCacheConfigProvider)
+        .downloadConcurrency
+        .clamp(1, 16);
+    var currentIndex = 0;
     var doneCount = 0;
     var totalBytes = 0;
 
-    for (var i = 0; i < allSongs.length; i++) {
-      if (cancelToken.isCancelled || handle?.isCanceled == true) break;
-      final song = allSongs[i];
-      handle?.note('Track ${i + 1}/${allSongs.length}: "${song.title}"');
-      final path = await cacheSong(
-        song,
-        isPinned: isPinned,
-        parentHandle: handle,
-        cancelToken: cancelToken,
-        onProgressDelta: (bytesDelta) {
-          totalBytes += bytesDelta;
-          handle?.progress(items: doneCount, bytes: totalBytes);
-        },
-      );
-      if (path != null) {
-        doneCount++;
+    Future<void> worker() async {
+      while (!cancelToken.isCancelled && handle?.isCanceled != true) {
+        final i = currentIndex++;
+        if (i >= allSongs.length) break;
+        final song = allSongs[i];
+        handle?.note(
+          'Track ${doneCount + 1}/${allSongs.length}: "${song.title}"',
+        );
+        final path = await cacheSong(
+          song,
+          isPinned: isPinned,
+          parentHandle: handle,
+          cancelToken: cancelToken,
+          onProgressDelta: (bytesDelta) {
+            totalBytes += bytesDelta;
+            handle?.progress(items: doneCount, bytes: totalBytes);
+          },
+        );
+        if (path != null) {
+          doneCount++;
+        }
+        handle?.progress(items: doneCount, bytes: totalBytes);
       }
-      handle?.progress(items: doneCount, bytes: totalBytes);
     }
+
+    final workerCount = concurrency.clamp(1, allSongs.length);
+    await Future.wait(List.generate(workerCount, (_) => worker()));
 
     if (cancelToken.isCancelled || handle?.isCanceled == true) {
       // Canceled
