@@ -133,7 +133,7 @@ At all
       expect(await dao.watchDownloadedAlbumIds(serverId).first, isEmpty);
       expect(await dao.watchDownloadedArtistIds(serverId).first, isEmpty);
 
-      // Download song1
+      // Download song1 only (song2 is not complete yet)
       await dao.updateSongDownload(
         serverId,
         song1.id,
@@ -147,13 +147,24 @@ At all
       expect(downloadedSongIds, contains('s-1'));
       expect(downloadedSongIds, isNot(contains('s-2')));
 
-      // Album is cached because at least one song is complete
+      // Album and Artist are NOT considered fully downloaded until ALL songs are complete
+      expect(await dao.watchDownloadedAlbumIds(serverId).first, isEmpty);
+      expect(await dao.watchDownloadedArtistIds(serverId).first, isEmpty);
+
+      // Download song2 as well
+      await dao.updateSongDownload(
+        serverId,
+        song2.id,
+        localPath: '/tmp/music/s-2.mp3',
+        state: DownloadState.complete,
+      );
+
+      // Now both Album and Artist are cached
       final downloadedAlbumIds = await dao
           .watchDownloadedAlbumIds(serverId)
           .first;
       expect(downloadedAlbumIds, contains('alb-1'));
 
-      // Artist is cached
       final downloadedArtistIds = await dao
           .watchDownloadedArtistIds(serverId)
           .first;

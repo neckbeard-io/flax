@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/tasks/task.dart';
+import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
@@ -128,7 +130,13 @@ class AudioCacheService {
   }
 
   /// Downloads and caches a single song's audio file and cascades metadata/lyrics.
-  Future<String?> cacheSong(Song song, {bool isPinned = true}) async {
+  Future<String?> cacheSong(
+    Song song, {
+    bool isPinned = true,
+    TaskHandle? parentHandle,
+    CancelToken? cancelToken,
+    void Function(int bytesDownloaded)? onProgressDelta,
+  }) async {
     final client = _ref.read(subsonicClientProvider);
     final dao = _ref.read(libraryDaoProvider);
     final repo = _ref.read(libraryRepositoryProvider);
@@ -138,6 +146,22 @@ class AudioCacheService {
     final ext = song.suffix?.isNotEmpty == true ? song.suffix! : 'mp3';
     final musicDir = await _getMusicDir(serverId, isPinned: isPinned);
     final destFile = File(p.join(musicDir.path, '${song.id}.$ext'));
+
+    final taskRegistry = _ref.read(taskRegistryProvider.notifier);
+    final songCancelToken = cancelToken ?? CancelToken();
+    final isStandAloneTask = isPinned && parentHandle == null;
+    final handle = isStandAloneTask
+        ? taskRegistry.start(
+            kind: TaskKind.audioDownload,
+            label: 'Downloading "${song.title}"',
+            serverId: serverId,
+            onCancel: () => songCancelToken.cancel(),
+          )
+        : parentHandle;
+
+    if (isStandAloneTask) {
+      handle?.enumerated(items: 1);
+    }
 
     try {
       // Mark as downloading
@@ -151,11 +175,26 @@ class AudioCacheService {
       if (!destFile.existsSync() || destFile.lengthSync() == 0) {
         final streamUri = client.getStreamUri(song.id);
         final tempFile = File('${destFile.path}.tmp');
+        var lastBytes = 0;
 
         await _dio.download(
           streamUri.toString(),
           tempFile.path,
+          cancelToken: songCancelToken,
           options: Options(responseType: ResponseType.bytes),
+          onReceiveProgress: (received, total) {
+            final delta = received - lastBytes;
+            lastBytes = received;
+            if (delta > 0) {
+              onProgressDelta?.call(delta);
+            }
+            if (isStandAloneTask) {
+              if (total > 0) {
+                handle?.enumerated(items: 1, bytes: total);
+              }
+              handle?.progress(bytes: received);
+            }
+          },
         );
 
         if (tempFile.existsSync()) {
@@ -193,6 +232,11 @@ class AudioCacheService {
         _enforceRollingCacheLimit(serverId);
       }
 
+      if (isStandAloneTask) {
+        handle?.progress(items: 1);
+        handle?.complete();
+      }
+
       return destFile.path;
     } catch (e) {
       developer.log(
@@ -205,6 +249,13 @@ class AudioCacheService {
         localPath: null,
         state: DownloadState.error,
       );
+      if (isStandAloneTask) {
+        if (songCancelToken.isCancelled) {
+          // Handled by taskRegistry cancel
+        } else {
+          handle?.fail(e);
+        }
+      }
       return null;
     }
   }
@@ -252,9 +303,48 @@ class AudioCacheService {
       await repo.refreshAlbum(albumId);
       songs = await repo.watchAlbumSongs(albumId).first;
     }
+    if (songs.isEmpty) return;
 
-    for (final song in songs) {
-      await cacheSong(song, isPinned: isPinned);
+    final album = await repo.watchAlbum(albumId).first;
+    final taskRegistry = _ref.read(taskRegistryProvider.notifier);
+    final cancelToken = CancelToken();
+    final handle = isPinned
+        ? taskRegistry.start(
+            kind: TaskKind.audioDownload,
+            label: 'Caching "${album?.name ?? 'Album'}"',
+            serverId: songs.first.serverId,
+            onCancel: () => cancelToken.cancel(),
+          )
+        : null;
+
+    handle?.enumerated(items: songs.length);
+    var doneCount = 0;
+    var totalBytes = 0;
+
+    for (var i = 0; i < songs.length; i++) {
+      if (cancelToken.isCancelled || handle?.isCanceled == true) break;
+      final song = songs[i];
+      handle?.note('Track ${i + 1}/${songs.length}: "${song.title}"');
+      final path = await cacheSong(
+        song,
+        isPinned: isPinned,
+        parentHandle: handle,
+        cancelToken: cancelToken,
+        onProgressDelta: (bytesDelta) {
+          totalBytes += bytesDelta;
+          handle?.progress(items: doneCount, bytes: totalBytes);
+        },
+      );
+      if (path != null) {
+        doneCount++;
+      }
+      handle?.progress(items: doneCount, bytes: totalBytes);
+    }
+
+    if (cancelToken.isCancelled || handle?.isCanceled == true) {
+      // Canceled
+    } else {
+      handle?.complete();
     }
   }
 
@@ -268,9 +358,59 @@ class AudioCacheService {
       await repo.refreshArtist(artistId);
       albums = await repo.watchArtistAlbums(artistId).first;
     }
+    if (albums.isEmpty) return;
 
+    final allSongs = <Song>[];
     for (final album in albums) {
-      await cacheAlbum(album.id, isPinned: isPinned);
+      var songs = await repo.watchAlbumSongs(album.id).first;
+      if (songs.isEmpty) {
+        await repo.refreshAlbum(album.id);
+        songs = await repo.watchAlbumSongs(album.id).first;
+      }
+      allSongs.addAll(songs);
+    }
+    if (allSongs.isEmpty) return;
+
+    final artist = await repo.watchArtist(artistId).first;
+    final taskRegistry = _ref.read(taskRegistryProvider.notifier);
+    final cancelToken = CancelToken();
+    final handle = isPinned
+        ? taskRegistry.start(
+            kind: TaskKind.audioDownload,
+            label: 'Caching "${artist?.name ?? 'Artist'}"',
+            serverId: allSongs.first.serverId,
+            onCancel: () => cancelToken.cancel(),
+          )
+        : null;
+
+    handle?.enumerated(items: allSongs.length);
+    var doneCount = 0;
+    var totalBytes = 0;
+
+    for (var i = 0; i < allSongs.length; i++) {
+      if (cancelToken.isCancelled || handle?.isCanceled == true) break;
+      final song = allSongs[i];
+      handle?.note('Track ${i + 1}/${allSongs.length}: "${song.title}"');
+      final path = await cacheSong(
+        song,
+        isPinned: isPinned,
+        parentHandle: handle,
+        cancelToken: cancelToken,
+        onProgressDelta: (bytesDelta) {
+          totalBytes += bytesDelta;
+          handle?.progress(items: doneCount, bytes: totalBytes);
+        },
+      );
+      if (path != null) {
+        doneCount++;
+      }
+      handle?.progress(items: doneCount, bytes: totalBytes);
+    }
+
+    if (cancelToken.isCancelled || handle?.isCanceled == true) {
+      // Canceled
+    } else {
+      handle?.complete();
     }
   }
 
