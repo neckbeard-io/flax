@@ -18,7 +18,7 @@ void main() {
           outgoingCalls.add(call);
           return null;
         });
-    service = NowPlayingService();
+    service = NowPlayingService(isSupported: true);
   });
 
   tearDown(() {
