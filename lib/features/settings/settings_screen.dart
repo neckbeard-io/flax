@@ -9,6 +9,10 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/features/settings/lyrics_settings.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
+import 'package:flax/features/updater/update_dialog.dart';
+import 'package:flax/services/updater/update_models.dart';
+import 'package:flax/services/updater/update_provider.dart';
+import 'package:flax/services/updater/whats_new_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -185,37 +189,89 @@ class SettingsScreen extends ConsumerWidget {
 /// installed, and the release pipeline's version stamping was invisible. The
 /// build number matters as much as the name: two builds of the same version are
 /// distinguished only by it.
-class _AboutTile extends StatelessWidget {
+class _AboutTile extends ConsumerWidget {
   const _AboutTile();
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<PackageInfo>(
-      future: PackageInfo.fromPlatform(),
-      builder: (context, snapshot) {
-        final info = snapshot.data;
-        final String version;
-        if (info == null) {
-          version = snapshot.hasError ? 'version unavailable' : '…';
-        } else {
-          version = 'v${info.version} (build ${info.buildNumber})';
-        }
-        // Name the build mode so a leftover debug bundle cannot be mistaken for
-        // an installed release. Release builds say nothing extra.
-        const mode = kDebugMode
-            ? ' · debug build'
-            : (kProfileMode ? ' · profile build' : '');
-        return ListTile(
-          title: const Text('Flax'),
-          // The licence is named here because handing someone a build is
-          // distribution, and GPL expects an interactive program to say so
-          // somewhere the recipient can find it.
-          subtitle: Text(
-            '$version$mode · High-fidelity music player\n'
-            'GPL-3.0-or-later · source at github.com/neckbeard-io/flax',
+  Widget build(BuildContext context, WidgetRef ref) {
+    final updateState = ref.watch(updateNotifierProvider);
+    final updateNotifier = ref.read(updateNotifierProvider.notifier);
+    final showWhatsNew = ref.watch(showWhatsNewPreferenceProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FutureBuilder<PackageInfo>(
+          future: PackageInfo.fromPlatform(),
+          builder: (context, snapshot) {
+            final info = snapshot.data;
+            final String version;
+            if (info == null) {
+              version = snapshot.hasError ? 'version unavailable' : '…';
+            } else {
+              version = 'v${info.version} (build ${info.buildNumber})';
+            }
+            // Name the build mode so a leftover debug bundle cannot be mistaken for
+            // an installed release. Release builds say nothing extra.
+            const mode = kDebugMode
+                ? ' · debug build'
+                : (kProfileMode ? ' · profile build' : '');
+            return ListTile(
+              title: const Text('Flax'),
+              // The licence is named here because handing someone a build is
+              // distribution, and GPL expects an interactive program to say so
+              // somewhere the recipient can find it.
+              subtitle: Text(
+                '$version$mode · High-fidelity music player\n'
+                'GPL-3.0-or-later · source at github.com/neckbeard-io/flax',
+              ),
+            );
+          },
+        ),
+        SwitchListTile(
+          title: const Text("Show What's New after updates"),
+          subtitle: const Text(
+            'Displays a summary of improvements after upgrading',
           ),
-        );
-      },
+          value: showWhatsNew,
+          onChanged: (v) =>
+              ref.read(showWhatsNewPreferenceProvider.notifier).setEnabled(v),
+        ),
+        ListTile(
+          title: const Text('Check for Updates'),
+          subtitle: Text(
+            updateState.isChecking
+                ? 'Checking for updates...'
+                : updateState.isUpdateAvailable
+                ? 'New version available: v${updateState.latestRelease?.version ?? ""}'
+                : updateState.stage == UpdateStage.upToDate
+                ? 'Flax is up to date'
+                : 'Tap to check GitHub for new releases',
+          ),
+          trailing: updateState.isChecking
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : updateState.isUpdateAvailable
+              ? FilledButton(
+                  onPressed: () {
+                    showDialog<void>(
+                      context: context,
+                      builder: (_) => const UpdateDialog(),
+                    );
+                  },
+                  child: const Text('Update'),
+                )
+              : OutlinedButton(
+                  onPressed: () {
+                    updateNotifier.checkForUpdates();
+                  },
+                  child: const Text('Check Now'),
+                ),
+        ),
+      ],
     );
   }
 }

@@ -140,8 +140,13 @@ closed it off:
 - Album art in the grid was drawn taller than wide and cropped every sleeve.
 ```
 
-Three rules, in order of how often they are got wrong:
+Four rules, in order of how often they are got wrong:
 
+- **Keep it tight and punchy.** A single abbreviated sentence per item (aim for
+  under 15 words). Skip filler and paragraphs.
+  - *Good:* Navidrome-style album tabs (All, Random, Recently Added).
+  - *Bad:* Albums screen now has a collection of new Navidrome-style tabs that
+    allow the user to easily browse and view all their music in various ways.
 - **Write for someone using the app, not reading the diff.** "Report plays back
   to the server so Recently Played stays current" — not "call scrobble() from
   PlayerNotifier". If a change is invisible to a user, it does not need a line;
