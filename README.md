@@ -7,7 +7,7 @@ OpenSubsonic-compatible server and plays through [mpv](https://mpv.io/), with an
 
 The name is a play on FLAC.
 
-**Platforms:** macOS (universal), Windows 10/11 (x64), Android 7.0+
+**Platforms:** macOS (universal), Windows 10/11 (x64), Linux (x86_64), Android 7.0+
 
 > **Status: early, and under active development.** The library browser, player,
 > equalizer, and AutoEQ all work against a real server. Plenty is still
@@ -21,7 +21,7 @@ The name is a play on FLAC.
 
 Grab the latest artifacts from
 [Releases](https://github.com/neckbeard-io/flax/releases). Each release is a
-prerelease and carries all three platforms.
+prerelease and carries all supported platforms.
 
 None of the builds are signed with a real certificate, so each OS pushes back the
 first time. This is expected — it is not a corrupted download.
@@ -40,6 +40,12 @@ Without that, macOS 15+ reports the app as *damaged*.
 ### Windows
 
 Download and run the installer `flax-<version>-windows-x64-setup.exe` (or extract the portable `.zip` archive whole). The installer automatically places Flax into `Program Files`, adds Start menu shortcuts, and bundles all runtime DLLs. SmartScreen will warn on first launch: *More info* → *Run anyway*.
+
+### Linux
+
+- **Debian / Ubuntu / Mint / Pop!_OS**: Download and install `flax-<version>-linux-amd64.deb` (`sudo dpkg -i flax-*.deb` or double-click to install).
+- **Fedora / RHEL / openSUSE**: Download and install `flax-<version>-linux-x86_64.rpm` (`sudo dnf install ./flax-*.rpm`).
+- **Portable archive**: Extract `flax-<version>-linux-x64.tar.gz` and run `./flax`.
 
 ### Android
 
@@ -99,6 +105,7 @@ flax is distributed directly to users and through open app ecosystems under
 | --- | --- | --- | --- |
 | **macOS** | GitHub Releases & Homebrew | Universal `.dmg` | Direct double-click `.dmg` on GitHub Releases and `brew install --cask flax` |
 | **Windows** | GitHub Releases | Standalone installer (`.exe`) | Packaged installer via Inno Setup bundling all required runtime libraries |
+| **Linux** | GitHub Releases | `.deb`, `.rpm`, `.tar.gz` | Native `.deb` for Debian/Ubuntu, `.rpm` for Fedora/RHEL, and standalone `.tar.gz` |
 | **Android** | Google Play Store, F-Droid & GitHub Releases | `.aab` / `.apk` | Google Play release for seamless background updates, plus F-Droid and direct `.apk` downloads |
 
 Because flax is committed to user-owned software and open distribution channels
@@ -115,7 +122,7 @@ there is no manual audio-library setup.
 
 ```bash
 flutter pub get
-flutter run -d macos          # or: -d windows, or an Android device
+flutter run -d macos          # or: -d windows, -d linux, or an Android device
 ```
 
 Platform toolchains, in addition to Flutter:
@@ -124,6 +131,7 @@ Platform toolchains, in addition to Flutter:
 |---|---|
 | macOS | Xcode |
 | Windows | Visual Studio with the *Desktop development with C++* workload |
+| Linux | Clang, CMake, Ninja, GTK 3 (`libgtk-3-dev`), `libmpv-dev`, `libpulse-dev`, `libasound2-dev` |
 | Android | Android SDK 36, NDK `28.2.13676358`, JDK 21 |
 
 ### Verifying a UI change

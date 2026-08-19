@@ -3,26 +3,23 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
 
-/// Served by MainFlutterWindow.swift. macOS only — there is no Windows handler,
-/// so these buttons did nothing at all on Windows until they were routed
-/// through window_manager below. That was survivable only because the native
-/// Windows caption was still visible and provided working controls; once it is
-/// hidden, these are the only controls the window has.
+/// Served by MainFlutterWindow.swift. macOS only — there is no Windows/Linux handler,
+/// so these buttons route through window_manager on Windows and Linux.
 const _channel = MethodChannel('com.flax/window');
 
 /// Minimise the window.
-Future<void> _minimize() => Platform.isWindows
+Future<void> _minimize() => (Platform.isWindows || Platform.isLinux)
     ? windowManager.minimize()
     : _channel.invokeMethod('minimize');
 
-/// Toggle maximised (Windows) or full screen (macOS).
+/// Toggle maximised (Windows / Linux) or full screen (macOS).
 ///
-/// The two platforms mean different things by the middle button: on Windows it
-/// is maximise/restore, which is what the square glyph means there, while macOS
-/// uses full screen.
+/// On Windows and Linux it is maximise/restore, which is what the square glyph means
+/// there, while macOS uses full screen.
 Future<void> _toggleMaximize() async {
-  if (Platform.isWindows) {
+  if (Platform.isWindows || Platform.isLinux) {
     if (await windowManager.isMaximized()) {
       await windowManager.unmaximize();
     } else {
@@ -33,8 +30,9 @@ Future<void> _toggleMaximize() async {
   await _channel.invokeMethod('toggleFullScreen');
 }
 
-Future<void> _close() =>
-    Platform.isWindows ? windowManager.close() : _channel.invokeMethod('close');
+Future<void> _close() => (Platform.isWindows || Platform.isLinux)
+    ? windowManager.close()
+    : _channel.invokeMethod('close');
 
 /// Width the window buttons occupy in the top-right corner, plus the shell's
 /// inset — zero off desktop, where they are not drawn.
@@ -42,33 +40,31 @@ Future<void> _close() =>
 /// ShellScaffold paints them in a Stack *over* the routed screen, so anything a
 /// screen puts in that corner is overlapped. An AppBar with `actions:` inside
 /// the shell must reserve this much trailing room, or move the action elsewhere.
-double get windowButtonsReservedWidth =>
-    (Platform.isMacOS || Platform.isWindows) ? 3 * 32 + 8 : 0;
+double get windowButtonsReservedWidth => isDesktopPlatform ? 3 * 32 + 8 : 0;
 
 /// Height of the draggable strip along the top of the window.
 ///
 /// Matches the region macOS gives you for free from `fullSizeContentView`, so
-/// the two platforms behave the same: the top of the window moves it rather than
+/// the desktop platforms behave the same: the top of the window moves it rather than
 /// scrolling whatever is underneath.
 const double windowDragStripHeight = 28;
 
-/// Makes the top of the window draggable on Windows.
+/// Makes the top of the window draggable on Windows and Linux.
 ///
-/// Only needed there. macOS keeps a `.titled` window whose transparent title bar
-/// already handles dragging natively, and on Linux/mobile there is nothing to
-/// drag. Hit testing is translucent so widgets behind still get their taps — an
-/// AppBar back button under this strip stays clickable, because a tap loses the
-/// gesture arena to the button while a drag is claimed here.
+/// macOS keeps a `.titled` window whose transparent title bar already handles
+/// dragging natively. Hit testing is translucent so widgets behind still get their taps.
 class WindowDragArea extends StatelessWidget {
   const WindowDragArea({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (!Platform.isWindows) return const SizedBox.shrink();
+    if (!Platform.isWindows && !Platform.isLinux) {
+      return const SizedBox.shrink();
+    }
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onPanStart: (_) => windowManager.startDragging(),
-      // Double-click on a title bar maximises, which is the Windows convention.
+      // Double-click on a title bar maximises, which is the desktop convention.
       onDoubleTap: _toggleMaximize,
       child: const SizedBox(height: windowDragStripHeight),
     );
@@ -118,7 +114,7 @@ class WindowButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Only show on desktop platforms
-    if (!Platform.isMacOS && !Platform.isWindows) {
+    if (!isDesktopPlatform) {
       return const SizedBox.shrink();
     }
 
@@ -139,7 +135,9 @@ class WindowButtons extends StatelessWidget {
           icon: Icons.crop_square,
           iconSize: 14,
           onTap: _toggleMaximize,
-          tooltip: Platform.isWindows ? 'Maximize' : 'Full Screen',
+          tooltip: (Platform.isWindows || Platform.isLinux)
+              ? 'Maximize'
+              : 'Full Screen',
           color: color,
         ),
         _WindowButton(
