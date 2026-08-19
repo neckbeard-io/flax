@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:archive/archive_io.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -108,6 +109,7 @@ class AutoEqDatabase {
 
       final dir = await cacheDir;
       final archivePath = p.join(dir.path, 'archive.tar.gz');
+      final tarPath = p.join(dir.path, 'archive.tar');
 
       yield 'Downloading database...';
       await _dio.download(
@@ -121,28 +123,48 @@ class AutoEqDatabase {
         options: Options(followRedirects: true, maxRedirects: 5),
       );
 
-      yield 'Extracting profiles...';
-      final archiveBytes = File(archivePath).readAsBytesSync();
-      final gzDecoded = GZipDecoder().decodeBytes(archiveBytes);
-      final tarArchive = TarDecoder().decodeBytes(gzDecoded);
+      // Stream decompress .tar.gz to .tar on disk to keep memory bounded to < 1 MB.
+      yield 'Decompressing archive...';
+      final inGzStream = File(archivePath).openRead();
+      final outTarSink = File(tarPath).openWrite();
+      try {
+        await inGzStream.transform(gzip.decoder).pipe(outTarSink);
+      } finally {
+        await outTarSink.close();
+      }
+
+      // Remove the .tar.gz immediately to free disk space
+      try {
+        File(archivePath).deleteSync();
+      } catch (_) {}
 
       final dataDir = Directory(p.join(dir.path, 'data'));
       if (dataDir.existsSync()) dataDir.deleteSync(recursive: true);
       dataDir.createSync(recursive: true);
 
-      // Pass 1: the archive's index is the only thing that maps a
-      // (headphone, source) pair to a stable id, so it has to be read before
-      // any curve can be filed under the right name.
+      // Pass 1: Stream archive.tar to locate and parse index.json without keeping
+      // all files in memory.
       // Archive member names are always POSIX paths, so they must be parsed
       // with p.posix rather than the platform context — p.split on Windows
       // would not treat "/" the same way.
+      yield 'Parsing index...';
       String? indexContent;
-      for (final file in tarArchive) {
-        if (file.isFile && p.posix.basename(file.name) == 'index.json') {
-          indexContent = utf8.decode(file.content as List<int>);
-          break;
-        }
+      final pass1Stream = InputFileStream(tarPath);
+      try {
+        final decoder = TarDecoder();
+        decoder.decodeStream(
+          pass1Stream,
+          callback: (file) {
+            if (p.posix.basename(file.name) == 'index.json') {
+              indexContent = utf8.decode(file.content as List<int>);
+            }
+            file.clear();
+          },
+        );
+      } finally {
+        pass1Stream.closeSync();
       }
+
       if (indexContent == null) {
         throw Exception(
           'AutoEQ archive contains no index.json — cannot identify profiles',
@@ -155,7 +177,7 @@ class AutoEqDatabase {
       // must end up with the curve or selecting one of them silently corrects
       // nothing.
       final idsFor = <String, List<int>>{};
-      for (final entry in jsonDecode(indexContent) as List) {
+      for (final entry in jsonDecode(indexContent!) as List) {
         final name = entry['n'] as String;
         final source = entry['s'] as String;
         final id = entry['i'] as int;
@@ -170,36 +192,52 @@ class AutoEqDatabase {
         idsFor.putIfAbsent(_profileKey(name, source), () => <int>[]).add(id);
       }
 
-      // Pass 2: every curve in the archive is named `graphic.txt` and is
-      // distinguished only by its `<headphone>/<source>/` directory, so it is
-      // rekeyed to the index id. Writing these out by basename is what
-      // previously collapsed all of them onto one file.
+      // Pass 2: Stream archive.tar to extract graphic.txt curves directly to disk,
+      // discarding file buffers immediately after writing each curve.
       yield 'Extracting ${profiles.length} profiles...';
       var written = 0;
       var unmatched = 0;
-      for (final file in tarArchive) {
-        if (!file.isFile) continue;
-        // raw.csv is the unsmoothed measurement; only the GraphicEQ curve is
-        // used, and skipping the rest roughly halves what is written to disk.
-        if (p.posix.basename(file.name) != 'graphic.txt') continue;
+      final pass2Stream = InputFileStream(tarPath);
+      try {
+        final decoder = TarDecoder();
+        decoder.decodeStream(
+          pass2Stream,
+          callback: (file) {
+            if (!file.isFile) {
+              file.clear();
+              return;
+            }
+            // raw.csv is the unsmoothed measurement; only the GraphicEQ curve is
+            // used, and skipping the rest roughly halves what is written to disk.
+            if (p.posix.basename(file.name) != 'graphic.txt') {
+              file.clear();
+              return;
+            }
 
-        final segments = p.posix.split(file.name);
-        if (segments.length < 3) {
-          unmatched++;
-          continue;
-        }
-        final source = segments[segments.length - 2];
-        final headphone = segments[segments.length - 3];
-        final ids = idsFor[_profileKey(headphone, source)];
-        if (ids == null) {
-          unmatched++;
-          continue;
-        }
-        final content = file.content as List<int>;
-        for (final id in ids) {
-          File(p.join(dataDir.path, '$id.txt')).writeAsBytesSync(content);
-          written++;
-        }
+            final segments = p.posix.split(file.name);
+            if (segments.length < 3) {
+              unmatched++;
+              file.clear();
+              return;
+            }
+            final source = segments[segments.length - 2];
+            final headphone = segments[segments.length - 3];
+            final ids = idsFor[_profileKey(headphone, source)];
+            if (ids == null) {
+              unmatched++;
+              file.clear();
+              return;
+            }
+            final content = file.content as List<int>;
+            for (final id in ids) {
+              File(p.join(dataDir.path, '$id.txt')).writeAsBytesSync(content);
+              written++;
+            }
+            file.clear();
+          },
+        );
+      } finally {
+        pass2Stream.closeSync();
       }
 
       if (written == 0) {
@@ -208,6 +246,11 @@ class AutoEqDatabase {
           '${profiles.length} profiles',
         );
       }
+
+      // Clean up temporary .tar archive
+      try {
+        File(tarPath).deleteSync();
+      } catch (_) {}
 
       // Sort by name
       profiles.sort((a, b) => a.name.compareTo(b.name));
@@ -230,12 +273,17 @@ class AutoEqDatabase {
         yield '$written curves extracted ($unmatched unmatched)';
       }
 
-      // Clean up archive
-      File(archivePath).deleteSync();
-
       _index = profiles;
       yield 'Done! ${profiles.length} profiles available.';
     } catch (e) {
+      // Clean up temporary archive files on failure
+      try {
+        final dir = await cacheDir;
+        final gzFile = File(p.join(dir.path, 'archive.tar.gz'));
+        if (gzFile.existsSync()) gzFile.deleteSync();
+        final tarFile = File(p.join(dir.path, 'archive.tar'));
+        if (tarFile.existsSync()) tarFile.deleteSync();
+      } catch (_) {}
       yield 'Error: $e';
       rethrow;
     } finally {
