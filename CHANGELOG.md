@@ -13,12 +13,16 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ### Added
 - Offline caching and sync for songs, albums, and artists with cascade downloads.
 - Right-click and long-press "Cache Offline" context actions on songs, albums, and artists.
+- Top header "Cache Offline" toggle buttons on artist and album pages.
 - Offline badges on cached song rows, album cards, and artist listings.
 - Clear Audio Cache and Clear Metadata & Artwork Cache options in Settings.
 - Cached playback indicator in Mini Player and Now Playing screen.
+- Determinate linear progress bar and live download speed indicator for background tasks.
 - Reopening the app restores the last active screen instead of defaulting to Albums.
 
 ### Changed
+- Reorganized Settings into structured domain sections with dynamic status subtitles.
+- Separated metadata sync workers and audio download workers into independent settings.
 - Equalizer header and controls adapt responsively across compact mobile screens.
 - Update notification pill uses a download arrow icon instead of sparkles.
 

@@ -6,6 +6,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
+import 'package:flax/features/settings/audio_output_screen.dart';
+import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/lyrics_settings.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
@@ -30,8 +32,8 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          // ── Servers ──
-          _SectionTitle(title: 'Servers'),
+          // ── Servers & Connection ──
+          _SectionTitle(title: 'Servers & Connection'),
           ...servers.map(
             (s) => ListTile(
               leading: Icon(
@@ -79,8 +81,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
 
-          // ── Appearance ──
-          _SectionTitle(title: 'Appearance'),
+          // ── Appearance & Interface ──
+          _SectionTitle(title: 'Appearance & Interface'),
           ListTile(
             title: const Text('Theme'),
             trailing: SegmentedButton<ThemeModeSetting>(
@@ -109,19 +111,16 @@ class SettingsScreen extends ConsumerWidget {
             value: amoled,
             onChanged: (v) => ref.read(amoledProvider.notifier).state = v,
           ),
-          const Divider(),
-
-          // ── Lyrics ──
-          _SectionTitle(title: 'Lyrics'),
+          const SizedBox(height: 8),
           const _LyricsSettingsSection(),
           const Divider(),
 
-          // ── Playback ──
-          _SectionTitle(title: 'Playback'),
+          // ── Audio & Playback ──
+          _SectionTitle(title: 'Audio & Playback'),
           SwitchListTile(
             title: const Text('Report plays to server'),
             subtitle: const Text(
-              'Keeps Recently Played and Most Played up to date',
+              'Keeps Recently Played and Most Played up to date (Scrobbling)',
             ),
             value: scrobble,
             onChanged: (v) =>
@@ -139,34 +138,50 @@ class SettingsScreen extends ConsumerWidget {
           ),
           ListTile(
             title: const Text('Audio Output'),
-            subtitle: const Text('DAC, sample rate, exclusive mode'),
+            subtitle: Text(
+              ref.watch(exclusiveModeProvider)
+                  ? 'Exclusive Mode · Bit-perfect'
+                  : 'System Default · Direct DAC',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.go('/settings/audio'),
           ),
           ListTile(
             title: const Text('Equalizer'),
-            subtitle: const Text('Parametric EQ, AutoEQ, presets'),
+            subtitle: Text(
+              ref.watch(eqProvider).enabled
+                  ? 'Enabled (${ref.watch(eqProvider).presetName})'
+                  : 'Disabled · Parametric EQ & AutoEQ',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.go('/settings/equalizer'),
           ),
+          const Divider(),
+
+          // ── Network & Streaming ──
+          _SectionTitle(title: 'Network & Streaming'),
           ListTile(
-            title: const Text('Transcoding'),
+            title: const Text('Streaming Quality & Transcoding'),
             subtitle: Text(
               activeServer != null
                   ? 'Wi-Fi: ${activeServer.transcodingConfig.wifiQuality.label} · '
-                        'Cellular: ${activeServer.transcodingConfig.cellularQuality.label}'
+                        'Cellular: ${activeServer.transcodingConfig.cellularQuality.label} · '
+                        '${activeServer.transcodingConfig.transcodeFormat.name.toUpperCase()}'
                   : 'No server',
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.go('/settings/transcoding'),
           ),
+          const Divider(),
+
+          // ── Storage & Caching ──
+          _SectionTitle(title: 'Storage & Caching'),
           ListTile(
-            title: const Text('Caching'),
+            title: const Text('Cache & Offline Storage'),
             subtitle: Text(
               activeServer != null
-                  ? 'Covers: ${activeServer.metadataCacheConfig.albumArtQuality.label} · '
-                        'Artist Info: ${activeServer.metadataCacheConfig.cacheArtistInfo ? "On" : "Off"} · '
-                        'Audio Cache'
+                  ? 'Covers (${activeServer.metadataCacheConfig.albumArtQuality.label}) · '
+                        'Artist Info · Audio Cache'
                   : 'No server',
             ),
             trailing: const Icon(Icons.chevron_right),
@@ -174,8 +189,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
 
-          // ── About ──
-          _SectionTitle(title: 'About'),
+          // ── About & System ──
+          _SectionTitle(title: 'About & System'),
           const _AboutTile(),
         ],
       ),
