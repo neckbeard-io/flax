@@ -324,7 +324,8 @@ gh run watch $(gh run list --workflow=release.yml -L1 --json databaseId --jq '.[
 
 The `version` input is the whole version story — it becomes the build-name, the
 tag (`v<version>`), and the release title, and the workflow creates the tag
-itself. The run number becomes the build-number. **Never bump `version:` in
+itself. The total commit count (`git rev-list --count HEAD`) becomes the build-number
+across all platforms in both CI and local builds. **Never bump `version:` in
 `pubspec.yaml`**; it is overridden by `--build-name`/`--build-number` on every
 build path. Re-running the same version uploads assets to the existing release
 (`--clobber`) rather than failing.
