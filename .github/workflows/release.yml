@@ -105,7 +105,7 @@ jobs:
           path: dist/*.dmg
 
   windows:
-    name: Windows (.zip)
+    name: Windows (.exe / .zip)
     if: inputs.windows
     runs-on: windows-latest
     steps:
