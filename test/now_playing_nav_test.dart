@@ -96,6 +96,17 @@ void main() {
       // already sits directly above and opens the same screen.
       expect(navDestinations.any((d) => d.path == '/now-playing'), isFalse);
     });
+
+    test('Settings is reachable on the mobile bottom bar', () {
+      expect(mobileNavDestinations.any((d) => d.path == '/settings'), isTrue);
+      expect(navIndexForLocation('/settings'), 3);
+      expect(navIndexForLocation('/settings/equalizer'), 3);
+    });
+
+    test('Songs is removed from navigation destinations', () {
+      expect(navDestinations.any((d) => d.path == '/songs'), isFalse);
+      expect(mobileNavDestinations.any((d) => d.path == '/songs'), isFalse);
+    });
   });
 
   group('the sidebar entry', () {

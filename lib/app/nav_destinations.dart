@@ -16,8 +16,7 @@ class NavDestination {
   final String label;
 }
 
-/// There is deliberately no Home entry. Its three shelves became tabs on the
-/// Albums screen, which is where the app now opens.
+/// Core library navigation destinations (used in desktop sidebar).
 const navDestinations = <NavDestination>[
   NavDestination(
     path: '/artists',
@@ -32,12 +31,6 @@ const navDestinations = <NavDestination>[
     label: 'Albums',
   ),
   NavDestination(
-    path: '/songs',
-    icon: Icons.music_note_outlined,
-    selectedIcon: Icons.music_note,
-    label: 'Songs',
-  ),
-  NavDestination(
     path: '/search',
     icon: Icons.search,
     selectedIcon: Icons.search,
@@ -45,12 +38,21 @@ const navDestinations = <NavDestination>[
   ),
 ];
 
-/// Index of the destination matching [location], or null when the route is not
-/// one of them.
-///
-/// Now Playing and Settings are their own sidebar items rather than entries in
-/// this list, and answering 0 for them left the first destination lit up
-/// alongside whichever of the two was actually open.
+const settingsNavDestination = NavDestination(
+  path: '/settings',
+  icon: Icons.settings_outlined,
+  selectedIcon: Icons.settings,
+  label: 'Settings',
+);
+
+/// Mobile bottom bar destinations: Artists, Albums, Search, Settings.
+const mobileNavDestinations = <NavDestination>[
+  ...navDestinations,
+  settingsNavDestination,
+];
+
+/// Index of the destination matching [location] in desktop navDestinations, or null when
+/// the route is not one of them (e.g. Now Playing or Settings).
 int? navDestinationIndex(String location) {
   for (var i = 0; i < navDestinations.length; i++) {
     if (location.startsWith(navDestinations[i].path)) return i;
@@ -58,7 +60,10 @@ int? navDestinationIndex(String location) {
   return null;
 }
 
-/// Index of the destination matching the current location, or 0.
-///
-/// For `NavigationBar`, which requires a valid index whatever the route.
-int navIndexForLocation(String location) => navDestinationIndex(location) ?? 0;
+/// Index of the destination matching [location] in mobile bottom bar, or 0.
+int navIndexForLocation(String location) {
+  for (var i = 0; i < mobileNavDestinations.length; i++) {
+    if (location.startsWith(mobileNavDestinations[i].path)) return i;
+  }
+  return 0;
+}
