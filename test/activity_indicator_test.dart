@@ -57,7 +57,7 @@ void main() {
         tester.getSize(find.byType(ActivityIndicatorView)),
         const Size(220, 0),
       );
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
     });
 
     testWidgets('a single task names itself and shows its progress', (
@@ -71,7 +71,7 @@ void main() {
       );
 
       expect(find.text('AutoEQ database'), findsOneWidget);
-      // Compact form: no total (the ring shows the fraction) and no ETA. The
+      // Compact form: no total (the progress bar shows the fraction) and no ETA. The
       // full form is ellipsised by the 220px rail — "100 MB of 105 MB · 15 M…"
       // is what actually rendered before this was split out.
       expect(find.text('12 MB'), findsOneWidget);
@@ -128,23 +128,23 @@ void main() {
       expect(find.text('AutoEQ database'), findsNothing);
     });
 
-    testWidgets('the ring is determinate only with a known total', (
+    testWidgets('the progress bar is determinate only with a known total', (
       tester,
     ) async {
       await pump(tester, ActivityIndicatorView(tasks: [task(bytesDone: 500)]));
-      var ring = tester.widget<CircularProgressIndicator>(
-        find.byType(CircularProgressIndicator),
+      var bar = tester.widget<LinearProgressIndicator>(
+        find.byType(LinearProgressIndicator),
       );
-      expect(ring.value, isNull);
+      expect(bar.value, isNull);
 
       await pump(
         tester,
         ActivityIndicatorView(tasks: [task(bytesDone: 500, bytesTotal: 1000)]),
       );
-      ring = tester.widget<CircularProgressIndicator>(
-        find.byType(CircularProgressIndicator),
+      bar = tester.widget<LinearProgressIndicator>(
+        find.byType(LinearProgressIndicator),
       );
-      expect(ring.value, closeTo(0.5, 1e-9));
+      expect(bar.value, closeTo(0.5, 1e-9));
     });
 
     testWidgets('a phase note wins over counters that have stopped', (

@@ -35,17 +35,16 @@ class ActivityIndicatorView extends StatelessWidget {
     final theme = Theme.of(context);
     final single = tasks.length == 1 ? tasks.first : null;
 
-    // One job names itself. Several become a count — thirteen truncated labels
-    // in a 220px rail tells you nothing that "3 background tasks" does not.
     final title = single?.label ?? '${tasks.length} background tasks';
     final detail = single == null
         ? _aggregateDetail(tasks)
         : formatCompactLine(single);
 
-    // A determinate ring needs one job with a known total. Several jobs at once
-    // could be averaged, but an average of unrelated work is a number that
-    // means nothing, so it spins instead.
     final value = single?.fraction;
+    final rate =
+        single?.ratePerSecond != null && single?.state == TaskState.running
+        ? formatRate(single!.ratePerSecond!, single.kind.unit)
+        : null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
@@ -53,37 +52,21 @@ class ActivityIndicatorView extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: expanded
                 ? theme.colorScheme.primary.withValues(alpha: 0.12)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: Center(
-                  child: SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      value: value,
-                      strokeWidth: 2,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -92,18 +75,40 @@ class ActivityIndicatorView extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (detail.isNotEmpty)
-                      Text(
-                        detail,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                  ),
+                  if (rate != null) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      rate,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
                       ),
+                    ),
                   ],
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: value,
+                  minHeight: 4,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  color: theme.colorScheme.primary,
                 ),
               ),
+              if (detail.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  detail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -211,13 +216,30 @@ class _TaskRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  task.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        task.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    if (task.ratePerSecond != null &&
+                        task.state == TaskState.running) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        formatRate(task.ratePerSecond!, task.kind.unit),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 6),
                 if (!terminal)
@@ -228,6 +250,7 @@ class _TaskRow extends StatelessWidget {
                       minHeight: 4,
                       backgroundColor:
                           theme.colorScheme.surfaceContainerHighest,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                 if (!terminal) const SizedBox(height: 6),
