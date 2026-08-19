@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter/painting.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 /// The on-disk cache for cover art, sized for a music library rather than for
@@ -63,7 +62,7 @@ class ArtCache {
   /// Call once, before `runApp`.
   static void configureDecodedImageCache() {
     final cache = PaintingBinding.instance.imageCache;
-    final desktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    final desktop = isDesktopPlatform;
     cache.maximumSizeBytes = (desktop ? 256 : 96) << 20;
     // Thumbnails are small enough that the byte budget, not the count, should be
     // what evicts: 4000 avatars at 128px is well under the desktop budget.

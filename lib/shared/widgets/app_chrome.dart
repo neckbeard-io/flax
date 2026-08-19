@@ -12,6 +12,7 @@ import 'package:flax/shared/input/back_swipe.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/shared/input/global_keys.dart';
 import 'package:flax/shared/widgets/desktop_sidebar.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 
 /// Window controls, drag strip, debug badge, and the global "/" shortcut,
@@ -154,7 +155,7 @@ class _AppChromeState extends ConsumerState<AppChrome>
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = Platform.isMacOS || Platform.isWindows;
+    final isDesktop = isDesktopPlatform;
 
     final top = MediaQuery.of(context).padding.top;
 
@@ -190,7 +191,7 @@ class _AppChromeState extends ConsumerState<AppChrome>
                 builder: (context) => Stack(
                   children: [
                     // Drag strip first, so the buttons above keep their taps.
-                    if (Platform.isWindows)
+                    if (Platform.isWindows || Platform.isLinux)
                       const Positioned(
                         top: 0,
                         left: 0,

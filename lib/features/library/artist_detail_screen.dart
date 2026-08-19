@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +15,7 @@ import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
 
 // ── Providers ─────────────────────────────────────────────────────────
 
@@ -107,8 +106,7 @@ class ArtistDetailScreen extends ConsumerWidget {
   final String artistId;
   const ArtistDetailScreen({super.key, required this.artistId});
 
-  static bool get _isDesktop =>
-      Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+  static bool get _isDesktop => isDesktopPlatform;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

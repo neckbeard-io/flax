@@ -3,6 +3,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+/// Whether the current operating system is a desktop platform (macOS, Windows, or Linux).
+bool get isDesktopPlatform =>
+    Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+
 /// Layout scale for artwork-heavy grids and carousels.
 ///
 /// The original sizes were chosen for a phone: a 180px grid extent fills a phone
@@ -11,8 +15,7 @@ import 'package:flutter/material.dart';
 /// gets larger tiles, which also means a larger image is fetched — see
 /// CoverArtImage, which derives resolution from the laid-out size.
 bool isDesktopLayout(BuildContext context) =>
-    (Platform.isMacOS || Platform.isWindows) &&
-    MediaQuery.of(context).size.width >= 700;
+    isDesktopPlatform && MediaQuery.of(context).size.width >= 700;
 
 /// Maximum width of one album/artist tile in a grid.
 double artGridExtent(BuildContext context) =>

@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- **Linux desktop support:** Added official Linux desktop support with `.deb` (Debian, Ubuntu, Mint, Pop!_OS), `.rpm` (Fedora, RHEL, openSUSE), and portable `.tar.gz` releases. Includes custom titlebar and window controls, desktop sidebar layout, and native MPRIS media key / hardware playback integration.
+
 ## v0.4.0 — 2026-08-18
 
 ### Added

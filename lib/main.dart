@@ -16,14 +16,13 @@ Future<void> main() async {
   if (WindowStateService.isSupported) {
     await windowManager.ensureInitialized();
 
-    // Windows creates a standard WS_OVERLAPPEDWINDOW caption, which sat above
-    // flax's own styled title bar — two stacked bars, each with its own set of
-    // window controls. Hide the native one so only the styled bar remains.
+    // Windows and Linux create standard window captions, which sat above
+    // flax's own styled title bar. Hide the native one so only the styled bar remains.
     //
     // macOS does not go through this: MainFlutterWindow.swift already hides the
     // title bar natively (fullSizeContentView + hidden traffic lights) and
     // serves the com.flax/window channel. Only the *sizing* below is shared.
-    if (Platform.isWindows) {
+    if (Platform.isWindows || Platform.isLinux) {
       await windowManager.waitUntilReadyToShow(
         const WindowOptions(
           titleBarStyle: TitleBarStyle.hidden,
