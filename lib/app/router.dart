@@ -76,8 +76,8 @@ void _persistRoute(String location) {
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final hasServer = ref.watch(activeServerProvider) != null;
-  final savedRoute = ref.watch(savedRouteProvider);
+  final hasServer = ref.watch(serverListProvider.select((s) => s.isNotEmpty));
+  final savedRoute = ref.read(savedRouteProvider);
 
   final start = initialLocationFor(
     hasServer: hasServer,
