@@ -6,6 +6,7 @@ import 'package:flax/features/player/mini_player.dart';
 import 'package:flax/features/player/now_playing_panels.dart';
 import 'package:flax/shared/widgets/desktop_sidebar.dart';
 
+import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 
 /// Below this width the sidebar is dropped for the bottom bar even on desktop —
@@ -35,6 +36,7 @@ class ShellScaffold extends ConsumerWidget {
     final wideEnough = width >= _sidebarMinWidth;
     final useSidebar = _isDesktop() && wideEnough;
     final immersive = isImmersiveRoute(location, width);
+    final updateState = ref.watch(updateNotifierProvider);
 
     if (immersive) return child;
 
@@ -61,8 +63,14 @@ class ShellScaffold extends ConsumerWidget {
               destinations: [
                 for (final d in mobileNavDestinations)
                   NavigationDestination(
-                    icon: Icon(d.icon),
-                    selectedIcon: Icon(d.selectedIcon),
+                    icon:
+                        (d.path == '/settings' && updateState.isUpdateAvailable)
+                        ? Badge(child: Icon(d.icon))
+                        : Icon(d.icon),
+                    selectedIcon:
+                        (d.path == '/settings' && updateState.isUpdateAvailable)
+                        ? Badge(child: Icon(d.selectedIcon))
+                        : Icon(d.selectedIcon),
                     label: d.label,
                   ),
               ],

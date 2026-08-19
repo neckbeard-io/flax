@@ -10,6 +10,13 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Automatic update modal prompt on launch and resume for mobile platforms.
+- Update notification badge on Settings bottom navigation tab.
+
+### Changed
+- Removed floating update button from mobile status bar (desktop window caption only).
+
 ## v0.4.7 — 2026-08-19
 
 ### Added

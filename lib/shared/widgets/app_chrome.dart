@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/updater/update_button.dart';
+import 'package:flax/services/updater/mobile_update_coordinator.dart';
+import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
 import 'package:flax/shared/input/back_swipe.dart';
 import 'package:flax/core/providers/library_provider.dart';
@@ -58,6 +60,7 @@ class _AppChromeState extends ConsumerState<AppChrome>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         WhatsNewCoordinator.checkAndShowIfNeeded(context, ref);
+        MobileUpdateCoordinator.checkAndPrompt(context, ref);
       }
     });
   }
@@ -72,6 +75,11 @@ class _AppChromeState extends ConsumerState<AppChrome>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
+
+    // Check for updates when coming back to the foreground
+    ref.read(updateNotifierProvider.notifier).checkForUpdates(silent: true);
+    MobileUpdateCoordinator.checkAndPrompt(context, ref);
+
     final repo = ref.read(libraryRepositoryProvider);
     if (repo == null) return;
 
@@ -213,12 +221,6 @@ class _AppChromeState extends ConsumerState<AppChrome>
                           mainAxisSize: MainAxisSize.min,
                           children: [UpdateButton(), WindowButtons()],
                         ),
-                      )
-                    else
-                      Positioned(
-                        top: top + 4,
-                        right: 8,
-                        child: const UpdateButton(),
                       ),
                     // Upper left, well away from the window controls and any
                     // AppBar actions that sit beside them. On the shell the
