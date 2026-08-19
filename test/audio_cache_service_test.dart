@@ -183,4 +183,15 @@ At all
       expect(await dao.watchDownloadedArtistIds(serverId).first, isEmpty);
     });
   });
+
+  group('AudioCacheSummary', () {
+    test('constructs with defaults and custom properties', () {
+      const summary = AudioCacheSummary(
+        cachedSongCount: 15,
+        audioBytes: 104857600,
+      );
+      expect(summary.cachedSongCount, equals(15));
+      expect(summary.audioBytes, equals(104857600));
+    });
+  });
 }

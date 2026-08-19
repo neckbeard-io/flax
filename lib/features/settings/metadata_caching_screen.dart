@@ -26,7 +26,7 @@ class MetadataCachingScreen extends ConsumerWidget {
 
     if (server == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Metadata Caching')),
+        appBar: AppBar(title: const Text('Caching')),
         body: const Center(child: Text('No server connected')),
       );
     }
@@ -34,23 +34,35 @@ class MetadataCachingScreen extends ConsumerWidget {
       final prevActive =
           prev
               ?.where(
-                (t) => t.kind == TaskKind.metadataCrawl && t.state.isActive,
+                (t) =>
+                    (t.kind == TaskKind.metadataCrawl ||
+                        t.kind == TaskKind.audioDownload) &&
+                    t.state.isActive,
               )
               .isNotEmpty ??
           false;
       final nextActive = next
-          .where((t) => t.kind == TaskKind.metadataCrawl && t.state.isActive)
+          .where(
+            (t) =>
+                (t.kind == TaskKind.metadataCrawl ||
+                    t.kind == TaskKind.audioDownload) &&
+                t.state.isActive,
+          )
           .isNotEmpty;
       if (prevActive && !nextActive) {
         ref.invalidate(metadataCacheSummaryProvider(server.id));
+        ref.invalidate(audioCacheSummaryProvider(server.id));
       }
     });
 
     final summaryAsync = ref.watch(metadataCacheSummaryProvider(server.id));
+    final audioSummaryAsync = ref.watch(audioCacheSummaryProvider(server.id));
+    final audioSummary =
+        audioSummaryAsync.valueOrNull ?? const AudioCacheSummary();
     final config = server.metadataCacheConfig;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Metadata Caching')),
+      appBar: AppBar(title: const Text('Caching')),
       body: ListView(
         children: [
           // ── Cache Status Overview ──
@@ -77,8 +89,11 @@ class MetadataCachingScreen extends ConsumerWidget {
                   child: Text('Error reading cache status: $err'),
                 ),
               ),
-              data: (summary) =>
-                  _CacheStatusCard(summary: summary, config: config),
+              data: (summary) => _CacheStatusCard(
+                summary: summary,
+                audioSummary: audioSummary,
+                config: config,
+              ),
             ),
           ),
           const Divider(),
@@ -371,6 +386,7 @@ class MetadataCachingScreen extends ConsumerWidget {
                 );
                 if (confirm == true) {
                   await ref.read(audioCacheServiceProvider).clearAudioCache();
+                  ref.invalidate(audioCacheSummaryProvider(server.id));
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Audio cache cleared')),
@@ -476,13 +492,19 @@ class MetadataCachingScreen extends ConsumerWidget {
 
 class _CacheStatusCard extends StatelessWidget {
   final MetadataCacheSummary summary;
+  final AudioCacheSummary audioSummary;
   final MetadataCacheConfig config;
 
-  const _CacheStatusCard({required this.summary, required this.config});
+  const _CacheStatusCard({
+    required this.summary,
+    required this.audioSummary,
+    required this.config,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final totalBytes = summary.totalBytes + audioSummary.audioBytes;
 
     return Card(
       child: Padding(
@@ -504,7 +526,7 @@ class _CacheStatusCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      formatBytes(summary.totalBytes),
+                      formatBytes(totalBytes),
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.primary,
@@ -560,6 +582,14 @@ class _CacheStatusCard extends StatelessWidget {
               bytes: summary.artistInfoBytes,
               enabled: config.cacheArtistInfo,
             ),
+            const SizedBox(height: 10),
+            _StatusRow(
+              icon: Icons.music_note_outlined,
+              label: 'Audio Cache',
+              cachedCount: audioSummary.cachedSongCount,
+              bytes: audioSummary.audioBytes,
+              enabled: true,
+            ),
           ],
         ),
       ),
@@ -580,7 +610,7 @@ class _StatusRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final int cachedCount;
-  final int totalCount;
+  final int? totalCount;
   final int bytes;
   final bool enabled;
 
@@ -588,7 +618,7 @@ class _StatusRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.cachedCount,
-    required this.totalCount,
+    this.totalCount,
     required this.bytes,
     required this.enabled,
   });
@@ -596,7 +626,11 @@ class _StatusRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isComplete = enabled && totalCount > 0 && cachedCount >= totalCount;
+    final isComplete =
+        enabled &&
+        totalCount != null &&
+        totalCount! > 0 &&
+        cachedCount >= totalCount!;
 
     return Row(
       children: [
@@ -632,9 +666,11 @@ class _StatusRow extends StatelessWidget {
                 ],
               ),
               Text(
-                enabled
+                !enabled
+                    ? 'Disabled'
+                    : totalCount != null
                     ? '$cachedCount of $totalCount cached (${formatBytes(bytes)})'
-                    : 'Disabled',
+                    : '$cachedCount ${cachedCount == 1 ? "track" : "tracks"} cached (${formatBytes(bytes)})',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

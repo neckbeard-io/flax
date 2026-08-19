@@ -613,3 +613,22 @@ class AudioCacheService {
     return null;
   }
 }
+
+class AudioCacheSummary {
+  final int cachedSongCount;
+  final int audioBytes;
+
+  const AudioCacheSummary({this.cachedSongCount = 0, this.audioBytes = 0});
+}
+
+final audioCacheSummaryProvider =
+    FutureProvider.family<AudioCacheSummary, String>((ref, serverId) async {
+      final service = ref.watch(audioCacheServiceProvider);
+      final dao = ref.watch(libraryDaoProvider);
+      final songs = await dao.getDownloadedSongs(serverId);
+      final bytes = await service.getAudioCacheBytes();
+      return AudioCacheSummary(
+        cachedSongCount: songs.length,
+        audioBytes: bytes,
+      );
+    });
