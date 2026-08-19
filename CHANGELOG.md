@@ -10,8 +10,12 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.4.5 — 2026-08-18
+
 ### Added
+
 - **Linux desktop support:** Added official Linux desktop support with `.deb` (Debian, Ubuntu, Mint, Pop!_OS), `.rpm` (Fedora, RHEL, openSUSE), and portable `.tar.gz` releases. Includes custom titlebar and window controls, desktop sidebar layout, and native MPRIS media key / hardware playback integration.
+- **CI build performance optimizations:** Enabled Gradle build caching and parallel compilation for Android, shared Flutter pub caches across all CI platforms (macOS, Windows, Linux), and streamlined Windows Inno Setup installer packaging.
 
 ## v0.4.0 — 2026-08-18
 
