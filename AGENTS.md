@@ -188,6 +188,30 @@ missing — followed by the standing install instructions. So a line written bad
 here is the line testers read; there is no second pass where someone tidies it
 up. See the maintainer section below.
 
+### Settings & menu organization
+
+Settings are organized by functional domain to prevent the root settings screen from becoming an unorganized list of mixed controls. When adding new settings or options, place them according to these rules:
+
+#### Domain Breakdown
+1. **Servers & Connection**: Server profiles, connection state, switching active server.
+2. **Appearance & Interface**: Global UI theme (Light/Dark/System), AMOLED black, orientation lock, lyrics presentation and typography.
+3. **Audio & Playback**: Audio rendering pipeline and listening behavior:
+   - *Inline*: Scrobbling, auto-switch to Now Playing.
+   - *Subpages*: Audio Output (DAC hardware, exclusive mode, sample rate), Equalizer (Parametric EQ, AutoEQ headphone database, presets).
+4. **Network & Streaming**: On-the-wire data and server transcoding (`/settings/transcoding`):
+   - Wi-Fi and Cellular bitrates, server-side transcoding codec (OPUS / AAC / MP3).
+5. **Storage & Caching**: Local disk management, offline downloads, and library precaching (`/settings/metadata-cache`):
+   - Status overview breakdown (Audio tracks, covers, bios).
+   - Audio caching: Auto-cache streamed music, rolling cache quota, audio download workers.
+   - Metadata sync: Cover and artist photo quality tiers, bio sync, metadata sync workers, incremental library sync.
+   - Maintenance: Clear audio cache, clear metadata & artwork cache.
+6. **About & System**: Build numbers, updates, changelog, and license info.
+
+#### Placement Rules
+- **Inline vs. Subpage**: Keep simple global toggles on the root screen. Move multi-option configurations, hardware selectors, or heavy visual panels into dedicated subpages.
+- **High-Signal Subtitles**: Top-level list tiles navigating to subpages must have dynamic summary subtitles (e.g. displaying current bitrate, DAC name, or cache size) so users can check status without tapping into the subpage.
+- **Worker & Thread Separation**: Always differentiate between "Metadata & Art Sync Workers" (lightweight HTTP requests for images/text) and "Audio Download Workers" (heavy multi-MB audio downloads and potential server transcoding). Never combine them into a single generic "threads" setting.
+
 ---
 
 ## Verifying a change
