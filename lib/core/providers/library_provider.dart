@@ -54,3 +54,22 @@ final songAnnotationProvider = StreamProvider.family<Song?, String>((
   if (repo == null) return Stream.value(null);
   return repo.watchSong(songId);
 });
+
+/// Live sets of IDs that are cached locally on disk.
+final downloadedSongIdsProvider = StreamProvider<Set<String>>((ref) {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) return Stream.value(const {});
+  return repo.watchDownloadedSongIds();
+});
+
+final downloadedAlbumIdsProvider = StreamProvider<Set<String>>((ref) {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) return Stream.value(const {});
+  return repo.watchDownloadedAlbumIds();
+});
+
+final downloadedArtistIdsProvider = StreamProvider<Set<String>>((ref) {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) return Stream.value(const {});
+  return repo.watchDownloadedArtistIds();
+});

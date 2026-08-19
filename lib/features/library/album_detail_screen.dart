@@ -10,6 +10,7 @@ import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
+import 'package:flax/shared/widgets/song_context_menu.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
 
@@ -517,134 +518,173 @@ class _TrackRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final playingId = ref.watch(playerProvider).currentSong?.id;
     final isPlaying = playingId == song.id;
+    final downloadedSongIds =
+        ref.watch(downloadedSongIdsProvider).valueOrNull ?? const {};
+    final isCached = downloadedSongIds.contains(song.id);
 
     if (!desktop) {
-      return ListTile(
-        leading: SizedBox(
-          width: 28,
-          child: Center(
-            child: Text(
-              '${song.track ?? index + 1}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ),
-        title: Text(
-          song.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: isPlaying ? TextStyle(color: theme.colorScheme.primary) : null,
-        ),
-        subtitle: song.artistName != null
-            ? Text(
-                song.artistName!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                ),
-              )
-            : null,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              formatDuration(song.duration),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            FavoriteButton(
-              isFavorite: song.starred,
-              size: 16,
-              onToggle: () => _toggleFavorite(ref),
-            ),
-          ],
-        ),
-        onTap: () => _play(context, ref),
-      );
-    }
-
-    return HoverSurface(
-      onTap: () => _play(context, ref),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 32,
-              child: isPlaying
-                  ? Icon(
-                      Icons.volume_up,
-                      size: 14,
-                      color: theme.colorScheme.primary,
-                    )
-                  : Text(
-                      '${song.track ?? index + 1}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    song.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isPlaying ? theme.colorScheme.primary : null,
-                      fontWeight: isPlaying ? FontWeight.w600 : null,
-                    ),
-                  ),
-                  // Only when it differs from the album artist — repeating it on
-                  // every row of a single-artist album is noise.
-                  if (song.artistName != null &&
-                      song.artistName != _albumArtist(ref))
-                    Text(
-                      song.artistName!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            SizedBox(
-              width: ratingWidth,
-              child: StarRating(
-                rating: song.userRating ?? 0,
-                size: 14,
-                onRatingChanged: (r) => _rate(ref, r),
-              ),
-            ),
-            SizedBox(
-              width: 56,
+      return SongContextMenu(
+        song: song,
+        queue: songs,
+        index: index,
+        child: ListTile(
+          leading: SizedBox(
+            width: 28,
+            child: Center(
               child: Text(
-                formatDuration(song.duration),
+                '${song.track ?? index + 1}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
-            SizedBox(
-              width: 40,
-              child: FavoriteButton(
+          ),
+          title: Text(
+            song.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: isPlaying
+                ? TextStyle(color: theme.colorScheme.primary)
+                : null,
+          ),
+          subtitle: song.artistName != null
+              ? Text(
+                  song.artistName!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                )
+              : null,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isCached) ...[
+                Icon(
+                  Icons.offline_pin,
+                  size: 14,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                formatDuration(song.duration),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              FavoriteButton(
                 isFavorite: song.starred,
                 size: 16,
                 onToggle: () => _toggleFavorite(ref),
               ),
-            ),
-          ],
+            ],
+          ),
+          onTap: () => _play(context, ref),
+        ),
+      );
+    }
+
+    return SongContextMenu(
+      song: song,
+      queue: songs,
+      index: index,
+      child: HoverSurface(
+        onTap: () => _play(context, ref),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 32,
+                child: isPlaying
+                    ? Icon(
+                        Icons.volume_up,
+                        size: 14,
+                        color: theme.colorScheme.primary,
+                      )
+                    : Text(
+                        '${song.track ?? index + 1}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            song.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: isPlaying
+                                  ? theme.colorScheme.primary
+                                  : null,
+                              fontWeight: isPlaying ? FontWeight.w600 : null,
+                            ),
+                          ),
+                        ),
+                        if (isCached) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.offline_pin,
+                            size: 13,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ],
+                      ],
+                    ),
+                    // Only when it differs from the album artist — repeating it on
+                    // every row of a single-artist album is noise.
+                    if (song.artistName != null &&
+                        song.artistName != _albumArtist(ref))
+                      Text(
+                        song.artistName!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: ratingWidth,
+                child: StarRating(
+                  rating: song.userRating ?? 0,
+                  size: 14,
+                  onRatingChanged: (r) => _rate(ref, r),
+                ),
+              ),
+              SizedBox(
+                width: 56,
+                child: Text(
+                  formatDuration(song.duration),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 40,
+                child: FavoriteButton(
+                  isFavorite: song.starred,
+                  size: 16,
+                  onToggle: () => _toggleFavorite(ref),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -8,12 +8,20 @@ import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 
 /// Wraps a child widget with a context menu (right-click / long-press)
-/// providing album-related actions.
-class AlbumContextMenu extends ConsumerWidget {
-  final Album album;
+/// providing song-related actions.
+class SongContextMenu extends ConsumerWidget {
+  final Song song;
+  final List<Song> queue;
+  final int index;
   final Widget child;
 
-  const AlbumContextMenu({super.key, required this.album, required this.child});
+  const SongContextMenu({
+    super.key,
+    required this.song,
+    this.queue = const [],
+    this.index = 0,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,9 +40,9 @@ class AlbumContextMenu extends ConsumerWidget {
     Offset position,
   ) async {
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final downloadedAlbumIds =
-        ref.read(downloadedAlbumIdsProvider).valueOrNull ?? const {};
-    final isCached = downloadedAlbumIds.contains(album.id);
+    final downloadedSongIds =
+        ref.read(downloadedSongIdsProvider).valueOrNull ?? const {};
+    final isCached = downloadedSongIds.contains(song.id);
 
     final result = await showMenu<String>(
       context: context,
@@ -43,13 +51,6 @@ class AlbumContextMenu extends ConsumerWidget {
         Offset.zero & overlay.size,
       ),
       items: [
-        if (album.artistId != null) ...[
-          const PopupMenuItem(
-            value: 'go_artist',
-            child: _MenuRow(icon: Icons.person, label: 'Go to Artist'),
-          ),
-          const PopupMenuDivider(),
-        ],
         const PopupMenuItem(
           value: 'play_now',
           child: _MenuRow(icon: Icons.play_arrow, label: 'Play Now'),
@@ -58,6 +59,18 @@ class AlbumContextMenu extends ConsumerWidget {
           value: 'add_to_queue',
           child: _MenuRow(icon: Icons.queue_music, label: 'Add to Queue'),
         ),
+        if (song.artistId != null) ...[
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            value: 'go_artist',
+            child: _MenuRow(icon: Icons.person, label: 'Go to Artist'),
+          ),
+        ],
+        if (song.albumId != null)
+          const PopupMenuItem(
+            value: 'go_album',
+            child: _MenuRow(icon: Icons.album, label: 'Go to Album'),
+          ),
         const PopupMenuDivider(),
         if (isCached)
           const PopupMenuItem(
@@ -81,41 +94,29 @@ class AlbumContextMenu extends ConsumerWidget {
     if (result == null || !context.mounted) return;
 
     switch (result) {
-      case 'go_artist':
-        if (album.artistId != null) {
-          context.push('/artists/${album.artistId}');
-        }
       case 'play_now':
-        await _loadAndPlay(ref, replace: true);
+        final effectiveQueue = queue.isNotEmpty ? queue : [song];
+        ref
+            .read(playerProvider.notifier)
+            .playSong(song, queue: effectiveQueue, index: index);
         if (context.mounted &&
             ref.read(playbackSettingsProvider).autoSwitchToNowPlaying) {
           context.push('/now-playing');
         }
       case 'add_to_queue':
-        await _loadAndPlay(ref, replace: false);
+        ref.read(playerProvider.notifier).addToQueue([song]);
+      case 'go_artist':
+        if (song.artistId != null) {
+          context.push('/artists/${song.artistId}');
+        }
+      case 'go_album':
+        if (song.albumId != null) {
+          context.push('/albums/${song.albumId}');
+        }
       case 'cache_offline':
-        ref.read(audioCacheServiceProvider).cacheAlbum(album.id);
+        ref.read(audioCacheServiceProvider).cacheSong(song, isPinned: true);
       case 'remove_cache':
-        ref.read(audioCacheServiceProvider).removeCachedAlbum(album.id);
-    }
-  }
-
-  Future<void> _loadAndPlay(WidgetRef ref, {required bool replace}) async {
-    final repo = ref.read(libraryRepositoryProvider);
-    if (repo == null) return;
-    // Cached tracks first, so queuing an album you have already opened works
-    // with no network. Only fetch when there is nothing to queue.
-    var songs = await repo.watchAlbumSongs(album.id).first;
-    if (songs.isEmpty) {
-      await repo.refreshAlbum(album.id);
-      songs = await repo.watchAlbumSongs(album.id).first;
-    }
-    if (songs.isEmpty) return;
-    final player = ref.read(playerProvider.notifier);
-    if (replace) {
-      player.replaceQueue(songs);
-    } else {
-      player.addToQueue(songs);
+        ref.read(audioCacheServiceProvider).removeCachedSong(song.id);
     }
   }
 }

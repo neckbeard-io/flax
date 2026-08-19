@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/services/database/database.dart';
@@ -638,6 +639,85 @@ class LibraryDao {
             updatedAt: now,
           ),
         );
+  }
+
+  // ── Downloads & Offline Cache ───────────────────────────────────────────
+
+  Future<void> updateSongDownload(
+    String serverId,
+    String songId, {
+    required String? localPath,
+    required DownloadState state,
+  }) async {
+    await (_db.update(
+      _db.songs,
+    )..where((t) => t.serverId.equals(serverId) & t.id.equals(songId))).write(
+      SongsCompanion(
+        localPath: Value(localPath),
+        downloadState: Value(state.index),
+      ),
+    );
+  }
+
+  Future<void> clearAllSongDownloads(String serverId) async {
+    await (_db.update(
+      _db.songs,
+    )..where((t) => t.serverId.equals(serverId))).write(
+      const SongsCompanion(localPath: Value(null), downloadState: Value(0)),
+    );
+  }
+
+  Stream<Set<String>> watchDownloadedSongIds(String serverId) {
+    final q = _db.selectOnly(_db.songs)
+      ..addColumns([_db.songs.id])
+      ..where(
+        _db.songs.serverId.equals(serverId) &
+            _db.songs.localPath.isNotNull() &
+            _db.songs.downloadState.equals(DownloadState.complete.index),
+      );
+    return q.watch().map(
+      (rows) => rows.map((r) => r.read(_db.songs.id)!).toSet(),
+    );
+  }
+
+  Stream<Set<String>> watchDownloadedAlbumIds(String serverId) {
+    final q = _db.selectOnly(_db.songs, distinct: true)
+      ..addColumns([_db.songs.albumId])
+      ..where(
+        _db.songs.serverId.equals(serverId) &
+            _db.songs.albumId.isNotNull() &
+            _db.songs.localPath.isNotNull() &
+            _db.songs.downloadState.equals(DownloadState.complete.index),
+      );
+    return q.watch().map(
+      (rows) => rows.map((r) => r.read(_db.songs.albumId)!).toSet(),
+    );
+  }
+
+  Stream<Set<String>> watchDownloadedArtistIds(String serverId) {
+    final q = _db.selectOnly(_db.songs, distinct: true)
+      ..addColumns([_db.songs.artistId])
+      ..where(
+        _db.songs.serverId.equals(serverId) &
+            _db.songs.artistId.isNotNull() &
+            _db.songs.localPath.isNotNull() &
+            _db.songs.downloadState.equals(DownloadState.complete.index),
+      );
+    return q.watch().map(
+      (rows) => rows.map((r) => r.read(_db.songs.artistId)!).toSet(),
+    );
+  }
+
+  Future<List<Song>> getDownloadedSongs(String serverId) async {
+    final q = _db.select(_db.songs)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            t.localPath.isNotNull() &
+            t.downloadState.equals(DownloadState.complete.index),
+      );
+    final rows = await q.get();
+    return rows.map(songFromRow).toList();
   }
 
   // ── Housekeeping ─────────────────────────────────────────────────────────
