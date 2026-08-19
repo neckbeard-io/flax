@@ -195,20 +195,8 @@ a couple of minutes; expect it.
 
 ### Checks
 
-```bash
-flutter analyze                     # before finishing any change
-flutter test
-dart format .                       # the repo is formatter-clean; keep it that way
-dart run tool/verify_presets.dart   # equalizer preset table consistency
-```
-
-The repo **is** `dart format` clean, as of the baseline commit that swept all
-108 files, and CI keeps it that way: `.github/workflows/ci.yml` validates formatting,
-static analysis (`flutter analyze --fatal-infos`), and the test suite on every push
-and pull request. It runs `dart format --output=none --set-exit-if-changed .`,
-which is the same check you can run locally before pushing. Just run
-`dart format .` on what you touched — reformatting no longer buries a diff,
-because there is nothing left for it to reformat.
+- **Local:** Run `dart format .` on touched files and run any new unit/widget test you added (e.g. `flutter test test/my_feature_test.dart`).
+- **CI:** `.github/workflows/ci.yml` automatically validates full repo formatting (`dart format --output=none --set-exit-if-changed .`), static analysis (`flutter analyze --fatal-infos`), and the entire test suite on every pull request and push to `main`. There is no need to run the full test suite twice locally.
 
 The sweep itself is listed in `.git-blame-ignore-revs`, so blame points at
 whoever wrote a line rather than at the reformat. GitHub's blame view honors
