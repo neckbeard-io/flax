@@ -270,8 +270,19 @@ jobs:
 
       - name: Install Linux build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libmpv-dev libpulse-dev libasound2-dev ruby-dev rubygems
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            libmpv-dev \
+            libpulse-dev \
+            libasound2-dev \
+            ruby-dev \
+            rubygems-integration
           sudo gem install --no-document fpm
 
       - name: Cache pub dependencies
