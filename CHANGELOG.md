@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Reopening the app restores the last active screen instead of defaulting to Albums.
+
 ### Changed
 - Equalizer header and controls adapt responsively across compact mobile screens.
 - Update notification pill uses a download arrow icon instead of sparkles.

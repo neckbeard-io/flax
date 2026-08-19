@@ -2,8 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flax/app/app.dart';
+import 'package:flax/app/router.dart';
 import 'package:flax/services/platform/window_state.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 
@@ -12,6 +14,15 @@ Future<void> main() async {
 
   // Needs the binding, and must happen before any art is decoded.
   ArtCache.configureDecodedImageCache();
+
+  // Load last visited route for launch persistence across all platforms.
+  String? savedRoute;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    savedRoute = prefs.getString(lastRouteStorageKey);
+  } catch (_) {
+    savedRoute = null;
+  }
 
   if (WindowStateService.isSupported) {
     await windowManager.ensureInitialized();
@@ -42,5 +53,13 @@ Future<void> main() async {
     await WindowStateService.instance.restore();
   }
 
-  runApp(const ProviderScope(child: FlaxApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        if (savedRoute != null)
+          savedRouteProvider.overrideWith((ref) => savedRoute),
+      ],
+      child: const FlaxApp(),
+    ),
+  );
 }
