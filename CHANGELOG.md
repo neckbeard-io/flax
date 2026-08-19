@@ -10,8 +10,14 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Settings tab in mobile bottom navigation bar.
+
 ### Changed
 - AutoEQ database download and decompression now streams to disk, bounding memory to < 3 MB.
+
+### Removed
+- Unpaginated flat Songs browse menu and screen across all platforms.
 
 ## v0.4.6 — 2026-08-18
 

@@ -59,14 +59,15 @@ class ShellScaffold extends ConsumerWidget {
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               selectedIndex: index,
               destinations: [
-                for (final d in navDestinations)
+                for (final d in mobileNavDestinations)
                   NavigationDestination(
                     icon: Icon(d.icon),
                     selectedIcon: Icon(d.selectedIcon),
                     label: d.label,
                   ),
               ],
-              onDestinationSelected: (i) => context.go(navDestinations[i].path),
+              onDestinationSelected: (i) =>
+                  context.go(mobileNavDestinations[i].path),
             ),
         ],
       ),
