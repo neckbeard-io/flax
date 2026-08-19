@@ -10,6 +10,13 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Multi-platform self-updater with top-bar notification and one-click installer.
+- Post-update "What's New" dialog with disable checkbox and settings toggle.
+- Android in-app APK installer with system package manager integration.
+- Windows Inno Setup silent background updater and auto-restart.
+- Homebrew Cask tap and direct download update handlers.
+
 ## v0.4.5 — 2026-08-18
 
 ### Added

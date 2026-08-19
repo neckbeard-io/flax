@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flax/app/router.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/updater/update_button.dart';
+import 'package:flax/services/updater/whats_new_provider.dart';
 import 'package:flax/shared/input/back_swipe.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/shared/input/global_keys.dart';
@@ -53,6 +55,11 @@ class _AppChromeState extends ConsumerState<AppChrome>
     // handler on the keyboard itself is focus-independent, which is what a
     // global shortcut actually means.
     HardwareKeyboard.instance.addHandler(_onKey);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        WhatsNewCoordinator.checkAndShowIfNeeded(context, ref);
+      }
+    });
   }
 
   @override
@@ -202,7 +209,16 @@ class _AppChromeState extends ConsumerState<AppChrome>
                       Positioned(
                         top: top + 4,
                         right: 4,
-                        child: const WindowButtons(),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [UpdateButton(), WindowButtons()],
+                        ),
+                      )
+                    else
+                      Positioned(
+                        top: top + 4,
+                        right: 8,
+                        child: const UpdateButton(),
                       ),
                     // Upper left, well away from the window controls and any
                     // AppBar actions that sit beside them. On the shell the
