@@ -28,6 +28,12 @@ first time. This is expected — it is not a corrupted download.
 
 ### macOS
 
+#### Homebrew (Recommended)
+```bash
+brew install --cask neckbeard-io/flax/flax
+```
+
+#### Direct `.dmg`
 One `.dmg` serves both Apple Silicon and Intel (the binary is universal). Open
 it, drag **flax** to Applications, then clear the download quarantine flag once:
 
