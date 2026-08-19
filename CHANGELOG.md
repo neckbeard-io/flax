@@ -12,6 +12,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Changed
 - Equalizer header and controls adapt responsively across compact mobile screens.
+- Update notification pill uses a download arrow icon instead of sparkles.
 
 ### Removed
 - Redundant "Zero all" button in Equalizer (consolidated into Flat preset and Reset).
