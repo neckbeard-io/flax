@@ -120,15 +120,27 @@ class Task {
 
   /// 0..1, or null when the total is not yet known.
   ///
-  /// Reads whichever counter the kind declares, so a bytes-oriented job with a
-  /// known byte total is determinate even if it has no item count at all.
+  /// Reads whichever counter the kind declares, falling back to the other counter
+  /// if the primary counter's total is null.
   double? get fraction {
     final (done, total) = switch (kind.unit) {
       ProgressUnit.items => (itemsDone, itemsTotal),
       ProgressUnit.bytes => (bytesDone, bytesTotal),
     };
-    if (total == null || total <= 0) return null;
-    return (done / total).clamp(0.0, 1.0);
+    if (total != null && total > 0) {
+      return (done / total).clamp(0.0, 1.0);
+    }
+    if (kind.unit == ProgressUnit.bytes &&
+        itemsTotal != null &&
+        itemsTotal! > 0) {
+      return (itemsDone / itemsTotal!).clamp(0.0, 1.0);
+    }
+    if (kind.unit == ProgressUnit.items &&
+        bytesTotal != null &&
+        bytesTotal! > 0) {
+      return (bytesDone / bytesTotal!).clamp(0.0, 1.0);
+    }
+    return null;
   }
 
   bool get isDeterminate => fraction != null;
