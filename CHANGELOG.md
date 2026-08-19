@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.4.6 — 2026-08-18
+
 ### Added
 - Multi-platform self-updater with top-bar notification and one-click installer.
 - Post-update "What's New" dialog with disable checkbox and settings toggle.
