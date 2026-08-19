@@ -19,6 +19,12 @@ Feature code lives in `lib/features/<area>/`, reusable widgets in
 licensing; [SPEC.md](SPEC.md) is the design intent and describes considerably
 more than is built.
 
+### API & Reference Documentation
+
+When implementing, modifying, or debugging server communication, data models, or endpoints:
+- **Navidrome Subsonic API Reference**: [https://www.navidrome.org/docs/developers/subsonic-api/](https://www.navidrome.org/docs/developers/subsonic-api/) — authoritative reference for all Subsonic & OpenSubsonic endpoints, parameter support, and extensions implemented in Navidrome.
+- **OpenSubsonic API Specification**: [http://opensubsonic.netlify.app/](http://opensubsonic.netlify.app/) — extensions including structured lyrics (`getLyricsBySongId`), scrobbling, and user management.
+
 **Work is tracked on the
 [flax factory board](https://github.com/orgs/neckbeard-io/projects/2), not in
 this repo.** Issues carry a native type (Feature / Task / Bug), an `area:*` label
