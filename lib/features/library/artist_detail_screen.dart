@@ -283,6 +283,10 @@ class _AlbumTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final downloadedAlbumIds =
+        ref.watch(downloadedAlbumIdsProvider).valueOrNull ?? const {};
+    final isCached = downloadedAlbumIds.contains(album.id);
+
     return AlbumContextMenu(
       album: album,
       child: ListTile(
@@ -305,8 +309,19 @@ class _AlbumTile extends ConsumerWidget {
           ].join(' · '),
           style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
         ),
-        trailing: album.userRating != null && album.userRating! > 0
-            ? Row(
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isCached) ...[
+              Icon(
+                Icons.offline_pin,
+                color: theme.colorScheme.primary,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (album.userRating != null && album.userRating! > 0)
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: List.generate(
                   5,
@@ -320,8 +335,9 @@ class _AlbumTile extends ConsumerWidget {
                           ),
                   ),
                 ),
-              )
-            : null,
+              ),
+          ],
+        ),
         onTap: () => context.push('/albums/${album.id}'),
       ),
     );

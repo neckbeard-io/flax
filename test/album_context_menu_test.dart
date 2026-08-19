@@ -66,16 +66,15 @@ void main() {
       // "Go to Album" must not be present
       expect(find.text('Go to Album'), findsNothing);
 
-      // "Go to Artist", "Play Now", and "Add to Queue" must be present
+      // "Go to Artist", "Play Now", "Add to Queue", and "Cache Offline" must be present
       expect(find.text('Go to Artist'), findsOneWidget);
       expect(find.text('Play Now'), findsOneWidget);
       expect(find.text('Add to Queue'), findsOneWidget);
-      expect(find.byType(PopupMenuDivider), findsOneWidget);
+      expect(find.text('Cache Offline'), findsOneWidget);
+      expect(find.byType(PopupMenuDivider), findsNWidgets(2));
     });
 
-    testWidgets('omits Go to Artist and divider when artistId is null', (
-      tester,
-    ) async {
+    testWidgets('omits Go to Artist when artistId is null', (tester) async {
       await _pumpContextMenu(tester, album: _albumWithoutArtist);
 
       // Right-click the target container
@@ -86,11 +85,12 @@ void main() {
       // Neither Go to Album nor Go to Artist should be present
       expect(find.text('Go to Album'), findsNothing);
       expect(find.text('Go to Artist'), findsNothing);
-      expect(find.byType(PopupMenuDivider), findsNothing);
+      expect(find.byType(PopupMenuDivider), findsOneWidget);
 
-      // Playback options are still present
+      // Playback options and Cache Offline are still present
       expect(find.text('Play Now'), findsOneWidget);
       expect(find.text('Add to Queue'), findsOneWidget);
+      expect(find.text('Cache Offline'), findsOneWidget);
     });
   });
 }

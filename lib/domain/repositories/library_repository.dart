@@ -75,6 +75,19 @@ abstract class LibraryRepository {
   /// two methods must never write each other's column.
   Future<void> setFavorite(EntityRef ref, {required bool favorite});
   Future<void> setRating(EntityRef ref, {required int rating});
+
+  // ── Downloads & Offline Cache ───────────────────────────────────────────
+
+  Stream<Set<String>> watchDownloadedSongIds();
+  Stream<Set<String>> watchDownloadedAlbumIds();
+  Stream<Set<String>> watchDownloadedArtistIds();
+  Future<void> updateSongDownload(
+    String songId, {
+    required String? localPath,
+    required DownloadState state,
+  });
+  Future<void> clearAllSongDownloads();
+  Future<List<Song>> getDownloadedSongs();
 }
 
 /// Identifies the thing an annotation applies to. Subsonic's star/unstar takes

@@ -184,6 +184,33 @@ class MiniPlayer extends ConsumerWidget {
                                               ),
                                         ),
                                       ],
+                                      if (playerState.isPlayingCached) ...[
+                                        Text(
+                                          ' · ',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant
+                                                    .withValues(alpha: 0.5),
+                                              ),
+                                        ),
+                                        Icon(
+                                          Icons.offline_pin,
+                                          size: 13,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          'Cached',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color:
+                                                    theme.colorScheme.primary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                               ],

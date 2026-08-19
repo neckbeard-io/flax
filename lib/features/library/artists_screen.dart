@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/shared/widgets/artist_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 
 /// Artists, read from the local database rather than the network. Issue #8.
@@ -39,6 +40,8 @@ class ArtistsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final artistsAsync = ref.watch(artistsProvider);
+    final downloadedArtistIds =
+        ref.watch(downloadedArtistIdsProvider).valueOrNull ?? const {};
 
     return Scaffold(
       body: SafeArea(
@@ -60,32 +63,48 @@ class ArtistsScreen extends ConsumerWidget {
                   itemCount: artists.length,
                   itemBuilder: (context, index) {
                     final artist = artists[index];
-                    return ListTile(
-                      leading: ClipOval(
-                        child: SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: CoverArtImage(
-                            coverArtId: artist.coverArtId,
-                            size: 48,
+                    final isCached = downloadedArtistIds.contains(artist.id);
+                    return ArtistContextMenu(
+                      artist: artist,
+                      child: ListTile(
+                        leading: ClipOval(
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: CoverArtImage(
+                              coverArtId: artist.coverArtId,
+                              size: 48,
+                            ),
                           ),
                         ),
-                      ),
-                      title: Text(artist.name),
-                      subtitle: Text(
-                        '${artist.albumCount} album${artist.albumCount != 1 ? 's' : ''}',
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
+                        title: Text(artist.name),
+                        subtitle: Text(
+                          '${artist.albumCount} album${artist.albumCount != 1 ? 's' : ''}',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isCached) ...[
+                              Icon(
+                                Icons.offline_pin,
+                                color: theme.colorScheme.primary,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            if (artist.starred)
+                              Icon(
+                                Icons.favorite,
+                                color: theme.colorScheme.primary,
+                                size: 18,
+                              ),
+                          ],
+                        ),
+                        onTap: () => context.push('/artists/${artist.id}'),
                       ),
-                      trailing: artist.starred
-                          ? Icon(
-                              Icons.favorite,
-                              color: theme.colorScheme.primary,
-                              size: 18,
-                            )
-                          : null,
-                      onTap: () => context.push('/artists/${artist.id}'),
                     );
                   },
                 ),

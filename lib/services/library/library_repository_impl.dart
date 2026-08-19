@@ -455,4 +455,36 @@ class LibraryRepositoryImpl implements LibraryRepository {
     _inFlight[key] = future;
     return future;
   }
+
+  // ── Downloads & Offline Cache ───────────────────────────────────────────
+
+  @override
+  Stream<Set<String>> watchDownloadedSongIds() =>
+      _dao.watchDownloadedSongIds(_serverId);
+
+  @override
+  Stream<Set<String>> watchDownloadedAlbumIds() =>
+      _dao.watchDownloadedAlbumIds(_serverId);
+
+  @override
+  Stream<Set<String>> watchDownloadedArtistIds() =>
+      _dao.watchDownloadedArtistIds(_serverId);
+
+  @override
+  Future<void> updateSongDownload(
+    String songId, {
+    required String? localPath,
+    required DownloadState state,
+  }) => _dao.updateSongDownload(
+    _serverId,
+    songId,
+    localPath: localPath,
+    state: state,
+  );
+
+  @override
+  Future<void> clearAllSongDownloads() => _dao.clearAllSongDownloads(_serverId);
+
+  @override
+  Future<List<Song>> getDownloadedSongs() => _dao.getDownloadedSongs(_serverId);
 }

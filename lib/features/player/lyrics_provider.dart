@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 
 /// Everything a lyrics lookup needs, as a record so that the family key has
 /// value equality. Keying on [Song] would not: it has no `==`, so rating or
@@ -19,6 +20,14 @@ final songLyricsProvider = FutureProvider.family<Lyrics?, LyricsQuery>((
   ref,
   query,
 ) async {
+  // Check local offline lyrics cache first
+  final cacheService = ref.watch(audioCacheServiceProvider);
+  final cachedStr = await cacheService.getCachedLyricsString(query.songId);
+  if (cachedStr != null && cachedStr.isNotEmpty) {
+    final parsed = Lyrics.fromLrcText(cachedStr);
+    if (parsed != null && !parsed.isEmpty) return parsed;
+  }
+
   final client = ref.watch(subsonicClientProvider);
   if (client == null) return null;
 

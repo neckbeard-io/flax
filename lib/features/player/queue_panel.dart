@@ -9,6 +9,7 @@ import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
+import 'package:flax/shared/widgets/song_context_menu.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 
 class QueuePanel extends ConsumerWidget {
@@ -274,7 +275,7 @@ class _AlbumRatingRow extends ConsumerWidget {
   }
 }
 
-class _AlbumGroup extends StatelessWidget {
+class _AlbumGroup extends ConsumerWidget {
   final _AlbumGroupData group;
   final Song? currentSong;
   final void Function(Song song, int index) onSongTap;
@@ -286,8 +287,10 @@ class _AlbumGroup extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final downloadedSongIds =
+        ref.watch(downloadedSongIdsProvider).valueOrNull ?? const {};
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,47 +362,72 @@ class _AlbumGroup extends StatelessWidget {
           final index = entry.key;
           final song = entry.value;
           final isCurrent = currentSong?.id == song.id;
+          final isCached = downloadedSongIds.contains(song.id);
 
-          return _QueueRowHover(
-            isCurrent: isCurrent,
-            onTap: () => onSongTap(song, index),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 24,
-                    child: Text(
-                      '${song.track ?? index + 1}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isCurrent
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.onSurfaceVariant,
+          return SongContextMenu(
+            song: song,
+            queue: group.songs,
+            index: index,
+            child: _QueueRowHover(
+              isCurrent: isCurrent,
+              onTap: () => onSongTap(song, index),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        '${song.track ?? index + 1}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isCurrent
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      song.title,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: isCurrent ? FontWeight.w600 : null,
-                        color: isCurrent ? theme.colorScheme.primary : null,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              song.title,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: isCurrent ? FontWeight.w600 : null,
+                                color: isCurrent
+                                    ? theme.colorScheme.primary
+                                    : null,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isCached) ...[
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.offline_pin,
+                              size: 13,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ],
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _formatTrackDuration(song.duration),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatTrackDuration(song.duration),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 11,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );

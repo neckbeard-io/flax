@@ -293,8 +293,13 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             // ── Audio format info ──
             if (song.suffix != null ||
                 song.bitRate != null ||
-                state.activeTranscode?.isTranscoded == true)
-              _AudioFormatBadge(song: song, transcode: state.activeTranscode),
+                state.activeTranscode?.isTranscoded == true ||
+                state.isPlayingCached)
+              _AudioFormatBadge(
+                song: song,
+                transcode: state.activeTranscode,
+                isCached: state.isPlayingCached,
+              ),
 
             const SizedBox(height: 8),
 
@@ -386,8 +391,13 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
 class _AudioFormatBadge extends StatelessWidget {
   final Song song;
   final TranscodeParameters? transcode;
+  final bool isCached;
 
-  const _AudioFormatBadge({required this.song, this.transcode});
+  const _AudioFormatBadge({
+    required this.song,
+    this.transcode,
+    this.isCached = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -421,7 +431,9 @@ class _AudioFormatBadge extends StatelessWidget {
       originalParts.add('${song.bitRate}kbps');
     }
 
-    if (originalParts.isEmpty && !isTranscoded) return const SizedBox.shrink();
+    if (originalParts.isEmpty && !isTranscoded && !isCached) {
+      return const SizedBox.shrink();
+    }
 
     final isHiRes = (song.bitDepth ?? 0) > 16 || (song.sampleRate ?? 0) > 48000;
     final isLossless = const [
@@ -486,6 +498,23 @@ class _AudioFormatBadge extends StatelessWidget {
                 letterSpacing: 0.3,
               ),
             ),
+            if (isCached) ...[
+              const SizedBox(width: 6),
+              Icon(
+                Icons.offline_pin,
+                size: 13,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                'Cached',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
           ],
         ),
       );
@@ -516,16 +545,30 @@ class _AudioFormatBadge extends StatelessWidget {
             Icon(Icons.stars_rounded, size: 14, color: Colors.amber[700]),
             const SizedBox(width: 4),
           ],
-          Text(
-            originalParts.join(' · '),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: isHiRes
-                  ? Colors.amber[800]
-                  : theme.colorScheme.onSurfaceVariant,
-              fontWeight: isHiRes ? FontWeight.w600 : FontWeight.w500,
-              letterSpacing: 0.3,
+          if (originalParts.isNotEmpty)
+            Text(
+              originalParts.join(' · '),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: isHiRes
+                    ? Colors.amber[800]
+                    : theme.colorScheme.onSurfaceVariant,
+                fontWeight: isHiRes ? FontWeight.w600 : FontWeight.w500,
+                letterSpacing: 0.3,
+              ),
             ),
-          ),
+          if (isCached) ...[
+            if (originalParts.isNotEmpty) const SizedBox(width: 6),
+            Icon(Icons.offline_pin, size: 13, color: theme.colorScheme.primary),
+            const SizedBox(width: 3),
+            Text(
+              'Cached',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
         ],
       ),
     );

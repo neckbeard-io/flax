@@ -7,6 +7,7 @@ import 'package:flax/core/tasks/task.dart';
 import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/metadata/metadata_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
@@ -285,6 +286,66 @@ class MetadataCachingScreen extends ConsumerWidget {
               ),
             ),
           ],
+          const Divider(),
+
+          // ── Audio Caching ──
+          _SectionTitle(title: 'Audio Caching'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              'Configure offline downloads and automatic caching for streamed tracks.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final audioConfig = ref.watch(audioCacheConfigProvider);
+              return Column(
+                children: [
+                  SwitchListTile(
+                    title: const Text('Auto-Cache Streamed Music'),
+                    subtitle: const Text(
+                      'Automatically save streamed tracks to local cache for offline playback',
+                    ),
+                    value: audioConfig.autoCacheStreamed,
+                    onChanged: (val) {
+                      ref
+                          .read(audioCacheConfigProvider.notifier)
+                          .setAutoCacheStreamed(val);
+                    },
+                  ),
+                  ListTile(
+                    title: const Text('Rolling Cache Size Limit'),
+                    subtitle: const Text(
+                      'Maximum storage space for automatically cached tracks (LRU eviction)',
+                    ),
+                    trailing: DropdownButton<int>(
+                      value: audioConfig.rollingCacheLimitMb,
+                      underline: const SizedBox.shrink(),
+                      borderRadius: BorderRadius.circular(8),
+                      items: const [
+                        DropdownMenuItem(value: 500, child: Text('500 MB')),
+                        DropdownMenuItem(value: 1024, child: Text('1 GB')),
+                        DropdownMenuItem(value: 2048, child: Text('2 GB')),
+                        DropdownMenuItem(value: 5120, child: Text('5 GB')),
+                        DropdownMenuItem(value: 10240, child: Text('10 GB')),
+                        DropdownMenuItem(value: 0, child: Text('Unlimited')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          ref
+                              .read(audioCacheConfigProvider.notifier)
+                              .setRollingCacheLimitMb(val);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: OutlinedButton.icon(
@@ -292,7 +353,43 @@ class MetadataCachingScreen extends ConsumerWidget {
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Clear Artwork Cache?'),
+                    title: const Text('Clear Audio Cache?'),
+                    content: const Text(
+                      'This will remove all downloaded and cached audio files from disk.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Clear'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await ref.read(audioCacheServiceProvider).clearAudioCache();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Audio cache cleared')),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.music_off_outlined),
+              label: const Text('Clear Audio Cache'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Clear Metadata & Artwork Cache?'),
                     content: const Text(
                       'This will remove all locally cached album covers and artist images from disk.',
                     ),
@@ -313,13 +410,15 @@ class MetadataCachingScreen extends ConsumerWidget {
                   ref.invalidate(metadataCacheSummaryProvider(server.id));
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Artwork cache cleared')),
+                      const SnackBar(
+                        content: Text('Metadata & artwork cache cleared'),
+                      ),
                     );
                   }
                 }
               },
               icon: const Icon(Icons.delete_outline),
-              label: const Text('Clear Artwork Cache'),
+              label: const Text('Clear Metadata & Artwork Cache'),
             ),
           ),
           const SizedBox(height: 24),

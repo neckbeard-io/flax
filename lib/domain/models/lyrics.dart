@@ -112,4 +112,35 @@ class Lyrics {
     if (lines.every((l) => l.text.trim().isEmpty)) return null;
     return Lyrics(lines: lines);
   }
+
+  /// Parses standard LRC format lyrics (e.g. `[01:23.45] lyric text`).
+  static Lyrics? fromLrcText(String? text) {
+    if (text == null || text.trim().isEmpty) return null;
+    final lrcRegex = RegExp(r'^\[(\d{1,2}):(\d{2})(?:\.(\d{2,3}))?\](.*)$');
+    final rawLines = text.split('\n');
+    final lines = <LyricLine>[];
+    var isSynced = false;
+
+    for (final raw in rawLines) {
+      final trimmed = raw.trimRight();
+      final match = lrcRegex.firstMatch(trimmed);
+      if (match != null) {
+        final min = int.parse(match.group(1)!);
+        final sec = int.parse(match.group(2)!);
+        final fracStr = match.group(3) ?? '0';
+        final ms = fracStr.length == 2
+            ? int.parse(fracStr) * 10
+            : int.parse(fracStr);
+        final duration = Duration(minutes: min, seconds: sec, milliseconds: ms);
+        final lineText = match.group(4)?.trim() ?? '';
+        lines.add(LyricLine(text: lineText, start: duration));
+        isSynced = true;
+      } else if (trimmed.isNotEmpty && !trimmed.startsWith('[')) {
+        lines.add(LyricLine(text: trimmed));
+      }
+    }
+
+    if (lines.isEmpty) return fromPlainText(text);
+    return Lyrics(lines: lines, synced: isSynced);
+  }
 }

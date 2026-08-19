@@ -8,12 +8,16 @@ import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 
 /// Wraps a child widget with a context menu (right-click / long-press)
-/// providing album-related actions.
-class AlbumContextMenu extends ConsumerWidget {
-  final Album album;
+/// providing artist-related actions.
+class ArtistContextMenu extends ConsumerWidget {
+  final Artist artist;
   final Widget child;
 
-  const AlbumContextMenu({super.key, required this.album, required this.child});
+  const ArtistContextMenu({
+    super.key,
+    required this.artist,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,9 +36,9 @@ class AlbumContextMenu extends ConsumerWidget {
     Offset position,
   ) async {
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final downloadedAlbumIds =
-        ref.read(downloadedAlbumIdsProvider).valueOrNull ?? const {};
-    final isCached = downloadedAlbumIds.contains(album.id);
+    final downloadedArtistIds =
+        ref.read(downloadedArtistIdsProvider).valueOrNull ?? const {};
+    final isCached = downloadedArtistIds.contains(artist.id);
 
     final result = await showMenu<String>(
       context: context,
@@ -43,16 +47,13 @@ class AlbumContextMenu extends ConsumerWidget {
         Offset.zero & overlay.size,
       ),
       items: [
-        if (album.artistId != null) ...[
-          const PopupMenuItem(
-            value: 'go_artist',
-            child: _MenuRow(icon: Icons.person, label: 'Go to Artist'),
-          ),
-          const PopupMenuDivider(),
-        ],
+        const PopupMenuItem(
+          value: 'open_artist',
+          child: _MenuRow(icon: Icons.person, label: 'View Artist'),
+        ),
         const PopupMenuItem(
           value: 'play_now',
-          child: _MenuRow(icon: Icons.play_arrow, label: 'Play Now'),
+          child: _MenuRow(icon: Icons.play_arrow, label: 'Play Artist'),
         ),
         const PopupMenuItem(
           value: 'add_to_queue',
@@ -81,10 +82,8 @@ class AlbumContextMenu extends ConsumerWidget {
     if (result == null || !context.mounted) return;
 
     switch (result) {
-      case 'go_artist':
-        if (album.artistId != null) {
-          context.push('/artists/${album.artistId}');
-        }
+      case 'open_artist':
+        context.push('/artists/${artist.id}');
       case 'play_now':
         await _loadAndPlay(ref, replace: true);
         if (context.mounted &&
@@ -94,28 +93,30 @@ class AlbumContextMenu extends ConsumerWidget {
       case 'add_to_queue':
         await _loadAndPlay(ref, replace: false);
       case 'cache_offline':
-        ref.read(audioCacheServiceProvider).cacheAlbum(album.id);
+        ref.read(audioCacheServiceProvider).cacheArtist(artist.id);
       case 'remove_cache':
-        ref.read(audioCacheServiceProvider).removeCachedAlbum(album.id);
+        ref.read(audioCacheServiceProvider).removeCachedArtist(artist.id);
     }
   }
 
   Future<void> _loadAndPlay(WidgetRef ref, {required bool replace}) async {
     final repo = ref.read(libraryRepositoryProvider);
     if (repo == null) return;
-    // Cached tracks first, so queuing an album you have already opened works
-    // with no network. Only fetch when there is nothing to queue.
-    var songs = await repo.watchAlbumSongs(album.id).first;
-    if (songs.isEmpty) {
-      await repo.refreshAlbum(album.id);
-      songs = await repo.watchAlbumSongs(album.id).first;
+
+    final albums = await repo.watchArtistAlbums(artist.id).first;
+    final allSongs = <Song>[];
+    for (final album in albums) {
+      final songs = await repo.watchAlbumSongs(album.id).first;
+      allSongs.addAll(songs);
     }
-    if (songs.isEmpty) return;
+
+    if (allSongs.isEmpty) return;
+
     final player = ref.read(playerProvider.notifier);
     if (replace) {
-      player.replaceQueue(songs);
+      player.replaceQueue(allSongs);
     } else {
-      player.addToQueue(songs);
+      player.addToQueue(allSongs);
     }
   }
 }

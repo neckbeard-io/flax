@@ -187,7 +187,7 @@ class _FilterTab extends StatelessWidget {
 }
 
 /// Grid of album tiles, identical whichever tab is open.
-class AlbumGrid extends StatelessWidget {
+class AlbumGrid extends ConsumerWidget {
   const AlbumGrid({super.key, required this.albums});
 
   final List<Album> albums;
@@ -196,10 +196,12 @@ class AlbumGrid extends StatelessWidget {
   static const _padding = EdgeInsets.all(12);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final maxExtent = artGridExtent(context);
     final labelExtent = artGridLabelExtent(context);
+    final downloadedAlbumIds =
+        ref.watch(downloadedAlbumIdsProvider).valueOrNull ?? const {};
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -224,6 +226,7 @@ class AlbumGrid extends StatelessWidget {
           itemCount: albums.length,
           itemBuilder: (context, index) {
             final album = albums[index];
+            final isCached = downloadedAlbumIds.contains(album.id);
             return AlbumContextMenu(
               album: album,
               child: Column(
@@ -231,12 +234,35 @@ class AlbumGrid extends StatelessWidget {
                 children: [
                   AspectRatio(
                     aspectRatio: 1,
-                    child: HoverArtwork(
-                      onTap: () => context.push('/albums/${album.id}'),
-                      // No explicit size: CoverArtImage measures its own box and
-                      // fetches to match, so a wider desktop tile pulls a
-                      // correspondingly larger image.
-                      child: CoverArtImage(coverArtId: album.coverArtId),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: HoverArtwork(
+                            onTap: () => context.push('/albums/${album.id}'),
+                            // No explicit size: CoverArtImage measures its own box and
+                            // fetches to match, so a wider desktop tile pulls a
+                            // correspondingly larger image.
+                            child: CoverArtImage(coverArtId: album.coverArtId),
+                          ),
+                        ),
+                        if (isCached)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.7),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.offline_pin,
+                                size: 14,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 6),

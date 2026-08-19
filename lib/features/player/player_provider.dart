@@ -1,23 +1,25 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:developer' as developer;
+import 'dart:io';
+import 'dart:math' as math;
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' as mpv;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
-import 'package:flax/domain/repositories/library_repository.dart';
-import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/enums.dart';
+import 'package:flax/domain/models/song.dart';
+import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/gapless_probe.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/platform/now_playing_service.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/async/coalescing_runner.dart';
@@ -46,6 +48,9 @@ class PlayerState {
   /// Human-readable error if playback was prevented (e.g. streaming disabled).
   final String? playbackError;
 
+  /// Whether the currently playing track is playing from local offline cache.
+  final bool isPlayingCached;
+
   const PlayerState({
     this.currentSong,
     this.queue = const [],
@@ -60,6 +65,7 @@ class PlayerState {
     this.buffering = false,
     this.activeTranscode,
     this.playbackError,
+    this.isPlayingCached = false,
   });
 
   /// Attenuation the current fader position corresponds to, in dB, or null at
@@ -82,6 +88,7 @@ class PlayerState {
     bool clearActiveTranscode = false,
     String? playbackError,
     bool clearPlaybackError = false,
+    bool? isPlayingCached,
   }) {
     return PlayerState(
       currentSong: currentSong ?? this.currentSong,
@@ -101,6 +108,7 @@ class PlayerState {
       playbackError: clearPlaybackError
           ? null
           : (playbackError ?? this.playbackError),
+      isPlayingCached: isPlayingCached ?? this.isPlayingCached,
     );
   }
 }
@@ -308,7 +316,18 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
+  bool _isSongCached(Song? song) {
+    if (song == null) return false;
+    if (song.localPath != null && File(song.localPath!).existsSync()) {
+      return true;
+    }
+    return false;
+  }
+
   Uri _streamUri(Song song, [TranscodeParameters? transcode]) {
+    if (song.localPath != null && File(song.localPath!).existsSync()) {
+      return Uri.file(song.localPath!);
+    }
     final client = _ref.read(subsonicClientProvider);
     if (client == null) {
       throw Exception('No server connected');
@@ -380,15 +399,30 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         mpv.Media(_streamUri(song, transcode).toString()),
     ];
     _mpvQueueIds = [for (final song in songs) song.id];
+    final currentSong = songs.isNotEmpty && index < songs.length
+        ? songs[index]
+        : null;
+    final isCached = _isSongCached(currentSong);
+
     if (mounted) {
       state = state.copyWith(
         activeTranscode: transcode,
         clearActiveTranscode: transcode == null,
         clearPlaybackError: true,
+        isPlayingCached: isCached,
       );
     }
     await _player.openAll(medias, play: play, index: index);
     if (play) await _player.play();
+
+    if (currentSong != null && !isCached) {
+      final autoCache = _ref.read(audioCacheConfigProvider).autoCacheStreamed;
+      if (autoCache) {
+        _ref
+            .read(audioCacheServiceProvider)
+            .cacheSong(currentSong, isPinned: false);
+      }
+    }
   }
 
   /// mpv moved to another entry by itself, which is what a gapless advance
@@ -402,20 +436,34 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (index == state.queueIndex) return;
 
     final song = state.queue[index];
+    final isCached = _isSongCached(song);
     _resetScrobble();
-    state = state.copyWith(queueIndex: index, currentSong: song);
+    state = state.copyWith(
+      queueIndex: index,
+      currentSong: song,
+      isPlayingCached: isCached,
+    );
     _updateNowPlayingForSong(song);
     // ReplayGain is per track, so the output gain has to be recomputed for the
     // track mpv just moved to.
     _applyVolumeGain();
     _debounceSaveQueue();
+
+    if (!isCached && _ref.read(audioCacheConfigProvider).autoCacheStreamed) {
+      _ref.read(audioCacheServiceProvider).cacheSong(song, isPinned: false);
+    }
   }
 
   Future<void> _playIndex(int index) async {
     if (index < 0 || index >= state.queue.length) return;
     final song = state.queue[index];
+    final isCached = _isSongCached(song);
     _resetScrobble();
-    state = state.copyWith(currentSong: song, queueIndex: index);
+    state = state.copyWith(
+      currentSong: song,
+      queueIndex: index,
+      isPlayingCached: isCached,
+    );
     // A jump inside the playlist mpv already holds, rather than a fresh load:
     // reloading would throw away the prefetched next entry every time someone
     // pressed skip.
@@ -428,6 +476,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _updateNowPlayingForSong(song);
     _applyVolumeGain();
     _debounceSaveQueue();
+
+    if (!isCached && _ref.read(audioCacheConfigProvider).autoCacheStreamed) {
+      _ref.read(audioCacheServiceProvider).cacheSong(song, isPinned: false);
+    }
   }
 
   Future<void> playSong(Song song, {List<Song>? queue, int? index}) async {
