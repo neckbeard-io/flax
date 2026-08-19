@@ -271,7 +271,10 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           export DEBIAN_FRONTEND=noninteractive
-          sudo apt-get update -y
+          # Remove slow/failing third-party repos and swap azure mirror for canonical Ubuntu mirror
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/azure-cli.list /etc/apt/sources.list.d/google-chrome.list
+          sudo sed -i 's|http://azure.archive.ubuntu.com|http://archive.ubuntu.com|g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+          sudo apt-get update -o Acquire::Retries=1 -o Acquire::http::Timeout=10
           sudo apt-get install -y --no-install-recommends \
             clang \
             cmake \
