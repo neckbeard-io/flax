@@ -10,6 +10,12 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Changed
+- Equalizer header and controls adapt responsively across compact mobile screens.
+
+### Removed
+- Redundant "Zero all" button in Equalizer (consolidated into Flat preset and Reset).
+
 ## v0.4.8 — 2026-08-19
 
 ### Added
