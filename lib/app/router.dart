@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/features/auth/add_server_screen.dart';
@@ -27,6 +28,12 @@ import 'package:flax/shared/widgets/shell_scaffold.dart';
 /// there was no way to look at an artist or album page at all.
 const _debugInitialRoute = String.fromEnvironment('FLAX_ROUTE');
 
+/// Key used in SharedPreferences to persist the last visited route.
+const lastRouteStorageKey = 'flax_last_route';
+
+/// Provider holding the last persisted route read at startup.
+final savedRouteProvider = StateProvider<String?>((ref) => null);
+
 /// Where the app opens.
 ///
 /// Pulled out as a plain function so the rule can be tested without standing up
@@ -41,27 +48,53 @@ String initialLocationFor({
   required bool hasServer,
   String debugRoute = '',
   bool allowDebugRoute = false,
+  String? savedRoute,
 }) {
   if (!hasServer) return '/add-server';
   final wantsSetup = debugRoute.startsWith('/add-server');
   if (allowDebugRoute && debugRoute.isNotEmpty && !wantsSetup) {
     return debugRoute;
   }
-  // Albums, since Home is gone: its shelves are tabs there now.
+  if (savedRoute != null &&
+      savedRoute.isNotEmpty &&
+      !savedRoute.startsWith('/add-server')) {
+    return savedRoute;
+  }
+  // Albums is the default fallback if no route was saved.
   return '/albums';
+}
+
+void _persistRoute(String location) {
+  if (location.isEmpty || location.startsWith('/add-server')) return;
+  SharedPreferences.getInstance()
+      .then((prefs) {
+        prefs.setString(lastRouteStorageKey, location);
+      })
+      .catchError((_) {
+        // Best-effort persistence.
+      });
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
   final hasServer = ref.watch(activeServerProvider) != null;
+  final savedRoute = ref.watch(savedRouteProvider);
 
   final start = initialLocationFor(
     hasServer: hasServer,
     debugRoute: _debugInitialRoute,
     allowDebugRoute: kDebugMode,
+    savedRoute: savedRoute,
   );
 
   return GoRouter(
     initialLocation: start,
+    redirect: (context, state) {
+      final location = state.uri.toString();
+      if (location.isNotEmpty && !location.startsWith('/add-server')) {
+        _persistRoute(location);
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/add-server',
