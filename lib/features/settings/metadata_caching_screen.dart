@@ -156,7 +156,7 @@ class MetadataCachingScreen extends ConsumerWidget {
           const Divider(),
 
           // ── Artist Info & Concurrency ──
-          _SectionTitle(title: 'Artist Information'),
+          _SectionTitle(title: 'Artist Information & Metadata Sync'),
           SwitchListTile(
             title: const Text('Cache Artist Info'),
             subtitle: const Text(
@@ -168,8 +168,10 @@ class MetadataCachingScreen extends ConsumerWidget {
             },
           ),
           ListTile(
-            title: const Text('Sync Threads'),
-            subtitle: const Text('Parallel download workers during sync'),
+            title: const Text('Metadata & Art Sync Workers'),
+            subtitle: const Text(
+              'Parallel workers during library metadata and artwork sync',
+            ),
             trailing: DropdownButton<int>(
               value: config.concurrency,
               underline: const SizedBox.shrink(),
@@ -353,6 +355,34 @@ class MetadataCachingScreen extends ConsumerWidget {
                           ref
                               .read(audioCacheConfigProvider.notifier)
                               .setRollingCacheLimitMb(val);
+                        }
+                      },
+                    ),
+                  ),
+                  ListTile(
+                    title: const Text('Audio Download Workers'),
+                    subtitle: const Text(
+                      'Parallel download workers when caching songs, albums, and artists',
+                    ),
+                    trailing: DropdownButton<int>(
+                      value: audioConfig.downloadConcurrency,
+                      underline: const SizedBox.shrink(),
+                      borderRadius: BorderRadius.circular(8),
+                      items: [1, 2, 3, 4, 6, 8]
+                          .map(
+                            (t) => DropdownMenuItem(
+                              value: t,
+                              child: Text(
+                                '$t ${t == 1 ? "worker" : "workers"}${t == 2 ? " (default)" : ""}',
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          ref
+                              .read(audioCacheConfigProvider.notifier)
+                              .setDownloadConcurrency(val);
                         }
                       },
                     ),

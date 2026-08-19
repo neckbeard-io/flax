@@ -61,6 +61,7 @@ At all
       expect(config.rollingCacheLimitMb, equals(2048));
       expect(config.autoCacheStreamed, isFalse);
       expect(config.offlineOnlyMode, isFalse);
+      expect(config.downloadConcurrency, equals(2));
     });
 
     test('copyWith updates specific fields', () {
@@ -68,10 +69,12 @@ At all
       final updated = config.copyWith(
         rollingCacheLimitMb: 5120,
         autoCacheStreamed: true,
+        downloadConcurrency: 4,
       );
       expect(updated.rollingCacheLimitMb, equals(5120));
       expect(updated.autoCacheStreamed, isTrue);
       expect(updated.offlineOnlyMode, isFalse);
+      expect(updated.downloadConcurrency, equals(4));
     });
   });
 
