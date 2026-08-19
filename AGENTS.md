@@ -228,6 +228,33 @@ can be tested without a server, mpv, or a router — see `NowPlayingPanels`,
 easier to cover with synthetic `PointerPanZoom` events than by hand (see
 `test/back_navigation_test.dart`).
 
+### Mobile & responsive UI/UX verification
+
+Flax runs across desktop and mobile screens. Desktop windows (1200+ px) easily fit wide rows that silently overflow and clip on mobile viewports (360–412 px).
+
+Whenever modifying or adding user interfaces, enforce the following:
+
+1. **Defensive Layout**:
+   - Never use fixed unconstrained `Row`s for action button groups. Use `Wrap(spacing: 8, runSpacing: 8)` or `SingleChildScrollView(scrollDirection: Axis.horizontal)`.
+   - Adapt button designs responsively (e.g. icon-only with tooltip on narrow widths vs text+icon on desktop).
+2. **Headless Viewport Tests (Required on UI changes)**:
+   - Cover UI changes with a widget test simulating standard mobile phone dimensions (`Size(390, 844)`):
+     ```dart
+     testWidgets('Screen renders on phone dimensions without overflow', (tester) async {
+       tester.view.physicalSize = const Size(390, 844);
+       tester.view.devicePixelRatio = 1.0;
+       addTearDown(tester.view.reset);
+
+       await tester.pumpWidget(createTestApp(const MyScreen()));
+       await tester.pump();
+
+       // Flutter automatically fails the test on any RenderFlex overflow.
+       // Assert that interactive controls are within visible screen bounds:
+       final rect = tester.getRect(find.byKey(actionKey));
+       expect(rect.right, lessThanOrEqualTo(390));
+     });
+     ```
+
 ### Screenshots and synthetic input — macOS only
 
 Everything in this subsection depends on macOS APIs (`screencapture`, System
