@@ -6,6 +6,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
@@ -149,6 +150,11 @@ class _AlbumActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final downloadedAlbumIds =
+        ref.watch(downloadedAlbumIdsProvider).valueOrNull ?? const {};
+    final isCached = downloadedAlbumIds.contains(album.id);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -179,6 +185,23 @@ class _AlbumActions extends ConsumerWidget {
                   EntityRef(EntityType.album, album.id),
                   favorite: !album.starred,
                 );
+          },
+        ),
+        const SizedBox(width: 8),
+        HoverIcon(
+          icon: isCached ? Icons.offline_pin : Icons.download,
+          size: size,
+          color: isCached
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurfaceVariant,
+          tooltip: isCached ? 'Remove album from cache' : 'Cache album offline',
+          onTap: () {
+            final cacheService = ref.read(audioCacheServiceProvider);
+            if (isCached) {
+              cacheService.removeCachedAlbum(album.id);
+            } else {
+              cacheService.cacheAlbum(album.id);
+            }
           },
         ),
       ],
