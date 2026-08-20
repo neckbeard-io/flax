@@ -81,6 +81,19 @@ abstract class LibraryRepository {
   Stream<Set<String>> watchDownloadedSongIds();
   Stream<Set<String>> watchDownloadedAlbumIds();
   Stream<Set<String>> watchDownloadedArtistIds();
+  Stream<List<Album>> watchDownloadedAlbums({AlbumListQuery? query});
+  Stream<List<Artist>> watchDownloadedArtists();
+  Stream<List<Album>> watchDownloadedArtistAlbums(String artistId);
+  Stream<List<Song>> watchDownloadedAlbumSongs(String albumId);
+  Stream<List<Album>> watchDownloadedAlbumSearch(
+    String query, {
+    int limit = 20,
+  });
+  Stream<List<Artist>> watchDownloadedArtistSearch(
+    String query, {
+    int limit = 20,
+  });
+  Stream<List<Song>> watchDownloadedSongSearch(String query, {int limit = 20});
   Future<void> updateSongDownload(
     String songId, {
     required String? localPath,

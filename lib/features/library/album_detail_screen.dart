@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
@@ -25,17 +26,17 @@ final albumDetailProvider = StreamProvider.family<Album, String>((
   ref,
   id,
 ) async* {
+  final isOffline = ref.watch(isOfflineModeProvider);
   final repo = ref.watch(libraryRepositoryProvider);
   if (repo == null) throw Exception('No server');
 
-  // Album lists populate the entity row before the detail screen ever opens, so
-  // there is usually something to paint immediately. Wait only when there is
-  // not — emitting nothing would flash an empty screen.
-  final cached = await repo.watchAlbum(id).first;
-  if (cached == null) {
-    await repo.refreshAlbum(id);
-  } else {
-    repo.refreshAlbum(id);
+  if (!isOffline) {
+    final cached = await repo.watchAlbum(id).first;
+    if (cached == null) {
+      await repo.refreshAlbum(id);
+    } else {
+      repo.refreshAlbum(id);
+    }
   }
 
   // A null here means the album is genuinely gone from the cache, which for this
@@ -50,9 +51,15 @@ final albumSongsProvider = StreamProvider.family<List<Song>, String>((
   ref,
   albumId,
 ) async* {
+  final isOffline = ref.watch(isOfflineModeProvider);
   final repo = ref.watch(libraryRepositoryProvider);
   if (repo == null) {
     yield const [];
+    return;
+  }
+
+  if (isOffline) {
+    yield* repo.watchDownloadedAlbumSongs(albumId);
     return;
   }
 

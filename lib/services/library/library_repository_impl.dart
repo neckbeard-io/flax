@@ -471,6 +471,40 @@ class LibraryRepositoryImpl implements LibraryRepository {
       _dao.watchDownloadedArtistIds(_serverId);
 
   @override
+  Stream<List<Album>> watchDownloadedAlbums({AlbumListQuery? query}) =>
+      _dao.watchDownloadedAlbums(_serverId, query);
+
+  @override
+  Stream<List<Artist>> watchDownloadedArtists() =>
+      _dao.watchDownloadedArtists(_serverId);
+
+  @override
+  Stream<List<Album>> watchDownloadedArtistAlbums(String artistId) =>
+      _dao.watchDownloadedArtistAlbums(_serverId, artistId);
+
+  @override
+  Stream<List<Song>> watchDownloadedAlbumSongs(String albumId) =>
+      _dao.watchDownloadedAlbumSongs(_serverId, albumId);
+
+  @override
+  Stream<List<Album>> watchDownloadedAlbumSearch(
+    String query, {
+    int limit = 20,
+  }) => _dao.searchDownloadedAlbums(_serverId, query, limit);
+
+  @override
+  Stream<List<Artist>> watchDownloadedArtistSearch(
+    String query, {
+    int limit = 20,
+  }) => _dao.searchDownloadedArtists(_serverId, query, limit);
+
+  @override
+  Stream<List<Song>> watchDownloadedSongSearch(
+    String query, {
+    int limit = 20,
+  }) => _dao.searchDownloadedSongs(_serverId, query, limit);
+
+  @override
   Future<void> updateSongDownload(
     String songId, {
     required String? localPath,

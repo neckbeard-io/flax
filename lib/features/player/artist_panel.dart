@@ -28,14 +28,15 @@ class ArtistPanel extends ConsumerWidget {
     }
 
     final artistId = song.artistId!;
+    final artist = ref.watch(artistDetailProvider(artistId)).valueOrNull;
     final info = ref.watch(artistInfoProvider(artistId)).valueOrNull;
 
     return ArtistPanelView(
-      artistName: song.artistName ?? '',
+      artistName: song.artistName ?? artist?.name ?? '',
       artistId: artistId,
-      imageUrl: info?.bestImageUrl,
-      coverArtId: song.coverArtId,
-      biography: info?.biography,
+      imageUrl: info?.bestImageUrl ?? artist?.imageUrl,
+      coverArtId: artist?.coverArtId,
+      biography: info?.biography ?? artist?.biography,
       similarArtists: info?.similarArtists ?? const [],
       onArtistTap: (id) => context.push('/artists/$id'),
     );
@@ -150,12 +151,18 @@ class ArtistPanelView extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: imageUrl,
         fit: BoxFit.cover,
-        placeholder: (_, _) => CoverArtImage(coverArtId: coverArtId, size: 600),
-        errorWidget: (_, _, _) =>
-            CoverArtImage(coverArtId: coverArtId, size: 600),
+        placeholder: (_, _) => coverArtId != null
+            ? CoverArtImage(coverArtId: coverArtId, size: 600)
+            : const _ArtistPlaceholder(),
+        errorWidget: (_, _, _) => coverArtId != null
+            ? CoverArtImage(coverArtId: coverArtId, size: 600)
+            : const _ArtistPlaceholder(),
       );
     }
-    return CoverArtImage(coverArtId: coverArtId, size: 600);
+    if (coverArtId != null && coverArtId.isNotEmpty) {
+      return CoverArtImage(coverArtId: coverArtId, size: 600);
+    }
+    return const _ArtistPlaceholder();
   }
 
   /// Biographies arrive with a trailing "Read more on Last.fm" anchor. Strip
@@ -164,6 +171,28 @@ class ArtistPanelView extends StatelessWidget {
       .replaceAll(RegExp(r'<[^>]*>'), '')
       .replaceAll(RegExp(r'\s+\n'), '\n')
       .trim();
+}
+
+class _ArtistPlaceholder extends StatelessWidget {
+  const _ArtistPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.person,
+          size: 80,
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+        ),
+      ),
+    );
+  }
 }
 
 class _SimilarArtistItem extends StatelessWidget {

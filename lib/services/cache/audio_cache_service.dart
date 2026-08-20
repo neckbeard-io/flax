@@ -13,6 +13,8 @@ import 'package:flax/core/tasks/task.dart';
 import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/domain/repositories/library_repository.dart';
+import 'package:flax/services/database/library_dao.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 
@@ -291,7 +293,13 @@ class AudioCacheService {
         repo.refreshAlbum(song.albumId!).ignore();
       }
       if (song.artistId != null) {
-        repo.refreshArtist(song.artistId!).ignore();
+        _cacheArtistMetadata(
+          client,
+          dao,
+          repo,
+          serverId,
+          song.artistId!,
+        ).ignore();
       }
 
       // If rolling cache, check size limit and evict if needed
@@ -360,6 +368,36 @@ class AudioCacheService {
     } catch (_) {}
   }
 
+  Future<void> _cacheArtistMetadata(
+    SubsonicClient client,
+    LibraryDao dao,
+    LibraryRepository repo,
+    String serverId,
+    String artistId,
+  ) async {
+    try {
+      await repo.refreshArtist(artistId);
+      final artist = await dao.watchArtist(serverId, artistId).first;
+      if (artist != null && artist.coverArtId != null) {
+        final artistArtUri = client.getCoverArtUri(artist.coverArtId!);
+        ArtCache.instance.downloadFile(artistArtUri.toString()).ignore();
+      }
+
+      final info = await client.getArtistInfoParsed(artistId);
+      if (info != null && artist != null) {
+        final updated = artist.copyWith(
+          biography: info.biography ?? artist.biography,
+          musicBrainzId: info.musicBrainzId ?? artist.musicBrainzId,
+          imageUrl: info.bestImageUrl ?? artist.imageUrl,
+        );
+        await dao.upsertArtists([updated], DateTime.now());
+        if (info.bestImageUrl != null) {
+          ArtCache.instance.downloadFile(info.bestImageUrl!).ignore();
+        }
+      }
+    } catch (_) {}
+  }
+
   /// Caches all songs in an album.
   Future<void> cacheAlbum(String albumId, {bool isPinned = true}) async {
     final repo = _ref.read(libraryRepositoryProvider);
@@ -373,6 +411,19 @@ class AudioCacheService {
     if (songs.isEmpty) return;
 
     final album = await repo.watchAlbum(albumId).first;
+    if (album?.artistId != null) {
+      final dao = _ref.read(libraryDaoProvider);
+      final client = _ref.read(subsonicClientProvider);
+      if (client != null) {
+        _cacheArtistMetadata(
+          client,
+          dao,
+          repo,
+          songs.first.serverId,
+          album!.artistId!,
+        ).ignore();
+      }
+    }
     final taskRegistry = _ref.read(taskRegistryProvider.notifier);
     final cancelToken = CancelToken();
     final handle = isPinned
@@ -458,6 +509,17 @@ class AudioCacheService {
     if (allSongs.isEmpty) return;
 
     final artist = await repo.watchArtist(artistId).first;
+    final dao = _ref.read(libraryDaoProvider);
+    final client = _ref.read(subsonicClientProvider);
+    if (client != null) {
+      _cacheArtistMetadata(
+        client,
+        dao,
+        repo,
+        allSongs.first.serverId,
+        artistId,
+      ).ignore();
+    }
     final taskRegistry = _ref.read(taskRegistryProvider.notifier);
     final cancelToken = CancelToken();
     final handle = isPinned

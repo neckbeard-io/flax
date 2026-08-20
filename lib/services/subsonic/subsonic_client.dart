@@ -46,6 +46,7 @@ class SubsonicClient implements MusicBackend {
   Future<Map<String, dynamic>> _get(
     String endpoint, [
     Map<String, dynamic>? extra,
+    Options? options,
   ]) async {
     final params = <String, dynamic>{..._authParams()};
     if (extra != null) params.addAll(extra);
@@ -53,6 +54,7 @@ class SubsonicClient implements MusicBackend {
     final response = await _dio.get<Map<String, dynamic>>(
       '${server.baseUrl}/rest/$endpoint',
       queryParameters: params,
+      options: options,
     );
 
     final body = response.data!;
@@ -77,12 +79,17 @@ class SubsonicClient implements MusicBackend {
     return true;
   }
 
-  Future<String?> tryPing() async {
+  Future<String?> tryPing({Duration? timeout}) async {
     try {
-      await _get('ping');
+      final options = timeout != null
+          ? Options(sendTimeout: timeout, receiveTimeout: timeout)
+          : null;
+      await _get('ping', null, options);
       return null;
     } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
         return 'Connection timed out. Check the server URL and your network.';
       }
       if (e.type == DioExceptionType.connectionError) {

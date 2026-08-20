@@ -144,9 +144,9 @@ class MockSubsonicClient extends _i1.Mock implements _i6.SubsonicClient {
           as _i7.Future<bool>);
 
   @override
-  _i7.Future<String?> tryPing() =>
+  _i7.Future<String?> tryPing({Duration? timeout}) =>
       (super.noSuchMethod(
-            Invocation.method(#tryPing, []),
+            Invocation.method(#tryPing, [], {#timeout: timeout}),
             returnValue: _i7.Future<String?>.value(),
             returnValueForMissingStub: _i7.Future<String?>.value(),
           )

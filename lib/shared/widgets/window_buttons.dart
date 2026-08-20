@@ -35,12 +35,13 @@ Future<void> _close() => (Platform.isWindows || Platform.isLinux)
     : _channel.invokeMethod('close');
 
 /// Width the window buttons occupy in the top-right corner, plus the shell's
-/// inset — zero off desktop, where they are not drawn.
+/// inset and offline toggle — zero off desktop, where they are not drawn.
 ///
 /// ShellScaffold paints them in a Stack *over* the routed screen, so anything a
 /// screen puts in that corner is overlapped. An AppBar with `actions:` inside
 /// the shell must reserve this much trailing room, or move the action elsewhere.
-double get windowButtonsReservedWidth => isDesktopPlatform ? 3 * 32 + 8 : 0;
+double get windowButtonsReservedWidth =>
+    isDesktopPlatform ? (3 * 32 + 8 + 100) : 0;
 
 /// Height of the draggable strip along the top of the window.
 ///

@@ -11,6 +11,10 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Offline mode toggle slider in desktop window caption to view only offline cached music.
+- Server reachability probe with 3-second hard timeout that automatically falls back to offline mode.
+- In-window toast notification when automatically switching to offline mode.
+- "Offline when not on Wi-Fi" option in Transcoding settings to avoid cellular data usage.
 - Offline caching and sync for songs, albums, and artists with cascade downloads.
 - Right-click and long-press "Cache Offline" context actions on songs, albums, and artists.
 - Top header "Cache Offline" toggle buttons on artist and album pages.
