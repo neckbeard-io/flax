@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flax/app/theme/theme_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
@@ -176,6 +177,17 @@ class SettingsScreen extends ConsumerWidget {
 
           // ── Storage & Caching ──
           _SectionTitle(title: 'Storage & Caching'),
+          SwitchListTile(
+            title: const Text('Offline Mode'),
+            subtitle: Text(
+              ref.watch(isOfflineModeProvider)
+                  ? 'Active · Only showing downloaded and cached music'
+                  : 'Disabled · Showing full server library',
+            ),
+            value: ref.watch(offlineManualOverrideProvider),
+            onChanged: (v) =>
+                ref.read(offlineManualOverrideProvider.notifier).set(v),
+          ),
           ListTile(
             title: const Text('Cache & Offline Storage'),
             subtitle: Text(

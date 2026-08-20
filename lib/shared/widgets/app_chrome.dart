@@ -7,16 +7,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flax/app/router.dart';
+import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/updater/update_button.dart';
 import 'package:flax/services/updater/mobile_update_coordinator.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
 import 'package:flax/shared/input/back_swipe.dart';
-import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/shared/input/global_keys.dart';
 import 'package:flax/shared/widgets/desktop_sidebar.dart';
+import 'package:flax/shared/widgets/in_window_toaster.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
+import 'package:flax/shared/widgets/offline_mode_toggle.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 
 /// Window controls, drag strip, debug badge, and the global "/" shortcut,
@@ -61,6 +64,7 @@ class _AppChromeState extends ConsumerState<AppChrome>
       if (mounted) {
         WhatsNewCoordinator.checkAndShowIfNeeded(context, ref);
         MobileUpdateCoordinator.checkAndPrompt(context, ref);
+        ref.read(serverReachabilityProvider.notifier).probeServer(silent: true);
       }
     });
   }
@@ -79,6 +83,12 @@ class _AppChromeState extends ConsumerState<AppChrome>
     // Check for updates when coming back to the foreground
     ref.read(updateNotifierProvider.notifier).checkForUpdates(silent: true);
     MobileUpdateCoordinator.checkAndPrompt(context, ref);
+
+    // Probe server reachability
+    ref.read(serverReachabilityProvider.notifier).probeServer(silent: true);
+
+    final isOffline = ref.read(isOfflineModeProvider);
+    if (isOffline) return;
 
     final repo = ref.read(libraryRepositoryProvider);
     if (repo == null) return;
@@ -219,9 +229,16 @@ class _AppChromeState extends ConsumerState<AppChrome>
                         right: 4,
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: [UpdateButton(), WindowButtons()],
+                          children: [
+                            OfflineModeToggle(),
+                            SizedBox(width: 8),
+                            UpdateButton(),
+                            WindowButtons(),
+                          ],
                         ),
                       ),
+                    // In-window toast notices (e.g. server reachability fallback)
+                    const InWindowToaster(),
                     // Upper left, well away from the window controls and any
                     // AppBar actions that sit beside them. On the shell the
                     // sidebar keeps its top strip clear, so nothing is under it

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/domain/models/models.dart';
@@ -25,16 +26,17 @@ final artistDetailProvider = StreamProvider.family<Artist, String>((
   ref,
   id,
 ) async* {
+  final isOffline = ref.watch(isOfflineModeProvider);
   final repo = ref.watch(libraryRepositoryProvider);
   if (repo == null) throw Exception('No server');
 
-  // The artist list populates this row, so opening an artist from Artists paints
-  // immediately. Arriving by any other route may not have it yet.
-  final cached = await repo.watchArtist(id).first;
-  if (cached == null) {
-    await repo.refreshArtist(id);
-  } else {
-    repo.refreshArtist(id);
+  if (!isOffline) {
+    final cached = await repo.watchArtist(id).first;
+    if (cached == null) {
+      await repo.refreshArtist(id);
+    } else {
+      repo.refreshArtist(id);
+    }
   }
 
   yield* repo.watchArtist(id).map((artist) {
@@ -53,9 +55,15 @@ final artistAlbumsProvider = StreamProvider.family<List<Album>, String>((
   ref,
   artistId,
 ) async* {
+  final isOffline = ref.watch(isOfflineModeProvider);
   final repo = ref.watch(libraryRepositoryProvider);
   if (repo == null) {
     yield const [];
+    return;
+  }
+
+  if (isOffline) {
+    yield* repo.watchDownloadedArtistAlbums(artistId);
     return;
   }
 
@@ -73,6 +81,8 @@ final artistInfoProvider = FutureProvider.family<ArtistInfo?, String>((
   ref,
   artistId,
 ) async {
+  final isOffline = ref.watch(isOfflineModeProvider);
+  if (isOffline) return null;
   final client = ref.watch(subsonicClientProvider);
   if (client == null) return null;
   return client.getArtistInfoParsed(artistId);
@@ -189,7 +199,7 @@ class ArtistDetailScreen extends ConsumerWidget {
     Artist artist,
     ArtistInfo? artistInfo,
   ) {
-    final bgImage = artistInfo?.bestImageUrl;
+    final bgImage = artistInfo?.bestImageUrl ?? artist.imageUrl;
 
     return SliverAppBar(
       expandedHeight: 220,
@@ -291,14 +301,47 @@ class _AlbumTile extends ConsumerWidget {
     return AlbumContextMenu(
       album: album,
       child: ListTile(
-        leading: HoverArtwork(
-          onTap: () => context.push('/albums/${album.id}'),
-          borderRadius: BorderRadius.circular(4),
-          scale: 1.08,
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: CoverArtImage(coverArtId: album.coverArtId, size: 48),
+        leading: SizedBox(
+          width: 48,
+          height: 48,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              HoverArtwork(
+                onTap: () => context.push('/albums/${album.id}'),
+                borderRadius: BorderRadius.circular(4),
+                scale: 1.08,
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: CoverArtImage(coverArtId: album.coverArtId, size: 48),
+                ),
+              ),
+              if (isCached)
+                Positioned(
+                  top: -5,
+                  right: -5,
+                  child: Container(
+                    padding: const EdgeInsets.all(1.5),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.offline_pin,
+                      size: 13,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         title: Text(album.name),
@@ -310,19 +353,8 @@ class _AlbumTile extends ConsumerWidget {
           ].join(' · '),
           style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isCached) ...[
-              Icon(
-                Icons.offline_pin,
-                color: theme.colorScheme.primary,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-            ],
-            if (album.userRating != null && album.userRating! > 0)
-              Row(
+        trailing: album.userRating != null && album.userRating! > 0
+            ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: List.generate(
                   5,
@@ -336,9 +368,8 @@ class _AlbumTile extends ConsumerWidget {
                           ),
                   ),
                 ),
-              ),
-          ],
-        ),
+              )
+            : null,
         onTap: () => context.push('/albums/${album.id}'),
       ),
     );
@@ -385,7 +416,7 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
     final genres = mb?.tags ?? widget.artist.genres ?? [];
 
     // Clean up biography HTML
-    final bio = _cleanBio(info?.biography);
+    final bio = _cleanBio(info?.biography ?? widget.artist.biography);
 
     // While the bio is still in flight, hold the space three lines of it will
     // occupy. Letting the panel collapse and then expand shifted the album list
@@ -565,7 +596,7 @@ class _DesktopArtistHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final remoteImage = artistInfo?.bestImageUrl;
+    final remoteImage = artistInfo?.bestImageUrl ?? artist.imageUrl;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 24, 8),

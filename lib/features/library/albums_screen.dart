@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/library/album_filter.dart';
@@ -21,6 +22,7 @@ final albumsProvider = StreamProvider.family<List<Album>, AlbumFilter>((
   ref,
   filter,
 ) async* {
+  final isOffline = ref.watch(isOfflineModeProvider);
   final repo = ref.watch(libraryRepositoryProvider);
   if (repo == null) {
     yield const [];
@@ -28,6 +30,11 @@ final albumsProvider = StreamProvider.family<List<Album>, AlbumFilter>((
   }
 
   final query = AlbumListQuery(filter.listType);
+
+  if (isOffline) {
+    yield* repo.watchDownloadedAlbums(query: query);
+    return;
+  }
 
   // Random has no cached ordering to read, so its stream does its own fetch.
   // Asking for a refresh as well would fetch twice.
@@ -56,6 +63,7 @@ class AlbumsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final filter = ref.watch(albumFilterProvider);
+    final isOffline = ref.watch(isOfflineModeProvider);
     final albumsAsync = ref.watch(albumsProvider(filter));
 
     return Scaffold(
@@ -90,7 +98,9 @@ class AlbumsScreen extends ConsumerWidget {
                 data: (albums) => albums.isEmpty
                     ? Center(
                         child: Text(
-                          filter.emptyMessage,
+                          isOffline
+                              ? 'No offline cached albums'
+                              : filter.emptyMessage,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -235,6 +245,7 @@ class AlbumGrid extends ConsumerWidget {
                   AspectRatio(
                     aspectRatio: 1,
                     child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
                         Positioned.fill(
                           child: HoverArtwork(
@@ -247,13 +258,20 @@ class AlbumGrid extends ConsumerWidget {
                         ),
                         if (isCached)
                           Positioned(
-                            top: 6,
-                            right: 6,
+                            top: -6,
+                            right: -6,
                             child: Container(
-                              padding: const EdgeInsets.all(3),
+                              padding: const EdgeInsets.all(2.5),
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.7),
+                                color: theme.colorScheme.surface,
                                 shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.5),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
                               ),
                               child: Icon(
                                 Icons.offline_pin,

@@ -5,9 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/features/library/artist_detail_screen.dart';
 import 'package:flax/features/player/artist_panel.dart';
 import 'package:flax/features/player/now_playing_panels.dart';
+import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
+
+class _FakePlayerNotifier extends StateNotifier<PlayerState>
+    implements PlayerNotifier {
+  _FakePlayerNotifier(super.state);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 Widget _harness({
   required Widget child,
@@ -182,6 +192,55 @@ void main() {
             .first,
       );
       expect(animatedScale.scale, greaterThan(1.0));
+    });
+  });
+
+  group('ArtistPanel Riverpod integration', () {
+    testWidgets('uses cached artist bio and art when artistInfo is null', (
+      tester,
+    ) async {
+      const song = Song(
+        id: 's-1',
+        serverId: 'srv-1',
+        title: 'Song 1',
+        artistId: 'ar-100',
+        artistName: 'Cached Artist',
+        coverArtId: 'album-art-99',
+      );
+
+      const cachedArtist = Artist(
+        id: 'ar-100',
+        serverId: 'srv-1',
+        name: 'Cached Artist',
+        biography: 'Cached artist biography from local database.',
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            playerProvider.overrideWith(
+              (ref) =>
+                  _FakePlayerNotifier(const PlayerState(currentSong: song)),
+            ),
+            artistDetailProvider.overrideWith(
+              (ref, id) => Stream.value(cachedArtist),
+            ),
+            artistInfoProvider.overrideWith((ref, id) => Future.value(null)),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SizedBox(width: 300, height: 700, child: ArtistPanel()),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cached Artist'), findsOneWidget);
+      expect(
+        find.text('Cached artist biography from local database.'),
+        findsOneWidget,
+      );
     });
   });
 }

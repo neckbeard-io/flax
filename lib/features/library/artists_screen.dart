@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/shared/widgets/artist_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
@@ -12,9 +13,15 @@ import 'package:flax/shared/widgets/cover_art_image.dart';
 /// refresh lands and when a favorite is written anywhere else in the app —
 /// without any invalidation code here.
 final artistsProvider = StreamProvider<List<Artist>>((ref) async* {
+  final isOffline = ref.watch(isOfflineModeProvider);
   final repo = ref.watch(libraryRepositoryProvider);
   if (repo == null) {
     yield const [];
+    return;
+  }
+
+  if (isOffline) {
+    yield* repo.watchDownloadedArtists();
     return;
   }
 
@@ -39,6 +46,7 @@ class ArtistsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final isOffline = ref.watch(isOfflineModeProvider);
     final artistsAsync = ref.watch(artistsProvider);
     final downloadedArtistIds =
         ref.watch(downloadedArtistIdsProvider).valueOrNull ?? const {};
@@ -59,55 +67,69 @@ class ArtistsScreen extends ConsumerWidget {
             ),
             Expanded(
               child: artistsAsync.when(
-                data: (artists) => ListView.builder(
-                  itemCount: artists.length,
-                  itemBuilder: (context, index) {
-                    final artist = artists[index];
-                    final isCached = downloadedArtistIds.contains(artist.id);
-                    return ArtistContextMenu(
-                      artist: artist,
-                      child: ListTile(
-                        leading: ClipOval(
-                          child: SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: CoverArtImage(
-                              coverArtId: artist.coverArtId,
-                              size: 48,
-                            ),
-                          ),
-                        ),
-                        title: Text(artist.name),
-                        subtitle: Text(
-                          '${artist.albumCount} album${artist.albumCount != 1 ? 's' : ''}',
-                          style: TextStyle(
+                data: (artists) => artists.isEmpty
+                    ? Center(
+                        child: Text(
+                          isOffline
+                              ? 'No offline cached artists'
+                              : 'No artists found',
+                          style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isCached) ...[
-                              Icon(
-                                Icons.offline_pin,
-                                color: theme.colorScheme.primary,
-                                size: 18,
+                      )
+                    : ListView.builder(
+                        itemCount: artists.length,
+                        itemBuilder: (context, index) {
+                          final artist = artists[index];
+                          final isCached = downloadedArtistIds.contains(
+                            artist.id,
+                          );
+                          return ArtistContextMenu(
+                            artist: artist,
+                            child: ListTile(
+                              leading: ClipOval(
+                                child: SizedBox(
+                                  width: 48,
+                                  height: 48,
+                                  child: CoverArtImage(
+                                    coverArtId: artist.coverArtId,
+                                    size: 48,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 8),
-                            ],
-                            if (artist.starred)
-                              Icon(
-                                Icons.favorite,
-                                color: theme.colorScheme.primary,
-                                size: 18,
+                              title: Text(artist.name),
+                              subtitle: Text(
+                                '${artist.albumCount} album${artist.albumCount != 1 ? 's' : ''}',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
-                          ],
-                        ),
-                        onTap: () => context.push('/artists/${artist.id}'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isCached) ...[
+                                    Icon(
+                                      Icons.offline_pin,
+                                      color: theme.colorScheme.primary,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  if (artist.starred)
+                                    Icon(
+                                      Icons.favorite,
+                                      color: theme.colorScheme.primary,
+                                      size: 18,
+                                    ),
+                                ],
+                              ),
+                              onTap: () =>
+                                  context.push('/artists/${artist.id}'),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Error: $e')),
               ),

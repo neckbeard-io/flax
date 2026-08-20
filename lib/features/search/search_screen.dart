@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
@@ -22,9 +23,19 @@ final searchResultsProvider = StreamProvider<SearchResult?>((ref) async* {
     return;
   }
 
+  final isOffline = ref.watch(isOfflineModeProvider);
   final repo = ref.watch(libraryRepositoryProvider);
   if (repo == null) {
     yield null;
+    return;
+  }
+
+  if (isOffline) {
+    yield SearchResult(
+      artists: await repo.watchDownloadedArtistSearch(query).first,
+      albums: await repo.watchDownloadedAlbumSearch(query).first,
+      songs: await repo.watchDownloadedSongSearch(query).first,
+    );
     return;
   }
 

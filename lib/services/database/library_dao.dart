@@ -726,6 +726,202 @@ class LibraryDao {
     return rows.map(songFromRow).toList();
   }
 
+  Stream<List<Album>> watchDownloadedAlbums(
+    String serverId, [
+    AlbumListQuery? query,
+  ]) {
+    final downloadedAlbumSubquery = _db.selectOnly(_db.songs)
+      ..addColumns([_db.songs.albumId])
+      ..where(
+        _db.songs.serverId.equals(serverId) &
+            _db.songs.localPath.isNotNull() &
+            _db.songs.downloadState.equals(DownloadState.complete.index) &
+            _db.songs.albumId.isNotNull(),
+      );
+
+    final q = _db.select(_db.albums)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            t.id.isInQuery(downloadedAlbumSubquery),
+      );
+
+    if (query != null) {
+      switch (query.type) {
+        case AlbumListType.alphabeticalByName:
+          q.orderBy([(t) => OrderingTerm(expression: t.name)]);
+        case AlbumListType.alphabeticalByArtist:
+          q.orderBy([
+            (t) => OrderingTerm(expression: t.artistName),
+            (t) => OrderingTerm(expression: t.name),
+          ]);
+        case AlbumListType.newest:
+        case AlbumListType.recent:
+          q.orderBy([
+            (t) =>
+                OrderingTerm(expression: t.lastSeenAt, mode: OrderingMode.desc),
+          ]);
+        case AlbumListType.byYear:
+          q.orderBy([
+            (t) => OrderingTerm(expression: t.year, mode: OrderingMode.desc),
+          ]);
+        case AlbumListType.starred:
+          q.where((t) => t.starred.equals(true));
+        case AlbumListType.highest:
+          q.orderBy([
+            (t) =>
+                OrderingTerm(expression: t.userRating, mode: OrderingMode.desc),
+          ]);
+        default:
+          q.orderBy([(t) => OrderingTerm(expression: t.name)]);
+      }
+    } else {
+      q.orderBy([(t) => OrderingTerm(expression: t.name)]);
+    }
+
+    return q.watch().map((rows) => rows.map(albumFromRow).toList());
+  }
+
+  Stream<List<Artist>> watchDownloadedArtists(String serverId) {
+    final downloadedArtistSubquery = _db.selectOnly(_db.songs)
+      ..addColumns([_db.songs.artistId])
+      ..where(
+        _db.songs.serverId.equals(serverId) &
+            _db.songs.localPath.isNotNull() &
+            _db.songs.downloadState.equals(DownloadState.complete.index) &
+            _db.songs.artistId.isNotNull(),
+      );
+
+    final q = _db.select(_db.artists)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            t.id.isInQuery(downloadedArtistSubquery),
+      )
+      ..orderBy([
+        (t) => OrderingTerm(expression: coalesce([t.sortName, t.name])),
+      ]);
+    return q.watch().map((rows) => rows.map(artistFromRow).toList());
+  }
+
+  Stream<List<Album>> watchDownloadedArtistAlbums(
+    String serverId,
+    String artistId,
+  ) {
+    final downloadedAlbumSubquery = _db.selectOnly(_db.songs)
+      ..addColumns([_db.songs.albumId])
+      ..where(
+        _db.songs.serverId.equals(serverId) &
+            _db.songs.localPath.isNotNull() &
+            _db.songs.downloadState.equals(DownloadState.complete.index) &
+            _db.songs.albumId.isNotNull(),
+      );
+
+    final q = _db.select(_db.albums)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            t.artistId.equals(artistId) &
+            t.id.isInQuery(downloadedAlbumSubquery),
+      )
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.year.isNull()),
+        (t) => OrderingTerm(expression: t.year),
+        (t) => OrderingTerm(expression: t.name),
+      ]);
+    return q.watch().map((rows) => rows.map(albumFromRow).toList());
+  }
+
+  Stream<List<Song>> watchDownloadedAlbumSongs(
+    String serverId,
+    String albumId,
+  ) {
+    final q = _db.select(_db.songs)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            t.albumId.equals(albumId) &
+            t.localPath.isNotNull() &
+            t.downloadState.equals(DownloadState.complete.index),
+      )
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.discNumber),
+        (t) => OrderingTerm(expression: t.track),
+        (t) => OrderingTerm(expression: t.title),
+      ]);
+    return q.watch().map((rows) => rows.map(songFromRow).toList());
+  }
+
+  Stream<List<Song>> searchDownloadedSongs(
+    String serverId,
+    String term,
+    int limit,
+  ) {
+    if (term.trim().isEmpty) return Stream.value(const []);
+    final q = _db.select(_db.songs)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            t.title.like('%$term%') &
+            t.localPath.isNotNull() &
+            t.downloadState.equals(DownloadState.complete.index),
+      )
+      ..limit(limit);
+    return q.watch().map((rows) => rows.map(songFromRow).toList());
+  }
+
+  Stream<List<Album>> searchDownloadedAlbums(
+    String serverId,
+    String term,
+    int limit,
+  ) {
+    if (term.trim().isEmpty) return Stream.value(const []);
+    final downloadedAlbumSubquery = _db.selectOnly(_db.songs)
+      ..addColumns([_db.songs.albumId])
+      ..where(
+        _db.songs.serverId.equals(serverId) &
+            _db.songs.localPath.isNotNull() &
+            _db.songs.downloadState.equals(DownloadState.complete.index) &
+            _db.songs.albumId.isNotNull(),
+      );
+
+    final q = _db.select(_db.albums)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            t.name.like('%$term%') &
+            t.id.isInQuery(downloadedAlbumSubquery),
+      )
+      ..limit(limit);
+    return q.watch().map((rows) => rows.map(albumFromRow).toList());
+  }
+
+  Stream<List<Artist>> searchDownloadedArtists(
+    String serverId,
+    String term,
+    int limit,
+  ) {
+    if (term.trim().isEmpty) return Stream.value(const []);
+    final downloadedArtistSubquery = _db.selectOnly(_db.songs)
+      ..addColumns([_db.songs.artistId])
+      ..where(
+        _db.songs.serverId.equals(serverId) &
+            _db.songs.localPath.isNotNull() &
+            _db.songs.downloadState.equals(DownloadState.complete.index) &
+            _db.songs.artistId.isNotNull(),
+      );
+
+    final q = _db.select(_db.artists)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            t.name.like('%$term%') &
+            t.id.isInQuery(downloadedArtistSubquery),
+      )
+      ..limit(limit);
+    return q.watch().map((rows) => rows.map(artistFromRow).toList());
+  }
+
   // ── Housekeeping ─────────────────────────────────────────────────────────
 
   /// Everything belonging to a server. Called when a server is removed.

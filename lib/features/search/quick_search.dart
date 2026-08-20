@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/models/models.dart';
 
 /// Shortest query worth asking the server about. One letter matches most of a
@@ -101,9 +102,22 @@ final quickSearchResultsProvider =
         return;
       }
 
+      final isOffline = ref.watch(isOfflineModeProvider);
       final repo = ref.watch(libraryRepositoryProvider);
       if (repo == null) {
         yield QuickSearchResults.empty;
+        return;
+      }
+
+      if (isOffline) {
+        yield QuickSearchResults(
+          artists: await repo
+              .watchDownloadedArtistSearch(query, limit: kQuickSearchLimit)
+              .first,
+          albums: await repo
+              .watchDownloadedAlbumSearch(query, limit: kQuickSearchLimit)
+              .first,
+        );
         return;
       }
 

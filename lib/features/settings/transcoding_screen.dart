@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/server.dart';
@@ -20,6 +21,7 @@ class TranscodingScreen extends ConsumerWidget {
     }
 
     final config = server.transcodingConfig;
+    final offlineOnCellular = ref.watch(offlineOnCellularSettingProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Transcoding')),
@@ -73,6 +75,15 @@ class TranscodingScreen extends ConsumerWidget {
                 }
               },
             ),
+          ),
+          SwitchListTile(
+            title: const Text('Offline when not on Wi-Fi'),
+            subtitle: const Text(
+              'Automatically switch to offline mode when using cellular data or disconnected',
+            ),
+            value: offlineOnCellular,
+            onChanged: (v) =>
+                ref.read(offlineOnCellularSettingProvider.notifier).set(v),
           ),
           const Divider(),
 
