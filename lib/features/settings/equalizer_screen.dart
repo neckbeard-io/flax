@@ -597,7 +597,7 @@ class EqualizerScreen extends ConsumerWidget {
                   title: const Text('AutoEQ Headphone Correction'),
                   subtitle: Text(profileName ?? 'None selected'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.go('/settings/autoeq'),
+                  onTap: () => context.push('/settings/autoeq'),
                 );
               },
             ),
@@ -627,28 +627,44 @@ class _EqCombinedChart extends StatelessWidget {
   final List<EqBandState> bands;
   final AutoEqProfile? autoEqProfile;
 
-  /// Convert the 18-band state into chart points. The chart handles
-  /// log-interpolation internally; we just hand it one point per band.
-  List<CurvePoint> _manualPoints() => [
-    for (final b in bands) CurvePoint(b.frequency, b.gain),
-  ];
+  static const _chartMinHz = 20.0;
+  static const _chartMaxHz = 20000.0;
 
-  /// Resample the dense AutoEQ GraphicEQ points so they span the same
-  /// frequency range. The raw list can have hundreds of entries; we keep
-  /// them all because the chart renders them as a smooth polyline.
-  List<CurvePoint> _autoEqPoints(AutoEqProfile profile) => [
-    for (final p in profile.points) CurvePoint(p.frequency, p.gain),
-  ];
+  /// Convert the 18-band state into chart points, padded to 20 Hz–20 kHz so
+  /// the manual curve spans the same x-range as a dense AutoEQ curve.
+  /// Below the lowest band the leftmost gain is held flat; above the highest
+  /// band the rightmost gain is held flat — the same step-hold a graphic EQ
+  /// actually applies outside its range.
+  List<CurvePoint> _manualPoints() {
+    if (bands.isEmpty) return [];
+    final pts = [
+      CurvePoint(_chartMinHz, bands.first.gain),
+      for (final b in bands) CurvePoint(b.frequency, b.gain),
+      CurvePoint(_chartMaxHz, bands.last.gain),
+    ];
+    return pts;
+  }
 
-  /// Element-wise sum of manual bands and the AutoEQ curve, sampled at the
-  /// AutoEQ's own frequencies via linear interpolation of the band gains.
+  /// Dense AutoEQ GraphicEQ points — kept as-is; the chart renders them as a
+  /// smooth polyline. Pad to chart edges so both curves share the same x-range.
+  List<CurvePoint> _autoEqPoints(AutoEqProfile profile) {
+    final pts = profile.points;
+    if (pts.isEmpty) return [];
+    return [
+      CurvePoint(_chartMinHz, pts.first.gain),
+      for (final p in pts) CurvePoint(p.frequency, p.gain),
+      CurvePoint(_chartMaxHz, pts.last.gain),
+    ];
+  }
+
+  /// Element-wise sum sampled at the AutoEQ's own frequencies via linear
+  /// interpolation of the (padded) manual band gains.
   List<CurvePoint> _sumPoints(
     List<CurvePoint> manual,
     List<CurvePoint> autoEq,
   ) {
     if (manual.isEmpty || autoEq.isEmpty) return [];
 
-    // Build a sorted list of manual (frequency, gain) for interpolation.
     final sorted = List.of(manual)
       ..sort((a, b) => a.frequency.compareTo(b.frequency));
 
@@ -686,30 +702,39 @@ class _EqCombinedChart extends StatelessWidget {
         ? _sumPoints(manualPts, autoEqPts)
         : <CurvePoint>[];
 
-    // Colour palette: primary for manual, secondary for AutoEQ, tertiary for sum.
+    // Visually distinct colours that hold up in both light and dark themes:
+    //   Manual  — theme primary (blue in most Material You seeds)
+    //   AutoEQ  — amber/orange; warm and clearly not blue
+    //   Sum     — teal; cool-green, different from both
+    const autoEqColor = Color(0xFFFFB300); // Amber 700
+    const sumColor = Color(0xFF26A69A); // Teal 400
+
     final manualColor = theme.colorScheme.primary;
-    final autoEqColor = theme.colorScheme.secondary;
-    final sumColor = theme.colorScheme.tertiary;
 
     final curves = <EqCurve>[
-      // AutoEQ first so it renders behind the manual curve.
+      // AutoEQ behind everything — filled so its shape reads as a region.
       if (hasAutoEq)
         EqCurve(
           points: autoEqPts,
-          color: autoEqColor.withValues(alpha: 0.75),
+          color: autoEqColor.withValues(alpha: 0.85),
           fill: true,
           strokeWidth: 1.5,
         ),
-      // Sum behind manual as well.
+      // Sum filled as well — stacked above AutoEQ, shows combined result.
       if (hasAutoEq)
-        EqCurve(points: sumPts, color: sumColor, fill: false, strokeWidth: 2),
-      // Manual on top — dots mark each editable band.
+        EqCurve(
+          points: sumPts,
+          color: sumColor.withValues(alpha: 0.85),
+          fill: true,
+          strokeWidth: 2,
+        ),
+      // Manual on top — dots mark each editable band; no fill when layered.
       EqCurve(
         points: manualPts,
         color: manualColor,
-        fill: !hasAutoEq, // fill only when it is the sole curve
+        fill: !hasAutoEq,
         showDots: true,
-        strokeWidth: hasAutoEq ? 1.5 : 2,
+        strokeWidth: hasAutoEq ? 2 : 2,
       ),
     ];
 
