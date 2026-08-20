@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.5.0 — 2026-08-19
+
 ### Added
 - Offline mode toggle slider in desktop window caption to view only offline cached music.
 - Server reachability probe with 3-second hard timeout that automatically falls back to offline mode.
