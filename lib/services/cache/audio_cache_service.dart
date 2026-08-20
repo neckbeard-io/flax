@@ -106,13 +106,68 @@ class AudioCacheService {
   final Ref _ref;
   final Dio _dio;
 
+  static String? _cachedBasePath;
+
+  /// Initializes the local audio cache base directory path.
+  static Future<void> initialize() async {
+    final appDir = await getApplicationSupportDirectory();
+    _cachedBasePath = p.join(appDir.path, 'audio_cache');
+    final dir = Directory(_cachedBasePath!);
+    if (!dir.existsSync()) {
+      await dir.create(recursive: true);
+    }
+  }
+
+  /// Synchronously checks if a song audio file exists in offline or rolling cache.
+  static String? findCachedSongPathSync(
+    String serverId,
+    String songId, [
+    String? suffix,
+  ]) {
+    final base = _cachedBasePath;
+    if (base == null) return null;
+    final exts = [
+      if (suffix != null && suffix.isNotEmpty) suffix,
+      'flac',
+      'mp3',
+      'opus',
+      'm4a',
+      'aac',
+      'ogg',
+      'wav',
+    ];
+    // Check offline (pinned)
+    for (final ext in exts) {
+      final f = File(
+        p.join(base, 'music', 'offline', serverId, '$songId.$ext'),
+      );
+      if (f.existsSync() && f.lengthSync() > 0) return f.path;
+    }
+    // Check rolling
+    for (final ext in exts) {
+      final f = File(
+        p.join(base, 'music', 'rolling', serverId, '$songId.$ext'),
+      );
+      if (f.existsSync() && f.lengthSync() > 0) return f.path;
+    }
+    return null;
+  }
+
   AudioCacheService(this._ref, {Dio? dio})
     : _dio =
           dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 15)));
 
   Future<Directory> _getBaseDir() async {
+    if (_cachedBasePath != null) {
+      final dir = Directory(_cachedBasePath!);
+      if (!dir.existsSync()) {
+        await dir.create(recursive: true);
+      }
+      return dir;
+    }
     final appDir = await getApplicationSupportDirectory();
-    final dir = Directory(p.join(appDir.path, 'audio_cache'));
+    _cachedBasePath = p.join(appDir.path, 'audio_cache');
+    final dir = Directory(_cachedBasePath!);
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
     }
@@ -229,14 +284,14 @@ class AudioCacheService {
       // Cascade: Cover Art & Metadata
       if (song.coverArtId != null) {
         final coverUri = client.getCoverArtUri(song.coverArtId!);
-        ArtCache.instance.downloadFile(coverUri.toString()).catchError((_) {});
+        ArtCache.instance.downloadFile(coverUri.toString()).ignore();
       }
 
       if (song.albumId != null) {
-        repo.refreshAlbum(song.albumId!).catchError((_) {});
+        repo.refreshAlbum(song.albumId!).ignore();
       }
       if (song.artistId != null) {
-        repo.refreshArtist(song.artistId!).catchError((_) {});
+        repo.refreshArtist(song.artistId!).ignore();
       }
 
       // If rolling cache, check size limit and evict if needed

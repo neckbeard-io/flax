@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flax/app/app.dart';
 import 'package:flax/app/router.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/platform/window_state.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 
@@ -14,6 +15,7 @@ Future<void> main() async {
 
   // Needs the binding, and must happen before any art is decoded.
   ArtCache.configureDecodedImageCache();
+  await AudioCacheService.initialize();
 
   // Load last visited route for launch persistence across all platforms.
   String? savedRoute;

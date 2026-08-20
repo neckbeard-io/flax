@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/artist_panel.dart';
@@ -225,6 +226,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     PlayerState state,
     Song song,
   ) {
+    final downloadedSongIds =
+        ref.watch(downloadedSongIdsProvider).valueOrNull ?? const {};
+    final isSongCached =
+        state.isPlayingCached || downloadedSongIds.contains(song.id);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxArtSize = (constraints.maxWidth - 80).clamp(0.0, 360.0);
@@ -294,11 +300,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             if (song.suffix != null ||
                 song.bitRate != null ||
                 state.activeTranscode?.isTranscoded == true ||
-                state.isPlayingCached)
+                isSongCached)
               _AudioFormatBadge(
                 song: song,
                 transcode: state.activeTranscode,
-                isCached: state.isPlayingCached,
+                isCached: isSongCached,
               ),
 
             const SizedBox(height: 8),
@@ -505,15 +511,6 @@ class _AudioFormatBadge extends StatelessWidget {
                 size: 13,
                 color: theme.colorScheme.primary,
               ),
-              const SizedBox(width: 3),
-              Text(
-                'Cached',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                ),
-              ),
             ],
           ],
         ),
@@ -559,15 +556,6 @@ class _AudioFormatBadge extends StatelessWidget {
           if (isCached) ...[
             if (originalParts.isNotEmpty) const SizedBox(width: 6),
             Icon(Icons.offline_pin, size: 13, color: theme.colorScheme.primary),
-            const SizedBox(width: 3),
-            Text(
-              'Cached',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-              ),
-            ),
           ],
         ],
       ),
