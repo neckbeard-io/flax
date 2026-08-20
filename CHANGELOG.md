@@ -10,10 +10,14 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.5.1 — 2026-08-20
+
 ### Added
 - Standalone `curl | bash` installer (`tool/install.sh`) for macOS and Linux, enabling in-app self-updating via the update pill.
 - Equalizer screen now shows manual bands, active AutoEQ correction, and their combined sum on one chart with a colour-coded legend.
 
+### Fixed
+- AutoEQ back button now returns to the Equalizer screen instead of skipping it.
 
 ## v0.5.0 — 2026-08-19
 
