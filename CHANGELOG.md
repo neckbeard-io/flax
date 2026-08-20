@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Standalone `curl | bash` installer (`tool/install.sh`) for macOS and Linux, enabling in-app self-updating via the update pill.
+
 ## v0.5.0 — 2026-08-19
 
 ### Added

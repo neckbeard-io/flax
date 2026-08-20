@@ -21,8 +21,25 @@ The name is a play on FLAC.
 
 Grab pre-built packages from [Releases](https://github.com/neckbeard-io/flax/releases). Builds are unsigned test releases.
 
-### macOS (Universal — Apple Silicon & Intel)
-- **Homebrew**: `brew install --cask neckbeard-io/flax/flax`
+### macOS & Linux — one-liner installer (recommended)
+
+Installs Flax as a standalone app and enables **in-app self-updating** via the update pill:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/neckbeard-io/flax/main/tool/install.sh | bash
+```
+
+Or pin a specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/neckbeard-io/flax/main/tool/install.sh | bash -s -- --version 0.5.0
+```
+
+**macOS**: installs `flax.app` to `/Applications` and clears Gatekeeper quarantine automatically.  
+**Linux**: installs to `~/.local/share/flax`, symlinks `~/.local/bin/flax`, and registers a `.desktop` launcher. Requires `libmpv`; the script will tell you how to install it if missing.
+
+### macOS (other options)
+- **Homebrew**: `brew install --cask neckbeard-io/flax/flax` — note: Homebrew-managed installs use `brew upgrade` for updates; the in-app update pill shows the brew command instead.
 - **Direct `.dmg`**: Open `.dmg`, drag `flax.app` to `/Applications`, then clear quarantine:
   ```bash
   xattr -dr com.apple.quarantine /Applications/flax.app
@@ -31,7 +48,7 @@ Grab pre-built packages from [Releases](https://github.com/neckbeard-io/flax/rel
 ### Windows (x64)
 - **Installer**: Run `flax-<version>-windows-x64-setup.exe` (or extract portable `.zip`). On SmartScreen: *More info* → *Run anyway*.
 
-### Linux (x86_64)
+### Linux (other options)
 - **Debian / Ubuntu**: `sudo dpkg -i flax-<version>-linux-amd64.deb`
 - **Fedora / RHEL / openSUSE**: `sudo dnf install ./flax-<version>-linux-x86_64.rpm`
 - **Portable**: Extract `flax-<version>-linux-x64.tar.gz` and run `./flax` (requires `libmpv`).
