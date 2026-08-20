@@ -408,9 +408,8 @@ fresh `## Unreleased`. The workflow tags whatever `main` points at, so a
 changelog landed afterwards is not in the release it describes.
 
 `release.yml` then reads `CHANGELOG.md`, extracts the `## v<version>` section,
-and publishes it as the release body followed by the standing install
-instructions (quarantine, SmartScreen, sideloading). Those instructions live in
-the workflow, do not change between builds, and are not part of the changelog.
+and publishes it as the release body with a link to the README installation
+instructions.
 
 **If the section is missing or empty the run fails**, deliberately and before
 anything is published. Do not work around it by editing the workflow — write the

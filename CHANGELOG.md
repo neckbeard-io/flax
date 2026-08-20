@@ -29,6 +29,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Separated metadata sync workers and audio download workers into independent settings.
 - Equalizer header and controls adapt responsively across compact mobile screens.
 - Update notification pill uses a download arrow icon instead of sparkles.
+- Windows executable and installer icons updated with official Flax branding.
+- Release notes condensed to changelog body with streamlined install instructions.
 
 ### Removed
 - Redundant "Zero all" button in Equalizer (consolidated into Flat preset and Reset).

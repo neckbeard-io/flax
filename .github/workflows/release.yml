@@ -372,56 +372,10 @@ jobs:
           echo "--- release notes ---"
           cat changelog.md
 
-      - name: Write install notes
+      - name: Prepare release body
         run: |
-          cat > notes.md <<'EOF'
-          Test build of flax. Unsigned on macOS and Windows — both OSes will
-          object on first launch, and the steps below are how you get past it.
-          This is expected, not a corrupted download.
-
-          **Check you are running what you just installed.** *Settings → About*
-          shows the version and build number. If it does not match this release,
-          an older copy is still installed — on macOS, Finder's "Keep Both"
-          leaves the previous `flax.app` in place, so delete it and re-copy.
-
-          ### macOS (universal — Apple Silicon and Intel)
-          Install via Homebrew (recommended):
-          ```bash
-          brew install --cask neckbeard-io/flax/flax
-          ```
-
-          Or open the `.dmg`, drag **flax** to Applications, then clear the
-          download quarantine flag once:
-
-          ```bash
-          xattr -dr com.apple.quarantine /Applications/flax.app
-          ```
-
-          Without that, macOS 15+ reports the app as damaged.
-
-          ### Windows 10/11 (x64)
-          Download and run the installer `flax-<version>-windows-x64-setup.exe`
-          (or extract the portable `.zip` whole).
-          SmartScreen will warn on first launch: *More info* -> *Run anyway*.
-
-          ### Linux (x86_64)
-          - **Debian / Ubuntu / Mint / Pop!_OS**: Download and install `flax-<version>-linux-amd64.deb` (`sudo dpkg -i flax-*.deb` or double-click).
-          - **Fedora / RHEL / openSUSE**: Download and install `flax-<version>-linux-x86_64.rpm` (`sudo dnf install ./flax-*.rpm`).
-          - **Portable archive**: Extract `flax-<version>-linux-x64.tar.gz` and run `./flax`.
-
-          ### Android (7.0+, arm64/armv7/x86_64)
-          Sideload the `.apk`. Enable "install unknown apps" for your browser or
-          file manager when prompted. All test builds share one signing key, so
-          later versions install over this one.
-
-          Not every platform is necessarily attached to every release — builds
-          are opted into per run to control CI cost.
-          EOF
-          # What actually gets published: this version's changelog, then the
-          # standing instructions.
           cat changelog.md > body.md
-          printf '\n\n---\n\n' >> body.md
-          cat notes.md >> body.md
+          printf '\n\n---\n\nFor installation instructions, see the [README](https://github.com/neckbeard-io/flax#install-a-test-build).\n' >> body.md
 
       - name: Create or update release
         env:
