@@ -19,45 +19,25 @@ The name is a play on FLAC.
 
 ## Install a test build
 
-Grab the latest artifacts from
-[Releases](https://github.com/neckbeard-io/flax/releases). Each release is a
-prerelease and carries all supported platforms.
+Grab pre-built packages from [Releases](https://github.com/neckbeard-io/flax/releases). Builds are unsigned test releases.
 
-None of the builds are signed with a real certificate, so each OS pushes back the
-first time. This is expected — it is not a corrupted download.
+### macOS (Universal — Apple Silicon & Intel)
+- **Homebrew**: `brew install --cask neckbeard-io/flax/flax`
+- **Direct `.dmg`**: Open `.dmg`, drag `flax.app` to `/Applications`, then clear quarantine:
+  ```bash
+  xattr -dr com.apple.quarantine /Applications/flax.app
+  ```
 
-### macOS
+### Windows (x64)
+- **Installer**: Run `flax-<version>-windows-x64-setup.exe` (or extract portable `.zip`). On SmartScreen: *More info* → *Run anyway*.
 
-#### Homebrew (Recommended)
-```bash
-brew install --cask neckbeard-io/flax/flax
-```
+### Linux (x86_64)
+- **Debian / Ubuntu**: `sudo dpkg -i flax-<version>-linux-amd64.deb`
+- **Fedora / RHEL / openSUSE**: `sudo dnf install ./flax-<version>-linux-x86_64.rpm`
+- **Portable**: Extract `flax-<version>-linux-x64.tar.gz` and run `./flax` (requires `libmpv`).
 
-#### Direct `.dmg`
-One `.dmg` serves both Apple Silicon and Intel (the binary is universal). Open
-it, drag **flax** to Applications, then clear the download quarantine flag once:
-
-```bash
-xattr -dr com.apple.quarantine /Applications/flax.app
-```
-
-Without that, macOS 15+ reports the app as *damaged*.
-
-### Windows
-
-Download and run the installer `flax-<version>-windows-x64-setup.exe` (or extract the portable `.zip` archive whole). The installer automatically places Flax into `Program Files`, adds Start menu shortcuts, and bundles all runtime DLLs. SmartScreen will warn on first launch: *More info* → *Run anyway*.
-
-### Linux
-
-- **Debian / Ubuntu / Mint / Pop!_OS**: Download and install `flax-<version>-linux-amd64.deb` (`sudo dpkg -i flax-*.deb` or double-click to install).
-- **Fedora / RHEL / openSUSE**: Download and install `flax-<version>-linux-x86_64.rpm` (`sudo dnf install ./flax-*.rpm`).
-- **Portable archive**: Extract `flax-<version>-linux-x64.tar.gz` and run `./flax`.
-
-### Android
-
-Sideload the `.apk` and allow "install unknown apps" for your browser or file
-manager when prompted. All test builds share one signing key, so later versions
-install over earlier ones without an uninstall.
+### Android (7.0+)
+- Sideload `flax-<version>-android.apk` (allow "install unknown apps" when prompted). All test builds share the same key and upgrade in place.
 
 ---
 
