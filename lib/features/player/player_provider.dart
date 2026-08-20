@@ -316,17 +316,26 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
+  String? _findCachedSongPath(Song song) {
+    if (song.localPath != null && File(song.localPath!).existsSync()) {
+      return song.localPath;
+    }
+    return AudioCacheService.findCachedSongPathSync(
+      song.serverId,
+      song.id,
+      song.suffix,
+    );
+  }
+
   bool _isSongCached(Song? song) {
     if (song == null) return false;
-    if (song.localPath != null && File(song.localPath!).existsSync()) {
-      return true;
-    }
-    return false;
+    return _findCachedSongPath(song) != null;
   }
 
   Uri _streamUri(Song song, [TranscodeParameters? transcode]) {
-    if (song.localPath != null && File(song.localPath!).existsSync()) {
-      return Uri.file(song.localPath!);
+    final cachedPath = _findCachedSongPath(song);
+    if (cachedPath != null) {
+      return Uri.file(cachedPath);
     }
     final client = _ref.read(subsonicClientProvider);
     if (client == null) {

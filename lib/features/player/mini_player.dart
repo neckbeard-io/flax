@@ -33,6 +33,11 @@ class MiniPlayer extends ConsumerWidget {
               playerState.duration.inMilliseconds
         : 0.0;
 
+    final downloadedSongIds =
+        ref.watch(downloadedSongIdsProvider).valueOrNull ?? const {};
+    final isCached =
+        playerState.isPlayingCached || downloadedSongIds.contains(song.id);
+
     // The desktop now-playing screen keeps the shell, and so keeps this bar.
     // Without the guard, clicking it there pushes /now-playing on top of
     // /now-playing, and each click costs another press of Back to undo.
@@ -130,19 +135,12 @@ class MiniPlayer extends ConsumerWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                if (song.artistName != null)
-                                  Row(
+                                Text.rich(
+                                  TextSpan(
                                     children: [
-                                      // Plain text, not a link. It used to
-                                      // navigate to the artist, which made one
-                                      // line of this block behave unlike every
-                                      // other part of it. The artist is one tap
-                                      // away on the screen this opens.
-                                      Flexible(
-                                        child: Text(
-                                          song.artistName!,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                      if (song.artistName != null)
+                                        TextSpan(
+                                          text: song.artistName!,
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
                                                 color: theme
@@ -150,24 +148,24 @@ class MiniPlayer extends ConsumerWidget {
                                                     .onSurfaceVariant,
                                               ),
                                         ),
-                                      ),
                                       if (_formatLabel(
                                             song,
                                             playerState.activeTranscode,
                                           ) !=
                                           null) ...[
-                                        Text(
-                                          ' · ',
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: theme
-                                                    .colorScheme
-                                                    .onSurfaceVariant
-                                                    .withValues(alpha: 0.5),
-                                              ),
-                                        ),
-                                        Text(
-                                          _formatLabel(
+                                        if (song.artistName != null)
+                                          TextSpan(
+                                            text: ' · ',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant
+                                                      .withValues(alpha: 0.5),
+                                                ),
+                                          ),
+                                        TextSpan(
+                                          text: _formatLabel(
                                             song,
                                             playerState.activeTranscode,
                                           )!,
@@ -184,9 +182,9 @@ class MiniPlayer extends ConsumerWidget {
                                               ),
                                         ),
                                       ],
-                                      if (playerState.isPlayingCached) ...[
-                                        Text(
-                                          ' · ',
+                                      if (isCached) ...[
+                                        TextSpan(
+                                          text: ' · ',
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
                                                 color: theme
@@ -195,24 +193,21 @@ class MiniPlayer extends ConsumerWidget {
                                                     .withValues(alpha: 0.5),
                                               ),
                                         ),
-                                        Icon(
-                                          Icons.offline_pin,
-                                          size: 13,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                        const SizedBox(width: 3),
-                                        Text(
-                                          'Cached',
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color:
-                                                    theme.colorScheme.primary,
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                        WidgetSpan(
+                                          alignment:
+                                              PlaceholderAlignment.middle,
+                                          child: Icon(
+                                            Icons.offline_pin,
+                                            size: 13,
+                                            color: theme.colorScheme.primary,
+                                          ),
                                         ),
                                       ],
                                     ],
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ],
                             ),
                           ),
