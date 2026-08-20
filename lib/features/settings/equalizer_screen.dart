@@ -7,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/services/autoeq/autoeq_provider.dart';
+import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/shared/audio/eq_filter.dart';
+import 'package:flax/shared/widgets/eq_curve_chart.dart';
 import 'package:flax/shared/widgets/flax_dropdown.dart';
 
 /// Maximum boost/cut per band, in dB (matches foobar2000's range).
@@ -566,6 +568,19 @@ class EqualizerScreen extends ConsumerWidget {
               ),
             ),
 
+            // ── Combined frequency-response chart ──
+            const Divider(height: 1),
+            Builder(
+              builder: (context) {
+                final autoEq = ref.watch(autoEqProvider);
+                final autoEqProfile = autoEq.activeProfile;
+                return _EqCombinedChart(
+                  bands: eq.bands,
+                  autoEqProfile: autoEqProfile,
+                );
+              },
+            ),
+
             // ── AutoEQ ──
             const Divider(height: 1),
             Builder(
@@ -591,6 +606,165 @@ class EqualizerScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Frequency-response chart shown on the main Equalizer screen.
+///
+/// Layers up to three curves on one plot:
+///   1. Manual — the 18-band graphic-EQ curve at its current gains.
+///   2. AutoEQ — the active headphone correction, if one is loaded.
+///   3. Sum — the combined result the listener actually hears (only when both
+///      curves are present, since a single curve *is* the sum).
+///
+/// The legend beneath the chart adapts to what is shown: it is omitted when
+/// only the manual curve is present (nothing to disambiguate), and shows
+/// colour-coded chips when two or three series are visible.
+class _EqCombinedChart extends StatelessWidget {
+  const _EqCombinedChart({required this.bands, this.autoEqProfile});
+
+  final List<EqBandState> bands;
+  final AutoEqProfile? autoEqProfile;
+
+  /// Convert the 18-band state into chart points. The chart handles
+  /// log-interpolation internally; we just hand it one point per band.
+  List<CurvePoint> _manualPoints() => [
+    for (final b in bands) CurvePoint(b.frequency, b.gain),
+  ];
+
+  /// Resample the dense AutoEQ GraphicEQ points so they span the same
+  /// frequency range. The raw list can have hundreds of entries; we keep
+  /// them all because the chart renders them as a smooth polyline.
+  List<CurvePoint> _autoEqPoints(AutoEqProfile profile) => [
+    for (final p in profile.points) CurvePoint(p.frequency, p.gain),
+  ];
+
+  /// Element-wise sum of manual bands and the AutoEQ curve, sampled at the
+  /// AutoEQ's own frequencies via linear interpolation of the band gains.
+  List<CurvePoint> _sumPoints(
+    List<CurvePoint> manual,
+    List<CurvePoint> autoEq,
+  ) {
+    if (manual.isEmpty || autoEq.isEmpty) return [];
+
+    // Build a sorted list of manual (frequency, gain) for interpolation.
+    final sorted = List.of(manual)
+      ..sort((a, b) => a.frequency.compareTo(b.frequency));
+
+    double interpolateManual(double freq) {
+      if (sorted.length == 1) return sorted.first.gainDb;
+      if (freq <= sorted.first.frequency) return sorted.first.gainDb;
+      if (freq >= sorted.last.frequency) return sorted.last.gainDb;
+      for (var i = 0; i < sorted.length - 1; i++) {
+        final lo = sorted[i];
+        final hi = sorted[i + 1];
+        if (freq >= lo.frequency && freq <= hi.frequency) {
+          final t = (freq - lo.frequency) / (hi.frequency - lo.frequency);
+          return lo.gainDb + t * (hi.gainDb - lo.gainDb);
+        }
+      }
+      return 0;
+    }
+
+    return [
+      for (final p in autoEq)
+        CurvePoint(p.frequency, p.gainDb + interpolateManual(p.frequency)),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final manualPts = _manualPoints();
+    final hasAutoEq = autoEqProfile != null && autoEqProfile!.points.isNotEmpty;
+    final autoEqPts = hasAutoEq
+        ? _autoEqPoints(autoEqProfile!)
+        : <CurvePoint>[];
+    final sumPts = hasAutoEq
+        ? _sumPoints(manualPts, autoEqPts)
+        : <CurvePoint>[];
+
+    // Colour palette: primary for manual, secondary for AutoEQ, tertiary for sum.
+    final manualColor = theme.colorScheme.primary;
+    final autoEqColor = theme.colorScheme.secondary;
+    final sumColor = theme.colorScheme.tertiary;
+
+    final curves = <EqCurve>[
+      // AutoEQ first so it renders behind the manual curve.
+      if (hasAutoEq)
+        EqCurve(
+          points: autoEqPts,
+          color: autoEqColor.withValues(alpha: 0.75),
+          fill: true,
+          strokeWidth: 1.5,
+        ),
+      // Sum behind manual as well.
+      if (hasAutoEq)
+        EqCurve(points: sumPts, color: sumColor, fill: false, strokeWidth: 2),
+      // Manual on top — dots mark each editable band.
+      EqCurve(
+        points: manualPts,
+        color: manualColor,
+        fill: !hasAutoEq, // fill only when it is the sole curve
+        showDots: true,
+        strokeWidth: hasAutoEq ? 1.5 : 2,
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          EqCurveChart(
+            curves: curves,
+            height: 130,
+            gainRangeDb: hasAutoEq ? null : 20,
+          ),
+          // Legend — only shown when more than one series is present.
+          if (hasAutoEq) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              children: [
+                _LegendChip(color: manualColor, label: 'Manual'),
+                _LegendChip(color: autoEqColor, label: autoEqProfile!.name),
+                _LegendChip(color: sumColor, label: 'Sum'),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendChip extends StatelessWidget {
+  const _LegendChip({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: style, overflow: TextOverflow.ellipsis),
+      ],
     );
   }
 }
