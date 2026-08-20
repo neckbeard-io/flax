@@ -35,7 +35,7 @@ Or pin a specific version:
 curl -fsSL https://raw.githubusercontent.com/neckbeard-io/flax/main/tool/install.sh | bash -s -- --version 0.5.0
 ```
 
-**macOS**: installs `flax.app` to `/Applications` and clears Gatekeeper quarantine automatically.  
+**macOS**: installs `flax.app` to `/Applications`. No "app is damaged" prompt — the script handles Gatekeeper automatically so the app launches on first double-click.  
 **Linux**: installs to `~/.local/share/flax`, symlinks `~/.local/bin/flax`, and registers a `.desktop` launcher. Requires `libmpv`; the script will tell you how to install it if missing.
 
 ### macOS (other options)
