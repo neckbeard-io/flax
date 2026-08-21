@@ -1,5 +1,3 @@
-// ignore_for_file: non_constant_identifier_names
-
 import 'dart:developer' as developer;
 import 'dart:ffi';
 import 'dart:io';
@@ -61,58 +59,6 @@ class StorageVolume {
   }
 }
 
-// ── Native Structs for statvfs ──────────────────────────────────────────────
-
-final class _StatvfsMac extends Struct {
-  @UintPtr()
-  external int f_bsize;
-  @UintPtr()
-  external int f_frsize;
-  @Uint32()
-  external int f_blocks;
-  @Uint32()
-  external int f_bfree;
-  @Uint32()
-  external int f_bavail;
-  @Uint32()
-  external int f_files;
-  @Uint32()
-  external int f_ffree;
-  @Uint32()
-  external int f_favail;
-  @UintPtr()
-  external int f_fsid;
-  @UintPtr()
-  external int f_flag;
-  @UintPtr()
-  external int f_namemax;
-}
-
-final class _StatvfsLinux extends Struct {
-  @UintPtr()
-  external int f_bsize;
-  @UintPtr()
-  external int f_frsize;
-  @Uint64()
-  external int f_blocks;
-  @Uint64()
-  external int f_bfree;
-  @Uint64()
-  external int f_bavail;
-  @Uint64()
-  external int f_files;
-  @Uint64()
-  external int f_ffree;
-  @Uint64()
-  external int f_favail;
-  @UintPtr()
-  external int f_fsid;
-  @UintPtr()
-  external int f_flag;
-  @UintPtr()
-  external int f_namemax;
-}
-
 /// Service managing disk space queries, mobile storage devices, and cache migration.
 class StorageManager {
   static const prefStoragePathKey = 'flax_audio_cache_custom_path';
@@ -139,20 +85,23 @@ class StorageManager {
         final lib = DynamicLibrary.process();
         final statvfsFunc = lib
             .lookupFunction<
-              Int32 Function(Pointer<Utf8>, Pointer<_StatvfsMac>),
-              int Function(Pointer<Utf8>, Pointer<_StatvfsMac>)
+              Int32 Function(Pointer<Utf8>, Pointer<Uint8>),
+              int Function(Pointer<Utf8>, Pointer<Uint8>)
             >('statvfs');
 
         final pathPtr = path.toNativeUtf8();
-        final ptr = calloc<_StatvfsMac>();
+        final ptr = calloc<Uint8>(512);
         try {
           final res = statvfsFunc(pathPtr, ptr);
           if (res == 0) {
-            final frsize = ptr.ref.f_frsize > 0
-                ? ptr.ref.f_frsize
-                : ptr.ref.f_bsize;
-            final total = ptr.ref.f_blocks * frsize;
-            final avail = ptr.ref.f_bavail * frsize;
+            final u64 = ptr.cast<Uint64>().asTypedList(2);
+            final u32 = (ptr + 16).cast<Uint32>().asTypedList(3);
+            final bsize = u64[0];
+            final frsize = u64[1] > 0 ? u64[1] : bsize;
+            final blocks = u32[0];
+            final bavail = u32[2];
+            final total = blocks * frsize;
+            final avail = bavail * frsize;
             return DiskSpaceInfo(totalBytes: total, availableBytes: avail);
           }
         } finally {
@@ -172,20 +121,22 @@ class StorageManager {
         }
         final statvfsFunc = lib
             .lookupFunction<
-              Int32 Function(Pointer<Utf8>, Pointer<_StatvfsLinux>),
-              int Function(Pointer<Utf8>, Pointer<_StatvfsLinux>)
+              Int32 Function(Pointer<Utf8>, Pointer<Uint8>),
+              int Function(Pointer<Utf8>, Pointer<Uint8>)
             >('statvfs');
 
         final pathPtr = path.toNativeUtf8();
-        final ptr = calloc<_StatvfsLinux>();
+        final ptr = calloc<Uint8>(512);
         try {
           final res = statvfsFunc(pathPtr, ptr);
           if (res == 0) {
-            final frsize = ptr.ref.f_frsize > 0
-                ? ptr.ref.f_frsize
-                : ptr.ref.f_bsize;
-            final total = ptr.ref.f_blocks * frsize;
-            final avail = ptr.ref.f_bavail * frsize;
+            final u64 = ptr.cast<Uint64>().asTypedList(5);
+            final bsize = u64[0];
+            final frsize = u64[1] > 0 ? u64[1] : bsize;
+            final blocks = u64[2];
+            final bavail = u64[4];
+            final total = blocks * frsize;
+            final avail = bavail * frsize;
             return DiskSpaceInfo(totalBytes: total, availableBytes: avail);
           }
         } finally {
