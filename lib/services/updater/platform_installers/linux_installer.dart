@@ -24,15 +24,62 @@ class LinuxInstaller {
     return false;
   }
 
-  /// Opens the downloaded package (.deb or .rpm) with the system package manager (e.g. Software Center or GDebi).
+  /// Checks if Flax is running from a standalone curl installation (~/.local/share/flax or /opt/flax).
+  static bool isStandaloneTarInstall() {
+    if (!Platform.isLinux) return false;
+    final exe = Platform.resolvedExecutable;
+    return exe.contains('.local/share/flax') ||
+        exe.contains('/opt/flax') ||
+        File(
+          '${Platform.environment['HOME']}/.local/share/flax/flax',
+        ).existsSync();
+  }
+
+  /// Opens or installs the downloaded package (.deb, .rpm, or .tar.gz).
   static Future<void> openPackage(String packagePath) async {
     if (!Platform.isLinux) return;
 
     try {
-      // 1. Try xdg-open to let the desktop environment handle it
+      // 1. Direct in-place upgrade for standalone tar.gz installs
+      if (packagePath.endsWith('.tar.gz')) {
+        final home = Platform.environment['HOME'] ?? '';
+        final destDir = Directory('$home/.local/share/flax');
+        if (destDir.existsSync()) {
+          final res = await Process.run('tar', [
+            '-xzf',
+            packagePath,
+            '-C',
+            destDir.path,
+            '--strip-components=1',
+          ]);
+          if (res.exitCode == 0) {
+            final exePath = '${destDir.path}/flax';
+            if (File(exePath).existsSync()) {
+              await Process.start(exePath, [], mode: ProcessStartMode.detached);
+              exit(0);
+            }
+          }
+        }
+      }
+
+      // 2. Try pkexec dpkg or rpm for native packages
+      if (packagePath.endsWith('.deb')) {
+        final res = await Process.run('pkexec', ['dpkg', '-i', packagePath]);
+        if (res.exitCode == 0) {
+          await Process.start('flax', [], mode: ProcessStartMode.detached);
+          exit(0);
+        }
+      } else if (packagePath.endsWith('.rpm')) {
+        final res = await Process.run('pkexec', ['rpm', '-Uvh', packagePath]);
+        if (res.exitCode == 0) {
+          await Process.start('flax', [], mode: ProcessStartMode.detached);
+          exit(0);
+        }
+      }
+
+      // 3. Fallback: try xdg-open to let the desktop environment handle it
       final result = await Process.run('xdg-open', [packagePath]);
       if (result.exitCode != 0) {
-        // Fallback: try opening the folder containing the package
         final parentDir = File(packagePath).parent.path;
         await Process.run('xdg-open', [parentDir]);
       }

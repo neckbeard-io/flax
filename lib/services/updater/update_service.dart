@@ -32,7 +32,9 @@ class UpdateService {
       }
       return InstallMethod.macosDmg;
     } else if (Platform.isLinux) {
-      if (LinuxInstaller.isDebianBased()) {
+      if (LinuxInstaller.isStandaloneTarInstall()) {
+        return InstallMethod.linuxTarGz;
+      } else if (LinuxInstaller.isDebianBased()) {
         return InstallMethod.linuxDeb;
       } else if (LinuxInstaller.isRpmBased()) {
         return InstallMethod.linuxRpm;
