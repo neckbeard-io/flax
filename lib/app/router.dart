@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -75,6 +76,8 @@ void _persistRoute(String location) {
       });
 }
 
+final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+
 final routerProvider = Provider<GoRouter>((ref) {
   final hasServer = ref.watch(serverListProvider.select((s) => s.isNotEmpty));
   final savedRoute = ref.read(savedRouteProvider);
@@ -87,6 +90,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: start,
     redirect: (context, state) {
       final location = state.uri.toString();

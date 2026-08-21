@@ -51,6 +51,44 @@ void main() {
     expect(find.byIcon(Icons.download_rounded), findsOneWidget);
   });
 
+  testWidgets('UpdateButton tap opens UpdateDialog successfully', (
+    tester,
+  ) async {
+    final state = UpdateState(
+      stage: UpdateStage.available,
+      currentVersion: '0.5.1',
+      installMethod: InstallMethod.macosDmg,
+      latestRelease: ReleaseInfo(
+        tagName: 'v0.5.2',
+        version: '0.5.2',
+        title: 'flax v0.5.2',
+        body: 'Improvements',
+        htmlUrl: 'http://example.com',
+        publishedAt: DateTime.now(),
+        isPrerelease: false,
+        assets: const [],
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          updateNotifierProvider.overrideWith(
+            (ref) => _FakeUpdateNotifier(state),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: UpdateButton())),
+      ),
+    );
+
+    expect(find.text('v0.5.2'), findsOneWidget);
+    await tester.tap(find.text('v0.5.2'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Update Available'), findsOneWidget);
+    expect(find.text('v0.5.1 → v0.5.2'), findsOneWidget);
+  });
+
   testWidgets('WhatsNewDialog renders version and highlights', (tester) async {
     await tester.pumpWidget(
       const ProviderScope(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/router.dart';
 import '../../services/updater/update_provider.dart';
 import 'update_dialog.dart';
 
@@ -26,8 +27,9 @@ class UpdateButton extends ConsumerWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {
+            final targetContext = rootNavigatorKey.currentContext ?? context;
             showDialog<void>(
-              context: context,
+              context: targetContext,
               builder: (_) => const UpdateDialog(),
             );
           },
