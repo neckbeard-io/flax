@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +10,7 @@ import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/services/cache/storage_manager.dart';
 import 'package:flax/services/metadata/metadata_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
@@ -319,8 +322,11 @@ class MetadataCachingScreen extends ConsumerWidget {
           Consumer(
             builder: (context, ref, _) {
               final audioConfig = ref.watch(audioCacheConfigProvider);
+              final isMobile = Platform.isAndroid || Platform.isIOS;
+
               return Column(
                 children: [
+                  if (isMobile) ...[_StorageLocationTile(server: server)],
                   SwitchListTile(
                     title: const Text('Auto-Cache Streamed Music'),
                     subtitle: const Text(
@@ -334,30 +340,26 @@ class MetadataCachingScreen extends ConsumerWidget {
                     },
                   ),
                   ListTile(
-                    title: const Text('Rolling Cache Size Limit'),
+                    title: const Text('Audio Cache Size Limit'),
                     subtitle: const Text(
-                      'Maximum storage space for automatically cached tracks (LRU eviction)',
+                      'Maximum storage space for all cached audio tracks (LRU eviction)',
                     ),
-                    trailing: DropdownButton<int>(
-                      value: audioConfig.rollingCacheLimitMb,
-                      underline: const SizedBox.shrink(),
-                      borderRadius: BorderRadius.circular(8),
-                      items: const [
-                        DropdownMenuItem(value: 500, child: Text('500 MB')),
-                        DropdownMenuItem(value: 1024, child: Text('1 GB')),
-                        DropdownMenuItem(value: 2048, child: Text('2 GB')),
-                        DropdownMenuItem(value: 5120, child: Text('5 GB')),
-                        DropdownMenuItem(value: 10240, child: Text('10 GB')),
-                        DropdownMenuItem(value: 0, child: Text('Unlimited')),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          audioConfig.limitDisplayString,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right, size: 20),
                       ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          ref
-                              .read(audioCacheConfigProvider.notifier)
-                              .setRollingCacheLimitMb(val);
-                        }
-                      },
                     ),
+                    onTap: () =>
+                        _showCacheSizeDialog(context, ref, audioConfig),
                   ),
                   ListTile(
                     title: const Text('Audio Download Workers'),
@@ -517,6 +519,433 @@ class MetadataCachingScreen extends ConsumerWidget {
 
     await syncService.startSync(server: server, client: client, dao: dao);
     ref.invalidate(metadataCacheSummaryProvider(server.id));
+  }
+
+  Future<void> _showCacheSizeDialog(
+    BuildContext context,
+    WidgetRef ref,
+    AudioCacheConfig audioConfig,
+  ) async {
+    final controller = TextEditingController(
+      text: audioConfig.rollingCacheLimitMb > 0
+          ? '${audioConfig.rollingCacheLimitGb}'
+          : '0',
+    );
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return AlertDialog(
+          title: const Text('Audio Cache Size Limit'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Set the maximum storage space for cached audio tracks. When exceeded, the oldest tracks are automatically evicted (LRU).',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Quick Presets:',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _PresetChip(label: '1 GB', gb: 1, controller: controller),
+                    _PresetChip(label: '2 GB', gb: 2, controller: controller),
+                    _PresetChip(label: '5 GB', gb: 5, controller: controller),
+                    _PresetChip(label: '10 GB', gb: 10, controller: controller),
+                    _PresetChip(label: '20 GB', gb: 20, controller: controller),
+                    _PresetChip(label: '50 GB', gb: 50, controller: controller),
+                    _PresetChip(
+                      label: 'Unlimited',
+                      gb: 0,
+                      controller: controller,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: controller,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Custom Limit (in GB)',
+                    hintText: 'Enter GB (0 for unlimited)',
+                    suffixText: 'GB',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final text = controller.text.trim();
+                final parsed = double.tryParse(text);
+                if (parsed != null && parsed >= 0) {
+                  ref
+                      .read(audioCacheConfigProvider.notifier)
+                      .setRollingCacheLimitGb(parsed);
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PresetChip extends StatelessWidget {
+  final String label;
+  final double gb;
+  final TextEditingController controller;
+
+  const _PresetChip({
+    required this.label,
+    required this.gb,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      label: Text(label),
+      onPressed: () {
+        controller.text = gb == 0 ? '0' : gb.round().toString();
+      },
+    );
+  }
+}
+
+class _StorageLocationTile extends ConsumerStatefulWidget {
+  final Server server;
+  const _StorageLocationTile({required this.server});
+
+  @override
+  ConsumerState<_StorageLocationTile> createState() =>
+      _StorageLocationTileState();
+}
+
+class _StorageLocationTileState extends ConsumerState<_StorageLocationTile> {
+  List<StorageVolume> _volumes = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVolumes();
+  }
+
+  Future<void> _loadVolumes() async {
+    final vols = await StorageManager.getAvailableStorageVolumes();
+    if (mounted) {
+      setState(() {
+        _volumes = vols;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final audioConfig = ref.watch(audioCacheConfigProvider);
+
+    final activeVolume =
+        _volumes
+            .where((v) => v.id == audioConfig.storageLocationId)
+            .firstOrNull ??
+        _volumes.firstOrNull;
+
+    final volumeLabel = activeVolume?.label ?? 'Internal Storage';
+    final freeSpaceStr = activeVolume != null && activeVolume.availableBytes > 0
+        ? ' · ${formatBytes(activeVolume.availableBytes)} free'
+        : '';
+
+    return ListTile(
+      title: const Text('Cache Storage Location'),
+      subtitle: Text('$volumeLabel$freeSpaceStr'),
+      trailing: _loading
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.sd_card_outlined, size: 20),
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right, size: 20),
+              ],
+            ),
+      onTap: _loading || _volumes.isEmpty
+          ? null
+          : () => _showLocationPicker(context, activeVolume),
+    );
+  }
+
+  Future<void> _showLocationPicker(
+    BuildContext context,
+    StorageVolume? currentVolume,
+  ) async {
+    final selected = await showModalBottomSheet<StorageVolume>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select Storage Location',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose where to store offline downloads and audio caches.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ..._volumes.map((vol) {
+                  final isSelected = vol.id == currentVolume?.id;
+                  final usedFraction = vol.totalBytes > 0
+                      ? ((vol.totalBytes - vol.availableBytes) / vol.totalBytes)
+                            .clamp(0.0, 1.0)
+                      : 0.0;
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    elevation: isSelected ? 2 : 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: isSelected
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outlineVariant,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => Navigator.pop(ctx, vol),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  vol.isRemovable
+                                      ? Icons.sd_card
+                                      : Icons.phone_android,
+                                  color: isSelected
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        vol.label,
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                      Text(
+                                        '${formatBytes(vol.availableBytes)} free of ${formatBytes(vol.totalBytes)}',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isSelected)
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            LinearProgressIndicator(
+                              value: usedFraction,
+                              backgroundColor:
+                                  theme.colorScheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation(
+                                usedFraction > 0.9
+                                    ? theme.colorScheme.error
+                                    : theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected != null && selected.id != currentVolume?.id && mounted) {
+      await _confirmAndSwitchStorage(selected);
+    }
+  }
+
+  Future<void> _confirmAndSwitchStorage(StorageVolume targetVolume) async {
+    final audioService = ref.read(audioCacheServiceProvider);
+    final currentBytes = await audioService.getAudioCacheBytes();
+
+    if (currentBytes > 0 && mounted) {
+      final action = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Switch Storage Location'),
+          content: Text(
+            'You have ${formatBytes(currentBytes)} of cached audio. Would you like to migrate your cached files to "${targetVolume.label}", or start clean?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'cancel'),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 'clear'),
+              child: const Text('Start Clean'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, 'migrate'),
+              child: const Text('Migrate Files'),
+            ),
+          ],
+        ),
+      );
+
+      if (action == 'cancel' || action == null || !mounted) return;
+
+      final migrate = action == 'migrate';
+      if (migrate) {
+        _showMigrationProgressDialog(targetVolume);
+      } else {
+        await audioService.switchStorageLocation(
+          targetVolume,
+          migrateData: false,
+        );
+        ref.invalidate(audioCacheSummaryProvider(widget.server.id));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Switched cache storage to ${targetVolume.label}'),
+            ),
+          );
+        }
+      }
+    } else {
+      await audioService.switchStorageLocation(
+        targetVolume,
+        migrateData: false,
+      );
+      ref.invalidate(audioCacheSummaryProvider(widget.server.id));
+    }
+  }
+
+  void _showMigrationProgressDialog(StorageVolume targetVolume) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            var fraction = 0.0;
+            var statusText = 'Preparing migration...';
+
+            ref
+                .read(audioCacheServiceProvider)
+                .switchStorageLocation(
+                  targetVolume,
+                  migrateData: true,
+                  onProgress: (f, s) {
+                    setDialogState(() {
+                      fraction = f;
+                      statusText = s;
+                    });
+                  },
+                )
+                .then((success) {
+                  if (dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    ref.invalidate(audioCacheSummaryProvider(widget.server.id));
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            success
+                                ? 'Successfully migrated cache to ${targetVolume.label}'
+                                : 'Migration failed. Reverted to previous storage.',
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                });
+
+            return AlertDialog(
+              title: const Text('Migrating Cache Files'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LinearProgressIndicator(
+                    value: fraction > 0 ? fraction : null,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(statusText),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }
 

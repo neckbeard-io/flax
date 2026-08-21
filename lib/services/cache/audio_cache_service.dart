@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/core/providers/library_provider.dart';
@@ -14,6 +13,7 @@ import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
+import 'package:flax/services/cache/storage_manager.dart';
 import 'package:flax/services/database/library_dao.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
@@ -24,25 +24,39 @@ class AudioCacheConfig {
   final bool autoCacheStreamed;
   final bool offlineOnlyMode;
   final int downloadConcurrency;
+  final String storageLocationId;
+  final String? storageLocationPath;
 
   const AudioCacheConfig({
-    this.rollingCacheLimitMb = 2048,
-    this.autoCacheStreamed = false,
+    this.rollingCacheLimitMb = 5120, // 5 GB default
+    this.autoCacheStreamed = true,
     this.offlineOnlyMode = false,
     this.downloadConcurrency = 2,
+    this.storageLocationId = 'internal_app',
+    this.storageLocationPath,
   });
+
+  int get rollingCacheLimitGb => (rollingCacheLimitMb / 1024).round();
+
+  String get limitDisplayString => rollingCacheLimitMb == 0
+      ? 'Unlimited'
+      : '${(rollingCacheLimitMb / 1024).toStringAsFixed(rollingCacheLimitMb % 1024 == 0 ? 0 : 1)} GB';
 
   AudioCacheConfig copyWith({
     int? rollingCacheLimitMb,
     bool? autoCacheStreamed,
     bool? offlineOnlyMode,
     int? downloadConcurrency,
+    String? storageLocationId,
+    String? storageLocationPath,
   }) {
     return AudioCacheConfig(
       rollingCacheLimitMb: rollingCacheLimitMb ?? this.rollingCacheLimitMb,
       autoCacheStreamed: autoCacheStreamed ?? this.autoCacheStreamed,
       offlineOnlyMode: offlineOnlyMode ?? this.offlineOnlyMode,
       downloadConcurrency: downloadConcurrency ?? this.downloadConcurrency,
+      storageLocationId: storageLocationId ?? this.storageLocationId,
+      storageLocationPath: storageLocationPath ?? this.storageLocationPath,
     );
   }
 }
@@ -52,6 +66,8 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
   static const _autoCacheKey = 'flax_auto_cache_streamed';
   static const _offlineOnlyKey = 'flax_offline_only_mode';
   static const _concurrencyKey = 'flax_audio_download_concurrency';
+  static const _locationIdKey = 'flax_audio_cache_volume_id';
+  static const _locationPathKey = 'flax_audio_cache_custom_path';
 
   AudioCacheConfigNotifier() : super(const AudioCacheConfig()) {
     _load();
@@ -61,10 +77,12 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
     try {
       final prefs = await SharedPreferences.getInstance();
       state = AudioCacheConfig(
-        rollingCacheLimitMb: prefs.getInt(_limitKey) ?? 2048,
-        autoCacheStreamed: prefs.getBool(_autoCacheKey) ?? false,
+        rollingCacheLimitMb: prefs.getInt(_limitKey) ?? 5120,
+        autoCacheStreamed: prefs.getBool(_autoCacheKey) ?? true,
         offlineOnlyMode: prefs.getBool(_offlineOnlyKey) ?? false,
         downloadConcurrency: prefs.getInt(_concurrencyKey) ?? 2,
+        storageLocationId: prefs.getString(_locationIdKey) ?? 'internal_app',
+        storageLocationPath: prefs.getString(_locationPathKey),
       );
     } catch (_) {}
   }
@@ -73,6 +91,11 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
     state = state.copyWith(rollingCacheLimitMb: limitMb);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_limitKey, limitMb);
+  }
+
+  Future<void> setRollingCacheLimitGb(double gb) async {
+    final mb = (gb * 1024).round();
+    await setRollingCacheLimitMb(mb);
   }
 
   Future<void> setAutoCacheStreamed(bool enabled) async {
@@ -91,6 +114,16 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
     state = state.copyWith(downloadConcurrency: concurrency);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_concurrencyKey, concurrency);
+  }
+
+  Future<void> setStorageLocation(String locationId, String path) async {
+    state = state.copyWith(
+      storageLocationId: locationId,
+      storageLocationPath: path,
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_locationIdKey, locationId);
+    await prefs.setString(_locationPathKey, path);
   }
 }
 
@@ -112,8 +145,7 @@ class AudioCacheService {
 
   /// Initializes the local audio cache base directory path.
   static Future<void> initialize() async {
-    final appDir = await getApplicationSupportDirectory();
-    _cachedBasePath = p.join(appDir.path, 'audio_cache');
+    _cachedBasePath = await StorageManager.resolveActiveCacheBasePath();
     final dir = Directory(_cachedBasePath!);
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
@@ -143,16 +175,29 @@ class AudioCacheService {
       final f = File(
         p.join(base, 'music', 'offline', serverId, '$songId.$ext'),
       );
-      if (f.existsSync() && f.lengthSync() > 0) return f.path;
+      if (f.existsSync() && f.lengthSync() > 0) {
+        touchCachedSongSync(f.path);
+        return f.path;
+      }
     }
     // Check rolling
     for (final ext in exts) {
       final f = File(
         p.join(base, 'music', 'rolling', serverId, '$songId.$ext'),
       );
-      if (f.existsSync() && f.lengthSync() > 0) return f.path;
+      if (f.existsSync() && f.lengthSync() > 0) {
+        touchCachedSongSync(f.path);
+        return f.path;
+      }
     }
     return null;
+  }
+
+  /// Touches a cached file's modified time to maintain accurate LRU ranking.
+  static void touchCachedSongSync(String filePath) {
+    try {
+      File(filePath).setLastModifiedSync(DateTime.now());
+    } catch (_) {}
   }
 
   AudioCacheService(this._ref, {Dio? dio})
@@ -167,8 +212,7 @@ class AudioCacheService {
       }
       return dir;
     }
-    final appDir = await getApplicationSupportDirectory();
-    _cachedBasePath = p.join(appDir.path, 'audio_cache');
+    _cachedBasePath = await StorageManager.resolveActiveCacheBasePath();
     final dir = Directory(_cachedBasePath!);
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
@@ -215,6 +259,32 @@ class AudioCacheService {
     final ext = song.suffix?.isNotEmpty == true ? song.suffix! : 'mp3';
     final musicDir = await _getMusicDir(serverId, isPinned: isPinned);
     final destFile = File(p.join(musicDir.path, '${song.id}.$ext'));
+
+    // Check disk safety headroom prior to download
+    final base = await _getBaseDir();
+    final estimatedBytes =
+        song.size ?? (10 * 1024 * 1024); // 10 MB fallback estimate
+    if (!StorageManager.isDiskSpaceSafe(
+      base.path,
+      additionalBytes: estimatedBytes,
+    )) {
+      // Free space is tight — aggressively evict oldest tracks to make room
+      await _enforceUnifiedCacheLimit(
+        serverId,
+        targetBytesToFree: estimatedBytes,
+      );
+    }
+
+    if (!StorageManager.isDiskSpaceSafe(
+      base.path,
+      additionalBytes: estimatedBytes,
+    )) {
+      developer.log(
+        'Storage space is critically low. Aborting download for song ${song.id}',
+        name: 'AudioCacheService',
+      );
+      return null;
+    }
 
     final taskRegistry = _ref.read(taskRegistryProvider.notifier);
     final songCancelToken = cancelToken ?? CancelToken();
@@ -302,10 +372,8 @@ class AudioCacheService {
         ).ignore();
       }
 
-      // If rolling cache, check size limit and evict if needed
-      if (!isPinned) {
-        _enforceRollingCacheLimit(serverId);
-      }
+      // Enforce unified audio cache limit across all cached tracks (LRU)
+      _enforceUnifiedCacheLimit(serverId).ignore();
 
       if (isStandAloneTask) {
         handle?.progress(items: 1);
@@ -713,33 +781,83 @@ class AudioCacheService {
     return total;
   }
 
-  Future<void> _enforceRollingCacheLimit(String serverId) async {
+  /// Enforces unified LRU cache quota and low-disk safety across all cached tracks.
+  Future<void> _enforceUnifiedCacheLimit(
+    String serverId, {
+    int targetBytesToFree = 0,
+  }) async {
     final config = _ref.read(audioCacheConfigProvider);
-    if (config.rollingCacheLimitMb <= 0) return; // 0 = unlimited
+    final maxBytes = config.rollingCacheLimitMb > 0
+        ? config.rollingCacheLimitMb * 1024 * 1024
+        : 0;
 
-    final maxBytes = config.rollingCacheLimitMb * 1024 * 1024;
     final base = await _getBaseDir();
     final rollingDir = Directory(
       p.join(base.path, 'music', 'rolling', serverId),
     );
-    if (!rollingDir.existsSync()) return;
+    final offlineDir = Directory(
+      p.join(base.path, 'music', 'offline', serverId),
+    );
 
-    final files = <File>[];
-    for (final entity in rollingDir.listSync()) {
-      if (entity is File) files.add(entity);
+    final rollingFiles = <File>[];
+    if (rollingDir.existsSync()) {
+      for (final entity in rollingDir.listSync()) {
+        if (entity is File && !entity.path.endsWith('.tmp')) {
+          rollingFiles.add(entity);
+        }
+      }
     }
 
-    // Sort oldest modified first (LRU)
-    files.sort((a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()));
+    final offlineFiles = <File>[];
+    if (offlineDir.existsSync()) {
+      for (final entity in offlineDir.listSync()) {
+        if (entity is File && !entity.path.endsWith('.tmp')) {
+          offlineFiles.add(entity);
+        }
+      }
+    }
 
-    var currentBytes = _calculateDirSize(rollingDir);
-    for (final file in files) {
-      if (currentBytes <= maxBytes) break;
+    // Sort rolling first, then offline; each ordered oldest lastModified first (LRU)
+    rollingFiles.sort(
+      (a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()),
+    );
+    offlineFiles.sort(
+      (a, b) => a.lastModifiedSync().compareTo(b.lastModifiedSync()),
+    );
+
+    // Unified eviction queue: unpinned auto-cache first, then oldest pinned tracks
+    final evictionQueue = [...rollingFiles, ...offlineFiles];
+
+    var currentTotalBytes =
+        _calculateDirSize(rollingDir) + _calculateDirSize(offlineDir);
+    var freedBytes = 0;
+
+    for (final file in evictionQueue) {
+      final isOverQuota = maxBytes > 0 && currentTotalBytes > maxBytes;
+      final needsMoreDiskSpace =
+          targetBytesToFree > 0 && freedBytes < targetBytesToFree;
+      final isDiskUnsafe = !StorageManager.isDiskSpaceSafe(base.path);
+
+      if (!isOverQuota && !needsMoreDiskSpace && !isDiskUnsafe) {
+        break;
+      }
+
       final size = file.lengthSync();
       final songId = p.basenameWithoutExtension(file.path);
       try {
         file.deleteSync();
-        currentBytes -= size;
+        currentTotalBytes -= size;
+        freedBytes += size;
+
+        // Clean up associated lyrics if present
+        final lyricsDir = await _getLyricsDir(serverId);
+        final lrcFile = File(p.join(lyricsDir.path, '$songId.lrc'));
+        if (lrcFile.existsSync()) {
+          try {
+            lrcFile.deleteSync();
+          } catch (_) {}
+        }
+
         _ref
             .read(libraryDaoProvider)
             .updateSongDownload(
@@ -750,6 +868,48 @@ class AudioCacheService {
             );
       } catch (_) {}
     }
+  }
+
+  /// Switches the storage location for audio caching, with optional data migration.
+  Future<bool> switchStorageLocation(
+    StorageVolume targetVolume, {
+    required bool migrateData,
+    void Function(double fraction, String status)? onProgress,
+  }) async {
+    final oldBasePath =
+        _cachedBasePath ?? (await StorageManager.resolveActiveCacheBasePath());
+    final newBasePath = targetVolume.path;
+
+    if (p.equals(oldBasePath, newBasePath)) return true;
+
+    if (migrateData) {
+      final success = await StorageManager.migrateCacheDirectory(
+        sourcePath: oldBasePath,
+        targetPath: newBasePath,
+        onProgress: onProgress,
+      );
+      if (!success) return false;
+
+      // Update SQLite local paths
+      await _ref
+          .read(libraryDaoProvider)
+          .migrateLocalPaths(oldBasePath, newBasePath);
+    } else {
+      // Clear old directory if not migrating
+      try {
+        final oldDir = Directory(oldBasePath);
+        if (oldDir.existsSync()) {
+          oldDir.deleteSync(recursive: true);
+        }
+      } catch (_) {}
+    }
+
+    _cachedBasePath = newBasePath;
+    await _ref
+        .read(audioCacheConfigProvider.notifier)
+        .setStorageLocation(targetVolume.id, newBasePath);
+
+    return true;
   }
 
   /// Resolves local cached lyrics if available.

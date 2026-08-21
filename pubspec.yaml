@@ -60,6 +60,7 @@ dependencies:
   screen_retriever: ^0.2.2
   country_flags: ^4.1.2
   meta: ^1.15.0
+  ffi: ^2.2.0
 
 dev_dependencies:
   flutter_test:

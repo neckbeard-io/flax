@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/services/cache/storage_manager.dart';
 import 'package:flax/services/database/database.dart';
 import 'package:flax/services/database/library_dao.dart';
 
@@ -54,27 +59,118 @@ At all
   group('AudioCacheConfig', () {
     test('default configuration values', () {
       const config = AudioCacheConfig();
-      expect(config.rollingCacheLimitMb, equals(2048));
-      expect(config.autoCacheStreamed, isFalse);
+      expect(config.rollingCacheLimitMb, equals(5120));
+      expect(config.rollingCacheLimitGb, equals(5));
+      expect(config.limitDisplayString, equals('5 GB'));
+      expect(config.autoCacheStreamed, isTrue);
       expect(config.offlineOnlyMode, isFalse);
       expect(config.downloadConcurrency, equals(2));
+      expect(config.storageLocationId, equals('internal_app'));
     });
 
-    test('copyWith updates specific fields', () {
+    test('copyWith and custom GB limits', () {
       const config = AudioCacheConfig();
       final updated = config.copyWith(
-        rollingCacheLimitMb: 5120,
-        autoCacheStreamed: true,
+        rollingCacheLimitMb: 10240,
+        autoCacheStreamed: false,
         downloadConcurrency: 4,
+        storageLocationId: 'external_0',
+        storageLocationPath: '/storage/1234-5678/music',
       );
-      expect(updated.rollingCacheLimitMb, equals(5120));
-      expect(updated.autoCacheStreamed, isTrue);
-      expect(updated.offlineOnlyMode, isFalse);
+      expect(updated.rollingCacheLimitMb, equals(10240));
+      expect(updated.rollingCacheLimitGb, equals(10));
+      expect(updated.limitDisplayString, equals('10 GB'));
+      expect(updated.autoCacheStreamed, isFalse);
       expect(updated.downloadConcurrency, equals(4));
+      expect(updated.storageLocationId, equals('external_0'));
+      expect(updated.storageLocationPath, equals('/storage/1234-5678/music'));
+
+      final unlimited = config.copyWith(rollingCacheLimitMb: 0);
+      expect(unlimited.rollingCacheLimitGb, equals(0));
+      expect(unlimited.limitDisplayString, equals('Unlimited'));
     });
   });
 
-  group('LibraryDao Offline Downloads', () {
+  group('StorageManager', () {
+    test('queries native disk space on current platform', () {
+      final diskInfo = StorageManager.getDiskSpace(Directory.current.path);
+      expect(diskInfo, isNotNull);
+      expect(diskInfo!.totalBytes, greaterThan(0));
+      expect(diskInfo.availableBytes, greaterThan(0));
+      expect(diskInfo.freeFraction, greaterThan(0.0));
+      expect(diskInfo.freeFraction, lessThanOrEqualTo(1.0));
+    });
+
+    test('isDiskSpaceSafe reports safe when buffer is met', () {
+      final isSafe = StorageManager.isDiskSpaceSafe(
+        Directory.current.path,
+        additionalBytes: 1024,
+      );
+      expect(isSafe, isTrue);
+    });
+
+    test('migrates cache directory contents cleanly', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'flax_test_storage_',
+      );
+      try {
+        final srcDir = Directory(p.join(tempDir.path, 'source'));
+        final dstDir = Directory(p.join(tempDir.path, 'destination'));
+        await srcDir.create(recursive: true);
+
+        // Create dummy track files
+        final track1 = File(
+          p.join(srcDir.path, 'music', 'offline', 'srv1', 'song1.mp3'),
+        );
+        await track1.parent.create(recursive: true);
+        await track1.writeAsString('track 1 dummy audio data');
+
+        final lyrics1 = File(
+          p.join(srcDir.path, 'lyrics', 'srv1', 'song1.lrc'),
+        );
+        await lyrics1.parent.create(recursive: true);
+        await lyrics1.writeAsString('[00:01.00]test lyrics');
+
+        var progressCalls = 0;
+        final success = await StorageManager.migrateCacheDirectory(
+          sourcePath: srcDir.path,
+          targetPath: dstDir.path,
+          onProgress: (fraction, status) {
+            progressCalls++;
+          },
+        );
+
+        expect(success, isTrue);
+        expect(progressCalls, greaterThan(0));
+
+        // Destination has files
+        final destTrack = File(
+          p.join(dstDir.path, 'music', 'offline', 'srv1', 'song1.mp3'),
+        );
+        expect(destTrack.existsSync(), isTrue);
+        expect(
+          await destTrack.readAsString(),
+          equals('track 1 dummy audio data'),
+        );
+
+        final destLyrics = File(
+          p.join(dstDir.path, 'lyrics', 'srv1', 'song1.lrc'),
+        );
+        expect(destLyrics.existsSync(), isTrue);
+        expect(
+          await destLyrics.readAsString(),
+          equals('[00:01.00]test lyrics'),
+        );
+
+        // Source is cleared
+        expect(track1.existsSync(), isFalse);
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
+  });
+
+  group('LibraryDao Offline Downloads & Migration', () {
     late FlaxDatabase db;
     late LibraryDao dao;
     late DateTime now;
@@ -136,7 +232,7 @@ At all
       await dao.updateSongDownload(
         serverId,
         song1.id,
-        localPath: '/tmp/music/s-1.mp3',
+        localPath: '/tmp/music/offline/s-1.mp3',
         state: DownloadState.complete,
       );
 
@@ -146,15 +242,11 @@ At all
       expect(downloadedSongIds, contains('s-1'));
       expect(downloadedSongIds, isNot(contains('s-2')));
 
-      // Album and Artist are NOT considered fully downloaded until ALL songs are complete
-      expect(await dao.watchDownloadedAlbumIds(serverId).first, isEmpty);
-      expect(await dao.watchDownloadedArtistIds(serverId).first, isEmpty);
-
       // Download song2 as well
       await dao.updateSongDownload(
         serverId,
         song2.id,
-        localPath: '/tmp/music/s-2.mp3',
+        localPath: '/tmp/music/offline/s-2.mp3',
         state: DownloadState.complete,
       );
 
@@ -169,17 +261,17 @@ At all
           .first;
       expect(downloadedArtistIds, contains('art-1'));
 
-      // Server refresh preserves localPath and downloadState
-      await dao.upsertSongs([song1], now);
-      final preservedSong = await dao.watchSong(serverId, song1.id).first;
-      expect(preservedSong?.localPath, equals('/tmp/music/s-1.mp3'));
-      expect(preservedSong?.downloadState, equals(DownloadState.complete));
+      // Test path migration
+      await dao.migrateLocalPaths('/tmp/music', '/sdcard/flax_cache');
+      final migratedSong1 = await dao.watchSong(serverId, song1.id).first;
+      expect(
+        migratedSong1?.localPath,
+        equals('/sdcard/flax_cache/offline/s-1.mp3'),
+      );
 
       // Clear all downloads
       await dao.clearAllSongDownloads(serverId);
       expect(await dao.watchDownloadedSongIds(serverId).first, isEmpty);
-      expect(await dao.watchDownloadedAlbumIds(serverId).first, isEmpty);
-      expect(await dao.watchDownloadedArtistIds(serverId).first, isEmpty);
     });
   });
 

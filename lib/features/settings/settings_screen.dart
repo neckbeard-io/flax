@@ -7,12 +7,14 @@ import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
+import 'package:flax/core/tasks/task.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/lyrics_settings.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/features/updater/update_dialog.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
@@ -188,16 +190,31 @@ class SettingsScreen extends ConsumerWidget {
             onChanged: (v) =>
                 ref.read(offlineManualOverrideProvider.notifier).set(v),
           ),
-          ListTile(
-            title: const Text('Cache & Offline Storage'),
-            subtitle: Text(
-              activeServer != null
-                  ? 'Covers (${activeServer.metadataCacheConfig.albumArtQuality.label}) · '
-                        'Artist Info · Audio Cache'
-                  : 'No server',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go('/settings/metadata-cache'),
+          Consumer(
+            builder: (context, ref, _) {
+              final audioConfig = ref.watch(audioCacheConfigProvider);
+              final audioSummary = activeServer != null
+                  ? ref
+                        .watch(audioCacheSummaryProvider(activeServer.id))
+                        .valueOrNull
+                  : null;
+              final cachedStr =
+                  audioSummary != null && audioSummary.audioBytes > 0
+                  ? '${formatBytes(audioSummary.audioBytes)} cached · '
+                  : '';
+              return ListTile(
+                title: const Text('Cache & Offline Storage'),
+                subtitle: Text(
+                  activeServer != null
+                      ? '$cachedStr'
+                            'Covers (${activeServer.metadataCacheConfig.albumArtQuality.label}) · '
+                            'Limit: ${audioConfig.limitDisplayString}'
+                      : 'No server',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go('/settings/metadata-cache'),
+              );
+            },
           ),
           const Divider(),
 

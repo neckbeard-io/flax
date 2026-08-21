@@ -667,6 +667,14 @@ class LibraryDao {
     );
   }
 
+  /// Migrates all recorded local song paths when the base cache directory changes.
+  Future<void> migrateLocalPaths(String oldBasePath, String newBasePath) async {
+    await _db.customStatement(
+      'UPDATE songs SET local_path = REPLACE(local_path, ?, ?) WHERE local_path IS NOT NULL;',
+      [oldBasePath, newBasePath],
+    );
+  }
+
   Stream<Set<String>> watchDownloadedSongIds(String serverId) {
     final q = _db.selectOnly(_db.songs)
       ..addColumns([_db.songs.id])
