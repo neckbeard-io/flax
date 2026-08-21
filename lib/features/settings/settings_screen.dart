@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -18,6 +19,7 @@ import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
+import 'package:flax/shared/widgets/hover_effects.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -261,14 +263,39 @@ class _AboutTile extends ConsumerWidget {
             const mode = kDebugMode
                 ? ' · debug build'
                 : (kProfileMode ? ' · profile build' : '');
+            final theme = Theme.of(context);
             return ListTile(
               title: const Text('Flax'),
               // The licence is named here because handing someone a build is
               // distribution, and GPL expects an interactive program to say so
               // somewhere the recipient can find it.
-              subtitle: Text(
-                '$version$mode · High-fidelity music player\n'
-                'GPL-3.0-or-later · source at github.com/neckbeard-io/flax',
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$version$mode · High-fidelity music player'),
+                  const SizedBox(height: 2),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        'GPL-3.0-or-later · source at ',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      HoverLink(
+                        text: 'github.com/neckbeard-io/flax',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                        onTap: () => launchUrl(
+                          Uri.parse('https://github.com/neckbeard-io/flax'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             );
           },
