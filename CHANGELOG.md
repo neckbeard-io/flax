@@ -10,11 +10,14 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.5.2 — 2026-08-21
+
 ### Added
 - Configurable audio cache size limit in gigabytes with quick presets and custom entry.
 - Automatic LRU eviction across all cached tracks when quota or disk safety threshold is reached.
 - Mobile storage volume selector for switching cache targets to removable SD cards with file migration.
 - Low disk space safety guard preventing cache downloads from exhausting device storage.
+- Interactive clickable link for GitHub source repository in About & System settings.
 
 ## v0.5.1 — 2026-08-20
 
