@@ -104,21 +104,26 @@ EOF
 resolve_latest_version() {
   local tag=""
 
-  # 1. Try GitHub Releases API
-  if command -v curl >/dev/null 2>&1; then
-    tag=$(curl -fsSL -H "Accept: application/vnd.github.v3+json" \
-      https://api.github.com/repos/neckbeard-io/flax/releases/latest 2>/dev/null \
-      | grep -m1 '"tag_name":' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/' || true)
+  # GitHub's /releases/latest only returns non-prerelease releases.
+  # All flax builds are marked pre-release, so we use /releases?per_page=1
+  # which returns all releases (newest first) regardless of pre-release flag.
+  tag=$(curl -sSL -H "Accept: application/vnd.github.v3+json" \
+    "https://api.github.com/repos/neckbeard-io/flax/releases?per_page=1" 2>/dev/null \
+    | grep -m1 '"tag_name":' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/' || true)
+
+  # Fallback: resolve via the tags page redirect (works without API access)
+  if [ -z "$tag" ] || ! echo "$tag" | grep -qE '^v?[0-9]+\.[0-9]+'; then
+    tag=$(curl -sSI "https://github.com/neckbeard-io/flax/releases/tag/latest" 2>/dev/null \
+      | grep -i '^location:' \
+      | grep '/tag/' \
+      | sed -E 's|.*/tag/([^\r\n/]+).*|\1|' \
+      | tr -d '[:space:]' \
+      | head -n 1 || true)
   fi
 
-  # 2. Fallback: query redirection URL (avoids GitHub API rate limits)
-  if [ -z "$tag" ]; then
-    tag=$(curl -fsSIL https://github.com/neckbeard-io/flax/releases/latest 2>/dev/null \
-      | grep -i '^location:' | sed -E 's/.*\/tag\/([^\r\n\/]+).*/\1/' | head -n 1 || true)
-  fi
-
-  if [ -z "$tag" ]; then
-    error "Could not determine the latest Flax release version. Please specify with --version <v>."
+  # Validate — must look like a version number
+  if [ -z "$tag" ] || ! echo "$tag" | grep -qE '^v?[0-9]+\.[0-9]+'; then
+    error "Could not determine the latest Flax release. Use --version <v> to specify one."
     exit 1
   fi
 
