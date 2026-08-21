@@ -431,4 +431,6 @@ check_linux_dependencies() {
 
 # ── Execute ───────────────────────────────────────────────────────────
 
-main "$@"
+if [ "${FLAX_TEST:-0}" != "1" ]; then
+  main "$@"
+fi
