@@ -160,7 +160,16 @@ class StorageManager {
           calloc.free(ptr);
         }
       } else if (Platform.isLinux || Platform.isAndroid) {
-        final lib = DynamicLibrary.open('libc.so');
+        DynamicLibrary lib;
+        try {
+          lib = DynamicLibrary.process();
+        } catch (_) {
+          try {
+            lib = DynamicLibrary.open('libc.so.6');
+          } catch (_) {
+            lib = DynamicLibrary.open('libc.so');
+          }
+        }
         final statvfsFunc = lib
             .lookupFunction<
               Int32 Function(Pointer<Utf8>, Pointer<_StatvfsLinux>),

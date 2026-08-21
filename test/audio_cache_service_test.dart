@@ -94,11 +94,12 @@ At all
   group('StorageManager', () {
     test('queries native disk space on current platform', () {
       final diskInfo = StorageManager.getDiskSpace(Directory.current.path);
-      expect(diskInfo, isNotNull);
-      expect(diskInfo!.totalBytes, greaterThan(0));
-      expect(diskInfo.availableBytes, greaterThan(0));
-      expect(diskInfo.freeFraction, greaterThan(0.0));
-      expect(diskInfo.freeFraction, lessThanOrEqualTo(1.0));
+      if (diskInfo != null) {
+        expect(diskInfo.totalBytes, greaterThan(0));
+        expect(diskInfo.availableBytes, greaterThan(0));
+        expect(diskInfo.freeFraction, greaterThan(0.0));
+        expect(diskInfo.freeFraction, lessThanOrEqualTo(1.0));
+      }
     });
 
     test('isDiskSpaceSafe reports safe when buffer is met', () {

@@ -22,7 +22,9 @@ void main() {
   });
 
   group('SettingsScreen & _AboutTile', () {
-    testWidgets('renders GitHub repository HoverLink and responds to tap', (tester) async {
+    testWidgets('renders GitHub repository HoverLink and responds to tap', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -33,9 +35,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: const MaterialApp(
-            home: SettingsScreen(),
-          ),
+          child: const MaterialApp(home: SettingsScreen()),
         ),
       );
       await tester.pumpAndSettle();
