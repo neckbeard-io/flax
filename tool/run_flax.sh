@@ -89,6 +89,7 @@ if [ "$PLATFORM" = "macos" ]; then
 else
   export DISPLAY="${DISPLAY:-:0}"
   export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
-  nohup "$APP" >/tmp/flax.log 2>&1 &
+  APP_ABS="$(cd "$(dirname "$APP")" && pwd)/$(basename "$APP")"
+  setsid "$APP_ABS" >/tmp/flax.log 2>&1 &
 fi
 echo "==> flax launched. Give it a second to connect to the server."
