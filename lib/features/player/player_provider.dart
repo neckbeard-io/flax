@@ -14,6 +14,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/gapless_probe.dart';
+import 'package:flax/features/settings/audio_output_settings.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
@@ -142,6 +143,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   ProviderSubscription<AutoEqState>? _autoEqSub;
   ProviderSubscription<EqEngine>? _eqEngineSub;
   ProviderSubscription<PlaybackSettings>? _playbackSub;
+  ProviderSubscription<AudioOutputSettings>? _audioOutputSub;
 
   /// Fade attenuation last pushed to mpv, so the ramp only re-applies when it
   /// has actually moved.
@@ -165,6 +167,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _initMediaKeys();
     _initEqListener();
     _initPlaybackSettings();
+    _initAudioOutputSettings();
     _restoreVolume();
     _restorePlayQueue();
   }
@@ -243,6 +246,21 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _subs.add(
       _player.stream.playlist.listen((playlist) {
         if (mounted) _onMpvPlaylistIndex(playlist.index);
+      }),
+    );
+    _subs.add(
+      _player.stream.audioDevices.listen((devices) {
+        if (devices.isNotEmpty) {
+          _ref.read(audioDevicesProvider.notifier).state = devices;
+        }
+      }),
+    );
+    _subs.add(
+      _player.stream.error.listen((err) {
+        developer.log('mpv error: ${err.message}', name: 'PlayerNotifier');
+        if (mounted) {
+          state = state.copyWith(isPlaying: false, playbackError: err.message);
+        }
       }),
     );
   }
@@ -839,6 +857,65 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
+  void _initAudioOutputSettings() {
+    _audioOutputSub = _ref.listen<AudioOutputSettings>(
+      audioOutputSettingsProvider,
+      (_, next) => _applyAudioOutputSettings(next),
+    );
+    _applyAudioOutputSettings(_ref.read(audioOutputSettingsProvider));
+  }
+
+  Future<void> _applyAudioOutputSettings(AudioOutputSettings settings) async {
+    try {
+      if (Platform.isLinux) {
+        await _player.setRawProperty('ao', settings.engine.aoValue);
+        await _player.setAudioMediaRole(true);
+      }
+
+      // Output device
+      if (settings.deviceName == 'auto') {
+        await _player.setAudioDevice(
+          const mpv.Device(name: 'auto', description: 'System Default'),
+        );
+      } else {
+        await _player.setAudioDevice(
+          mpv.Device(
+            name: settings.deviceName,
+            description: settings.deviceDescription,
+          ),
+        );
+      }
+
+      // Exclusive mode
+      await _player.setAudioExclusive(settings.exclusive);
+
+      // Sample rate
+      final rateVal = switch (settings.sampleRate) {
+        '44.1 kHz' => '44100',
+        '48 kHz' => '48000',
+        '88.2 kHz' => '88200',
+        '96 kHz' => '96000',
+        '192 kHz' => '192000',
+        _ => 'auto',
+      };
+      await _player.setRawProperty('audio-samplerate', rateVal);
+
+      // Bit depth / format
+      final formatVal = switch (settings.bitDepth) {
+        '16-bit' => 's16',
+        '24-bit' => 's24',
+        '32-bit float' => 'float',
+        _ => 'auto',
+      };
+      await _player.setRawProperty('audio-format', formatVal);
+    } catch (e) {
+      developer.log(
+        'Audio output settings apply failed: $e',
+        name: 'PlayerNotifier',
+      );
+    }
+  }
+
   /// Sample an AutoEQ GraphicEQ curve at [freq], interpolating in log-frequency
   /// space between the two surrounding points.
   static double _interpolateGain(List<GraphicEqPoint> pts, double freq) {
@@ -1148,6 +1225,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   Future<void> play() async {
+    if (mounted) {
+      state = state.copyWith(clearPlaybackError: true);
+    }
     if (state.queue.isNotEmpty && !_mpvQueueInSync) {
       await _openQueue(state.queue, state.queueIndex, play: true);
       if (state.position > Duration.zero) {
@@ -1381,6 +1461,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _autoEqSub?.close();
     _eqEngineSub?.close();
     _playbackSub?.close();
+    _audioOutputSub?.close();
     _probe?.dispose();
     _player.dispose();
     super.dispose();

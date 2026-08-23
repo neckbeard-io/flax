@@ -10,6 +10,14 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Linux audio output engine selection in settings (Auto, PipeWire, PulseAudio, ALSA).
+- Audio output device selector dialog with dynamic sink enumeration.
+
+### Fixed
+- Playback stall and silent audio failures on modern Linux distributions like Ubuntu 24.04+.
+- Added Ubuntu 24.04+ 64-bit time_t package dependencies to Debian build script.
+
 ## v0.5.2 — 2026-08-21
 
 ### Added

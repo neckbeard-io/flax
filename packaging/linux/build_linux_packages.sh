@@ -37,7 +37,7 @@ Section: sound
 Priority: optional
 Architecture: amd64
 Maintainer: brutog <brutog@users.noreply.github.com>
-Depends: libgtk-3-0, libpulse0, libasound2
+Depends: libgtk-3-0 | libgtk-3-0t64, libpulse0, libasound2 | libasound2t64, libpipewire-0.3-0 | libpipewire-0.3-0t64, libmpv2 | libmpv1
 Description: High-fidelity music player for Subsonic and Navidrome
  Flax is a high-fidelity client for self-hosted music servers (Navidrome / Subsonic)
  featuring AutoEQ headphone correction and an 18-band parametric-style equalizer.

@@ -87,7 +87,7 @@ class MusicBrainzService {
       if (mbid == null) return null;
 
       // Fetch full info with tags
-      return getArtistInfo(mbid);
+      return await getArtistInfo(mbid);
     } catch (_) {
       return null;
     }
