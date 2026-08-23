@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild + relaunch flax (macOS) so on-screen state always matches the code.
+# Rebuild + relaunch flax (macOS / Linux) so on-screen state always matches the code.
 #
 #   tool/run_flax.sh            # kill → build (debug) → launch
 #   tool/run_flax.sh --release  # build a release bundle instead
@@ -10,6 +10,9 @@
 # only way to guarantee the window you are looking at reflects the current tree.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+# Ensure flutter and toolchain binaries are in PATH if available
+export PATH="/home/mike/development/flutter/bin:/home/mike/.local/bin:$PATH"
 
 MODE="debug"
 BUILD=1
@@ -35,12 +38,21 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-APP="build/macos/Build/Products/$([ "$MODE" = release ] && echo Release || echo Debug)/flax.app"
+OS_TYPE="$(uname -s)"
+if [ "$OS_TYPE" = "Darwin" ]; then
+  PLATFORM="macos"
+  APP="build/macos/Build/Products/$([ "$MODE" = release ] && echo Release || echo Debug)/flax.app"
+  KILL_PATTERN="flax.app/Contents/MacOS/flax"
+else
+  PLATFORM="linux"
+  APP="build/linux/x64/$MODE/bundle/flax"
+  KILL_PATTERN="build/linux/x64/.*/bundle/flax"
+fi
 
 echo "==> Killing any running flax…"
-pkill -f "flax.app/Contents/MacOS/flax" 2>/dev/null || true
+pkill -f "$KILL_PATTERN" 2>/dev/null || true
 # Wait for the process to actually exit so the new launch is the only instance.
-for _ in $(seq 1 20); do pgrep -f "flax.app/Contents/MacOS/flax" >/dev/null || break; sleep 0.2; done
+for _ in $(seq 1 20); do pgrep -f "$KILL_PATTERN" >/dev/null || break; sleep 0.2; done
 
 if [ "$BUILD" = 1 ]; then
   # Stamp the version the same way tool/release.sh does. Without this a local
@@ -58,16 +70,25 @@ if [ "$BUILD" = 1 ]; then
   DEFINES=()
   [ -n "$ROUTE" ] && DEFINES+=(--dart-define=FLAX_ROUTE="$ROUTE")
   [ "$PROBE" = "1" ] && DEFINES+=(--dart-define=FLAX_GAPLESS_PROBE=true)
-  flutter build macos --"$MODE" \
+  flutter build "$PLATFORM" --"$MODE" \
     --build-name="$VERSION" --build-number="$BUILD_NUMBER" \
     "${DEFINES[@]+"${DEFINES[@]}"}"
 fi
 
-if [ ! -d "$APP" ]; then
+if [ "$PLATFORM" = "macos" ] && [ ! -d "$APP" ]; then
+  echo "error: $APP not found (build first without --no-build)" >&2
+  exit 1
+elif [ "$PLATFORM" = "linux" ] && [ ! -f "$APP" ]; then
   echo "error: $APP not found (build first without --no-build)" >&2
   exit 1
 fi
 
 echo "==> Launching $APP"
-open "$APP"
+if [ "$PLATFORM" = "macos" ]; then
+  open "$APP"
+else
+  export DISPLAY="${DISPLAY:-:0}"
+  export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+  nohup "$APP" >/tmp/flax.log 2>&1 &
+fi
 echo "==> flax launched. Give it a second to connect to the server."
