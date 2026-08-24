@@ -90,6 +90,7 @@ else
   export DISPLAY="${DISPLAY:-:0}"
   export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
   APP_ABS="$(cd "$(dirname "$APP")" && pwd)/$(basename "$APP")"
-  setsid "$APP_ABS" >/tmp/flax.log 2>&1 &
+  setsid "$APP_ABS" </dev/null >/tmp/flax.log 2>&1 &
+  sleep 1
 fi
 echo "==> flax launched. Give it a second to connect to the server."
