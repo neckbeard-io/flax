@@ -868,7 +868,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   Future<void> _applyAudioOutputSettings(AudioOutputSettings settings) async {
     try {
       if (Platform.isLinux) {
-        await _player.setRawProperty('ao', settings.engine.aoValue);
+        if (settings.engine.aoValue.isNotEmpty) {
+          await _player.setRawProperty('ao', settings.engine.aoValue);
+        }
         await _player.setAudioMediaRole(true);
       }
 
@@ -889,25 +891,27 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       // Exclusive mode
       await _player.setAudioExclusive(settings.exclusive);
 
-      // Sample rate
+      // Sample rate: mpv accepts integer Hz or '0' for auto/source rate
       final rateVal = switch (settings.sampleRate) {
         '44.1 kHz' => '44100',
         '48 kHz' => '48000',
         '88.2 kHz' => '88200',
         '96 kHz' => '96000',
         '192 kHz' => '192000',
-        _ => 'auto',
+        _ => '0',
       };
       await _player.setRawProperty('audio-samplerate', rateVal);
 
-      // Bit depth / format
+      // Bit depth / format: mpv accepts format strings ('s16', 's24', 'float')
       final formatVal = switch (settings.bitDepth) {
         '16-bit' => 's16',
         '24-bit' => 's24',
         '32-bit float' => 'float',
-        _ => 'auto',
+        _ => '',
       };
-      await _player.setRawProperty('audio-format', formatVal);
+      if (formatVal.isNotEmpty) {
+        await _player.setRawProperty('audio-format', formatVal);
+      }
     } catch (e) {
       developer.log(
         'Audio output settings apply failed: $e',
