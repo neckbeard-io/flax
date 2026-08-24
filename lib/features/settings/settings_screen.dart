@@ -16,6 +16,7 @@ import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/features/updater/update_dialog.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/services/hotkeys/hotkey_service.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
@@ -118,6 +119,16 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           const _LyricsSettingsSection(),
+          ListTile(
+            title: const Text('Keyboard Shortcuts'),
+            subtitle: Text(
+              ref.watch(hotKeyServiceProvider).enabled
+                  ? 'Global hotkeys active · Background playback control'
+                  : 'Global hotkeys disabled · In-app shortcuts only',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go('/settings/hotkeys'),
+          ),
           const Divider(),
 
           // ── Audio & Playback ──

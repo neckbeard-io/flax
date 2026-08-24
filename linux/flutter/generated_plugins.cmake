@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   dynamic_color
+  hotkey_manager_linux
   mpv_audio_kit
   screen_retriever_linux
   sqlite3_flutter_libs
