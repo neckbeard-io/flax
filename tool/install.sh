@@ -312,9 +312,8 @@ install_linux() {
 
   local bin_dir="${HOME}/.local/bin"
   local desktop_dir="${HOME}/.local/share/applications"
-  local icons_dir="${HOME}/.local/share/icons/hicolor/512x512/apps"
-
-  mkdir -p "$target_dir" "$bin_dir" "$desktop_dir" "$icons_dir"
+  local pixmaps_dir="${HOME}/.local/share/pixmaps"
+  mkdir -p "$target_dir" "$bin_dir" "$desktop_dir" "$icons_dir" "$pixmaps_dir"
 
   info "Extracting to ${BOLD}${target_dir}${NC}..."
   # Clean old binary contents if upgrading
@@ -330,29 +329,31 @@ install_linux() {
 
   # Extract and place application icon if present in bundle
   local icon_source=""
-  if [ -f "$target_dir/data/flutter_assets/assets/flax_logo.svg" ]; then
-    icon_source="$target_dir/data/flutter_assets/assets/flax_logo.svg"
-  elif [ -f "$target_dir/flax.png" ]; then
+  if [ -f "$target_dir/flax.png" ]; then
     icon_source="$target_dir/flax.png"
+  elif [ -f "$target_dir/data/flutter_assets/assets/flax.png" ]; then
+    icon_source="$target_dir/data/flutter_assets/assets/flax.png"
+  elif [ -f "$target_dir/data/flutter_assets/assets/flax_logo.svg" ]; then
+    icon_source="$target_dir/data/flutter_assets/assets/flax_logo.svg"
   fi
 
-  local icon_target="$icons_dir/flax.png"
   if [ -n "$icon_source" ]; then
-    cp -f "$icon_source" "$icon_target" 2>/dev/null || true
+    cp -f "$icon_source" "$icons_dir/flax.png" 2>/dev/null || true
+    cp -f "$icon_source" "$pixmaps_dir/flax.png" 2>/dev/null || true
   fi
 
   # Create desktop launcher
   info "Creating desktop entry..."
   cat > "$desktop_dir/flax.desktop" <<EOF
 [Desktop Entry]
-Name=flax
+Name=Flax
 GenericName=Music Player
-Comment=High-fidelity Subsonic music player
+Comment=High-fidelity Subsonic and Navidrome music player
 Exec=${bin_dir}/flax %U
 Icon=flax
 Terminal=false
 Type=Application
-Categories=AudioVideo;Audio;Player;
+Categories=AudioVideo;Audio;Player;Music;
 Keywords=music;player;subsonic;navidrome;audio;flac;mpv;
 StartupWMClass=flax
 EOF

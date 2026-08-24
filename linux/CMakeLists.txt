@@ -7,7 +7,7 @@ project(runner LANGUAGES CXX)
 set(BINARY_NAME "flax")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "com.flaxplayer.flax")
+set(APPLICATION_ID "io.neckbeard.flax")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -124,5 +124,16 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 # Install the AOT library on non-Debug builds only.
 if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")
   install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../packaging/linux/flax.png")
+  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../packaging/linux/flax.png"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}"
+    COMPONENT Runtime)
+endif()
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../packaging/linux/flax.desktop")
+  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../packaging/linux/flax.desktop"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}"
     COMPONENT Runtime)
 endif()

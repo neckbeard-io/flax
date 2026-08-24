@@ -45,11 +45,31 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "flax");
+    gtk_header_bar_set_title(header_bar, "Flax");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "flax");
+    gtk_window_set_title(window, "Flax");
+  }
+
+  // Set window and application icon
+  gtk_window_set_default_icon_name("flax");
+  gtk_window_set_icon_name(window, "flax");
+
+  // Load bundled icon file as fallback when not in system icon theme
+  g_autofree gchar* exe_path = g_file_read_link("/proc/self/exe", nullptr);
+  if (exe_path != nullptr) {
+    g_autofree gchar* dir = g_path_get_dirname(exe_path);
+    g_autofree gchar* icon_path =
+        g_build_filename(dir, "data", "flutter_assets", "assets", "flax.png", nullptr);
+    if (!g_file_test(icon_path, G_FILE_TEST_EXISTS)) {
+      g_free(icon_path);
+      icon_path = g_build_filename(dir, "flax.png", nullptr);
+    }
+    if (g_file_test(icon_path, G_FILE_TEST_EXISTS)) {
+      gtk_window_set_icon_from_file(window, icon_path, nullptr);
+      gtk_window_set_default_icon_from_file(icon_path, nullptr);
+    }
   }
 
   gtk_window_set_default_size(window, 1280, 720);
@@ -136,11 +156,9 @@ static void my_application_class_init(MyApplicationClass* klass) {
 static void my_application_init(MyApplication* self) {}
 
 MyApplication* my_application_new() {
-  // Set the program name to the application ID, which helps various systems
-  // like GTK and desktop environments map this running application to its
-  // corresponding .desktop file. This ensures better integration by allowing
-  // the application to be recognized beyond its binary name.
-  g_set_prgname(APPLICATION_ID);
+  // Set the program name to "flax" so desktop environments map the running
+  // window to flax.desktop and display the clean application name and icon.
+  g_set_prgname("flax");
 
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID, "flags",

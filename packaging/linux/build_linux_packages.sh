@@ -14,12 +14,16 @@ fi
 
 echo "==> Packaging Linux artifacts for flax $VERSION"
 
-# 1. Package portable tarball
+# 1. Ensure icons and desktop files are inside portable bundle
+cp "packaging/linux/flax.png" "$BUNDLE_DIR/"
+cp "packaging/linux/flax.desktop" "$BUNDLE_DIR/"
+
+# 2. Package portable tarball
 TARBALL="$DIST_DIR/flax-$VERSION-linux-x64.tar.gz"
 echo "==> Creating tarball: $TARBALL"
 tar -czf "$TARBALL" -C "$BUNDLE_DIR" .
 
-# 2. Package .deb
+# 3. Package .deb
 DEB_STAGING="$(mktemp -d)"
 trap 'rm -rf "$DEB_STAGING"' EXIT
 
@@ -29,6 +33,7 @@ mkdir -p "$DEB_STAGING/usr/bin"
 mkdir -p "$DEB_STAGING/usr/lib/flax"
 mkdir -p "$DEB_STAGING/usr/share/applications"
 mkdir -p "$DEB_STAGING/usr/share/icons/hicolor/512x512/apps"
+mkdir -p "$DEB_STAGING/usr/share/pixmaps"
 
 cat <<CONTROL_EOF > "$DEB_STAGING/DEBIAN/control"
 Package: flax
@@ -45,8 +50,9 @@ CONTROL_EOF
 
 cp -r "$BUNDLE_DIR"/* "$DEB_STAGING/usr/lib/flax/"
 ln -s "/usr/lib/flax/flax" "$DEB_STAGING/usr/bin/flax"
-cp "packaging/linux/com.flaxplayer.flax.desktop" "$DEB_STAGING/usr/share/applications/"
-cp "packaging/linux/com.flaxplayer.flax.png" "$DEB_STAGING/usr/share/icons/hicolor/512x512/apps/"
+cp "packaging/linux/flax.desktop" "$DEB_STAGING/usr/share/applications/"
+cp "packaging/linux/flax.png" "$DEB_STAGING/usr/share/icons/hicolor/512x512/apps/"
+cp "packaging/linux/flax.png" "$DEB_STAGING/usr/share/pixmaps/"
 
 DEB_FILE="$DIST_DIR/flax-$VERSION-linux-amd64.deb"
 echo "==> Building .deb: $DEB_FILE"

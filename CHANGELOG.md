@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+- Linux application display name and window icon now correctly show Flax rather than a generic cogwheel.
+
 ## v0.5.2 — 2026-08-21
 
 ### Added
