@@ -7,11 +7,15 @@ import 'package:window_manager/window_manager.dart';
 import 'package:flax/app/app.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/services/platform/orientation_service.dart';
 import 'package:flax/services/platform/window_state.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Lock mobile orientation to portrait.
+  await OrientationService.lockToPortrait();
 
   // Needs the binding, and must happen before any art is decoded.
   ArtCache.configureDecodedImageCache();

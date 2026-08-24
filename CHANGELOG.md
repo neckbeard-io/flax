@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Locked mobile screen orientation to portrait mode on mobile platforms.
+
 ### Fixed
 - Linux application display name and window icon now correctly show Flax rather than a generic cogwheel.
 
