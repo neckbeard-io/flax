@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -155,9 +157,7 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             title: const Text('Audio Output'),
             subtitle: Text(
-              ref.watch(exclusiveModeProvider)
-                  ? 'Exclusive Mode · Bit-perfect'
-                  : 'System Default · Direct DAC',
+              _audioOutputSubtitle(ref.watch(audioOutputSettingsProvider)),
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.go('/settings/audio'),
@@ -469,4 +469,17 @@ class _SectionTitle extends StatelessWidget {
       ),
     );
   }
+}
+
+String _audioOutputSubtitle(AudioOutputSettings settings) {
+  if (settings.exclusive) {
+    return 'Exclusive Mode · ${settings.deviceDescription}';
+  }
+  if (Platform.isLinux && settings.engine != AudioOutputEngine.auto) {
+    return '${settings.engine.label} · ${settings.deviceDescription}';
+  }
+  final dacMode = settings.sampleRate == 'Auto'
+      ? 'Direct DAC'
+      : settings.sampleRate;
+  return '${settings.deviceDescription} · $dacMode';
 }

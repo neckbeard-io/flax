@@ -135,25 +135,65 @@ class MiniPlayer extends ConsumerWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                Text.rich(
-                                  TextSpan(
-                                    children: [
-                                      if (song.artistName != null)
-                                        TextSpan(
-                                          text: song.artistName!,
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: theme
-                                                    .colorScheme
-                                                    .onSurfaceVariant,
-                                              ),
-                                        ),
-                                      if (_formatLabel(
-                                            song,
-                                            playerState.activeTranscode,
-                                          ) !=
-                                          null) ...[
+                                if (playerState.playbackError != null)
+                                  Text(
+                                    playerState.playbackError!,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.error,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                else
+                                  Text.rich(
+                                    TextSpan(
+                                      children: [
                                         if (song.artistName != null)
+                                          TextSpan(
+                                            text: song.artistName!,
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                        if (_formatLabel(
+                                              song,
+                                              playerState.activeTranscode,
+                                            ) !=
+                                            null) ...[
+                                          if (song.artistName != null)
+                                            TextSpan(
+                                              text: ' · ',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: theme
+                                                        .colorScheme
+                                                        .onSurfaceVariant
+                                                        .withValues(alpha: 0.5),
+                                                  ),
+                                            ),
+                                          TextSpan(
+                                            text: _formatLabel(
+                                              song,
+                                              playerState.activeTranscode,
+                                            )!,
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: _isHiRes(song)
+                                                      ? Colors.amber[700]
+                                                      : theme
+                                                            .colorScheme
+                                                            .onSurfaceVariant,
+                                                  fontWeight: _isHiRes(song)
+                                                      ? FontWeight.w600
+                                                      : null,
+                                                ),
+                                          ),
+                                        ],
+                                        if (isCached) ...[
                                           TextSpan(
                                             text: ' · ',
                                             style: theme.textTheme.bodySmall
@@ -164,50 +204,21 @@ class MiniPlayer extends ConsumerWidget {
                                                       .withValues(alpha: 0.5),
                                                 ),
                                           ),
-                                        TextSpan(
-                                          text: _formatLabel(
-                                            song,
-                                            playerState.activeTranscode,
-                                          )!,
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: _isHiRes(song)
-                                                    ? Colors.amber[700]
-                                                    : theme
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                                fontWeight: _isHiRes(song)
-                                                    ? FontWeight.w600
-                                                    : null,
-                                              ),
-                                        ),
-                                      ],
-                                      if (isCached) ...[
-                                        TextSpan(
-                                          text: ' · ',
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: theme
-                                                    .colorScheme
-                                                    .onSurfaceVariant
-                                                    .withValues(alpha: 0.5),
-                                              ),
-                                        ),
-                                        WidgetSpan(
-                                          alignment:
-                                              PlaceholderAlignment.middle,
-                                          child: Icon(
-                                            Icons.offline_pin,
-                                            size: 13,
-                                            color: theme.colorScheme.primary,
+                                          WidgetSpan(
+                                            alignment:
+                                                PlaceholderAlignment.middle,
+                                            child: Icon(
+                                              Icons.offline_pin,
+                                              size: 13,
+                                              color: theme.colorScheme.primary,
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ],
-                                    ],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
                               ],
                             ),
                           ),

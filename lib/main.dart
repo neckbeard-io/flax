@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flax/app/app.dart';
@@ -13,6 +14,7 @@ import 'package:flax/shared/widgets/art_cache.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MpvAudioKit.ensureInitialized();
 
   // Lock mobile orientation to portrait.
   await OrientationService.lockToPortrait();
