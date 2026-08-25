@@ -428,6 +428,37 @@ check_linux_dependencies() {
     fi
     printf "\n"
   fi
+
+  local has_keybinder=0
+  if command -v ldconfig >/dev/null 2>&1; then
+    if ldconfig -p 2>/dev/null | grep -qE 'libkeybinder-3\.0'; then
+      has_keybinder=1
+    fi
+  fi
+  if [ "$has_keybinder" = 0 ]; then
+    for path in /usr/lib/libkeybinder-3.0* /usr/lib64/libkeybinder-3.0* /usr/lib/x86_64-linux-gnu/libkeybinder-3.0* /usr/local/lib/libkeybinder-3.0*; do
+      if [ -e "$path" ]; then
+        has_keybinder=1
+        break
+      fi
+    done
+  fi
+  if [ "$has_keybinder" = 0 ]; then
+    warn "libkeybinder-3.0 was not detected on your system. Global keyboard hotkeys require keybinder-3.0."
+    printf "  Install it using your distribution's package manager:\n"
+    if [ -f /etc/debian_version ]; then
+      printf "    ${BOLD}sudo apt install libkeybinder-3.0-0${NC}\n"
+    elif [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ]; then
+      printf "    ${BOLD}sudo dnf install keybinder3${NC}\n"
+    elif [ -f /etc/arch-release ]; then
+      printf "    ${BOLD}sudo pacman -S keybinder3${NC}\n"
+    elif [ -f /etc/zypp/zypp.conf ]; then
+      printf "    ${BOLD}sudo zypper install libkeybinder-3_0-0${NC}\n"
+    else
+      printf "    Install the ${BOLD}keybinder-3.0${NC} package for your distribution.\n"
+    fi
+    printf "\n"
+  fi
 }
 
 # ── Execute ───────────────────────────────────────────────────────────
