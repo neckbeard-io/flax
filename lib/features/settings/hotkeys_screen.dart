@@ -8,7 +8,6 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:flax/services/hotkeys/hotkey_models.dart';
 import 'package:flax/services/hotkeys/hotkey_service.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
-import 'package:flax/shared/widgets/window_buttons.dart';
 
 class HotkeysScreen extends ConsumerWidget {
   const HotkeysScreen({super.key});
@@ -20,43 +19,12 @@ class HotkeysScreen extends ConsumerWidget {
     final hotKeyNotifier = ref.read(hotKeyServiceProvider.notifier);
     final isDesktop =
         !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
+    final hasAssignedHotkeys = hotKeyState.bindings.values.any(
+      (k) => k != null,
+    );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Keyboard Shortcuts'),
-        actions: [
-          if (isDesktop)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: 'Clear All Shortcuts',
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Clear all shortcuts?'),
-                    content: const Text(
-                      'Remove all custom global hotkey combinations?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Clear All'),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  await hotKeyNotifier.resetToDefaults();
-                }
-              },
-            ),
-          SizedBox(width: windowButtonsReservedWidth),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Keyboard Shortcuts')),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
@@ -64,13 +32,29 @@ class HotkeysScreen extends ConsumerWidget {
           if (isDesktop) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                'GLOBAL HOTKEYS',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.1,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'GLOBAL HOTKEYS',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                  if (hasAssignedHotkeys)
+                    TextButton.icon(
+                      onPressed: () =>
+                          _confirmClearAll(context, hotKeyNotifier),
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 18),
+                      label: const Text('Clear All'),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                    ),
+                ],
               ),
             ),
             SwitchListTile(
@@ -120,13 +104,28 @@ class HotkeysScreen extends ConsumerWidget {
                         )
                       : theme.textTheme.bodySmall,
                 ),
-                trailing: _HotKeyPill(
-                  hotKey: hotKey,
-                  enabled: hotKeyState.enabled,
-                  hasError: error != null,
-                  onTap: hotKeyState.enabled
-                      ? () => _showRecordDialog(context, ref, action, hotKey)
-                      : null,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _HotKeyPill(
+                      hotKey: hotKey,
+                      enabled: hotKeyState.enabled,
+                      hasError: error != null,
+                      onTap: hotKeyState.enabled
+                          ? () =>
+                                _showRecordDialog(context, ref, action, hotKey)
+                          : null,
+                    ),
+                    if (hotKey != null && hotKeyState.enabled) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 16),
+                        tooltip: 'Clear shortcut',
+                        onPressed: () =>
+                            hotKeyNotifier.updateBinding(action, null),
+                      ),
+                    ],
+                  ],
                 ),
               );
             }),
@@ -163,6 +162,32 @@ class HotkeysScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmClearAll(
+    BuildContext context,
+    HotKeyNotifier hotKeyNotifier,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear all shortcuts?'),
+        content: const Text('Remove all custom global hotkey combinations?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await hotKeyNotifier.resetToDefaults();
+    }
   }
 
   void _showRecordDialog(
