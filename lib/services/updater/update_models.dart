@@ -142,10 +142,12 @@ class UpdateState {
   bool get isUpdateAvailable =>
       stage == UpdateStage.available ||
       stage == UpdateStage.downloading ||
-      stage == UpdateStage.readyToInstall;
+      stage == UpdateStage.readyToInstall ||
+      stage == UpdateStage.installing;
 
   bool get isDownloading => stage == UpdateStage.downloading;
   bool get isReadyToInstall => stage == UpdateStage.readyToInstall;
+  bool get isInstalling => stage == UpdateStage.installing;
   bool get isChecking => stage == UpdateStage.checking;
 
   UpdateState copyWith({

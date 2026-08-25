@@ -36,7 +36,7 @@ class _StubUpdateNotifier extends StateNotifier<UpdateState>
   Future<void> checkForUpdates({bool silent = false}) async {}
 
   @override
-  Future<void> downloadUpdate() async {}
+  Future<void> downloadUpdate({bool autoInstall = false}) async {}
 
   @override
   void cancelDownload() {}

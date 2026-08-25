@@ -47,7 +47,9 @@ class UpdateButton extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  state.isReadyToInstall
+                  state.isInstalling
+                      ? Icons.sync
+                      : state.isReadyToInstall
                       ? Icons.check_circle
                       : state.isDownloading
                       ? Icons.downloading
@@ -57,7 +59,9 @@ class UpdateButton extends ConsumerWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  state.isReadyToInstall
+                  state.isInstalling
+                      ? 'Updating...'
+                      : state.isReadyToInstall
                       ? 'Ready to install'
                       : state.isDownloading
                       ? '${(state.downloadProgress * 100).toInt()}%'

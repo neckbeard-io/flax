@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:path/path.dart' as p;
 
 class LinuxInstaller {
   /// Detects whether host is Debian/Ubuntu based (.deb) or Fedora/RHEL/openSUSE (.rpm).
@@ -45,19 +46,43 @@ class LinuxInstaller {
         final home = Platform.environment['HOME'] ?? '';
         final destDir = Directory('$home/.local/share/flax');
         if (destDir.existsSync()) {
-          final res = await Process.run('tar', [
+          final stagingDir = await Directory.systemTemp.createTemp(
+            'flax-linux-update-',
+          );
+          final tarRes = await Process.run('tar', [
             '-xzf',
             packagePath,
             '-C',
-            destDir.path,
+            stagingDir.path,
             '--strip-components=1',
           ]);
-          if (res.exitCode == 0) {
-            final exePath = '${destDir.path}/flax';
-            if (File(exePath).existsSync()) {
-              await Process.start(exePath, [], mode: ProcessStartMode.detached);
-              exit(0);
-            }
+          if (tarRes.exitCode == 0) {
+            final scriptFile = File(p.join(stagingDir.path, 'update.sh'));
+            final currentPid = pid;
+            final targetDirPath = destDir.path;
+
+            await scriptFile.writeAsString('''#!/bin/bash
+PID=$currentPid
+STAGING_DIR="${stagingDir.path}"
+TARGET_DIR="$targetDirPath"
+
+while kill -0 "\$PID" 2>/dev/null; do
+  sleep 0.1
+done
+sleep 0.2
+
+rm -rf "\$TARGET_DIR"/*
+cp -r "\$STAGING_DIR"/* "\$TARGET_DIR"/
+rm -rf "\$STAGING_DIR"
+
+"\$TARGET_DIR/flax" &
+''');
+            await Process.run('chmod', ['+x', scriptFile.path]);
+            await Process.start('/bin/bash', [
+              scriptFile.path,
+            ], mode: ProcessStartMode.detached);
+            await Future.delayed(const Duration(milliseconds: 100));
+            exit(0);
           }
         }
       }

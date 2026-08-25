@@ -96,8 +96,8 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
     }
   }
 
-  /// Starts downloading the matched update package.
-  Future<void> downloadUpdate() async {
+  /// Starts downloading the matched update package and optionally proceeds to installation.
+  Future<void> downloadUpdate({bool autoInstall = false}) async {
     final asset = state.matchingAsset;
     if (asset == null) {
       state = state.copyWith(
@@ -134,6 +134,10 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
         localFilePath: localPath,
         downloadProgress: 1.0,
       );
+
+      if (autoInstall) {
+        await install();
+      }
     } catch (e) {
       if (_cancelToken?.isCancelled ?? false) {
         state = state.copyWith(stage: UpdateStage.available);

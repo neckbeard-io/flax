@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+- macOS in-app self-updater now seamlessly swaps the application bundle and restarts in-place without opening Finder DMG windows.
+
 ## v0.5.3 — 2026-08-24
 
 ### Added

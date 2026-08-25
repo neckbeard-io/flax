@@ -156,6 +156,23 @@ class UpdateDialog extends ConsumerWidget {
                   ),
                 ],
               ),
+            ] else if (state.isInstalling) ...[
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Applying update and restarting...',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ] else if (isBrew) ...[
               Container(
                 padding: const EdgeInsets.all(10),
@@ -196,17 +213,19 @@ class UpdateDialog extends ConsumerWidget {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () {
-            notifier.skipVersion(release.version);
-            Navigator.of(context).pop();
-          },
-          child: const Text('Skip Version'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Later'),
-        ),
+        if (!state.isInstalling) ...[
+          TextButton(
+            onPressed: () {
+              notifier.skipVersion(release.version);
+              Navigator.of(context).pop();
+            },
+            child: const Text('Skip Version'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Later'),
+          ),
+        ],
         if (isBrew)
           FilledButton.icon(
             onPressed: () {
@@ -225,20 +244,23 @@ class UpdateDialog extends ConsumerWidget {
           )
         else if (state.isReadyToInstall)
           FilledButton.icon(
-            onPressed: () {
-              notifier.install();
-              Navigator.of(context).pop();
-            },
+            onPressed: state.isInstalling
+                ? null
+                : () {
+                    notifier.install();
+                  },
             icon: const Icon(Icons.check_circle_outline, size: 18),
-            label: const Text('Install Now'),
+            label: const Text('Restart & Update'),
           )
         else if (!state.isDownloading)
           FilledButton.icon(
-            onPressed: () {
-              notifier.downloadUpdate();
-            },
+            onPressed: state.isInstalling
+                ? null
+                : () {
+                    notifier.downloadUpdate(autoInstall: true);
+                  },
             icon: const Icon(Icons.download, size: 18),
-            label: const Text('Download & Install'),
+            label: const Text('Update & Restart'),
           ),
       ],
     );

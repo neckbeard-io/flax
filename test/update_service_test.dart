@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flax/services/updater/platform_installers/macos_installer.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_service.dart';
 
@@ -115,6 +116,14 @@ void main() {
         testRelease.conciseChangelog,
         equals('### Added\n- Self-updater framework.'),
       );
+    });
+  });
+
+  group('MacOSInstaller', () {
+    test('findCurrentAppBundlePath returns valid app path on macOS', () {
+      final appPath = MacOSInstaller.findCurrentAppBundlePath();
+      expect(appPath, isNotEmpty);
+      expect(appPath.endsWith('.app'), isTrue);
     });
   });
 }
