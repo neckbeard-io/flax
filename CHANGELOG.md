@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.5.3 — 2026-08-24
+
 ### Added
 - Global desktop hotkeys for background playback control and keybinding configuration in Settings.
 - Locked mobile screen orientation to portrait mode on mobile platforms.
