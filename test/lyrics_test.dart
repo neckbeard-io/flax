@@ -149,5 +149,82 @@ void main() {
         expect(Lyrics.fromPlainText('   \n  '), isNull);
       },
     );
+
+    test('Enhanced LRC parses word-by-word timing tags and clean text', () {
+      final parsed = Lyrics.fromJson(
+        _sheet(
+          lines: [
+            {
+              'start': 51690,
+              'value':
+                  '<00:51.69>Again <00:52.03>I <00:52.36>see <00:52.88>you <00:53.15>standing <00:53.79>there <00:54.83>watching <00:55.43>me<00:56.44>',
+            },
+          ],
+        ),
+      );
+
+      expect(parsed.synced, isTrue);
+      expect(parsed.lines.length, 1);
+      final line = parsed.lines.first;
+      expect(line.text, 'Again I see you standing there watching me');
+      expect(line.start, const Duration(milliseconds: 51690));
+      expect(line.hasWordTimings, isTrue);
+      expect(line.words.length, 8);
+      expect(line.words[0].text, 'Again ');
+      expect(line.words[0].start, const Duration(milliseconds: 51690));
+      expect(line.words[1].text, 'I ');
+      expect(line.words[1].start, const Duration(milliseconds: 52030));
+      expect(line.words[7].text, 'me');
+      expect(line.words[7].start, const Duration(milliseconds: 55430));
+    });
+
+    test(
+      'Enhanced LRC from raw LRC string parses line and word timestamps',
+      () {
+        const lrc = '''
+[00:12.50]<00:12.50>I <00:12.80>see <00:13.10>trees <00:13.40>of <00:13.70>green, <00:14.20>red <00:14.50>roses <00:14.90>too.
+[00:16.00]I see them bloom for me and you
+''';
+        final lyrics = Lyrics.fromLrcText(lrc);
+        expect(lyrics, isNotNull);
+        expect(lyrics!.synced, isTrue);
+        expect(lyrics.lines.length, 2);
+
+        // Line 1 has word timings
+        expect(lyrics.lines[0].text, 'I see trees of green, red roses too.');
+        expect(lyrics.lines[0].start, const Duration(milliseconds: 12500));
+        expect(lyrics.lines[0].hasWordTimings, isTrue);
+        expect(lyrics.lines[0].words.length, 8);
+        expect(lyrics.lines[0].words[0].text, 'I ');
+        expect(
+          lyrics.lines[0].words[0].start,
+          const Duration(milliseconds: 12500),
+        );
+        expect(lyrics.lines[0].words[1].text, 'see ');
+        expect(
+          lyrics.lines[0].words[1].start,
+          const Duration(milliseconds: 12800),
+        );
+
+        // Line 2 has line timing only
+        expect(lyrics.lines[1].text, 'I see them bloom for me and you');
+        expect(lyrics.lines[1].start, const Duration(milliseconds: 16000));
+        expect(lyrics.lines[1].hasWordTimings, isFalse);
+      },
+    );
+
+    test('Stray XML and HTML tags are cleanly stripped from display text', () {
+      final parsed = Lyrics.fromJson(
+        _sheet(
+          lines: [
+            {
+              'start': 1000,
+              'value': '<b>Lead:</b> <00:01.00>Never <i>give</i> up',
+            },
+          ],
+        ),
+      );
+      expect(parsed.lines.first.text, 'Lead: Never give up');
+    });
   });
 }

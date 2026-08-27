@@ -145,7 +145,7 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
                 for (var i = 0; i < widget.lyrics.lines.length; i++)
                   _LyricLineText(
                     key: _lineKeys.putIfAbsent(i, GlobalKey.new),
-                    text: widget.lyrics.lines[i].text,
+                    line: widget.lyrics.lines[i],
                     active: i == current,
                     dimmed: current >= 0 && i != current,
                     onTap: widget.lyrics.lines[i].start == null
@@ -169,7 +169,7 @@ class _LyricsViewState extends ConsumerState<_LyricsView> {
 class _LyricLineText extends StatelessWidget {
   const _LyricLineText({
     super.key,
-    required this.text,
+    required this.line,
     required this.active,
     required this.dimmed,
     required this.theme,
@@ -177,7 +177,7 @@ class _LyricLineText extends StatelessWidget {
     this.onTap,
   });
 
-  final String text;
+  final LyricLine line;
   final bool active;
   final bool dimmed;
   final ThemeData theme;
@@ -198,20 +198,74 @@ class _LyricLineText extends StatelessWidget {
           : theme.colorScheme.onSurface.withValues(alpha: dimmed ? 0.45 : 0.8),
     );
 
-    final line = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: AnimatedDefaultTextStyle(
+    final Widget content;
+    if (active && line.hasWordTimings) {
+      content = _ActiveWordHighlightedLine(
+        line: line,
+        style: style ?? const TextStyle(),
+        settings: settings,
+        theme: theme,
+      );
+    } else {
+      content = AnimatedDefaultTextStyle(
         duration: const Duration(milliseconds: 200),
         style: style ?? const TextStyle(),
         textAlign: settings.alignment.textAlign,
-        child: Text(text.isEmpty ? ' ' : text),
-      ),
+        child: Text(line.text.isEmpty ? ' ' : line.text),
+      );
+    }
+
+    final padded = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: content,
     );
 
-    if (onTap == null) return line;
+    if (onTap == null) return padded;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      child: GestureDetector(onTap: onTap, child: line),
+      child: GestureDetector(onTap: onTap, child: padded),
+    );
+  }
+}
+
+class _ActiveWordHighlightedLine extends ConsumerWidget {
+  const _ActiveWordHighlightedLine({
+    required this.line,
+    required this.style,
+    required this.settings,
+    required this.theme,
+  });
+
+  final LyricLine line;
+  final TextStyle style;
+  final LyricsSettings settings;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position = ref.watch(playerProvider.select((s) => s.position));
+    final activeColor = theme.colorScheme.primary;
+    final unreachedColor = theme.colorScheme.primary.withValues(alpha: 0.45);
+
+    return Text.rich(
+      TextSpan(
+        style: style,
+        children: [
+          for (final word in line.words)
+            TextSpan(
+              text: word.text,
+              style: TextStyle(
+                color: (word.start != null && word.start! <= position)
+                    ? activeColor
+                    : unreachedColor,
+                fontWeight: (word.start != null && word.start! <= position)
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+              ),
+            ),
+        ],
+      ),
+      textAlign: settings.alignment.textAlign,
     );
   }
 }

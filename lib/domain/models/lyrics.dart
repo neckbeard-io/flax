@@ -1,19 +1,127 @@
+/// One word (or syllable span) within a time-synced lyric line.
+///
+/// In Enhanced LRC format, word timestamps are specified using angle brackets,
+/// e.g. `<00:12.50>word`. [start] is the moment this word is sung.
+class LyricWord {
+  final String text;
+  final Duration? start;
+
+  const LyricWord({required this.text, this.start});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LyricWord &&
+          runtimeType == other.runtimeType &&
+          text == other.text &&
+          start == other.start;
+
+  @override
+  int get hashCode => Object.hash(text, start);
+
+  @override
+  String toString() => 'LyricWord("$text", start: $start)';
+}
+
 /// One line of a song's lyrics.
 ///
 /// [start] is the moment the line is sung, already corrected for the offset
 /// the server reported. It is null for unsynced lyrics, which are just text.
+/// [words] contains word-level timings if the line had Enhanced LRC (<mm:ss.xx>) tags.
 class LyricLine {
   final Duration? start;
   final String text;
+  final List<LyricWord> words;
 
-  const LyricLine({required this.text, this.start});
+  const LyricLine({required this.text, this.start, this.words = const []});
+
+  bool get hasWordTimings =>
+      words.isNotEmpty && words.any((w) => w.start != null);
+
+  /// Helper factory to parse a line that may contain Enhanced LRC `<mm:ss.xx>` tags,
+  /// HTML/XML tags, or standard text.
+  factory LyricLine.fromRawText(
+    String rawText, {
+    Duration? lineStart,
+    Duration offset = Duration.zero,
+  }) {
+    final wordTagRegex = RegExp(r'<(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?>');
+    final matches = wordTagRegex.allMatches(rawText).toList();
+
+    if (matches.isEmpty) {
+      // Strip any stray HTML/XML markup if present
+      final cleanText = rawText.replaceAll(RegExp(r'<[^>]+>'), '').trimRight();
+      return LyricLine(text: cleanText, start: lineStart);
+    }
+
+    final words = <LyricWord>[];
+
+    // If there is text before the first tag
+    if (matches.first.start > 0) {
+      final prefix = rawText.substring(0, matches.first.start);
+      final cleanPrefix = prefix.replaceAll(RegExp(r'<[^>]+>'), '');
+      if (cleanPrefix.isNotEmpty) {
+        words.add(LyricWord(text: cleanPrefix, start: lineStart));
+      }
+    }
+
+    for (var i = 0; i < matches.length; i++) {
+      final match = matches[i];
+      final tagTime = _parseTimestamp(
+        match.group(1)!,
+        match.group(2)!,
+        match.group(3),
+        offset,
+      );
+
+      final wordStart = match.end;
+      final wordEnd = (i + 1 < matches.length)
+          ? matches[i + 1].start
+          : rawText.length;
+      final wordContent = rawText.substring(wordStart, wordEnd);
+      final cleanWord = wordContent.replaceAll(RegExp(r'<[^>]+>'), '');
+
+      if (cleanWord.isNotEmpty) {
+        words.add(LyricWord(text: cleanWord, start: tagTime));
+      }
+    }
+
+    final cleanFullText = rawText
+        .replaceAll(RegExp(r'<[^>]+>'), '')
+        .trimRight();
+    final effectiveStart =
+        lineStart ?? (words.isNotEmpty ? words.first.start : null);
+
+    return LyricLine(text: cleanFullText, start: effectiveStart, words: words);
+  }
+
+  static Duration? _parseTimestamp(
+    String minStr,
+    String secStr,
+    String? fracStr,
+    Duration offset,
+  ) {
+    final min = int.tryParse(minStr);
+    final sec = int.tryParse(secStr);
+    if (min == null || sec == null) return null;
+    var ms = 0;
+    if (fracStr != null && fracStr.isNotEmpty) {
+      if (fracStr.length == 2) {
+        ms = (int.tryParse(fracStr) ?? 0) * 10;
+      } else if (fracStr.length == 3) {
+        ms = int.tryParse(fracStr) ?? 0;
+      } else if (fracStr.length == 1) {
+        ms = (int.tryParse(fracStr) ?? 0) * 100;
+      }
+    }
+    return Duration(minutes: min, seconds: sec, milliseconds: ms) + offset;
+  }
 }
 
 /// A song's lyrics as served by the OpenSubsonic `songLyrics` extension.
 ///
 /// Navidrome already returns time-synced lyrics through `getLyricsBySongId`,
-/// so there is no LRC parsing to do here — [lines] arrive with per-line start
-/// times whenever [synced] is true.
+/// with support for standard line timestamps and Enhanced LRC word timings.
 class Lyrics {
   final bool synced;
   final String? lang;
@@ -82,13 +190,12 @@ class Lyrics {
     for (final raw in rawLines) {
       if (raw is! Map<String, dynamic>) continue;
       final start = raw['start'] as int?;
+      final rawValue = raw['value'] as String? ?? '';
+      final lineStart = synced && start != null
+          ? Duration(milliseconds: start) + offset
+          : null;
       lines.add(
-        LyricLine(
-          text: raw['value'] as String? ?? '',
-          start: synced && start != null
-              ? Duration(milliseconds: start) + offset
-              : null,
-        ),
+        LyricLine.fromRawText(rawValue, lineStart: lineStart, offset: offset),
       );
     }
 
@@ -107,13 +214,13 @@ class Lyrics {
     if (text == null) return null;
     final lines = text
         .split('\n')
-        .map((l) => LyricLine(text: l.trimRight()))
+        .map((l) => LyricLine.fromRawText(l.trimRight()))
         .toList();
     if (lines.every((l) => l.text.trim().isEmpty)) return null;
     return Lyrics(lines: lines);
   }
 
-  /// Parses standard LRC format lyrics (e.g. `[01:23.45] lyric text`).
+  /// Parses standard and Enhanced LRC format lyrics (e.g. `[01:23.45] lyric text`).
   static Lyrics? fromLrcText(String? text) {
     if (text == null || text.trim().isEmpty) return null;
     final lrcRegex = RegExp(r'^\[(\d{1,2}):(\d{2})(?:\.(\d{2,3}))?\](.*)$');
@@ -132,11 +239,11 @@ class Lyrics {
             ? int.parse(fracStr) * 10
             : int.parse(fracStr);
         final duration = Duration(minutes: min, seconds: sec, milliseconds: ms);
-        final lineText = match.group(4)?.trim() ?? '';
-        lines.add(LyricLine(text: lineText, start: duration));
+        final lineRemainder = match.group(4) ?? '';
+        lines.add(LyricLine.fromRawText(lineRemainder, lineStart: duration));
         isSynced = true;
       } else if (trimmed.isNotEmpty && !trimmed.startsWith('[')) {
-        lines.add(LyricLine(text: trimmed));
+        lines.add(LyricLine.fromRawText(trimmed));
       }
     }
 
