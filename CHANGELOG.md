@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+- Playing a song from search results now only queues that individual song rather than every matching result.
+
 ## v0.5.4 — 2026-08-28
 
 ### Added

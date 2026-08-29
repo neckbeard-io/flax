@@ -210,8 +210,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ],
                       if (result.songs.isNotEmpty) ...[
                         _SectionHeader(title: 'Songs'),
-                        ...result.songs.asMap().entries.map((entry) {
-                          final song = entry.value;
+                        ...result.songs.map((song) {
                           return ListTile(
                             title: Text(
                               song.title,
@@ -224,13 +223,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             onTap: () {
-                              ref
-                                  .read(playerProvider.notifier)
-                                  .playSong(
-                                    song,
-                                    queue: result.songs,
-                                    index: entry.key,
-                                  );
+                              ref.read(playerProvider.notifier).playSong(song);
                               if (ref
                                   .read(playbackSettingsProvider)
                                   .autoSwitchToNowPlaying) {
