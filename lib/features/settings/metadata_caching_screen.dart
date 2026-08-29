@@ -785,13 +785,27 @@ class _StorageLocationTileState extends ConsumerState<_StorageLocationTile> {
                                             ),
                                       ),
                                       Text(
-                                        '${formatBytes(vol.availableBytes)} free of ${formatBytes(vol.totalBytes)}',
+                                        '${formatBytes(vol.availableBytes)} free of ${formatBytes(vol.totalBytes)} · 1.5 GB safety buffer',
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
                                               color: theme
                                                   .colorScheme
                                                   .onSurfaceVariant,
                                             ),
+                                      ),
+                                      Text(
+                                        vol.path,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              fontFamily: 'monospace',
+                                              fontSize: 11,
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant
+                                                  .withValues(alpha: 0.8),
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),

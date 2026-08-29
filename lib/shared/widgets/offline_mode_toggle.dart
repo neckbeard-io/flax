@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/services/cache/storage_manager.dart';
 
 /// Desktop toggle button for Offline Mode.
 ///
@@ -151,15 +152,98 @@ class OfflineModeToggle extends ConsumerWidget {
   }
 }
 
-/// A prominent status banner shown at the top of library screens when Offline Mode is active.
+/// A warning banner displayed when a previously chosen storage volume is unavailable.
+class MissingStorageBanner extends ConsumerWidget {
+  const MissingStorageBanner({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final missingPath = ref.watch(missingStorageWarningProvider);
+    if (missingPath == null) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.error.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.sd_card_alert_outlined,
+            size: 20,
+            color: theme.colorScheme.error,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Storage location unavailable',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+                Text(
+                  'Selected external storage is missing or unmounted. Using internal storage as temporary fallback.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: () {
+              ref.read(missingStorageWarningProvider.notifier).state = null;
+            },
+            tooltip: 'Dismiss',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A prominent status banner shown at the top of library screens when Offline Mode is active
+/// or when external storage has fallen back.
 class OfflineStatusBanner extends ConsumerWidget {
   const OfflineStatusBanner({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final missingStorage = ref.watch(missingStorageWarningProvider);
     final isOffline = ref.watch(isOfflineModeProvider);
-    if (!isOffline) return const SizedBox.shrink();
 
+    if (missingStorage == null && !isOffline) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (missingStorage != null) const MissingStorageBanner(),
+        if (isOffline) const _OfflineStatusInnerBanner(),
+      ],
+    );
+  }
+}
+
+class _OfflineStatusInnerBanner extends ConsumerWidget {
+  const _OfflineStatusInnerBanner();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final reason = ref.watch(offlineReasonProvider);
     final theme = Theme.of(context);
 
