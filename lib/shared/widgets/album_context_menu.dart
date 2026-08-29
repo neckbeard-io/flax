@@ -95,8 +95,28 @@ class AlbumContextMenu extends ConsumerWidget {
         await _loadAndPlay(ref, replace: false);
       case 'cache_offline':
         ref.read(audioCacheServiceProvider).cacheAlbum(album.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Caching "${album.name}"...'),
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'View',
+                onPressed: () => context.push('/downloads'),
+              ),
+            ),
+          );
+        }
       case 'remove_cache':
         ref.read(audioCacheServiceProvider).removeCachedAlbum(album.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Removed "${album.name}" from offline cache'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
     }
   }
 

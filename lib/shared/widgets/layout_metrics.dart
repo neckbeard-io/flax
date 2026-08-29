@@ -3,9 +3,13 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+/// Override for testing mobile layouts on desktop hosts.
+bool? debugOverrideIsDesktopPlatform;
+
 /// Whether the current operating system is a desktop platform (macOS, Windows, or Linux).
 bool get isDesktopPlatform =>
-    Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    debugOverrideIsDesktopPlatform ??
+    (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
 /// Layout scale for artwork-heavy grids and carousels.
 ///

@@ -845,8 +845,24 @@ class _ArtistRatingRow extends ConsumerWidget {
             final cacheService = ref.read(audioCacheServiceProvider);
             if (isCached) {
               cacheService.removeCachedArtist(artist.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Removed "${artist.name}" from offline cache'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
             } else {
               cacheService.cacheArtist(artist.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Caching all albums for "${artist.name}"...'),
+                  duration: const Duration(seconds: 3),
+                  action: SnackBarAction(
+                    label: 'View',
+                    onPressed: () => context.push('/downloads'),
+                  ),
+                ),
+              );
             }
           },
         ),

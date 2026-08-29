@@ -688,6 +688,18 @@ class LibraryDao {
     );
   }
 
+  Stream<Set<String>> watchDownloadingSongIds(String serverId) {
+    final q = _db.selectOnly(_db.songs)
+      ..addColumns([_db.songs.id])
+      ..where(
+        _db.songs.serverId.equals(serverId) &
+            _db.songs.downloadState.equals(DownloadState.downloading.index),
+      );
+    return q.watch().map(
+      (rows) => rows.map((r) => r.read(_db.songs.id)!).toSet(),
+    );
+  }
+
   Stream<Set<String>> watchDownloadedAlbumIds(String serverId) {
     final query = _db.customSelect(
       'SELECT album_id FROM songs '
