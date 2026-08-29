@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flax/app/app.dart';
 import 'package:flax/app/router.dart';
+import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/platform/orientation_service.dart';
 import 'package:flax/services/platform/window_state.dart';
@@ -23,13 +25,16 @@ Future<void> main() async {
   ArtCache.configureDecodedImageCache();
   await AudioCacheService.initialize();
 
-  // Load last visited route for launch persistence across all platforms.
+  // Load last visited route and servers for launch persistence across all platforms.
   String? savedRoute;
+  List<Server> initialServers = [];
   try {
     final prefs = await SharedPreferences.getInstance();
     savedRoute = prefs.getString(lastRouteStorageKey);
+    initialServers = ServerListNotifier.loadServersFromPrefs(prefs);
   } catch (_) {
     savedRoute = null;
+    initialServers = [];
   }
 
   if (WindowStateService.isSupported) {
@@ -66,6 +71,10 @@ Future<void> main() async {
       overrides: [
         if (savedRoute != null)
           savedRouteProvider.overrideWith((ref) => savedRoute),
+        if (initialServers.isNotEmpty)
+          serverListProvider.overrideWith(
+            (ref) => ServerListNotifier(initialServers: initialServers),
+          ),
       ],
       child: const FlaxApp(),
     ),

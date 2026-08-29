@@ -27,20 +27,35 @@ final subsonicClientProvider = Provider<SubsonicClient?>((ref) {
 });
 
 class ServerListNotifier extends StateNotifier<List<Server>> {
-  static const _storageKey = 'flax_servers';
+  static const storageKey = 'flax_servers';
   static const _uuid = Uuid();
 
-  ServerListNotifier() : super([]) {
-    _load();
+  ServerListNotifier({List<Server>? initialServers})
+    : super(initialServers ?? []) {
+    if (initialServers == null) {
+      _load();
+    }
+  }
+
+  static List<Server> loadServersFromPrefs(SharedPreferences prefs) {
+    final raw = prefs.getString(storageKey);
+    if (raw != null) {
+      try {
+        final list = (jsonDecode(raw) as List<dynamic>)
+            .map((e) => Server.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return list;
+      } catch (_) {
+        return [];
+      }
+    }
+    return [];
   }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
-    if (raw != null) {
-      final list = (jsonDecode(raw) as List<dynamic>)
-          .map((e) => Server.fromJson(e as Map<String, dynamic>))
-          .toList();
+    final list = loadServersFromPrefs(prefs);
+    if (list.isNotEmpty) {
       state = list;
     }
   }
@@ -48,7 +63,7 @@ class ServerListNotifier extends StateNotifier<List<Server>> {
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      _storageKey,
+      storageKey,
       jsonEncode(state.map((s) => s.toJson()).toList()),
     );
   }
