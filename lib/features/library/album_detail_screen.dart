@@ -206,8 +206,24 @@ class _AlbumActions extends ConsumerWidget {
             final cacheService = ref.read(audioCacheServiceProvider);
             if (isCached) {
               cacheService.removeCachedAlbum(album.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Removed "${album.name}" from offline cache'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
             } else {
               cacheService.cacheAlbum(album.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Caching "${album.name}"...'),
+                  duration: const Duration(seconds: 3),
+                  action: SnackBarAction(
+                    label: 'View',
+                    onPressed: () => context.push('/downloads'),
+                  ),
+                ),
+              );
             }
           },
         ),
@@ -550,7 +566,10 @@ class _TrackRow extends ConsumerWidget {
     final isPlaying = playingId == song.id;
     final downloadedSongIds =
         ref.watch(downloadedSongIdsProvider).valueOrNull ?? const {};
+    final downloadingSongIds =
+        ref.watch(downloadingSongIdsProvider).valueOrNull ?? const {};
     final isCached = downloadedSongIds.contains(song.id);
+    final isDownloading = downloadingSongIds.contains(song.id);
 
     if (!desktop) {
       return SongContextMenu(
@@ -591,7 +610,14 @@ class _TrackRow extends ConsumerWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (isCached) ...[
+              if (isDownloading) ...[
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 1.5),
+                ),
+                const SizedBox(width: 8),
+              ] else if (isCached) ...[
                 Icon(
                   Icons.offline_pin,
                   size: 14,
@@ -663,7 +689,14 @@ class _TrackRow extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        if (isCached) ...[
+                        if (isDownloading) ...[
+                          const SizedBox(width: 6),
+                          const SizedBox(
+                            width: 11,
+                            height: 11,
+                            child: CircularProgressIndicator(strokeWidth: 1.5),
+                          ),
+                        ] else if (isCached) ...[
                           const SizedBox(width: 6),
                           Icon(
                             Icons.offline_pin,

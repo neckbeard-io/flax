@@ -463,6 +463,10 @@ class LibraryRepositoryImpl implements LibraryRepository {
       _dao.watchDownloadedSongIds(_serverId);
 
   @override
+  Stream<Set<String>> watchDownloadingSongIds() =>
+      _dao.watchDownloadingSongIds(_serverId);
+
+  @override
   Stream<Set<String>> watchDownloadedAlbumIds() =>
       _dao.watchDownloadedAlbumIds(_serverId);
 

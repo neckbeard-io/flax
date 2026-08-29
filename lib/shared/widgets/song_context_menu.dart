@@ -115,8 +115,28 @@ class SongContextMenu extends ConsumerWidget {
         }
       case 'cache_offline':
         ref.read(audioCacheServiceProvider).cacheSong(song, isPinned: true);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Downloading "${song.title}"...'),
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'View',
+                onPressed: () => context.push('/downloads'),
+              ),
+            ),
+          );
+        }
       case 'remove_cache':
         ref.read(audioCacheServiceProvider).removeCachedSong(song.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Removed "${song.title}" from offline cache'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
     }
   }
 }

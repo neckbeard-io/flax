@@ -11,6 +11,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Mobile download indicator pill in top headers with 1-tap navigation to the Downloads screen.
+- Transient feedback snackbars with instant "View" deep-link when caching albums, artists, or songs.
+- Live spinning progress indicators on downloading song rows in album tracklists.
 - Mobile storage device selection for routing audio and offline cache to external SD cards.
 
 ### Fixed

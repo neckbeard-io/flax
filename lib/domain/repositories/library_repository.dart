@@ -79,6 +79,7 @@ abstract class LibraryRepository {
   // ── Downloads & Offline Cache ───────────────────────────────────────────
 
   Stream<Set<String>> watchDownloadedSongIds();
+  Stream<Set<String>> watchDownloadingSongIds();
   Stream<Set<String>> watchDownloadedAlbumIds();
   Stream<Set<String>> watchDownloadedArtistIds();
   Stream<List<Song>> watchDownloadedSongs();

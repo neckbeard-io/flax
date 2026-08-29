@@ -8,8 +8,9 @@ import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/library/album_filter.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
-import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
+import 'package:flax/shared/widgets/mobile_downloads_pill.dart';
 import 'package:flax/shared/widgets/offline_mode_toggle.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 
@@ -93,7 +94,11 @@ class AlbumsScreen extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (!isDesktopPlatform) const OfflineModeToggle(),
+                  if (!isDesktopPlatform) ...[
+                    const MobileActiveDownloadsPill(),
+                    const SizedBox(width: 8),
+                    const OfflineModeToggle(),
+                  ],
                 ],
               ),
             ),
