@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+- Android Gradle configuration and dynamic color compatibility with modern Kotlin build tooling.
+
 ## v0.5.5 — 2026-08-28
 
 ### Added

@@ -14,9 +14,13 @@ class FlaxApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     final themeModeSetting = ref.watch(themeModeProvider);
     final amoled = ref.watch(amoledProvider);
+    final customDynamic = ref.watch(dynamicColorSchemesProvider);
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        final lightScheme = customDynamic?.light ?? lightDynamic;
+        final darkScheme = customDynamic?.dark ?? darkDynamic;
+
         return MaterialApp.router(
           title: 'Flax',
           // Flutter pins its DEBUG ribbon to the top-right corner, which is
@@ -26,8 +30,8 @@ class FlaxApp extends ConsumerWidget {
           // About names the build mode; both mark a debug build without
           // occupying the corner.
           debugShowCheckedModeBanner: false,
-          theme: FlaxTheme.light(dynamicScheme: lightDynamic),
-          darkTheme: FlaxTheme.dark(dynamicScheme: darkDynamic, amoled: amoled),
+          theme: FlaxTheme.light(dynamicScheme: lightScheme),
+          darkTheme: FlaxTheme.dark(dynamicScheme: darkScheme, amoled: amoled),
           themeMode: resolveThemeMode(themeModeSetting),
           routerConfig: router,
           // Wraps every route, so screens outside the shell — server setup,
