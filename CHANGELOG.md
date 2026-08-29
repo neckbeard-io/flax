@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.5.4 — 2026-08-28
+
 ### Added
 - Real-time word-by-word karaoke highlighting for Enhanced LRC lyrics.
 
