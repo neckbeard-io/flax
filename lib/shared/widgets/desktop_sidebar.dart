@@ -273,6 +273,16 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
               selected: i == selected,
               onTap: () => context.go(navDestinations[i].path),
             ),
+          _SidebarItem(
+            destination: const NavDestination(
+              path: '/downloads',
+              icon: Icons.download_for_offline_outlined,
+              selectedIcon: Icons.download_for_offline,
+              label: 'Downloads',
+            ),
+            selected: location.startsWith('/downloads'),
+            onTap: () => context.go('/downloads'),
+          ),
           const Spacer(),
           // Long-running work lives here: persistent, out of the way, and the
           // one strip of the rail nothing else claims. It contributes no height

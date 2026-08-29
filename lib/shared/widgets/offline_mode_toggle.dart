@@ -150,3 +150,68 @@ class OfflineModeToggle extends ConsumerWidget {
     );
   }
 }
+
+/// A prominent status banner shown at the top of library screens when Offline Mode is active.
+class OfflineStatusBanner extends ConsumerWidget {
+  const OfflineStatusBanner({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isOffline = ref.watch(isOfflineModeProvider);
+    if (!isOffline) return const SizedBox.shrink();
+
+    final reason = ref.watch(offlineReasonProvider);
+    final theme = Theme.of(context);
+
+    final text = switch (reason) {
+      OfflineReason.cellular => 'Offline (Cellular streaming disabled)',
+      OfflineReason.serverUnreachable => 'Offline (Server unreachable)',
+      _ => 'Offline Mode active',
+    };
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.offline_pin, size: 18, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$text · Showing downloaded music',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (reason == OfflineReason.manual)
+            TextButton(
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              onPressed: () async {
+                await ref
+                    .read(offlineManualOverrideProvider.notifier)
+                    .set(false);
+                await ref
+                    .read(serverReachabilityProvider.notifier)
+                    .probeServer();
+              },
+              child: const Text('Go Online'),
+            ),
+        ],
+      ),
+    );
+  }
+}

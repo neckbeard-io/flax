@@ -6,6 +6,9 @@ import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/shared/widgets/artist_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
+import 'package:flax/shared/widgets/offline_mode_toggle.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 /// Artists, read from the local database rather than the network. Issue #8.
 ///
@@ -57,14 +60,29 @@ class ArtistsScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-              child: Text(
-                'Artists',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                4,
+                isDesktopPlatform ? windowButtonsReservedWidth + 12 : 16,
+                4,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Artists',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (!isDesktopPlatform) const OfflineModeToggle(),
+                ],
               ),
             ),
+            const OfflineStatusBanner(),
             Expanded(
               child: artistsAsync.when(
                 data: (artists) => artists.isEmpty

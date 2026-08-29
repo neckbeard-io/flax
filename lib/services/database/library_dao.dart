@@ -734,6 +734,18 @@ class LibraryDao {
     return rows.map(songFromRow).toList();
   }
 
+  Stream<List<Song>> watchDownloadedSongs(String serverId) {
+    final q = _db.select(_db.songs)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            t.localPath.isNotNull() &
+            t.downloadState.equals(DownloadState.complete.index),
+      )
+      ..orderBy([(t) => OrderingTerm(expression: t.title)]);
+    return q.watch().map((rows) => rows.map(songFromRow).toList());
+  }
+
   Stream<List<Album>> watchDownloadedAlbums(
     String serverId, [
     AlbumListQuery? query,

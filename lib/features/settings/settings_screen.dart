@@ -192,6 +192,14 @@ class SettingsScreen extends ConsumerWidget {
 
           // ── Storage & Caching ──
           _SectionTitle(title: 'Storage & Caching'),
+          ListTile(
+            title: const Text('Downloaded Music'),
+            subtitle: const Text(
+              'Browse offline albums, tracks, and active download tasks',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/downloads'),
+          ),
           SwitchListTile(
             title: const Text('Offline Mode'),
             subtitle: Text(

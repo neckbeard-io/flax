@@ -10,6 +10,7 @@ import 'package:flax/domain/enums.dart';
 /// of each.
 enum AlbumFilter {
   all('All', AlbumListType.alphabeticalByName),
+  downloaded('Downloaded', AlbumListType.alphabeticalByName),
   random('Random', AlbumListType.random),
   recentlyAdded('Recently Added', AlbumListType.newest),
   recentlyPlayed('Recently Played', AlbumListType.recent),
@@ -31,6 +32,7 @@ enum AlbumFilter {
   /// Shown instead of an empty grid. Several of these are legitimately empty on
   /// a fresh library, where a bare white page reads as a failed request.
   String get emptyMessage => switch (this) {
+    AlbumFilter.downloaded => 'No downloaded albums yet',
     AlbumFilter.favorites => 'No favorite albums yet',
     AlbumFilter.topRated => 'No rated albums yet',
     AlbumFilter.recentlyPlayed => 'Nothing played yet',

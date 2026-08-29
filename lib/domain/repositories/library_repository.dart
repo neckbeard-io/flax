@@ -81,6 +81,7 @@ abstract class LibraryRepository {
   Stream<Set<String>> watchDownloadedSongIds();
   Stream<Set<String>> watchDownloadedAlbumIds();
   Stream<Set<String>> watchDownloadedArtistIds();
+  Stream<List<Song>> watchDownloadedSongs();
   Stream<List<Album>> watchDownloadedAlbums({AlbumListQuery? query});
   Stream<List<Artist>> watchDownloadedArtists();
   Stream<List<Album>> watchDownloadedArtistAlbums(String artistId);

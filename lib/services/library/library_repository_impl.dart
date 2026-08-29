@@ -471,6 +471,10 @@ class LibraryRepositoryImpl implements LibraryRepository {
       _dao.watchDownloadedArtistIds(_serverId);
 
   @override
+  Stream<List<Song>> watchDownloadedSongs() =>
+      _dao.watchDownloadedSongs(_serverId);
+
+  @override
   Stream<List<Album>> watchDownloadedAlbums({AlbumListQuery? query}) =>
       _dao.watchDownloadedAlbums(_serverId, query);
 

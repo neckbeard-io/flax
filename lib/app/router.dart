@@ -10,6 +10,7 @@ import 'package:flax/features/library/albums_screen.dart';
 import 'package:flax/features/library/album_detail_screen.dart';
 import 'package:flax/features/library/artists_screen.dart';
 import 'package:flax/features/library/artist_detail_screen.dart';
+import 'package:flax/features/library/downloads_screen.dart';
 import 'package:flax/features/search/search_screen.dart';
 import 'package:flax/features/settings/settings_screen.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
@@ -137,6 +138,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 AlbumDetailScreen(albumId: state.pathParameters['id']!),
           ),
           GoRoute(path: '/songs', redirect: (context, state) => '/albums'),
+          GoRoute(
+            path: '/downloads',
+            builder: (context, state) => const DownloadsScreen(),
+          ),
           GoRoute(
             path: '/search',
             builder: (context, state) => SearchScreen(

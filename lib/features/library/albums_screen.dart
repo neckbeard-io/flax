@@ -10,6 +10,7 @@ import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
+import 'package:flax/shared/widgets/offline_mode_toggle.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 
 /// Albums for one tab.
@@ -31,7 +32,7 @@ final albumsProvider = StreamProvider.family<List<Album>, AlbumFilter>((
 
   final query = AlbumListQuery(filter.listType);
 
-  if (isOffline) {
+  if (isOffline || filter == AlbumFilter.downloaded) {
     yield* repo.watchDownloadedAlbums(query: query);
     return;
   }
@@ -72,22 +73,31 @@ class AlbumsScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              // The window controls are drawn over this corner, so the title
-              // reserves their width rather than sliding under them once the
-              // window is narrow.
+              // The window controls are drawn over this corner on desktop, so the title
+              // reserves their width. On mobile, we provide the OfflineModeToggle in the header.
               padding: EdgeInsets.fromLTRB(
                 16,
                 4,
-                windowButtonsReservedWidth + 12,
+                isDesktopPlatform ? windowButtonsReservedWidth + 12 : 16,
                 4,
               ),
-              child: Text(
-                'Albums',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Albums',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (!isDesktopPlatform) const OfflineModeToggle(),
+                ],
               ),
             ),
+            const OfflineStatusBanner(),
             AlbumFilterTabs(
               selected: filter,
               onSelected: (f) =>

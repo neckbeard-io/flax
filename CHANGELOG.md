@@ -10,6 +10,11 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Dedicated Downloads screen (`/downloads`) to browse cached albums, individual tracks, and live background download tasks.
+- Downloaded tab on Albums screen for 1-tap filtering of cached music while online.
+- Mobile Offline Mode toggle in library screen headers with 1-tap reconnect banner.
+
 ### Fixed
 - Playing a song from search results now only queues that individual song rather than every matching result.
 

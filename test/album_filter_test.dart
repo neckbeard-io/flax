@@ -47,9 +47,12 @@ void main() {
       expect(AlbumFilter.topRated.listType, AlbumListType.highest);
     });
 
-    test('every tab asks the server for a distinct list', () {
-      final types = AlbumFilter.values.map((f) => f.listType).toSet();
-      expect(types.length, AlbumFilter.values.length);
+    test('every server tab asks the server for a distinct list', () {
+      final serverTabs = AlbumFilter.values.where(
+        (f) => f != AlbumFilter.downloaded,
+      );
+      final types = serverTabs.map((f) => f.listType).toSet();
+      expect(types.length, serverTabs.length);
     });
 
     test('opens on the full library', () {
