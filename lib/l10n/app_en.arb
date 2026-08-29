@@ -1,0 +1,193 @@
+{
+  "@@locale": "en",
+  "appName": "Flax",
+  "@appName": {
+    "description": "The name of the application"
+  },
+  "connectToMusicServer": "Connect to your music server",
+  "@connectToMusicServer": {
+    "description": "Header subtitle on setup screen"
+  },
+  "serverName": "Server Name",
+  "@serverName": {
+    "description": "Label for server name text field"
+  },
+  "serverNameHint": "My Server",
+  "@serverNameHint": {
+    "description": "Hint text for server name"
+  },
+  "serverUrl": "Server URL",
+  "@serverUrl": {
+    "description": "Label for server URL text field"
+  },
+  "serverUrlHint": "https://music.example.com",
+  "@serverUrlHint": {
+    "description": "Hint text for server URL"
+  },
+  "username": "Username",
+  "@username": {
+    "description": "Label for username text field"
+  },
+  "password": "Password",
+  "@password": {
+    "description": "Label for password text field"
+  },
+  "connect": "Connect",
+  "@connect": {
+    "description": "Connect button label on setup screen"
+  },
+  "connecting": "Connecting...",
+  "@connecting": {
+    "description": "Connecting status label on setup screen"
+  },
+  "required": "Required",
+  "@required": {
+    "description": "Validation message when a required field is empty"
+  },
+  "enterValidUrl": "Enter a valid URL with http(s)://",
+  "@enterValidUrl": {
+    "description": "Validation message for invalid server URL"
+  },
+  "language": "Language",
+  "@language": {
+    "description": "Language label and section header"
+  },
+  "systemDefault": "System Default",
+  "@systemDefault": {
+    "description": "Option to follow system/OS default settings"
+  },
+  "navAlbums": "Albums",
+  "@navAlbums": {
+    "description": "Navigation title for Albums"
+  },
+  "navArtists": "Artists",
+  "@navArtists": {
+    "description": "Navigation title for Artists"
+  },
+  "navPlaylists": "Playlists",
+  "@navPlaylists": {
+    "description": "Navigation title for Playlists"
+  },
+  "navDownloads": "Downloads",
+  "@navDownloads": {
+    "description": "Navigation title for Downloads"
+  },
+  "navSettings": "Settings",
+  "@navSettings": {
+    "description": "Navigation title for Settings"
+  },
+  "navSearch": "Search",
+  "@navSearch": {
+    "description": "Navigation title for Search"
+  },
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Title of settings screen"
+  },
+  "appearance": "Appearance & Interface",
+  "@appearance": {
+    "description": "Settings section for appearance"
+  },
+  "theme": "Theme",
+  "@theme": {
+    "description": "Theme label"
+  },
+  "themeSystem": "System",
+  "@themeSystem": {
+    "description": "System theme option"
+  },
+  "themeLight": "Light",
+  "@themeLight": {
+    "description": "Light theme option"
+  },
+  "themeDark": "Dark",
+  "@themeDark": {
+    "description": "Dark theme option"
+  },
+  "amoledBlack": "AMOLED Pure Black",
+  "@amoledBlack": {
+    "description": "AMOLED pure black theme option"
+  },
+  "audioAndPlayback": "Audio & Playback",
+  "@audioAndPlayback": {
+    "description": "Settings section for audio"
+  },
+  "storageAndCaching": "Storage & Caching",
+  "@storageAndCaching": {
+    "description": "Settings section for storage and caching"
+  },
+  "networkAndStreaming": "Network & Streaming",
+  "@networkAndStreaming": {
+    "description": "Settings section for network and streaming"
+  },
+  "aboutAndSystem": "About & System",
+  "@aboutAndSystem": {
+    "description": "Settings section for about and system"
+  },
+  "nowPlaying": "Now Playing",
+  "@nowPlaying": {
+    "description": "Now playing header"
+  },
+  "queue": "Play Queue",
+  "@queue": {
+    "description": "Play queue header"
+  },
+  "play": "Play",
+  "@play": {
+    "description": "Play action"
+  },
+  "pause": "Pause",
+  "@pause": {
+    "description": "Pause action"
+  },
+  "next": "Next",
+  "@next": {
+    "description": "Next track action"
+  },
+  "previous": "Previous",
+  "@previous": {
+    "description": "Previous track action"
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Cancel button"
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Save button"
+  },
+  "delete": "Delete",
+  "@delete": {
+    "description": "Delete button"
+  },
+  "done": "Done",
+  "@done": {
+    "description": "Done button"
+  },
+  "retry": "Retry",
+  "@retry": {
+    "description": "Retry action"
+  },
+  "error": "Error",
+  "@error": {
+    "description": "Error label"
+  },
+  "trackCount": "{count, plural, =1{1 track} other{{count} tracks}}",
+  "@trackCount": {
+    "description": "Pluralized track count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "albumCount": "{count, plural, =1{1 album} other{{count} albums}}",
+  "@albumCount": {
+    "description": "Pluralized album count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

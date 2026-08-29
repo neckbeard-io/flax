@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flax/l10n/app_localizations.dart';
 
 /// One top-level destination, shared by the desktop sidebar and the mobile
 /// bottom bar so the two cannot drift out of sync.
@@ -14,6 +15,29 @@ class NavDestination {
   final IconData icon;
   final IconData selectedIcon;
   final String label;
+
+  String localizedLabel(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return label;
+    switch (path) {
+      case '/artists':
+        return l10n.navArtists;
+      case '/albums':
+        return l10n.navAlbums;
+      case '/search':
+        return l10n.navSearch;
+      case '/settings':
+        return l10n.navSettings;
+      case '/downloads':
+        return l10n.navDownloads;
+      case '/playlists':
+        return l10n.navPlaylists;
+      case '/now-playing':
+        return l10n.nowPlaying;
+      default:
+        return label;
+    }
+  }
 }
 
 /// Core library navigation destinations (used in desktop sidebar).

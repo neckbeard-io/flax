@@ -385,7 +385,7 @@ class _SidebarItem extends StatelessWidget {
               // or a translated label overflows outright.
               Expanded(
                 child: Text(
-                  destination.label,
+                  destination.localizedLabel(context),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(

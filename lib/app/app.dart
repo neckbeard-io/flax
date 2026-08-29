@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/app/theme/flax_theme.dart';
 import 'package:flax/app/theme/theme_provider.dart';
+import 'package:flax/core/providers/locale_provider.dart';
+import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/shared/widgets/app_chrome.dart';
 
 class FlaxApp extends ConsumerWidget {
@@ -15,6 +17,7 @@ class FlaxApp extends ConsumerWidget {
     final themeModeSetting = ref.watch(themeModeProvider);
     final amoled = ref.watch(amoledProvider);
     final customDynamic = ref.watch(dynamicColorSchemesProvider);
+    final selectedLocale = ref.watch(localeProvider);
 
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
@@ -23,19 +26,14 @@ class FlaxApp extends ConsumerWidget {
 
         return MaterialApp.router(
           title: 'Flax',
-          // Flutter pins its DEBUG ribbon to the top-right corner, which is
-          // exactly where ShellScaffold puts the custom window buttons — the
-          // ribbon covered the close button, making it unclickable in debug
-          // builds. WindowButtons carries a DEBUG badge instead, and Settings ->
-          // About names the build mode; both mark a debug build without
-          // occupying the corner.
           debugShowCheckedModeBanner: false,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: selectedLocale,
           theme: FlaxTheme.light(dynamicScheme: lightScheme),
           darkTheme: FlaxTheme.dark(dynamicScheme: darkScheme, amoled: amoled),
           themeMode: resolveThemeMode(themeModeSetting),
           routerConfig: router,
-          // Wraps every route, so screens outside the shell — server setup,
-          // now playing — get window controls and the global shortcut too.
           builder: (context, child) =>
               AppChrome(child: child ?? const SizedBox.shrink()),
         );

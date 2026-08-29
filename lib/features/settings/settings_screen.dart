@@ -7,8 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flax/app/theme/theme_provider.dart';
+import 'package:flax/core/providers/locale_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
@@ -30,6 +32,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final selectedLocale = ref.watch(localeProvider);
     final themeMode = ref.watch(themeModeProvider);
     final amoled = ref.watch(amoledProvider);
     final servers = ref.watch(serverListProvider);
@@ -37,7 +41,7 @@ class SettingsScreen extends ConsumerWidget {
     final scrobble = ref.watch(scrobbleEnabledProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(l10n?.settingsTitle ?? 'Settings')),
       body: ListView(
         children: [
           // ── Servers & Connection ──
@@ -90,22 +94,59 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
 
           // ── Appearance & Interface ──
-          _SectionTitle(title: 'Appearance & Interface'),
+          _SectionTitle(title: l10n?.appearance ?? 'Appearance & Interface'),
           ListTile(
-            title: const Text('Theme'),
+            title: Text(l10n?.language ?? 'Language'),
+            subtitle: Text(
+              selectedLocale == null
+                  ? (l10n?.systemDefault ?? 'System Default')
+                  : kSupportedLanguageOptions
+                        .firstWhere(
+                          (o) => o.code == selectedLocale.languageCode,
+                          orElse: () => const LanguageOption(
+                            code: 'en',
+                            name: 'English',
+                            nativeName: 'English',
+                          ),
+                        )
+                        .nativeName,
+            ),
+            trailing: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: selectedLocale?.languageCode,
+                items: kSupportedLanguageOptions.map((opt) {
+                  return DropdownMenuItem<String?>(
+                    value: opt.code,
+                    child: Text(
+                      opt.code == null
+                          ? (l10n?.systemDefault ?? 'System Default')
+                          : opt.nativeName,
+                    ),
+                  );
+                }).toList(),
+                onChanged: (code) {
+                  ref
+                      .read(localeProvider.notifier)
+                      .setLocale(code != null ? Locale(code) : null);
+                },
+              ),
+            ),
+          ),
+          ListTile(
+            title: Text(l10n?.theme ?? 'Theme'),
             trailing: SegmentedButton<ThemeModeSetting>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: ThemeModeSetting.system,
-                  label: Text('Auto'),
+                  label: Text(l10n?.themeSystem ?? 'Auto'),
                 ),
                 ButtonSegment(
                   value: ThemeModeSetting.light,
-                  label: Text('Light'),
+                  label: Text(l10n?.themeLight ?? 'Light'),
                 ),
                 ButtonSegment(
                   value: ThemeModeSetting.dark,
-                  label: Text('Dark'),
+                  label: Text(l10n?.themeDark ?? 'Dark'),
                 ),
               ],
               selected: {themeMode},
@@ -114,7 +155,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           SwitchListTile(
-            title: const Text('AMOLED Black'),
+            title: Text(l10n?.amoledBlack ?? 'AMOLED Black'),
             subtitle: const Text('Pure black background for OLED screens'),
             value: amoled,
             onChanged: (v) => ref.read(amoledProvider.notifier).state = v,
@@ -134,7 +175,7 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
 
           // ── Audio & Playback ──
-          _SectionTitle(title: 'Audio & Playback'),
+          _SectionTitle(title: l10n?.audioAndPlayback ?? 'Audio & Playback'),
           SwitchListTile(
             title: const Text('Report plays to server'),
             subtitle: const Text(
@@ -175,7 +216,9 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
 
           // ── Network & Streaming ──
-          _SectionTitle(title: 'Network & Streaming'),
+          _SectionTitle(
+            title: l10n?.networkAndStreaming ?? 'Network & Streaming',
+          ),
           ListTile(
             title: const Text('Streaming Quality & Transcoding'),
             subtitle: Text(
@@ -191,7 +234,7 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
 
           // ── Storage & Caching ──
-          _SectionTitle(title: 'Storage & Caching'),
+          _SectionTitle(title: l10n?.storageAndCaching ?? 'Storage & Caching'),
           ListTile(
             title: const Text('Downloaded Music'),
             subtitle: const Text(
@@ -240,7 +283,7 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
 
           // ── About & System ──
-          _SectionTitle(title: 'About & System'),
+          _SectionTitle(title: l10n?.aboutAndSystem ?? 'About & System'),
           const _AboutTile(),
         ],
       ),
