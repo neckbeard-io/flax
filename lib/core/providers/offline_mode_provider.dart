@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/services/subsonic/subsonic_client.dart';
 
 const _kOfflineManualPrefKey = 'flax_offline_manual_override';
 const _kOfflineOnCellularPrefKey = 'flax_offline_on_cellular';
@@ -119,7 +120,15 @@ final serverReachabilityProvider =
 class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
   final Ref _ref;
 
-  ServerReachabilityNotifier(this._ref) : super(const ServerReachability());
+  ServerReachabilityNotifier(this._ref) : super(const ServerReachability()) {
+    _ref.listen<SubsonicClient?>(subsonicClientProvider, (prev, next) {
+      if (next != null) {
+        probeServer(silent: true);
+      } else {
+        state = const ServerReachability();
+      }
+    });
+  }
 
   /// Probes the server with a hard 3-second timeout.
   Future<bool> probeServer({
@@ -128,8 +137,8 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
   }) async {
     final client = _ref.read(subsonicClientProvider);
     if (client == null) {
-      state = state.copyWith(isReachable: false, lastError: 'No server');
-      return false;
+      state = const ServerReachability();
+      return true;
     }
 
     state = state.copyWith(isProbing: true);
@@ -221,6 +230,11 @@ final isOfflineModeProvider = Provider<bool>((ref) {
     }
   }
 
+  final server = ref.watch(activeServerProvider);
+  if (server == null) {
+    return false;
+  }
+
   final reachability = ref.watch(serverReachabilityProvider);
   if (!reachability.isReachable) {
     return true;
@@ -247,6 +261,11 @@ final offlineReasonProvider = Provider<OfflineReason>((ref) {
         return OfflineReason.cellular;
       }
     }
+  }
+
+  final server = ref.watch(activeServerProvider);
+  if (server == null) {
+    return OfflineReason.none;
   }
 
   final reachability = ref.watch(serverReachabilityProvider);
