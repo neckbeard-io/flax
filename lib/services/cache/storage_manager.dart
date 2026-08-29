@@ -1,4 +1,3 @@
-import 'dart:developer' as developer;
 import 'dart:ffi';
 import 'dart:io';
 
@@ -7,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flax/core/logging/app_logger.dart';
 
 /// Tracks whether the previously configured external storage volume was missing/unmounted
 /// and fell back to internal storage.
@@ -150,10 +150,7 @@ class StorageManager {
         }
       }
     } catch (e) {
-      developer.log(
-        'Failed to query disk space for $path: $e',
-        name: 'StorageManager',
-      );
+      AppLogger.w('Storage', 'Failed to query disk space for $path: $e');
     }
     return null;
   }
@@ -238,9 +235,9 @@ class StorageManager {
           }
         }
       } catch (e) {
-        developer.log(
+        AppLogger.w(
+          'Storage',
           'Error discovering external storage directories: $e',
-          name: 'StorageManager',
         );
       }
     }
@@ -338,7 +335,7 @@ class StorageManager {
 
       return true;
     } catch (e) {
-      developer.log('Cache migration failed: $e', name: 'StorageManager');
+      AppLogger.e('Storage', 'Cache migration failed: $e', error: e);
       return false;
     }
   }

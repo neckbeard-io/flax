@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -8,6 +7,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' as mpv;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
@@ -257,7 +257,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     );
     _subs.add(
       _player.stream.error.listen((err) {
-        developer.log('mpv error: ${err.message}', name: 'PlayerNotifier');
+        AppLogger.e('Player', 'mpv error: ${err.message}');
         if (mounted) {
           state = state.copyWith(isPlaying: false, playbackError: err.message);
         }
@@ -303,7 +303,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await _player.seek(Duration.zero);
       await _player.pause();
     } catch (e) {
-      developer.log('Queue-finished reset failed: $e', name: 'PlayerNotifier');
+      AppLogger.w('Player', 'Queue-finished reset failed: $e');
     }
     if (!mounted) return;
     state = state.copyWith(position: Duration.zero, isPlaying: false);
@@ -417,7 +417,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         clearActiveTranscode: true,
         playbackError: e.message,
       );
-      developer.log('Streaming disabled: ${e.message}', name: 'PlayerNotifier');
+      AppLogger.w('Player', 'Streaming disabled: ${e.message}');
       return;
     }
 
@@ -614,10 +614,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     try {
       await client.scrobble(id, submission: submission);
     } catch (e) {
-      developer.log(
-        'scrobble (submission: $submission) failed: $e',
-        name: 'PlayerNotifier',
-      );
+      AppLogger.w('Player', 'scrobble (submission: $submission) failed: $e');
     }
   }
 
@@ -731,11 +728,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
           );
       }
 
-      developer.log(
-        'EQ apply: engine=${engine.name}, active=$active, '
-        'eqGain=${_eqGainDb(gainsDb).toStringAsFixed(1)}dB, '
-        'gainsDb=${gainsDb.map((g) => g.toStringAsFixed(1)).join(",")}',
-        name: 'PlayerEQ',
+      AppLogger.d(
+        'PlayerEQ',
+        () =>
+            'EQ apply: engine=${engine.name}, active=$active, '
+            'eqGain=${_eqGainDb(gainsDb).toStringAsFixed(1)}dB, '
+            'gainsDb=${gainsDb.map((g) => g.toStringAsFixed(1)).join(",")}',
       );
 
       // A fresh AudioEffects each time, so the engine that is not selected is
@@ -743,7 +741,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       // is — both applying the same curve would double it.
       await _player.setAudioEffects(effects);
     } catch (e, st) {
-      developer.log('EQ apply FAILED: $e\n$st', name: 'PlayerEQ');
+      AppLogger.e('PlayerEQ', 'EQ apply FAILED: $e', error: e, stackTrace: st);
     }
   }
 
@@ -850,10 +848,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       );
       await _applyVolumeGain();
     } catch (e) {
-      developer.log(
-        'Playback settings apply failed: $e',
-        name: 'PlayerNotifier',
-      );
+      AppLogger.w('Player', 'Playback settings apply failed: $e');
     }
   }
 
@@ -913,10 +908,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         await _player.setRawProperty('audio-format', formatVal);
       }
     } catch (e) {
-      developer.log(
-        'Audio output settings apply failed: $e',
-        name: 'PlayerNotifier',
-      );
+      AppLogger.w('Player', 'Audio output settings apply failed: $e');
     }
   }
 
@@ -963,7 +955,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     try {
       await repo.setRating(EntityRef(EntityType.song, song.id), rating: rating);
     } catch (e) {
-      developer.log('setRating failed: $e', name: 'PlayerNotifier');
+      AppLogger.w('Player', 'setRating failed: $e');
       _replaceSongInQueue(song);
     }
   }
@@ -982,7 +974,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         favorite: next,
       );
     } catch (e) {
-      developer.log('star/unstar failed: $e', name: 'PlayerNotifier');
+      AppLogger.w('Player', 'star/unstar failed: $e');
       _replaceSongInQueue(song);
     }
   }
@@ -1051,7 +1043,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       }
       _mpvQueueIds = ids;
     } catch (e) {
-      developer.log('Queue insert into mpv failed: $e', name: 'PlayerNotifier');
+      AppLogger.w('Player', 'Queue insert into mpv failed: $e');
       _mpvQueueIds = const [];
     }
   }
@@ -1082,7 +1074,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // Try server first, fall back to local
     final restored = await _restoreFromServer() || await _restoreFromLocal();
     if (!restored) {
-      developer.log('No play queue to restore', name: 'PlayerNotifier');
+      AppLogger.i('Player', 'No play queue to restore');
     }
   }
 
@@ -1097,14 +1089,14 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await _applyRestoredQueue(pq.songs, pq.currentIndex, pq.positionMs);
       // Also save locally so offline restore works next time
       _saveLocal(pq.songs, pq.songs[pq.currentIndex].id, pq.positionMs);
-      developer.log(
+      AppLogger.i(
+        'Player',
         'Restored from server: ${pq.songs.length} songs, '
-        'index=${pq.currentIndex}, position=${pq.positionMs}ms',
-        name: 'PlayerNotifier',
+            'index=${pq.currentIndex}, position=${pq.positionMs}ms',
       );
       return true;
     } catch (e) {
-      developer.log('Server restore failed: $e', name: 'PlayerNotifier');
+      AppLogger.w('Player', 'Server restore failed: $e');
       return false;
     }
   }
@@ -1131,14 +1123,14 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       }
 
       await _applyRestoredQueue(songs, idx, positionMs);
-      developer.log(
+      AppLogger.i(
+        'Player',
         'Restored from local: ${songs.length} songs, '
-        'index=$idx, position=${positionMs}ms',
-        name: 'PlayerNotifier',
+            'index=$idx, position=${positionMs}ms',
       );
       return true;
     } catch (e) {
-      developer.log('Local restore failed: $e', name: 'PlayerNotifier');
+      AppLogger.w('Player', 'Local restore failed: $e');
       return false;
     }
   }
@@ -1168,10 +1160,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await _player.seek(position);
     } catch (e) {
       // Offline — can't open stream, but state is set so UI shows the queue
-      developer.log(
-        'Could not open stream (offline?): $e',
-        name: 'PlayerNotifier',
-      );
+      AppLogger.w('Player', 'Could not open stream (offline?): $e');
     }
 
     _lastSavedPositionSec = position.inSeconds;
@@ -1202,10 +1191,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         state.position.inMilliseconds,
       );
     } catch (e) {
-      developer.log(
-        'Failed to save play queue to server: $e',
-        name: 'PlayerNotifier',
-      );
+      AppLogger.w('Player', 'Failed to save play queue to server: $e');
     }
   }
 
@@ -1221,10 +1207,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await prefs.setString(_prefsKeyCurrentId, currentId);
       await prefs.setInt(_prefsKeyPositionMs, positionMs);
     } catch (e) {
-      developer.log(
-        'Failed to save play queue locally: $e',
-        name: 'PlayerNotifier',
-      );
+      AppLogger.w('Player', 'Failed to save play queue locally: $e');
     }
   }
 
@@ -1397,7 +1380,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await prefs.setDouble(_prefsKeyVolume, state.volume);
       await prefs.setBool(_prefsKeyMuted, state.muted);
     } catch (e) {
-      developer.log('Failed to save volume: $e', name: 'PlayerNotifier');
+      AppLogger.w('Player', 'Failed to save volume: $e');
     }
   }
 
@@ -1413,7 +1396,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await _player.setVolume(faderToMpvVolume(clamped));
       if (muted) await _player.setMute(true);
     } catch (e) {
-      developer.log('Failed to restore volume: $e', name: 'PlayerNotifier');
+      AppLogger.w('Player', 'Failed to restore volume: $e');
     }
   }
 

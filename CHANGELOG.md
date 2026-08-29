@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- High-performance zero-jank in-memory ring buffer logger for diagnostic retention.
 - Downloads screen now breaks down active downloads track-by-track with live download speeds, ETAs, and queue status.
 - Mobile active downloads pill displays real-time transfer rates alongside completed item counts.
 

@@ -1,9 +1,9 @@
-import 'dart:developer' as developer;
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 import 'package:flax/shared/widgets/settle_gate.dart';
@@ -113,10 +113,7 @@ class CoverArtImage extends ConsumerWidget {
               : const Duration(milliseconds: 120),
           placeholder: (context, url) => _placeholder(context),
           errorWidget: (context, url, error) {
-            developer.log(
-              'CoverArt error for $coverArtId: $error',
-              name: 'CoverArtImage',
-            );
+            AppLogger.w('CoverArt', 'CoverArt error for $coverArtId: $error');
             return _placeholder(context);
           },
         );

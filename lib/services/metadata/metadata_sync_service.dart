@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flax/core/logging/app_logger.dart';
 
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -176,10 +176,7 @@ class MetadataSyncService {
         lastSyncedAt: config.lastSyncedAt,
       );
     } catch (e) {
-      developer.log(
-        'Error calculating metadata cache summary: $e',
-        name: 'MetadataSyncService',
-      );
+      AppLogger.w('Sync', 'Error calculating metadata cache summary: $e');
       return const MetadataCacheSummary();
     }
   }
@@ -241,10 +238,7 @@ class MetadataSyncService {
           albums = allFetched;
         }
       } catch (e) {
-        developer.log(
-          'Error fetching full album list: $e',
-          name: 'MetadataSyncService',
-        );
+        AppLogger.w('Sync', 'Error fetching full album list: $e');
       }
 
       if (artists.isEmpty) {
@@ -255,10 +249,7 @@ class MetadataSyncService {
             artists = fetchedArtists;
           }
         } catch (e) {
-          developer.log(
-            'Error fetching artists: $e',
-            name: 'MetadataSyncService',
-          );
+          AppLogger.w('Sync', 'Error fetching artists: $e');
         }
       }
 
@@ -381,10 +372,7 @@ class MetadataSyncService {
               handle.progress(items: itemsDone, bytes: bytesDone);
             }
           } catch (e) {
-            developer.log(
-              'Error processing sync item: $e',
-              name: 'MetadataSyncService',
-            );
+            AppLogger.w('Sync', 'Error processing sync item: $e');
             if (!_isCanceled && !handle.isCanceled) {
               itemsDone++;
               handle.itemFailed(1);

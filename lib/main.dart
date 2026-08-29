@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flax/app/app.dart';
 import 'package:flax/app/router.dart';
+import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
@@ -16,6 +17,7 @@ import 'package:flax/shared/widgets/art_cache.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppLogger.i('App', 'Flax starting on ${Platform.operatingSystem}');
   MpvAudioKit.ensureInitialized();
 
   // Lock mobile orientation to portrait.

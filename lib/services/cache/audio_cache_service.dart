@@ -1,10 +1,10 @@
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flax/core/logging/app_logger.dart';
 
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -294,9 +294,9 @@ class AudioCacheService {
       base.path,
       additionalBytes: estimatedBytes,
     )) {
-      developer.log(
+      AppLogger.w(
+        'AudioCache',
         'Storage space is critically low. Aborting download for song ${song.id}',
-        name: 'AudioCacheService',
       );
       return null;
     }
@@ -397,10 +397,7 @@ class AudioCacheService {
 
       return destFile.path;
     } catch (e) {
-      developer.log(
-        'Failed to cache song ${song.id}: $e',
-        name: 'AudioCacheService',
-      );
+      AppLogger.w('AudioCache', 'Failed to cache song ${song.id}: $e');
       await dao.updateSongDownload(
         serverId,
         song.id,

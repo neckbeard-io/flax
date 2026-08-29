@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 import 'package:dio/dio.dart';
+import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/music_backend.dart';
@@ -51,6 +52,8 @@ class SubsonicClient implements MusicBackend {
     final params = <String, dynamic>{..._authParams()};
     if (extra != null) params.addAll(extra);
 
+    AppLogger.d('Subsonic', () => 'GET $endpoint: ${extra ?? const {}}');
+
     final response = await _dio.get<Map<String, dynamic>>(
       '${server.baseUrl}/rest/$endpoint',
       queryParameters: params,
@@ -62,6 +65,10 @@ class SubsonicClient implements MusicBackend {
 
     if (subResponse['status'] != 'ok') {
       final error = subResponse['error'] as Map<String, dynamic>?;
+      AppLogger.w(
+        'Subsonic',
+        'Subsonic error from $endpoint: code=${error?['code']}, message=${error?['message']}',
+      );
       throw SubsonicException(
         code: error?['code'] as int? ?? 0,
         message: error?['message'] as String? ?? 'Unknown error',

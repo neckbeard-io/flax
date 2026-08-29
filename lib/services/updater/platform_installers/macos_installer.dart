@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'package:flax/core/logging/app_logger.dart';
 
 class MacOSInstaller {
   /// Checks if Flax was installed via Homebrew Cask.
@@ -45,6 +46,10 @@ class MacOSInstaller {
     if (!Platform.isMacOS) return;
 
     final targetAppPath = findCurrentAppBundlePath();
+    AppLogger.i(
+      'Updater',
+      'Starting macOS in-place update: target=$targetAppPath, dmg=$dmgPath',
+    );
     final stagingDir = await Directory.systemTemp.createTemp('flax-update-');
     String? mountedVolume;
 
@@ -156,7 +161,13 @@ open -n "\$TARGET_APP"
       // Brief delay before exit to ensure detached script has spawned
       await Future.delayed(const Duration(milliseconds: 100));
       exit(0);
-    } catch (e) {
+    } catch (e, st) {
+      AppLogger.e(
+        'Updater',
+        'macOS in-place update failed: $e',
+        error: e,
+        stackTrace: st,
+      );
       // Clean up mount and staging directories if still present
       if (mountedVolume != null) {
         try {

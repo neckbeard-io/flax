@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -7,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/hotkeys/hotkey_models.dart';
 import 'package:flax/services/platform/window_state.dart';
@@ -131,10 +131,7 @@ class HotKeyNotifier extends StateNotifier<HotKeyState> {
           }
         }
       } catch (e) {
-        developer.log(
-          'Failed to parse hotkeys json: $e',
-          name: 'HotKeyService',
-        );
+        AppLogger.w('Hotkeys', 'Failed to parse hotkeys json: $e');
         for (final action in HotKeyAction.values) {
           bindings[action] = action.defaultHotKey();
         }
@@ -166,9 +163,9 @@ class HotKeyNotifier extends StateNotifier<HotKeyState> {
           keyDownHandler: (_) => _handleAction(action),
         );
       } catch (e) {
-        developer.log(
+        AppLogger.w(
+          'Hotkeys',
           'Failed to register global hotkey for $action: $e',
-          name: 'HotKeyService',
         );
         errors[action] = e.toString();
       }
