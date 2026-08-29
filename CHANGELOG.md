@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.5.5 — 2026-08-28
+
 ### Added
 - Dedicated Downloads screen (`/downloads`) to browse cached albums, individual tracks, and live background download tasks.
 - Downloaded tab on Albums screen for 1-tap filtering of cached music while online.
