@@ -312,6 +312,7 @@ install_linux() {
 
   local bin_dir="${HOME}/.local/bin"
   local desktop_dir="${HOME}/.local/share/applications"
+  local icons_dir="${HOME}/.local/share/icons/hicolor/512x512/apps"
   local pixmaps_dir="${HOME}/.local/share/pixmaps"
   mkdir -p "$target_dir" "$bin_dir" "$desktop_dir" "$icons_dir" "$pixmaps_dir"
 
