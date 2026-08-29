@@ -17,6 +17,8 @@ class UpBackButton extends StatelessWidget {
     super.key,
     required this.fallbackLocation,
     this.tooltip = 'Back',
+    this.icon = Icons.arrow_back,
+    this.iconSize,
   });
 
   /// Where to go when there is no route to pop — the natural parent: an album's
@@ -24,11 +26,13 @@ class UpBackButton extends StatelessWidget {
   final String fallbackLocation;
 
   final String tooltip;
+  final IconData icon;
+  final double? iconSize;
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.arrow_back),
+      icon: Icon(icon, size: iconSize),
       tooltip: tooltip,
       onPressed: () {
         if (Navigator.canPop(context)) {

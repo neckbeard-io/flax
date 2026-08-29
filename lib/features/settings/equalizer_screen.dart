@@ -11,6 +11,7 @@ import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/shared/audio/eq_filter.dart';
 import 'package:flax/shared/widgets/eq_curve_chart.dart';
 import 'package:flax/shared/widgets/flax_dropdown.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 
 /// Maximum boost/cut per band, in dB (matches foobar2000's range).
 const eqGainLimit = 20.0;
@@ -266,7 +267,10 @@ class EqualizerScreen extends ConsumerWidget {
     final dropdownItems = [..._presetNames, if (isCustom) eq.presetName];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Equalizer')),
+      appBar: AppBar(
+        leading: const UpBackButton(fallbackLocation: '/settings'),
+        title: const Text('Equalizer'),
+      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -597,7 +601,7 @@ class EqualizerScreen extends ConsumerWidget {
                   title: const Text('AutoEQ Headphone Correction'),
                   subtitle: Text(profileName ?? 'None selected'),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/settings/autoeq'),
+                  onTap: () => context.push('/settings/equalizer/autoeq'),
                 );
               },
             ),

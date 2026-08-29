@@ -142,6 +142,12 @@ class _AppChromeState extends ConsumerState<AppChrome>
     return true;
   }
 
+  @override
+  Future<bool> didPopRoute() async {
+    if (!mounted) return false;
+    return _handleBackNavigation();
+  }
+
   /// Space plays and pauses, from anywhere.
   ///
   /// Claimed globally rather than left to whatever has focus. Space would
@@ -153,16 +159,67 @@ class _AppChromeState extends ConsumerState<AppChrome>
     return true;
   }
 
-  /// Back, for the mouse button and the trackpad swipe.
+  /// Back, for Android system back gestures/buttons, mouse button 4, and trackpad swipe.
   ///
-  /// Nothing to pop means we are at the start of the history, where a browser
-  /// also does nothing. The router comes from the provider rather than the
-  /// context: this widget is MaterialApp.router's builder, which sits *above*
-  /// the InheritedGoRouter, so `GoRouter.of(context)` finds nothing here.
-  void _goBack() {
-    if (!mounted) return;
+  /// Pops pushed routes if available; otherwise falls back up the hierarchy
+  /// (e.g. /settings/metadata-cache -> /settings, /albums/123 -> /albums) when
+  /// sitting on a subpage or detail screen with an upper-left back action.
+  /// Returning false on root destinations (/albums, /settings) lets the OS
+  /// exit or minimize the app as expected.
+  bool _handleBackNavigation() {
+    if (!mounted) return false;
     final router = ref.read(routerProvider);
-    if (router.canPop()) router.pop();
+
+    // 1. If GoRouter or Navigator has pushed routes to pop:
+    if (router.canPop()) {
+      router.pop();
+      return true;
+    }
+
+    // 2. If nothing on the route stack, check the current location to see if
+    // we are on a subpage/detail screen with an Up/Back action:
+    final location = router.routerDelegate.currentConfiguration.uri.path;
+
+    // Settings subpages -> /settings (or AutoEQ -> Equalizer)
+    if (location.startsWith('/settings/')) {
+      if (location == '/settings/autoeq') {
+        router.go('/settings/equalizer');
+      } else {
+        router.go('/settings');
+      }
+      return true;
+    }
+
+    // Detail: /albums/:id -> /albums
+    if (location.startsWith('/albums/')) {
+      router.go('/albums');
+      return true;
+    }
+
+    // Detail: /artists/:id -> /artists
+    if (location.startsWith('/artists/')) {
+      router.go('/artists');
+      return true;
+    }
+
+    // Downloads screen -> /albums
+    if (location == '/downloads') {
+      router.go('/albums');
+      return true;
+    }
+
+    // Phone Now Playing screen -> /albums
+    if (location == '/now-playing') {
+      router.go('/albums');
+      return true;
+    }
+
+    // Root screens (/albums, /artists, /search, /settings, /add-server):
+    return false;
+  }
+
+  void _goBack() {
+    _handleBackNavigation();
   }
 
   final _backSwipe = BackSwipeTracker();

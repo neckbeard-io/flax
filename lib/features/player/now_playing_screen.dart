@@ -117,11 +117,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Align(
+                child: const Align(
                   alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    onPressed: () => Navigator.of(context).pop(),
+                  child: UpBackButton(
+                    fallbackLocation: '/albums',
+                    icon: Icons.keyboard_arrow_down,
                     iconSize: 28,
                   ),
                 ),
@@ -150,11 +150,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 children: [
                   SizedBox(
                     width: _phoneHeaderSideWidth,
-                    child: Align(
+                    child: const Align(
                       alignment: Alignment.centerLeft,
-                      child: IconButton(
-                        icon: const Icon(Icons.keyboard_arrow_down),
-                        onPressed: () => Navigator.of(context).pop(),
+                      child: UpBackButton(
+                        fallbackLocation: '/albums',
+                        icon: Icons.keyboard_arrow_down,
                         iconSize: 28,
                       ),
                     ),

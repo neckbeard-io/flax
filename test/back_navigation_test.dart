@@ -131,4 +131,77 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(router.state.uri.path, '/albums');
   });
+
+  group('Android system back navigation (handlePopRoute)', () {
+    testWidgets(
+      'navigates back to /settings from /settings/metadata-cache without exiting',
+      (tester) async {
+        final router = await _pumpApp(tester);
+        router.go('/settings/metadata-cache');
+        await _settle(tester);
+        expect(router.state.uri.path, '/settings/metadata-cache');
+
+        final handled = await WidgetsBinding.instance.handlePopRoute();
+        await _settle(tester);
+
+        expect(handled, isTrue);
+        expect(router.state.uri.path, '/settings');
+      },
+    );
+
+    testWidgets(
+      'navigates back to /settings/equalizer from /settings/equalizer/autoeq',
+      (tester) async {
+        final router = await _pumpApp(tester);
+        router.go('/settings/equalizer/autoeq');
+        await _settle(tester);
+        expect(router.state.uri.path, '/settings/equalizer/autoeq');
+
+        final handled = await WidgetsBinding.instance.handlePopRoute();
+        await _settle(tester);
+
+        expect(handled, isTrue);
+        expect(router.state.uri.path, '/settings/equalizer');
+      },
+    );
+
+    testWidgets('navigates back to /albums from /albums/test-id', (
+      tester,
+    ) async {
+      final router = await _pumpApp(tester);
+      router.go('/albums/test-id');
+      await _settle(tester);
+      expect(router.state.uri.path, '/albums/test-id');
+
+      final handled = await WidgetsBinding.instance.handlePopRoute();
+      await _settle(tester);
+
+      expect(handled, isTrue);
+      expect(router.state.uri.path, '/albums');
+    });
+
+    testWidgets('navigates back to /albums from /downloads', (tester) async {
+      final router = await _pumpApp(tester);
+      router.go('/downloads');
+      await _settle(tester);
+      expect(router.state.uri.path, '/downloads');
+
+      final handled = await WidgetsBinding.instance.handlePopRoute();
+      await _settle(tester);
+
+      expect(handled, isTrue);
+      expect(router.state.uri.path, '/albums');
+    });
+
+    testWidgets('returns false on root /albums to allow OS exit', (
+      tester,
+    ) async {
+      final router = await _pumpApp(tester);
+      expect(router.state.uri.path, '/albums');
+
+      final handled = await WidgetsBinding.instance.handlePopRoute();
+      expect(handled, isFalse);
+      expect(router.state.uri.path, '/albums');
+    });
+  });
 }

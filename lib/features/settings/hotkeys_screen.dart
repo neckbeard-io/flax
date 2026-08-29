@@ -8,6 +8,7 @@ import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:flax/services/hotkeys/hotkey_models.dart';
 import 'package:flax/services/hotkeys/hotkey_service.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 
 class HotkeysScreen extends ConsumerWidget {
   const HotkeysScreen({super.key});
@@ -24,7 +25,10 @@ class HotkeysScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Keyboard Shortcuts')),
+      appBar: AppBar(
+        leading: const UpBackButton(fallbackLocation: '/settings'),
+        title: const Text('Keyboard Shortcuts'),
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 12),
         children: [

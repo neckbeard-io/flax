@@ -129,7 +129,7 @@ class SettingsScreen extends ConsumerWidget {
                   : 'Global hotkeys disabled · In-app shortcuts only',
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go('/settings/hotkeys'),
+            onTap: () => context.push('/settings/hotkeys'),
           ),
           const Divider(),
 
@@ -160,7 +160,7 @@ class SettingsScreen extends ConsumerWidget {
               _audioOutputSubtitle(ref.watch(audioOutputSettingsProvider)),
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go('/settings/audio'),
+            onTap: () => context.push('/settings/audio'),
           ),
           ListTile(
             title: const Text('Equalizer'),
@@ -170,7 +170,7 @@ class SettingsScreen extends ConsumerWidget {
                   : 'Disabled · Parametric EQ & AutoEQ',
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go('/settings/equalizer'),
+            onTap: () => context.push('/settings/equalizer'),
           ),
           const Divider(),
 
@@ -186,7 +186,7 @@ class SettingsScreen extends ConsumerWidget {
                   : 'No server',
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go('/settings/transcoding'),
+            onTap: () => context.push('/settings/transcoding'),
           ),
           const Divider(),
 
@@ -233,7 +233,7 @@ class SettingsScreen extends ConsumerWidget {
                       : 'No server',
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.go('/settings/metadata-cache'),
+                onTap: () => context.push('/settings/metadata-cache'),
               );
             },
           ),

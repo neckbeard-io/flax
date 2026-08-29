@@ -14,6 +14,7 @@ import 'package:flax/services/cache/storage_manager.dart';
 import 'package:flax/services/metadata/metadata_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 
 class MetadataCachingScreen extends ConsumerWidget {
   const MetadataCachingScreen({super.key});
@@ -34,7 +35,10 @@ class MetadataCachingScreen extends ConsumerWidget {
 
     if (server == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Caching')),
+        appBar: AppBar(
+          leading: const UpBackButton(fallbackLocation: '/settings'),
+          title: const Text('Caching'),
+        ),
         body: const Center(child: Text('No server connected')),
       );
     }
@@ -70,7 +74,10 @@ class MetadataCachingScreen extends ConsumerWidget {
     final config = server.metadataCacheConfig;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Caching')),
+      appBar: AppBar(
+        leading: const UpBackButton(fallbackLocation: '/settings'),
+        title: const Text('Caching'),
+      ),
       body: ListView(
         children: [
           // ── Cache Status Overview ──

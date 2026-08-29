@@ -163,14 +163,20 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'equalizer',
                 builder: (context, state) => const EqualizerScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'autoeq',
+                    builder: (context, state) => const AutoEqScreen(),
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: 'autoeq',
+                redirect: (context, state) => '/settings/equalizer/autoeq',
               ),
               GoRoute(
                 path: 'transcoding',
                 builder: (context, state) => const TranscodingScreen(),
-              ),
-              GoRoute(
-                path: 'autoeq',
-                builder: (context, state) => const AutoEqScreen(),
               ),
               GoRoute(
                 path: 'metadata-cache',

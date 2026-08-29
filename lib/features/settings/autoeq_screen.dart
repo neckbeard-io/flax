@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/shared/widgets/eq_curve_chart.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 
 class AutoEqScreen extends ConsumerStatefulWidget {
   const AutoEqScreen({super.key});
@@ -44,7 +45,10 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
       // No AppBar actions: ShellScaffold overlays the window buttons on this
       // corner, so anything here is drawn underneath them. "Clear" lives in the
       // active-profile banner instead, next to what it clears.
-      appBar: AppBar(title: const Text('AutoEQ')),
+      appBar: AppBar(
+        leading: const UpBackButton(fallbackLocation: '/settings/equalizer'),
+        title: const Text('AutoEQ'),
+      ),
       body: Column(
         children: [
           // ── Active profile banner ──

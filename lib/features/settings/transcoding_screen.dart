@@ -4,6 +4,7 @@ import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/server.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 
 class TranscodingScreen extends ConsumerWidget {
   const TranscodingScreen({super.key});
@@ -15,7 +16,10 @@ class TranscodingScreen extends ConsumerWidget {
 
     if (server == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Transcoding')),
+        appBar: AppBar(
+          leading: const UpBackButton(fallbackLocation: '/settings'),
+          title: const Text('Transcoding'),
+        ),
         body: const Center(child: Text('No server connected')),
       );
     }
@@ -24,7 +28,10 @@ class TranscodingScreen extends ConsumerWidget {
     final offlineOnCellular = ref.watch(offlineOnCellularSettingProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Transcoding')),
+      appBar: AppBar(
+        leading: const UpBackButton(fallbackLocation: '/settings'),
+        title: const Text('Transcoding'),
+      ),
       body: ListView(
         children: [
           _SectionTitle(title: 'Streaming Quality'),

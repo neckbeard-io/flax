@@ -7,6 +7,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart' as mpv;
 import 'package:flax/features/settings/audio_output_settings.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/shared/widgets/flax_dropdown.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 
 export 'package:flax/features/settings/audio_output_settings.dart';
 
@@ -32,7 +33,10 @@ class AudioOutputScreen extends ConsumerWidget {
     final playbackNotifier = ref.read(playbackSettingsProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Audio Output')),
+      appBar: AppBar(
+        leading: const UpBackButton(fallbackLocation: '/settings'),
+        title: const Text('Audio Output'),
+      ),
       body: ListView(
         children: [
           _SectionTitle(title: 'Engine & Device'),
