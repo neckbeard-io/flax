@@ -68,6 +68,12 @@ if command -v fpm >/dev/null 2>&1; then
     --maintainer "brutog <brutog@users.noreply.github.com>" \
     --description "High-fidelity music player for Subsonic and Navidrome" \
     --url "https://github.com/neckbeard-io/flax" \
+    -d "gtk3" \
+    -d "alsa-lib" \
+    -d "pulseaudio-libs" \
+    -d "pipewire-libs" \
+    -d "mpv-libs" \
+    -d "keybinder3" \
     -p "$RPM_FILE" \
     -C "$DEB_STAGING" usr
 fi

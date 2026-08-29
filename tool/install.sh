@@ -20,14 +20,14 @@ set -euo pipefail
 # ── Formatting & Colors ───────────────────────────────────────────────
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
-  BOLD="\033[1m"
-  DIM="\033[2m"
-  BLUE="\033[0;34m"
-  GREEN="\033[0;32m"
-  YELLOW="\033[0;33m"
-  RED="\033[0;31m"
-  CYAN="\033[0;36m"
-  NC="\033[0m" # No Color
+  BOLD=$'\033[1m'
+  DIM=$'\033[2m'
+  BLUE=$'\033[0;34m'
+  GREEN=$'\033[0;32m'
+  YELLOW=$'\033[0;33m'
+  RED=$'\033[0;31m'
+  CYAN=$'\033[0;36m'
+  NC=$'\033[0m' # No Color
 else
   BOLD=""
   DIM=""
@@ -405,29 +405,12 @@ check_linux_dependencies() {
 
   # Check common library paths
   if [ "$has_mpv" = 0 ]; then
-    for path in /usr/lib/libmpv.so* /usr/lib64/libmpv.so* /usr/lib/x86_64-linux-gnu/libmpv.so* /usr/local/lib/libmpv.so*; do
+    for path in /usr/lib/libmpv.so* /usr/lib64/libmpv.so* /usr/lib/x86_64-linux-gnu/libmpv.so* /usr/local/lib/libmpv.so* "$HOME/.local/usr/lib/x86_64-linux-gnu/libmpv.so*"; do
       if [ -e "$path" ]; then
         has_mpv=1
         break
       fi
     done
-  fi
-
-  if [ "$has_mpv" = 0 ]; then
-    warn "libmpv was not detected on your system. Flax requires libmpv for audio playback."
-    printf "  Install it using your distribution's package manager:\n"
-    if [ -f /etc/debian_version ]; then
-      printf "    ${BOLD}sudo apt install libmpv2${NC} (or ${BOLD}libmpv1${NC})\n"
-    elif [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ]; then
-      printf "    ${BOLD}sudo dnf install mpv-libs${NC}\n"
-    elif [ -f /etc/arch-release ]; then
-      printf "    ${BOLD}sudo pacman -S mpv${NC}\n"
-    elif [ -f /etc/zypp/zypp.conf ]; then
-      printf "    ${BOLD}sudo zypper install libmpv2${NC}\n"
-    else
-      printf "    Install the ${BOLD}libmpv${NC} package for your distribution.\n"
-    fi
-    printf "\n"
   fi
 
   local has_keybinder=0
@@ -437,28 +420,86 @@ check_linux_dependencies() {
     fi
   fi
   if [ "$has_keybinder" = 0 ]; then
-    for path in /usr/lib/libkeybinder-3.0* /usr/lib64/libkeybinder-3.0* /usr/lib/x86_64-linux-gnu/libkeybinder-3.0* /usr/local/lib/libkeybinder-3.0*; do
+    for path in /usr/lib/libkeybinder-3.0* /usr/lib64/libkeybinder-3.0* /usr/lib/x86_64-linux-gnu/libkeybinder-3.0* /usr/local/lib/libkeybinder-3.0* "$HOME/.local/usr/lib/x86_64-linux-gnu/libkeybinder-3.0*"; do
       if [ -e "$path" ]; then
         has_keybinder=1
         break
       fi
     done
   fi
+
+  if [ "$has_mpv" = 1 ] && [ "$has_keybinder" = 1 ]; then
+    return 0
+  fi
+
+  local deb_pkgs=()
+  local rpm_pkgs=()
+  local arch_pkgs=()
+  local zypp_pkgs=()
+
+  if [ "$has_mpv" = 0 ]; then
+    deb_pkgs+=("libmpv2")
+    rpm_pkgs+=("mpv-libs")
+    arch_pkgs+=("mpv")
+    zypp_pkgs+=("libmpv2")
+  fi
+
   if [ "$has_keybinder" = 0 ]; then
-    warn "libkeybinder-3.0 was not detected on your system. Global keyboard hotkeys require keybinder-3.0."
-    printf "  Install it using your distribution's package manager:\n"
-    if [ -f /etc/debian_version ]; then
-      printf "    ${BOLD}sudo apt install libkeybinder-3.0-0${NC}\n"
-    elif [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ]; then
-      printf "    ${BOLD}sudo dnf install keybinder3${NC}\n"
-    elif [ -f /etc/arch-release ]; then
-      printf "    ${BOLD}sudo pacman -S keybinder3${NC}\n"
-    elif [ -f /etc/zypp/zypp.conf ]; then
-      printf "    ${BOLD}sudo zypper install libkeybinder-3_0-0${NC}\n"
-    else
-      printf "    Install the ${BOLD}keybinder-3.0${NC} package for your distribution.\n"
+    deb_pkgs+=("libkeybinder-3.0-0")
+    rpm_pkgs+=("keybinder3")
+    arch_pkgs+=("keybinder3")
+    zypp_pkgs+=("libkeybinder-3_0-0")
+  fi
+
+  local install_cmd=""
+  if [ -f /etc/debian_version ] || [ -f /etc/lsb-release ] || [ -f /etc/os-release ]; then
+    if command -v apt >/dev/null 2>&1; then
+      install_cmd="sudo apt update && sudo apt install -y ${deb_pkgs[*]}"
     fi
+  fi
+  if [ -z "$install_cmd" ] && ([ -f /etc/fedora-release ] || [ -f /etc/redhat-release ]); then
+    if command -v dnf >/dev/null 2>&1; then
+      install_cmd="sudo dnf install -y ${rpm_pkgs[*]}"
+    fi
+  fi
+  if [ -z "$install_cmd" ] && [ -f /etc/arch-release ]; then
+    if command -v pacman >/dev/null 2>&1; then
+      install_cmd="sudo pacman -S --noconfirm ${arch_pkgs[*]}"
+    fi
+  fi
+  if [ -z "$install_cmd" ] && [ -f /etc/zypp/zypp.conf ]; then
+    if command -v zypper >/dev/null 2>&1; then
+      install_cmd="sudo zypper install -y ${zypp_pkgs[*]}"
+    fi
+  fi
+
+  local did_install=0
+  if [ -n "$install_cmd" ] && [ -w /dev/tty ] && command -v sudo >/dev/null 2>&1; then
+    warn "Missing system dependencies detected:"
+    [ "$has_mpv" = 0 ] && printf "  ${CYAN}•${NC} %s (audio playback)\n" "${deb_pkgs[0]:-libmpv}"
+    [ "$has_keybinder" = 0 ] && printf "  ${CYAN}•${NC} %s (global media hotkeys)\n" "${deb_pkgs[1]:-libkeybinder-3.0}"
     printf "\n"
+    printf "  Would you like to install them automatically? [Y/n] "
+    local reply=""
+    read -r reply </dev/tty || reply="n"
+    if [ -z "$reply" ] || [ "$reply" = "y" ] || [ "$reply" = "Y" ]; then
+      info "Installing dependencies via package manager..."
+      if sh -c "$install_cmd"; then
+        did_install=1
+        success "Dependencies installed successfully."
+      else
+        warn "Automatic package installation was not completed."
+      fi
+    fi
+  fi
+
+  if [ "$did_install" = 0 ]; then
+    [ "$has_mpv" = 0 ] && warn "libmpv was not detected (required for audio playback)."
+    [ "$has_keybinder" = 0 ] && warn "libkeybinder-3.0 was not detected (required for global media hotkeys)."
+    if [ -n "$install_cmd" ]; then
+      printf "  Install them with your package manager:\n"
+      printf "    ${BOLD}%s${NC}\n\n" "$install_cmd"
+    fi
   fi
 }
 
