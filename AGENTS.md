@@ -397,6 +397,17 @@ $$\text{v0.5.5} < \text{v0.5.6-dev.1} < \text{v0.5.6-dev.2} < \text{v0.5.6}$$
 - **Stable Channel Subscribers**: Only discover and download official releases, ignoring `-dev.*` builds.
 - **Dev Channel Subscribers**: Discover all pre-release builds and automatically get promoted to the final `vX.Y.Z` when it lands on `main`.
 
+### Branching & Pull Request Rules
+1. **Target `dev` for Features & Bugfixes**:
+   - All feature and bugfix branches must branch from `dev` (`git checkout -b feat/my-feature dev`) and open pull requests targeting `dev` (`feat/*` $\to$ `dev`).
+   - Never merge feature branches directly into `main`.
+2. **Changelog on `dev`**:
+   - Add concise user-facing changelog lines under `## Unreleased`. Automated dev pre-releases extract this section for pre-release notes.
+3. **Promoting `dev` to `main` (Stable Releases)**:
+   - When a batch of dev pre-releases is validated, open a promotion PR from `dev` to `main`.
+   - Close off the changelog in that PR: rename `## Unreleased` to `## vX.Y.Z — <YYYY-MM-DD>` and start a fresh `## Unreleased` above it.
+   - Merging `dev` into `main` automatically triggers CI to build and publish official release `vX.Y.Z` to the Stable channel.
+
 ---
 
 ## Automated Merge Triggers & CI/CD Builds
