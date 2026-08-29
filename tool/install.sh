@@ -108,14 +108,23 @@ do_uninstall() {
   os="$(uname -s)"
 
   if [ "$os" = "Darwin" ]; then
-    local target_app="/Applications/flax.app"
-    [ -d "$HOME/Applications/flax.app" ] && target_app="$HOME/Applications/flax.app"
-    if [ -d "$target_app" ]; then
-      step "Removing ${target_app}..."
-      rm -rf "$target_app"
-      success "Flax removed successfully."
+    local removed=0
+    for app in "/Applications/flax.app" "${HOME}/Applications/flax.app"; do
+      if [ -d "$app" ]; then
+        step "Removing ${app}..."
+        if [ -w "$app" ] || [ -w "$(dirname "$app")" ]; then
+          rm -rf "$app"
+        else
+          sudo rm -rf "$app"
+        fi
+        removed=1
+      fi
+    done
+
+    if [ "$removed" = 1 ]; then
+      success "Flax application removed successfully."
     else
-      warn "Flax application was not found in /Applications or ~/Applications."
+      warn "Flax was not found in /Applications or ~/Applications."
     fi
   elif [ "$os" = "Linux" ]; then
     step "Removing standalone Flax installation..."
