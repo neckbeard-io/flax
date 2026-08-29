@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Update release channel selector in Settings (Stable vs Dev) with SemVer 2.0 pre-release support.
 - Mobile download indicator pill in top headers with 1-tap navigation to the Downloads screen.
 - Transient feedback snackbars with instant "View" deep-link when caching albums, artists, or songs.
 - Live spinning progress indicators on downloading song rows in album tracklists.

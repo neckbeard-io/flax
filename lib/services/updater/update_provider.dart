@@ -24,6 +24,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
 
   static const String _prefSkippedVersionKey = 'update_skipped_version';
   static const String _prefAutoCheckKey = 'update_auto_check_enabled';
+  static const String _prefChannelKey = 'update_channel';
 
   UpdateNotifier(this._service) : super(const UpdateState()) {
     _init();
@@ -32,10 +33,16 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
   Future<void> _init() async {
     final version = await _service.getCurrentVersion();
     final method = _service.detectInstallMethod();
-
-    state = state.copyWith(currentVersion: version, installMethod: method);
-
     final prefs = await SharedPreferences.getInstance();
+    final channelStr = prefs.getString(_prefChannelKey);
+    final channel = UpdateChannel.fromString(channelStr);
+
+    state = state.copyWith(
+      currentVersion: version,
+      installMethod: method,
+      channel: channel,
+    );
+
     final autoCheck = prefs.getBool(_prefAutoCheckKey) ?? true;
     if (autoCheck) {
       checkForUpdates(silent: true);
@@ -48,6 +55,14 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
     }
   }
 
+  /// Sets the update release channel (Stable vs Dev) and refreshes status.
+  Future<void> setChannel(UpdateChannel channel) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefChannelKey, channel.name);
+    state = state.copyWith(channel: channel);
+    await checkForUpdates();
+  }
+
   /// Checks GitHub for new releases.
   Future<void> checkForUpdates({bool silent = false}) async {
     if (state.isChecking || state.isDownloading || state.isInstalling) return;
@@ -58,7 +73,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
     }
 
     try {
-      final latest = await _service.fetchLatestRelease();
+      final latest = await _service.fetchLatestRelease(channel: state.channel);
       final now = DateTime.now();
 
       if (latest == null) {

@@ -15,9 +15,17 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version, without the leading v (e.g. 0.4.1)'
+        description: 'Version, without the leading v (e.g. 0.4.1 or 0.4.1-dev.1)'
         required: true
         type: string
+      channel:
+        description: 'Release channel (stable or dev)'
+        required: true
+        default: 'stable'
+        type: choice
+        options:
+          - stable
+          - dev
       macos:
         description: 'Build macOS .dmg'
         required: false
@@ -349,8 +357,8 @@ jobs:
       # The release body is the changelog's section for this version, followed
       # by the standing install instructions. Extracting it here is what stops
       # the body silently reverting to install-notes-only — which is what every
-      # release before this one shipped, because nothing read CHANGELOG.md at
-      # all. Missing section is a hard failure, not a quiet fallback.
+      # The release body is the changelog's section for this version, followed
+      # by the standing install instructions. Missing section is a hard failure for stable releases.
       - name: Extract changelog section
         run: |
           VERSION="${{ inputs.version }}"
@@ -363,12 +371,18 @@ jobs:
               r'^## v%s\b.*?$(.*?)(?=^## |\Z)' % re.escape(version),
               text, re.S | re.M)
           if not match or not match.group(1).strip():
-              sys.exit(
-                  'CHANGELOG.md has no content under "## v%s".\n'
-                  'Close the Unreleased section off before releasing: rename it '
-                  'to "## v%s — <YYYY-MM-DD>" and open a fresh Unreleased above '
-                  'it, in its own commit.' % (version, version))
-          print(match.group(1).strip())
+              # For dev builds, fall back to Unreleased if specific version tag is not yet closed off
+              unreleased_match = re.search(r'^## Unreleased\b.*?$(.*?)(?=^## |\Z)', text, re.S | re.M)
+              if unreleased_match and unreleased_match.group(1).strip():
+                  print(unreleased_match.group(1).strip())
+              else:
+                  sys.exit(
+                      'CHANGELOG.md has no content under "## v%s" or "## Unreleased".\n'
+                      'Close the Unreleased section off before releasing: rename it '
+                      'to "## v%s — <YYYY-MM-DD>" and open a fresh Unreleased above '
+                      'it, in its own commit.' % (version, version))
+          else:
+              print(match.group(1).strip())
           PY
           echo "--- release notes ---"
           cat changelog.md
@@ -382,21 +396,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: v${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
         run: |
+          PRERELEASE_FLAG=""
+          if [ "$CHANNEL" = "dev" ] || echo "$TAG" | grep -qi "dev"; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
           # Creates the tag at this commit if it does not already exist.
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG exists — uploading/replacing assets."
             gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
             # Re-runs refresh the body too. Without this a release created from
             # an earlier commit keeps its old notes forever.
-            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file body.md
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file body.md $PRERELEASE_FLAG
           else
             gh release create "$TAG" \
               --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" \
               --title "flax $TAG" \
               --notes-file body.md \
-              --prerelease \
+              $PRERELEASE_FLAG \
               dist/*
           fi
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \

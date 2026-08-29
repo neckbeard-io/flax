@@ -16,6 +16,21 @@ enum InstallMethod {
   const InstallMethod(this.label, this.format);
 }
 
+/// Release channel subscription for automatic and manual update checks.
+enum UpdateChannel {
+  stable('Stable', 'Official, tested releases (Recommended)'),
+  dev('Dev', 'Bleeding-edge pre-releases and dev builds');
+
+  final String label;
+  final String description;
+  const UpdateChannel(this.label, this.description);
+
+  static UpdateChannel fromString(String? val) {
+    if (val?.toLowerCase() == 'dev') return UpdateChannel.dev;
+    return UpdateChannel.stable;
+  }
+}
+
 /// Lifecycle stages of the self-update state machine.
 enum UpdateStage {
   idle,
@@ -114,6 +129,7 @@ class ReleaseAsset {
 @immutable
 class UpdateState {
   final UpdateStage stage;
+  final UpdateChannel channel;
   final ReleaseInfo? latestRelease;
   final ReleaseAsset? matchingAsset;
   final InstallMethod installMethod;
@@ -127,6 +143,7 @@ class UpdateState {
 
   const UpdateState({
     this.stage = UpdateStage.idle,
+    this.channel = UpdateChannel.stable,
     this.latestRelease,
     this.matchingAsset,
     this.installMethod = InstallMethod.unsupported,
@@ -153,6 +170,7 @@ class UpdateState {
 
   UpdateState copyWith({
     UpdateStage? stage,
+    UpdateChannel? channel,
     ReleaseInfo? latestRelease,
     ReleaseAsset? matchingAsset,
     InstallMethod? installMethod,
@@ -166,6 +184,7 @@ class UpdateState {
   }) {
     return UpdateState(
       stage: stage ?? this.stage,
+      channel: channel ?? this.channel,
       latestRelease: latestRelease ?? this.latestRelease,
       matchingAsset: matchingAsset ?? this.matchingAsset,
       installMethod: installMethod ?? this.installMethod,

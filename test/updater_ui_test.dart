@@ -103,6 +103,43 @@ void main() {
     );
     expect(find.text('Got it'), findsOneWidget);
   });
+
+  testWidgets('UpdateDialog indicates dev pre-release status', (tester) async {
+    final state = UpdateState(
+      stage: UpdateStage.available,
+      channel: UpdateChannel.dev,
+      currentVersion: '0.5.5',
+      installMethod: InstallMethod.macosDmg,
+      latestRelease: ReleaseInfo(
+        tagName: 'v0.5.6-dev.1',
+        version: '0.5.6-dev.1',
+        title: 'flax v0.5.6-dev.1',
+        body: 'Pre-release improvements',
+        htmlUrl: 'http://example.com',
+        publishedAt: DateTime.now(),
+        isPrerelease: true,
+        assets: const [],
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          updateNotifierProvider.overrideWith(
+            (ref) => _FakeUpdateNotifier(state),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: UpdateButton())),
+      ),
+    );
+
+    expect(find.text('v0.5.6-dev.1'), findsOneWidget);
+    await tester.tap(find.text('v0.5.6-dev.1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Update Available'), findsOneWidget);
+    expect(find.text('v0.5.5 → v0.5.6-dev.1'), findsOneWidget);
+  });
 }
 
 class _FakeUpdateNotifier extends StateNotifier<UpdateState>

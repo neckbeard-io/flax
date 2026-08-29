@@ -13,6 +13,46 @@ void main() {
       expect(UpdateService.compareSemver('0.4.5', '0.4.6'), lessThan(0));
       expect(UpdateService.compareSemver('v0.4.6', '0.4.5'), greaterThan(0));
     });
+
+    test('correctly compares pre-release versions', () {
+      // Newer major/minor/patch takes precedence over pre-releases of older versions
+      expect(
+        UpdateService.compareSemver('0.5.6-dev.1', '0.5.5'),
+        greaterThan(0),
+      );
+      expect(UpdateService.compareSemver('0.5.5', '0.5.6-dev.1'), lessThan(0));
+
+      // Sequential pre-releases of the same version
+      expect(
+        UpdateService.compareSemver('0.5.6-dev.2', '0.5.6-dev.1'),
+        greaterThan(0),
+      );
+      expect(
+        UpdateService.compareSemver('0.5.6-dev.1', '0.5.6-dev.2'),
+        lessThan(0),
+      );
+
+      // Stable release has higher precedence than pre-release of the same version
+      expect(
+        UpdateService.compareSemver('0.5.6', '0.5.6-dev.2'),
+        greaterThan(0),
+      );
+      expect(UpdateService.compareSemver('0.5.6-dev.2', '0.5.6'), lessThan(0));
+
+      // Identical pre-release versions
+      expect(
+        UpdateService.compareSemver('0.5.6-dev.1', 'v0.5.6-dev.1'),
+        equals(0),
+      );
+    });
+
+    test('UpdateChannel parsing', () {
+      expect(UpdateChannel.fromString('dev'), equals(UpdateChannel.dev));
+      expect(UpdateChannel.fromString('DEV'), equals(UpdateChannel.dev));
+      expect(UpdateChannel.fromString('stable'), equals(UpdateChannel.stable));
+      expect(UpdateChannel.fromString(null), equals(UpdateChannel.stable));
+      expect(UpdateChannel.fromString('other'), equals(UpdateChannel.stable));
+    });
   });
 
   group('UpdateService asset matching', () {

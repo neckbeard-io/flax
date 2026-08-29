@@ -329,15 +329,35 @@ class _AboutTile extends ConsumerWidget {
               ref.read(showWhatsNewPreferenceProvider.notifier).setEnabled(v),
         ),
         ListTile(
+          title: const Text('Update Channel'),
+          subtitle: Text(updateState.channel.description),
+          trailing: DropdownButton<UpdateChannel>(
+            value: updateState.channel,
+            underline: const SizedBox.shrink(),
+            onChanged: (UpdateChannel? newChannel) {
+              if (newChannel != null) {
+                updateNotifier.setChannel(newChannel);
+              }
+            },
+            items: const [
+              DropdownMenuItem(
+                value: UpdateChannel.stable,
+                child: Text('Stable'),
+              ),
+              DropdownMenuItem(value: UpdateChannel.dev, child: Text('Dev')),
+            ],
+          ),
+        ),
+        ListTile(
           title: const Text('Check for Updates'),
           subtitle: Text(
             updateState.isChecking
-                ? 'Checking for updates...'
+                ? 'Checking for updates (${updateState.channel.label} channel)...'
                 : updateState.isUpdateAvailable
-                ? 'New version available: v${updateState.latestRelease?.version ?? ""}'
+                ? 'New ${updateState.latestRelease?.isPrerelease == true ? "dev" : "stable"} version: v${updateState.latestRelease?.version ?? ""}'
                 : updateState.stage == UpdateStage.upToDate
-                ? 'Flax is up to date'
-                : 'Tap to check GitHub for new releases',
+                ? 'Flax is up to date (${updateState.channel.label} channel)'
+                : 'Tap to check GitHub for new ${updateState.channel.label.toLowerCase()} releases',
           ),
           trailing: updateState.isChecking
               ? const SizedBox(

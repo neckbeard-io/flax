@@ -45,6 +45,9 @@ class _StubUpdateNotifier extends StateNotifier<UpdateState>
   Future<void> install() async {}
 
   @override
+  Future<void> setChannel(UpdateChannel channel) async {}
+
+  @override
   Future<void> skipVersion(String version) async {}
 }
 

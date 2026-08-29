@@ -377,6 +377,28 @@ nohup caffeinate -d -u -t 900 >/dev/null 2>&1 &
 
 ---
 
+## Release Channels & Branching Strategy
+
+Flax employs a two-tier release and update channel system:
+
+- **`main` (Stable Channel)**: Official, fully validated releases.
+  - Tag format: `vX.Y.Z` (e.g. `v0.5.6`).
+  - Published as standard GitHub Releases (without `--prerelease`).
+  - Served to users on the **Stable** channel (default).
+- **`dev` (Dev Channel)**: Active development and bleeding-edge pre-releases.
+  - Tag format: `vX.Y.Z-dev.N` (e.g. `v0.5.6-dev.1`, `v0.5.6-dev.2`).
+  - Published to GitHub with the `--prerelease` flag enabled.
+  - Served to users who opt into the **Dev** channel in Settings.
+
+### Self-Updater SemVer Precedence
+The self-updater respects SemVer 2.0 ordering:
+$$\text{v0.5.5} < \text{v0.5.6-dev.1} < \text{v0.5.6-dev.2} < \text{v0.5.6}$$
+
+- **Stable Channel Subscribers**: Only discover and download official releases, ignoring `-dev.*` builds.
+- **Dev Channel Subscribers**: Discover all pre-release builds and automatically get promoted to the final `vX.Y.Z` when it lands on `main`.
+
+---
+
 ## Maintainer only: distributing test builds
 
 Everything below needs repository secrets and workflow permissions. A
@@ -388,7 +410,13 @@ push or tag trigger so releases are triggered deliberately. Since the repo is
 public, GitHub Actions runner minutes are free across macOS, Windows, and Linux.
 
 ```bash
-gh workflow run release.yml -f version=0.4.1 -f macos=true -f windows=true -f linux=true -f android=true
+# Trigger a stable release from main
+gh workflow run release.yml -f version=0.5.6 -f channel=stable --ref main -f macos=true -f windows=true -f linux=true -f android=true
+
+# Trigger a dev pre-release from dev
+gh workflow run release.yml -f version=0.5.6-dev.1 -f channel=dev --ref dev -f macos=true -f windows=true -f linux=true -f android=true
+
+# Watch the run
 gh run watch $(gh run list --workflow=release.yml -L1 --json databaseId --jq '.[0].databaseId')
 ```
 
