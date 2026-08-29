@@ -10,7 +10,11 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Mobile storage device selection for routing audio and offline cache to external SD cards.
+
 ### Fixed
+- Gracefully falls back to internal storage with a dismissible warning when an external SD card is ejected.
 - Android Gradle configuration and dynamic color compatibility with modern Kotlin build tooling.
 
 ## v0.5.5 — 2026-08-28

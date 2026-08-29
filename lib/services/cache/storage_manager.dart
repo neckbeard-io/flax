@@ -3,9 +3,14 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// Tracks whether the previously configured external storage volume was missing/unmounted
+/// and fell back to internal storage.
+final missingStorageWarningProvider = StateProvider<String?>((ref) => null);
 
 /// Information about free and total space on a storage volume.
 class DiskSpaceInfo {
@@ -244,7 +249,9 @@ class StorageManager {
   }
 
   /// Determines the active base path for the audio cache.
-  static Future<String> resolveActiveCacheBasePath() async {
+  static Future<String> resolveActiveCacheBasePath({
+    void Function(String missingPath)? onMissingVolume,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final customPath = prefs.getString(prefStoragePathKey);
@@ -252,6 +259,8 @@ class StorageManager {
         final dir = Directory(customPath);
         if (dir.existsSync() || (await _canCreateDir(dir))) {
           return customPath;
+        } else {
+          onMissingVolume?.call(customPath);
         }
       }
     } catch (_) {}

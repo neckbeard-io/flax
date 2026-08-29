@@ -144,8 +144,12 @@ class AudioCacheService {
   static String? _cachedBasePath;
 
   /// Initializes the local audio cache base directory path.
-  static Future<void> initialize() async {
-    _cachedBasePath = await StorageManager.resolveActiveCacheBasePath();
+  static Future<void> initialize({
+    void Function(String missingPath)? onMissingVolume,
+  }) async {
+    _cachedBasePath = await StorageManager.resolveActiveCacheBasePath(
+      onMissingVolume: onMissingVolume,
+    );
     final dir = Directory(_cachedBasePath!);
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
@@ -180,14 +184,21 @@ class AudioCacheService {
         return f.path;
       }
     }
-    // Check rolling
+    // Check rolling / streaming cache
     for (final ext in exts) {
-      final f = File(
+      final fRolling = File(
         p.join(base, 'music', 'rolling', serverId, '$songId.$ext'),
       );
-      if (f.existsSync() && f.lengthSync() > 0) {
-        touchCachedSongSync(f.path);
-        return f.path;
+      if (fRolling.existsSync() && fRolling.lengthSync() > 0) {
+        touchCachedSongSync(fRolling.path);
+        return fRolling.path;
+      }
+      final fCache = File(
+        p.join(base, 'music', 'cache', serverId, '$songId.$ext'),
+      );
+      if (fCache.existsSync() && fCache.lengthSync() > 0) {
+        touchCachedSongSync(fCache.path);
+        return fCache.path;
       }
     }
     return null;
@@ -212,7 +223,11 @@ class AudioCacheService {
       }
       return dir;
     }
-    _cachedBasePath = await StorageManager.resolveActiveCacheBasePath();
+    _cachedBasePath = await StorageManager.resolveActiveCacheBasePath(
+      onMissingVolume: (path) {
+        _ref.read(missingStorageWarningProvider.notifier).state = path;
+      },
+    );
     final dir = Directory(_cachedBasePath!);
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
