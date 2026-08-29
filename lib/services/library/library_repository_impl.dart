@@ -467,6 +467,10 @@ class LibraryRepositoryImpl implements LibraryRepository {
       _dao.watchDownloadingSongIds(_serverId);
 
   @override
+  Stream<List<Song>> watchActiveDownloadSongs() =>
+      _dao.watchActiveDownloadSongs(_serverId);
+
+  @override
   Stream<Set<String>> watchDownloadedAlbumIds() =>
       _dao.watchDownloadedAlbumIds(_serverId);
 
@@ -523,6 +527,12 @@ class LibraryRepositoryImpl implements LibraryRepository {
     localPath: localPath,
     state: state,
   );
+
+  @override
+  Future<void> updateSongsDownloadState(
+    List<String> songIds, {
+    required DownloadState state,
+  }) => _dao.updateSongsDownloadState(_serverId, songIds, state: state);
 
   @override
   Future<void> clearAllSongDownloads() => _dao.clearAllSongDownloads(_serverId);

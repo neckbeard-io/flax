@@ -659,6 +659,17 @@ class LibraryDao {
     );
   }
 
+  Future<void> updateSongsDownloadState(
+    String serverId,
+    List<String> songIds, {
+    required DownloadState state,
+  }) async {
+    if (songIds.isEmpty) return;
+    await (_db.update(_db.songs)
+          ..where((t) => t.serverId.equals(serverId) & t.id.isIn(songIds)))
+        .write(SongsCompanion(downloadState: Value(state.index)));
+  }
+
   Future<void> clearAllSongDownloads(String serverId) async {
     await (_db.update(
       _db.songs,
@@ -686,6 +697,21 @@ class LibraryDao {
     return q.watch().map(
       (rows) => rows.map((r) => r.read(_db.songs.id)!).toSet(),
     );
+  }
+
+  Stream<List<Song>> watchActiveDownloadSongs(String serverId) {
+    final q = _db.select(_db.songs)
+      ..where(
+        (t) =>
+            t.serverId.equals(serverId) &
+            (t.downloadState.equals(DownloadState.downloading.index) |
+                t.downloadState.equals(DownloadState.queued.index)),
+      )
+      ..orderBy([
+        (t) => OrderingTerm.desc(t.downloadState),
+        (t) => OrderingTerm.asc(t.track),
+      ]);
+    return q.watch().map((rows) => rows.map(songFromRow).toList());
   }
 
   Stream<Set<String>> watchDownloadingSongIds(String serverId) {

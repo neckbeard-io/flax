@@ -80,6 +80,7 @@ abstract class LibraryRepository {
 
   Stream<Set<String>> watchDownloadedSongIds();
   Stream<Set<String>> watchDownloadingSongIds();
+  Stream<List<Song>> watchActiveDownloadSongs();
   Stream<Set<String>> watchDownloadedAlbumIds();
   Stream<Set<String>> watchDownloadedArtistIds();
   Stream<List<Song>> watchDownloadedSongs();
@@ -99,6 +100,10 @@ abstract class LibraryRepository {
   Future<void> updateSongDownload(
     String songId, {
     required String? localPath,
+    required DownloadState state,
+  });
+  Future<void> updateSongsDownloadState(
+    List<String> songIds, {
     required DownloadState state,
   });
   Future<void> clearAllSongDownloads();

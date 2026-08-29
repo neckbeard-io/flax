@@ -7,6 +7,7 @@ import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/core/tasks/task_registry.dart';
+import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/library/albums_screen.dart';
 import 'package:flax/features/player/player_provider.dart';
@@ -84,8 +85,18 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
             const OfflineStatusBanner(),
             if (activeServer != null)
               _StorageSummaryCard(serverId: activeServer.id),
-            if (activeTasks.isNotEmpty)
-              _ActiveDownloadsCard(tasks: activeTasks),
+            if (activeTasks.isNotEmpty ||
+                (ref
+                        .watch(activeDownloadSongsProvider)
+                        .valueOrNull
+                        ?.isNotEmpty ??
+                    false))
+              _ActiveDownloadsSection(
+                tasks: activeTasks,
+                activeSongs:
+                    ref.watch(activeDownloadSongsProvider).valueOrNull ??
+                    const [],
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TabBar(
@@ -214,57 +225,295 @@ class _StorageSummaryCard extends ConsumerWidget {
   }
 }
 
-class _ActiveDownloadsCard extends StatelessWidget {
-  const _ActiveDownloadsCard({required this.tasks});
+class _ActiveDownloadsSection extends ConsumerStatefulWidget {
+  const _ActiveDownloadsSection({
+    required this.tasks,
+    required this.activeSongs,
+  });
 
   final List<Task> tasks;
+  final List<Song> activeSongs;
+
+  @override
+  ConsumerState<_ActiveDownloadsSection> createState() =>
+      _ActiveDownloadsSectionState();
+}
+
+class _ActiveDownloadsSectionState
+    extends ConsumerState<_ActiveDownloadsSection> {
+  bool _isExpanded = true;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final activeDownload = tasks.firstOrNull;
-    if (activeDownload == null) return const SizedBox.shrink();
+    final activeDownload = widget.tasks.firstOrNull;
+    if (activeDownload == null && widget.activeSongs.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final rate = activeDownload?.ratePerSecond;
+    final rateStr = rate != null && rate > 0
+        ? formatRate(rate, activeDownload!.kind.unit)
+        : null;
+
+    final etaStr = activeDownload?.eta != null
+        ? formatEta(activeDownload!.eta!)
+        : null;
+
+    final fraction = activeDownload?.fraction;
+    final itemsDone = activeDownload?.itemsDone ?? 0;
+    final itemsTotal = activeDownload?.itemsTotal ?? widget.activeSongs.length;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: 0.3),
+          color: theme.colorScheme.primary.withValues(alpha: 0.35),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Downloading ${tasks.length} item${tasks.length == 1 ? "" : "s"} · ${activeDownload.label}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+          // ── Header Summary ──
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              activeDownload?.label ?? 'Active Downloads',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  itemsTotal > 0
+                                      ? '$itemsDone of $itemsTotal tracks'
+                                      : '${widget.activeSongs.length} tracks queued',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                if (rateStr != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.speed_rounded,
+                                          size: 12,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          rateStr,
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                                color:
+                                                    theme.colorScheme.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (etaStr != null)
+                                  Text(
+                                    'ETA: $etaStr',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (activeDownload != null && activeDownload.cancelable)
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          tooltip: 'Cancel Download',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () {
+                            ref
+                                .read(taskRegistryProvider.notifier)
+                                .cancel(activeDownload.id);
+                          },
+                        ),
+                      Icon(
+                        _isExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        size: 20,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  if (fraction != null) ...[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: fraction,
+                        minHeight: 5,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
           ),
-          if (activeDownload.fraction != null) ...[
-            const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: activeDownload.fraction!,
-                minHeight: 4,
+
+          // ── Individual Track Breakdown ──
+          if (_isExpanded && widget.activeSongs.isNotEmpty) ...[
+            const Divider(height: 1, thickness: 0.5),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                itemCount: widget.activeSongs.length,
+                separatorBuilder: (_, _) =>
+                    const Divider(height: 1, thickness: 0.5, indent: 48),
+                itemBuilder: (context, index) {
+                  final song = widget.activeSongs[index];
+                  final isDownloading =
+                      song.downloadState == DownloadState.downloading;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: song.coverArtId != null
+                                ? CoverArtImage(
+                                    coverArtId: song.coverArtId,
+                                    size: 32,
+                                  )
+                                : Container(
+                                    color: theme
+                                        .colorScheme
+                                        .surfaceContainerHighest,
+                                    child: const Icon(
+                                      Icons.music_note,
+                                      size: 16,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                song.title,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                song.artistName ?? song.albumName ?? '',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (isDownloading)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (rateStr != null) ...[
+                                Text(
+                                  rateStr,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              const SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.schedule_outlined,
+                                size: 13,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Queued',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ],

@@ -68,6 +68,12 @@ final downloadingSongIdsProvider = StreamProvider<Set<String>>((ref) {
   return repo.watchDownloadingSongIds();
 });
 
+final activeDownloadSongsProvider = StreamProvider<List<Song>>((ref) {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) return Stream.value(const []);
+  return repo.watchActiveDownloadSongs();
+});
+
 final downloadedAlbumIdsProvider = StreamProvider<Set<String>>((ref) {
   final repo = ref.watch(libraryRepositoryProvider);
   if (repo == null) return Stream.value(const {});

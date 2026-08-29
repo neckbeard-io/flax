@@ -36,11 +36,13 @@ class MobileActiveDownloadsPill extends ConsumerWidget {
     final fraction = primaryTask.fraction;
     final rate = primaryTask.ratePerSecond;
     final rateStr = rate != null && rate > 0
-        ? '${rate < 10 ? rate.toStringAsFixed(1) : rate.round()} items/s'
+        ? formatRate(rate, primaryTask.kind.unit)
         : null;
 
     final label = totalCount != null && totalCount > 0
-        ? '$doneCount/$totalCount'
+        ? (rateStr != null
+              ? '$doneCount/$totalCount · $rateStr'
+              : '$doneCount/$totalCount')
         : (rateStr ?? 'Downloading');
 
     return Tooltip(

@@ -485,6 +485,7 @@ class AudioCacheService {
   Future<void> cacheAlbum(String albumId, {bool isPinned = true}) async {
     final repo = _ref.read(libraryRepositoryProvider);
     if (repo == null) return;
+    final dao = _ref.read(libraryDaoProvider);
 
     var songs = await repo.watchAlbumSongs(albumId).first;
     if (songs.isEmpty) {
@@ -495,7 +496,6 @@ class AudioCacheService {
 
     final album = await repo.watchAlbum(albumId).first;
     if (album?.artistId != null) {
-      final dao = _ref.read(libraryDaoProvider);
       final client = _ref.read(subsonicClientProvider);
       if (client != null) {
         _cacheArtistMetadata(
@@ -527,6 +527,18 @@ class AudioCacheService {
       items: songs.length,
       bytes: hasTotalBytes ? totalBytesKnown : null,
     );
+
+    final unpinnedSongs = songs
+        .where((s) => s.downloadState != DownloadState.complete)
+        .toList();
+    if (isPinned && unpinnedSongs.isNotEmpty) {
+      await dao.updateSongsDownloadState(
+        songs.first.serverId,
+        unpinnedSongs.map((s) => s.id).toList(),
+        state: DownloadState.queued,
+      );
+    }
+
     final concurrency = _ref
         .read(audioCacheConfigProvider)
         .downloadConcurrency
@@ -562,7 +574,15 @@ class AudioCacheService {
     await Future.wait(List.generate(workerCount, (_) => worker()));
 
     if (cancelToken.isCancelled || handle?.isCanceled == true) {
-      // Canceled
+      final unfinished = songs
+          .where((s) => s.downloadState != DownloadState.complete)
+          .map((s) => s.id)
+          .toList();
+      await dao.updateSongsDownloadState(
+        songs.first.serverId,
+        unfinished,
+        state: DownloadState.none,
+      );
     } else {
       handle?.complete();
     }
@@ -626,6 +646,18 @@ class AudioCacheService {
       items: allSongs.length,
       bytes: hasTotalBytes ? totalBytesKnown : null,
     );
+
+    final unpinnedSongs = allSongs
+        .where((s) => s.downloadState != DownloadState.complete)
+        .toList();
+    if (isPinned && unpinnedSongs.isNotEmpty) {
+      await dao.updateSongsDownloadState(
+        allSongs.first.serverId,
+        unpinnedSongs.map((s) => s.id).toList(),
+        state: DownloadState.queued,
+      );
+    }
+
     final concurrency = _ref
         .read(audioCacheConfigProvider)
         .downloadConcurrency
@@ -663,7 +695,15 @@ class AudioCacheService {
     await Future.wait(List.generate(workerCount, (_) => worker()));
 
     if (cancelToken.isCancelled || handle?.isCanceled == true) {
-      // Canceled
+      final unfinished = allSongs
+          .where((s) => s.downloadState != DownloadState.complete)
+          .map((s) => s.id)
+          .toList();
+      await dao.updateSongsDownloadState(
+        allSongs.first.serverId,
+        unfinished,
+        state: DownloadState.none,
+      );
     } else {
       handle?.complete();
     }
