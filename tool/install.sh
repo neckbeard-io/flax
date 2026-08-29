@@ -93,9 +93,45 @@ ${BOLD}OPTIONS:${NC}
   --dir <path>    Custom destination directory
   --no-launch     Do not launch Flax after installation
   --verbose       Show verbose download output
+  --uninstall     Uninstall standalone Flax installation
   -h, --help      Show this help message
 
 EOF
+  exit 0
+}
+
+# ── Uninstallation Logic ───────────────────────────────────────────────
+
+do_uninstall() {
+  info "${BOLD}Flax Uninstaller${NC}"
+  local os
+  os="$(uname -s)"
+
+  if [ "$os" = "Darwin" ]; then
+    local target_app="/Applications/flax.app"
+    [ -d "$HOME/Applications/flax.app" ] && target_app="$HOME/Applications/flax.app"
+    if [ -d "$target_app" ]; then
+      step "Removing ${target_app}..."
+      rm -rf "$target_app"
+      success "Flax removed successfully."
+    else
+      warn "Flax application was not found in /Applications or ~/Applications."
+    fi
+  elif [ "$os" = "Linux" ]; then
+    step "Removing standalone Flax installation..."
+    rm -rf "${HOME}/.local/share/flax" \
+           "${HOME}/.local/bin/flax" \
+           "${HOME}/.local/share/applications/flax.desktop" \
+           "${HOME}/.local/share/icons/hicolor/512x512/apps/flax.png" \
+           "${HOME}/.local/share/pixmaps/flax.png"
+    if command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database "${HOME}/.local/share/applications" >/dev/null 2>&1 || true
+    fi
+    success "Flax standalone installation removed successfully."
+  else
+    error "Unsupported operating system: $os"
+    exit 1
+  fi
   exit 0
 }
 
@@ -154,6 +190,9 @@ main() {
         ;;
       --verbose)
         verbose=1
+        ;;
+      --uninstall)
+        do_uninstall
         ;;
       -h|--help)
         show_help
