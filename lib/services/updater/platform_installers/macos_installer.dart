@@ -40,37 +40,54 @@ class MacOSInstaller {
   /// Installs the update from the downloaded .dmg directly by staging the new
   /// .app bundle, detaching the DMG, and launching a background updater script
   /// that swaps the bundle once this process exits, then relaunches Flax.
+  /// If programmatic in-place update fails, falls back to opening the DMG in Finder.
   static Future<void> openDmg(String dmgPath) async {
     if (!Platform.isMacOS) return;
 
     final targetAppPath = findCurrentAppBundlePath();
-    final tempMountDir = await Directory.systemTemp.createTemp('flax-mount-');
     final stagingDir = await Directory.systemTemp.createTemp('flax-update-');
+    String? mountedVolume;
 
     try {
+      // 1. Attach DMG using standard Apple plist output without custom mountpoint
       final mountRes = await Process.run('hdiutil', [
         'attach',
         dmgPath,
-        '-mountpoint',
-        tempMountDir.path,
+        '-plist',
         '-nobrowse',
-        '-quiet',
+        '-readonly',
+        '-noautoopen',
+        '-noverify',
       ]);
 
       if (mountRes.exitCode != 0) {
         throw Exception(
-          'Failed to attach DMG: ${mountRes.stderr.toString().trim()}',
+          'Failed to attach DMG (exit code ${mountRes.exitCode}): ${mountRes.stderr.toString().trim()}',
         );
       }
 
-      final entries = tempMountDir.listSync();
+      // Parse mount point from plist stdout
+      final mountMatch = RegExp(
+        r'<key>mount-point</key>\s*<string>([^<]+)</string>',
+      ).firstMatch(mountRes.stdout.toString());
+      final mountPoint = mountMatch?.group(1) ?? '/Volumes/flax';
+      mountedVolume = mountPoint;
+
+      final mountDir = Directory(mountPoint);
+      if (!mountDir.existsSync()) {
+        throw Exception('Mounted volume does not exist: $mountPoint');
+      }
+
+      final entries = mountDir.listSync();
       final appSource = entries
           .whereType<Directory>()
           .where((d) => d.path.endsWith('.app'))
           .firstOrNull;
 
       if (appSource == null) {
-        throw Exception('No .app bundle found inside mounted DMG.');
+        throw Exception(
+          'No .app bundle found inside mounted DMG ($mountPoint).',
+        );
       }
 
       final stagedAppPath = p.join(stagingDir.path, p.basename(appSource.path));
@@ -88,7 +105,8 @@ class MacOSInstaller {
       }
 
       // Detach the DMG now that files are in staging
-      await Process.run('hdiutil', ['detach', tempMountDir.path, '-quiet']);
+      await Process.run('hdiutil', ['detach', mountPoint, '-force', '-quiet']);
+      mountedVolume = null;
 
       // Strip quarantine on staged app
       await Process.run('xattr', [
@@ -139,17 +157,29 @@ open -n "\$TARGET_APP"
       await Future.delayed(const Duration(milliseconds: 100));
       exit(0);
     } catch (e) {
-      // Clean up mount and temp directories if still present
-      try {
-        await Process.run('hdiutil', ['detach', tempMountDir.path, '-quiet']);
-      } catch (_) {}
-      if (tempMountDir.existsSync()) {
-        tempMountDir.deleteSync(recursive: true);
+      // Clean up mount and staging directories if still present
+      if (mountedVolume != null) {
+        try {
+          await Process.run('hdiutil', [
+            'detach',
+            mountedVolume,
+            '-force',
+            '-quiet',
+          ]);
+        } catch (_) {}
       }
       if (stagingDir.existsSync()) {
         stagingDir.deleteSync(recursive: true);
       }
-      throw Exception('Failed to execute self-update on macOS: $e');
+
+      // Graceful fallback: open the DMG directly in Finder
+      try {
+        await Process.run('open', [dmgPath]);
+      } catch (_) {}
+
+      throw Exception(
+        'Automatic update error ($e). Opened installer in Finder.',
+      );
     }
   }
 }
