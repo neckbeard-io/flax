@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +20,7 @@ final updateNotifierProvider =
 class UpdateNotifier extends StateNotifier<UpdateState> {
   final UpdateService _service;
   CancelToken? _cancelToken;
+  Timer? _autoCheckTimer;
 
   static const String _prefSkippedVersionKey = 'update_skipped_version';
   static const String _prefAutoCheckKey = 'update_auto_check_enabled';
@@ -36,14 +39,23 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
     final autoCheck = prefs.getBool(_prefAutoCheckKey) ?? true;
     if (autoCheck) {
       checkForUpdates(silent: true);
+      if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+        _autoCheckTimer?.cancel();
+        _autoCheckTimer = Timer.periodic(const Duration(hours: 4), (_) {
+          checkForUpdates(silent: true);
+        });
+      }
     }
   }
 
   /// Checks GitHub for new releases.
   Future<void> checkForUpdates({bool silent = false}) async {
-    if (state.isChecking || state.isDownloading) return;
+    if (state.isChecking || state.isDownloading || state.isInstalling) return;
 
-    state = state.copyWith(stage: UpdateStage.checking, errorMessage: null);
+    // Only switch stage to checking if not a silent background check or if no update is currently visible
+    if (!silent || !state.isUpdateAvailable) {
+      state = state.copyWith(stage: UpdateStage.checking, errorMessage: null);
+    }
 
     try {
       final latest = await _service.fetchLatestRelease();
@@ -184,5 +196,11 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefSkippedVersionKey, version);
     state = state.copyWith(stage: UpdateStage.idle);
+  }
+
+  @override
+  void dispose() {
+    _autoCheckTimer?.cancel();
+    super.dispose();
   }
 }

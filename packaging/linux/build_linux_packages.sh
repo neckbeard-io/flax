@@ -18,6 +18,13 @@ echo "==> Packaging Linux artifacts for flax $VERSION"
 cp "packaging/linux/flax.png" "$BUNDLE_DIR/"
 cp "packaging/linux/flax.desktop" "$BUNDLE_DIR/"
 
+# Flutter for Linux embeds pubspec version into flutter_assets/version.json;
+# overwrite it with the actual release version and build number.
+BUILD_NUMBER="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
+VERSION_JSON="$BUNDLE_DIR/data/flutter_assets/version.json"
+mkdir -p "$(dirname "$VERSION_JSON")"
+echo "{\"app_name\":\"flax\",\"version\":\"$VERSION\",\"build_number\":\"$BUILD_NUMBER\",\"package_name\":\"flax\"}" > "$VERSION_JSON"
+
 # 2. Package portable tarball
 TARBALL="$DIST_DIR/flax-$VERSION-linux-x64.tar.gz"
 echo "==> Creating tarball: $TARBALL"

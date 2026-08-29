@@ -143,7 +143,8 @@ class UpdateState {
       stage == UpdateStage.available ||
       stage == UpdateStage.downloading ||
       stage == UpdateStage.readyToInstall ||
-      stage == UpdateStage.installing;
+      stage == UpdateStage.installing ||
+      (stage == UpdateStage.checking && matchingAsset != null);
 
   bool get isDownloading => stage == UpdateStage.downloading;
   bool get isReadyToInstall => stage == UpdateStage.readyToInstall;

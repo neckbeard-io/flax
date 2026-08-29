@@ -80,9 +80,13 @@ class _AppChromeState extends ConsumerState<AppChrome>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
 
-    // Check for updates when coming back to the foreground
-    ref.read(updateNotifierProvider.notifier).checkForUpdates(silent: true);
-    MobileUpdateCoordinator.checkAndPrompt(context, ref);
+    // Check for updates when coming back to the foreground on mobile (Android/iOS).
+    // On desktop platforms (Linux/macOS/Windows), periodic scheduled background checks
+    // run via UpdateNotifier to prevent re-querying GitHub on every window focus change.
+    if (!isDesktopPlatform) {
+      ref.read(updateNotifierProvider.notifier).checkForUpdates(silent: true);
+      MobileUpdateCoordinator.checkAndPrompt(context, ref);
+    }
 
     // Probe server reachability
     ref.read(serverReachabilityProvider.notifier).probeServer(silent: true);

@@ -14,6 +14,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Real-time word-by-word karaoke highlighting for Enhanced LRC lyrics.
 
 ### Fixed
+- Stamped Linux release bundles with accurate version numbers to prevent false self-update offers.
+- Stabilized top window update button during background checks to eliminate pill flickering.
+- Prevented desktop platforms from triggering background update checks on every window focus change.
 - Prevented fresh installations from falsely initializing into offline mode before server setup.
 - Linux standalone installer script no longer fails with unbound variable error when creating desktop icon directory.
 - Stripped raw timestamp and markup tags from Enhanced LRC lyrics display.

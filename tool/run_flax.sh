@@ -73,6 +73,13 @@ if [ "$BUILD" = 1 ]; then
   flutter build "$PLATFORM" --"$MODE" \
     --build-name="$VERSION" --build-number="$BUILD_NUMBER" \
     "${DEFINES[@]+"${DEFINES[@]}"}"
+
+  if [ "$PLATFORM" = "linux" ]; then
+    VERSION_JSON="$(dirname "$APP")/data/flutter_assets/version.json"
+    if [ -f "$VERSION_JSON" ]; then
+      echo "{\"app_name\":\"flax\",\"version\":\"$VERSION\",\"build_number\":\"$BUILD_NUMBER\",\"package_name\":\"flax\"}" > "$VERSION_JSON"
+    fi
+  fi
 fi
 
 if [ "$PLATFORM" = "macos" ] && [ ! -d "$APP" ]; then
