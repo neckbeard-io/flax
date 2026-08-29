@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.5.6 — 2026-08-29
+
 ### Added
 - Update release channel selector in Settings (Stable vs Dev) with SemVer 2.0 pre-release support.
 - Mobile download indicator pill in top headers with 1-tap navigation to the Downloads screen.
