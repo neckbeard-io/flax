@@ -399,22 +399,31 @@ $$\text{v0.5.5} < \text{v0.5.6-dev.1} < \text{v0.5.6-dev.2} < \text{v0.5.6}$$
 
 ---
 
-## Maintainer only: distributing test builds
+## Automated Merge Triggers & CI/CD Builds
 
-Everything below needs repository secrets and workflow permissions. A
-contributor cannot run it, and does not need to — open a PR and leave releases
-to a maintainer.
+`.github/workflows/release.yml` automatically triggers on merges:
 
-`.github/workflows/release.yml` is **manual and opt-in per platform**. It has no
-push or tag trigger so releases are triggered deliberately. Since the repo is
-public, GitHub Actions runner minutes are free across macOS, Windows, and Linux.
+- **Merges into `dev` (`feature/*` $\to$ `dev`)**:
+  - Automatically calculates the next pre-release version: `vX.Y.Z-dev.N`.
+  - Publishes a pre-release on GitHub tagged `vX.Y.Z-dev.N` with `--prerelease` enabled.
+  - Automatically served to testers subscribed to the **Dev** update channel in Settings.
+- **Merges into `main` (`dev` $\to$ `main`)**:
+  - Reads the closed release header from `CHANGELOG.md` (e.g. `## v0.5.7 — 2026-08-29`).
+  - Publishes the official GitHub release `vX.Y.Z` (`--prerelease=false`).
+  - Automatically served to all users on the default **Stable** update channel.
+
+### Concurrency & Rapid Pushes
+Branch runs use `concurrency: { group: release-${{ github.ref }}, cancel-in-progress: true }`. If multiple PRs merge in rapid succession, CI automatically cancels the older in-flight build on that branch to save runner minutes and builds the latest tip.
+
+### Manual Overrides (`workflow_dispatch`)
+Maintainers and agents can still manually dispatch builds with custom versions or platform toggles:
 
 ```bash
 # Trigger a stable release from main
-gh workflow run release.yml -f version=0.5.6 -f channel=stable --ref main -f macos=true -f windows=true -f linux=true -f android=true
+gh workflow run release.yml -f version=0.5.7 -f channel=stable --ref main -f macos=true -f windows=true -f linux=true -f android=true
 
 # Trigger a dev pre-release from dev
-gh workflow run release.yml -f version=0.5.6-dev.1 -f channel=dev --ref dev -f macos=true -f windows=true -f linux=true -f android=true
+gh workflow run release.yml -f version=0.5.7-dev.2 -f channel=dev --ref dev -f macos=true -f windows=true -f linux=true -f android=true
 
 # Watch the run
 gh run watch $(gh run list --workflow=release.yml -L1 --json databaseId --jq '.[0].databaseId')

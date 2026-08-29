@@ -1,26 +1,28 @@
 name: Release
 
-# Manual release builds across macOS, Windows, and Android.
+# Automated & manual release builds across macOS, Windows, Linux, and Android.
 #
-# Run it from the Actions tab ("Release" -> "Run workflow"), or:
+# Triggers:
+# 1. Push to dev: Auto-publishes a pre-release (vX.Y.Z-dev.N) to the Dev update channel.
+# 2. Push to main: Auto-publishes an official release (vX.Y.Z) to the Stable update channel.
+# 3. workflow_dispatch: Manual triggers for specific platforms or custom version tags.
 #
-#   gh workflow run release.yml -f version=0.4.1
-#
-# The `version` input is the whole version story: it becomes the build-name, the
-# git tag (v<version>), and the release title. The workflow run number becomes
-# the build-number so two builds of the same version stay distinguishable
-# on-device. Nothing in pubspec.yaml is ever bumped.
+# Rapid pushes automatically cancel in-progress runs on that branch to save runner resources.
 
 on:
+  push:
+    branches:
+      - main
+      - dev
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version, without the leading v (e.g. 0.4.1 or 0.4.1-dev.1)'
-        required: true
+        description: 'Version, without the leading v (e.g. 0.5.7 or 0.5.7-dev.1). Leave empty to auto-detect.'
+        required: false
         type: string
       channel:
-        description: 'Release channel (stable or dev)'
-        required: true
+        description: 'Release channel (stable or dev). Auto-detected if omitted.'
+        required: false
         default: 'stable'
         type: choice
         options:
@@ -55,18 +57,112 @@ on:
 permissions:
   contents: write # create the tag, the Release, and upload assets
 
-# Two concurrent runs would race to create the same tag.
+# Cancels any in-progress build on the same branch if a new commit is pushed.
 concurrency:
-  group: release-${{ inputs.version }}
-  cancel-in-progress: false
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FLUTTER_VERSION: 3.44.2
 
 jobs:
+  setup:
+    name: Resolve Version & Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      channel: ${{ steps.resolve.outputs.channel }}
+      macos: ${{ steps.resolve.outputs.macos }}
+      windows: ${{ steps.resolve.outputs.windows }}
+      linux: ${{ steps.resolve.outputs.linux }}
+      android: ${{ steps.resolve.outputs.android }}
+      publish: ${{ steps.resolve.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: resolve
+        name: Determine version and release channel
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess, sys
+
+          ref_name = os.environ.get('GITHUB_REF_NAME', '')
+          event_name = os.environ.get('GITHUB_EVENT_NAME', '')
+          input_version = "${{ inputs.version }}".strip()
+          input_channel = "${{ inputs.channel }}".strip()
+
+          version = ""
+          channel = "stable"
+
+          if input_version:
+              version = input_version
+              if input_channel:
+                  channel = input_channel
+              elif "-dev." in input_version:
+                  channel = "dev"
+              else:
+                  channel = "stable"
+          elif ref_name == "main":
+              # Read closed version from CHANGELOG.md (e.g. ## v0.5.6 — 2026-08-29)
+              text = open('CHANGELOG.md').read()
+              match = re.search(r'^## v([0-9]+\.[0-9]+\.[0-9]+)\b', text, re.M)
+              if match:
+                  version = match.group(1)
+              else:
+                  sys.exit("Could not extract version from CHANGELOG.md for main release")
+              channel = "stable"
+          elif ref_name == "dev":
+              # Next pre-release version: vX.Y.Z-dev.N
+              text = open('CHANGELOG.md').read()
+              match = re.search(r'^## v([0-9]+\.[0-9]+\.)([0-9]+)\b', text, re.M)
+              if match:
+                  prefix, patch = match.group(1), int(match.group(2))
+                  next_base = f"{prefix}{patch + 1}"
+              else:
+                  next_base = "0.1.0"
+              
+              try:
+                  last_tag = subprocess.check_output(
+                      ['git', 'describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*.[0-9]*.[0-9]*'],
+                      text=True
+                  ).strip()
+                  rev_count = subprocess.check_output(
+                      ['git', 'rev-list', '--count', f'{last_tag}..HEAD'],
+                      text=True
+                  ).strip()
+                  count = max(1, int(rev_count))
+              except Exception:
+                  count = 1
+              version = f"{next_base}-dev.{count}"
+              channel = "dev"
+          else:
+              sys.exit(f"Unsupported ref for release: {ref_name}")
+
+          print(f"Resolved Version: {version}")
+          print(f"Resolved Channel: {channel}")
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"version={version}\n")
+              f.write(f"channel={channel}\n")
+              if event_name == "push":
+                  f.write("macos=true\n")
+                  f.write("windows=true\n")
+                  f.write("linux=true\n")
+                  f.write("android=true\n")
+                  f.write("publish=true\n")
+              else:
+                  f.write(f"macos=${{ inputs.macos == true || inputs.macos == 'true' || inputs.macos == '' }}\n")
+                  f.write(f"windows=${{ inputs.windows == true || inputs.windows == 'true' || inputs.windows == '' }}\n")
+                  f.write(f"linux=${{ inputs.linux == true || inputs.linux == 'true' || inputs.linux == '' }}\n")
+                  f.write(f"android=${{ inputs.android == true || inputs.android == 'true' || inputs.android == '' }}\n")
+                  f.write(f"publish=${{ inputs.publish == true || inputs.publish == 'true' || inputs.publish == '' }}\n")
+          PY
+
   macos:
     name: macOS (.dmg)
-    if: inputs.macos
+    needs: [setup]
+    if: needs.setup.outputs.macos == 'true'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -92,7 +188,7 @@ jobs:
         run: |
           BUILD_NUMBER=$(git rev-list --count HEAD)
           flutter build macos --release \
-            --build-name=${{ inputs.version }} \
+            --build-name=${{ needs.setup.outputs.version }} \
             --build-number=$BUILD_NUMBER
 
       # Ad-hoc signed (CODE_SIGN_IDENTITY = "-"), so Gatekeeper quarantines this
@@ -108,7 +204,7 @@ jobs:
           hdiutil create -volname "flax" \
             -srcfolder dmg-staging \
             -ov -format UDZO \
-            "dist/flax-${{ inputs.version }}-macos-universal.dmg"
+            "dist/flax-${{ needs.setup.outputs.version }}-macos-universal.dmg"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -117,7 +213,8 @@ jobs:
 
   windows:
     name: Windows (.exe / .zip)
-    if: inputs.windows
+    needs: [setup]
+    if: needs.setup.outputs.windows == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -153,7 +250,7 @@ jobs:
         run: |
           $BUILD_NUMBER = (git rev-list --count HEAD)
           flutter build windows --release `
-            --build-name=${{ inputs.version }} `
+            --build-name=${{ needs.setup.outputs.version }} `
             --build-number=$BUILD_NUMBER
 
       - name: Package Windows installer and portable archive
@@ -162,12 +259,12 @@ jobs:
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           
           # 1. Compile Inno Setup installer (.exe)
-          iscc /DAppVersion="${{ inputs.version }}" packaging\windows\flax.iss
+          iscc /DAppVersion="${{ needs.setup.outputs.version }}" packaging\windows\flax.iss
 
           # 2. Package portable .zip alongside installer
           Compress-Archive `
             -Path build\windows\x64\runner\Release\* `
-            -DestinationPath dist\flax-${{ inputs.version }}-windows-x64.zip
+            -DestinationPath dist\flax-${{ needs.setup.outputs.version }}-windows-x64.zip
 
       - uses: actions/upload-artifact@v4
         with:
@@ -178,7 +275,8 @@ jobs:
 
   android:
     name: Android (.apk)
-    if: inputs.android
+    needs: [setup]
+    if: needs.setup.outputs.android == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -233,7 +331,7 @@ jobs:
         run: |
           BUILD_NUMBER=$(git rev-list --count HEAD)
           flutter build apk --release \
-            --build-name=${{ inputs.version }} \
+            --build-name=${{ needs.setup.outputs.version }} \
             --build-number=$BUILD_NUMBER
 
       # Fail loudly rather than shipping an APK signed with the wrong key.
@@ -251,7 +349,7 @@ jobs:
         run: |
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk \
-            "dist/flax-${{ inputs.version }}-android-universal.apk"
+            "dist/flax-${{ needs.setup.outputs.version }}-android-universal.apk"
 
       - name: Scrub signing material
         if: always()
@@ -264,7 +362,8 @@ jobs:
 
   linux:
     name: Linux (.deb / .rpm / .tar.gz)
-    if: inputs.linux
+    needs: [setup]
+    if: needs.setup.outputs.linux == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -311,12 +410,12 @@ jobs:
         run: |
           BUILD_NUMBER=$(git rev-list --count HEAD)
           flutter build linux --release \
-            --build-name=${{ inputs.version }} \
+            --build-name=${{ needs.setup.outputs.version }} \
             --build-number=$BUILD_NUMBER
 
       - name: Package Linux artifacts (.deb, .rpm, .tar.gz)
         run: |
-          packaging/linux/build_linux_packages.sh "${{ inputs.version }}"
+          packaging/linux/build_linux_packages.sh "${{ needs.setup.outputs.version }}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -330,11 +429,11 @@ jobs:
     name: Publish GitHub Release
     permissions:
       contents: write
-    needs: [macos, windows, android, linux]
+    needs: [setup, macos, windows, android, linux]
     # always() so that platforms left opted-out (skipped) don't block the
     # release, but a genuine build failure still does.
     if: |
-      always() && inputs.publish
+      always() && needs.setup.outputs.publish == 'true'
       && !contains(needs.*.result, 'failure')
       && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
@@ -355,13 +454,10 @@ jobs:
           ls -lh dist/
 
       # The release body is the changelog's section for this version, followed
-      # by the standing install instructions. Extracting it here is what stops
-      # the body silently reverting to install-notes-only — which is what every
-      # The release body is the changelog's section for this version, followed
       # by the standing install instructions. Missing section is a hard failure for stable releases.
       - name: Extract changelog section
         run: |
-          VERSION="${{ inputs.version }}"
+          VERSION="${{ needs.setup.outputs.version }}"
           python3 - "$VERSION" <<'PY' > changelog.md
           import re, sys
           version = sys.argv[1]
@@ -395,8 +491,8 @@ jobs:
       - name: Create or update release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: v${{ inputs.version }}
-          CHANNEL: ${{ inputs.channel }}
+          TAG: v${{ needs.setup.outputs.version }}
+          CHANNEL: ${{ needs.setup.outputs.channel }}
         run: |
           PRERELEASE_FLAG=""
           if [ "$CHANNEL" = "dev" ] || echo "$TAG" | grep -qi "dev"; then
