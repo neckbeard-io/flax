@@ -24,7 +24,12 @@ class MetadataCachingScreen extends ConsumerWidget {
     final server = ref.watch(activeServerProvider);
     final tasks = ref.watch(taskRegistryProvider);
     final activeTask = tasks
-        .where((t) => t.kind == TaskKind.metadataCrawl && t.state.isActive)
+        .where(
+          (t) =>
+              (t.kind == TaskKind.metadataCrawl ||
+                  t.kind == TaskKind.artPrecache) &&
+              t.state.isActive,
+        )
         .firstOrNull;
 
     if (server == null) {
@@ -211,51 +216,81 @@ class MetadataCachingScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            activeTask.label,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${activeTask.itemsDone} / ${activeTask.itemsTotal ?? "?"}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              activeTask.label,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
                               ),
-                              if (activeTask.ratePerSecond != null &&
-                                  activeTask.state == TaskState.running) ...[
-                                Text(
-                                  ' · ${activeTask.ratePerSecond! < 10 ? activeTask.ratePerSecond!.toStringAsFixed(1) : activeTask.ratePerSecond!.round()} items/s',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                              if (activeTask.eta != null &&
-                                  activeTask.state == TaskState.running) ...[
-                                Text(
-                                  ' · ${formatEta(activeTask.eta!)}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(value: activeTask.fraction),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            '${activeTask.itemsDone} / ${activeTask.itemsTotal ?? "?"}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (activeTask.ratePerSecond != null &&
+                              activeTask.state == TaskState.running)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.15,
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                formatRate(
+                                  activeTask.ratePerSecond!,
+                                  activeTask.kind.unit,
+                                ),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          if (activeTask.eta != null &&
+                              activeTask.state == TaskState.running)
+                            Text(
+                              'ETA: ${formatEta(activeTask.eta!)}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: activeTask.fraction,
+                          minHeight: 5,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
                             child: Text(
@@ -263,10 +298,19 @@ class MetadataCachingScreen extends ConsumerWidget {
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 8),
                           TextButton(
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                            ),
                             onPressed: () {
                               ref.read(metadataSyncServiceProvider).cancel();
                             },

@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/tasks/task.dart';
+import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/settings/metadata_caching_screen.dart';
@@ -157,5 +159,84 @@ void main() {
 
       expect(find.text('10 GB'), findsOneWidget);
     });
+
+    testWidgets(
+      'Active sync task card renders without overflow on mobile viewport',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        final activeTask = Task(
+          id: 'meta-sync-1',
+          serverId: 'srv-1',
+          label: 'Syncing metadata & cover art',
+          kind: TaskKind.artPrecache,
+          state: TaskState.running,
+          itemsDone: 542,
+          itemsTotal: 7102,
+          ratePerSecond: 25.0,
+          eta: const Duration(minutes: 4),
+          note: 'Album art: Bone Kingdom',
+          cancelable: true,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            activeServerProvider.overrideWith((ref) => testServer),
+            taskRegistryProvider.overrideWith(
+              (ref) => _TestTaskRegistry([activeTask]),
+            ),
+            metadataCacheSummaryProvider('srv-1').overrideWith(
+              (ref) async => const MetadataCacheSummary(
+                albumArtBytes: 52428800,
+                albumArtCached: 542,
+                albumArtTotal: 7102,
+              ),
+            ),
+            audioCacheSummaryProvider('srv-1').overrideWith(
+              (ref) async => const AudioCacheSummary(
+                cachedSongCount: 25,
+                audioBytes: 262144000,
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(home: MetadataCachingScreen()),
+          ),
+        );
+        await tester.pump();
+
+        await tester.scrollUntilVisible(
+          find.text('Syncing metadata & cover art'),
+          500,
+          scrollable: find.byType(Scrollable),
+        );
+        await tester.pump();
+
+        // Header and rate
+        expect(find.text('Syncing metadata & cover art'), findsOneWidget);
+        expect(find.text('542 / 7102'), findsOneWidget);
+        expect(find.text('25/s'), findsOneWidget);
+        expect(find.text('ETA: about 4 minutes'), findsOneWidget);
+        expect(find.text('Album art: Bone Kingdom'), findsOneWidget);
+        expect(find.text('Cancel'), findsOneWidget);
+
+        // Verify elements are within viewport width bounds
+        final cancelRect = tester.getRect(find.text('Cancel'));
+        expect(cancelRect.right, lessThanOrEqualTo(390));
+      },
+    );
   });
+}
+
+class _TestTaskRegistry extends TaskRegistry {
+  _TestTaskRegistry(List<Task> initial) {
+    state = initial;
+  }
 }
