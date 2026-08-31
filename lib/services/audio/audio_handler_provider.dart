@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/services/audio/flax_audio_handler.dart';
@@ -19,6 +20,10 @@ class AudioServiceInitializer {
 
     try {
       AppLogger.i('AudioService', 'Initializing AudioService for Android Auto');
+
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
+
       final handler = await AudioService.init(
         builder: () => FlaxAudioHandler(container),
         config: const AudioServiceConfig(
@@ -30,6 +35,13 @@ class AudioServiceInitializer {
           androidStopForegroundOnPause: true,
           androidShowNotificationBadge: true,
           androidNotificationIcon: 'mipmap/ic_launcher',
+          androidBrowsableRootExtras: {
+            AndroidContentStyle.supportedKey: true,
+            AndroidContentStyle.browsableHintKey:
+                AndroidContentStyle.gridItemHintValue,
+            AndroidContentStyle.playableHintKey:
+                AndroidContentStyle.listItemHintValue,
+          },
         ),
       );
       return handler;

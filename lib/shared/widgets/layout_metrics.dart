@@ -19,7 +19,8 @@ bool get isDesktopPlatform =>
 /// gets larger tiles, which also means a larger image is fetched — see
 /// CoverArtImage, which derives resolution from the laid-out size.
 bool isDesktopLayout(BuildContext context) =>
-    isDesktopPlatform && MediaQuery.of(context).size.width >= 700;
+    (debugOverrideIsDesktopPlatform ?? true) &&
+    MediaQuery.of(context).size.width >= 700;
 
 /// Maximum width of one album/artist tile in a grid.
 double artGridExtent(BuildContext context) =>

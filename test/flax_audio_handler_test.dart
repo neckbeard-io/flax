@@ -27,17 +27,37 @@ class MockLibraryRepository extends Mock implements LibraryRepository {
     ]);
   }
 
+  List<Artist>? artistsOverride;
+
+  @override
+  Future<void> syncAnnotations({bool force = false}) async {}
+
+  @override
+  Future<void> refreshArtist(String? artistId, {bool force = false}) async {}
+
+  @override
+  Future<void> refreshAlbum(String? albumId, {bool force = false}) async {}
+
+  @override
+  Future<void> refreshAlbumList(
+    AlbumListQuery? query, {
+    bool force = false,
+  }) async {}
+
   @override
   Stream<List<Artist>> watchArtists() {
-    return Stream.value([
-      const Artist(
-        id: 'art_1',
-        serverId: 'srv_1',
-        name: 'Daft Punk',
-        albumCount: 4,
-        coverArtId: 'art_cover_1',
-      ),
-    ]);
+    return Stream.value(
+      artistsOverride ??
+          const [
+            Artist(
+              id: 'art_1',
+              serverId: 'srv_1',
+              name: 'Daft Punk',
+              albumCount: 4,
+              coverArtId: 'art_cover_1',
+            ),
+          ],
+    );
   }
 
   @override
@@ -143,6 +163,18 @@ class MockLibraryRepository extends Mock implements LibraryRepository {
       ),
     ]);
   }
+
+  @override
+  Stream<List<Album>> watchDownloadedAlbums({AlbumListQuery? query}) {
+    return Stream.value([
+      const Album(
+        id: 'alb_1',
+        serverId: 'srv_1',
+        name: 'Random Access Memories',
+        artistName: 'Daft Punk',
+      ),
+    ]);
+  }
 }
 
 class MockSubsonicClient extends Mock implements SubsonicClient {
@@ -176,6 +208,31 @@ class MockSubsonicClient extends Mock implements SubsonicClient {
         artistName: 'Daft Punk',
         albumName: 'Random Access Memories',
         duration: 248,
+      ),
+    ];
+  }
+
+  @override
+  Future<SearchResult> getStarred() async {
+    return const SearchResult();
+  }
+
+  @override
+  Future<List<Album>> getAlbumList(
+    AlbumListType? type, {
+    int? count,
+    int? offset,
+    String? genre,
+    int? fromYear,
+    int? toYear,
+  }) async {
+    return [
+      const Album(
+        id: 'alb_1',
+        serverId: 'srv_1',
+        name: 'Random Access Memories',
+        artistName: 'Daft Punk',
+        coverArtId: 'art_1',
       ),
     ];
   }
@@ -243,11 +300,57 @@ void main() {
       expect(recent.first.artist, equals('Daft Punk'));
     });
 
+    test('returns standard sections under albums node', () async {
+      final sections = await handler.getChildren(FlaxAudioHandler.kAlbumsNode);
+      expect(sections.length, equals(8));
+      expect(
+        sections.map((s) => s.id),
+        containsAll([
+          'albums_section_all',
+          'albums_section_recentlyAdded',
+          'albums_section_recentlyPlayed',
+          'albums_section_random',
+          'albums_section_mostPlayed',
+          'albums_section_favorites',
+          'albums_section_topRated',
+          'albums_section_downloaded',
+        ]),
+      );
+      expect(sections.first.title, equals('All'));
+
+      final albums = await handler.getChildren('albums_section_recentlyAdded');
+      expect(albums.length, equals(1));
+      expect(albums.first.id, equals('album_alb_1'));
+      expect(albums.first.title, equals('Random Access Memories'));
+    });
+
     test('fetches artists list', () async {
       final artists = await handler.getChildren(FlaxAudioHandler.kArtistsNode);
       expect(artists.length, equals(1));
       expect(artists.first.id, equals('artist_art_1'));
       expect(artists.first.title, equals('Daft Punk'));
+      expect(artists.first.playable, isFalse);
+    });
+
+    test('groups artists by A-Z letter index when count exceeds 60', () async {
+      mockRepo.artistsOverride = List.generate(
+        70,
+        (i) => Artist(
+          id: 'art_$i',
+          serverId: 'srv_1',
+          name: i < 35 ? 'Artist A$i' : 'Band B$i',
+          starred: i == 0,
+        ),
+      );
+
+      final nodes = await handler.getChildren(FlaxAudioHandler.kArtistsNode);
+      expect(nodes.any((n) => n.id == 'artists_starred'), isTrue);
+      expect(nodes.any((n) => n.id == 'artists_letter_A'), isTrue);
+      expect(nodes.any((n) => n.id == 'artists_letter_B'), isTrue);
+
+      final letterA = await handler.getChildren('artists_letter_A');
+      expect(letterA.length, equals(35));
+      expect(letterA.first.title, equals('Artist A0'));
     });
 
     test('fetches albums by artist', () async {
@@ -255,13 +358,14 @@ void main() {
       expect(albums.length, equals(1));
       expect(albums.first.id, equals('album_alb_1'));
       expect(albums.first.title, equals('Random Access Memories'));
+      expect(albums.first.playable, isFalse);
     });
 
     test('fetches album tracks', () async {
       final tracks = await handler.getChildren('album_alb_1');
       expect(tracks.length, equals(1));
       expect(tracks.first.id, equals('song_song_1'));
-      expect(tracks.first.title, equals('Get Lucky'));
+      expect(tracks.first.title, equals('Get Lucky · Daft Punk'));
       expect(tracks.first.duration, equals(const Duration(seconds: 248)));
       expect(tracks.first.playable, isTrue);
     });
@@ -276,14 +380,14 @@ void main() {
 
       final playlistTracks = await handler.getChildren('playlist_pl_1');
       expect(playlistTracks.length, equals(1));
-      expect(playlistTracks.first.title, equals('Get Lucky'));
+      expect(playlistTracks.first.title, equals('Get Lucky · Daft Punk'));
     });
 
     test('fetches offline downloaded tracks', () async {
       final offline = await handler.getChildren(FlaxAudioHandler.kOfflineNode);
       expect(offline.length, equals(1));
       expect(offline.first.id, equals('song_song_cached_1'));
-      expect(offline.first.title, equals('Instant Crush'));
+      expect(offline.first.title, equals('Instant Crush · Daft Punk'));
     });
   });
 
@@ -292,7 +396,7 @@ void main() {
       final item = await handler.getMediaItem('song_song_1');
       expect(item, isNotNull);
       expect(item!.id, equals('song_song_1'));
-      expect(item.title, equals('Get Lucky'));
+      expect(item.title, equals('Get Lucky · Daft Punk'));
       expect(item.artist, equals('Daft Punk'));
       expect(item.rating?.hasHeart(), isTrue);
     });
@@ -323,13 +427,22 @@ void main() {
       );
 
       expect(item.id, equals('song_s123'));
-      expect(item.title, equals('Starboy'));
+      expect(item.title, equals('Starboy · The Weeknd'));
+      expect(item.displayTitle, equals('Starboy · The Weeknd'));
       expect(item.artist, equals('The Weeknd'));
       expect(item.album, equals('Starboy'));
       expect(item.duration, equals(const Duration(seconds: 230)));
       expect(item.artUri, equals(Uri.parse('https://example.com/art.jpg')));
       expect(item.rating?.hasHeart(), isTrue);
       expect(item.playable, isTrue);
+
+      final nowPlayingItem = FlaxAudioHandler.songToMediaItem(
+        song,
+        coverArtUrl: 'https://example.com/art.jpg',
+        forNowPlaying: true,
+      );
+      expect(nowPlayingItem.title, equals('Starboy'));
+      expect(nowPlayingItem.displayTitle, equals('Starboy'));
     });
   });
 
@@ -361,10 +474,20 @@ void main() {
         equals('Harder, Better, Faster, Stronger'),
       );
       expect(handler.queue.value.length, equals(1));
+      expect(
+        handler.queue.value.first.title,
+        equals('Harder, Better, Faster, Stronger · Daft Punk'),
+      );
       expect(handler.playbackState.value.playing, isTrue);
       expect(
         handler.playbackState.value.updatePosition,
         equals(const Duration(seconds: 45)),
+      );
+      expect(
+        handler.playbackState.value.controls.any(
+          (c) => c.customAction?.name == 'toggleFavorite',
+        ),
+        isTrue,
       );
     });
   });
