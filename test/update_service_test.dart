@@ -44,6 +44,34 @@ void main() {
         UpdateService.compareSemver('0.5.6-dev.1', 'v0.5.6-dev.1'),
         equals(0),
       );
+
+      // Windows 4-part numeric version representations (e.g. 0.5.7.2 for 0.5.7-dev.2)
+      expect(
+        UpdateService.compareSemver('0.5.7-dev.3', '0.5.7.2'),
+        greaterThan(0),
+      );
+      expect(
+        UpdateService.compareSemver('0.5.7.2', '0.5.7-dev.3'),
+        lessThan(0),
+      );
+      expect(UpdateService.compareSemver('0.5.7-dev.2', '0.5.7.2'), equals(0));
+      expect(UpdateService.compareSemver('0.5.7', '0.5.7.2'), greaterThan(0));
+      expect(
+        UpdateService.compareSemver('0.5.7.2', '0.5.7-dev.1'),
+        greaterThan(0),
+      );
+      expect(
+        UpdateService.compareSemver('0.5.7-dev.1', '0.5.6.0'),
+        greaterThan(0),
+      );
+    });
+
+    test('formatDisplayVersion converts Windows 4-part versions', () {
+      expect(UpdateService.formatDisplayVersion('0.5.7.2'), '0.5.7-dev.2');
+      expect(UpdateService.formatDisplayVersion('v0.5.7.3'), '0.5.7-dev.3');
+      expect(UpdateService.formatDisplayVersion('0.5.6.0'), '0.5.6');
+      expect(UpdateService.formatDisplayVersion('0.5.6'), '0.5.6');
+      expect(UpdateService.formatDisplayVersion('0.5.7-dev.2'), '0.5.7-dev.2');
     });
 
     test('UpdateChannel parsing', () {

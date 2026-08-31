@@ -23,6 +23,7 @@ import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/hotkeys/hotkey_service.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
+import 'package:flax/services/updater/update_service.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
@@ -318,7 +319,10 @@ class _AboutTile extends ConsumerWidget {
             if (info == null) {
               version = snapshot.hasError ? 'version unavailable' : '…';
             } else {
-              version = 'v${info.version} (build ${info.buildNumber})';
+              final displayVer = UpdateService.formatDisplayVersion(
+                info.version,
+              );
+              version = 'v$displayVer (build ${info.buildNumber})';
             }
             // Name the build mode so a leftover debug bundle cannot be mistaken for
             // an installed release. Release builds say nothing extra.

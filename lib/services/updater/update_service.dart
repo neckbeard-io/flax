@@ -44,14 +44,34 @@ class UpdateService {
     return InstallMethod.unsupported;
   }
 
-  /// Gets the currently installed app version (e.g. "0.4.5").
+  /// Gets the currently installed app version (e.g. "0.5.7-dev.2").
   Future<String> getCurrentVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      return info.version;
+      return formatDisplayVersion(info.version);
     } catch (_) {
       return '0.4.5';
     }
+  }
+
+  /// Formats a raw version string (e.g. "0.5.7.2" from Windows PE headers)
+  /// into standard user-facing semver (e.g. "0.5.7-dev.2").
+  static String formatDisplayVersion(String rawVersion) {
+    var raw = rawVersion.trim();
+    if (raw.startsWith('v') || raw.startsWith('V')) {
+      raw = raw.substring(1);
+    }
+    if (!raw.contains('-')) {
+      final parts = raw.split('.');
+      if (parts.length == 4) {
+        final fourth = int.tryParse(parts[3]) ?? 0;
+        if (fourth > 0) {
+          return '${parts[0]}.${parts[1]}.${parts[2]}-dev.$fourth';
+        }
+        return '${parts[0]}.${parts[1]}.${parts[2]}';
+      }
+    }
+    return raw;
   }
 
   /// Checks GitHub Releases API for new versions based on the selected [channel].
@@ -154,7 +174,7 @@ class UpdateService {
 
     final dashIdx = raw.indexOf('-');
     final String coreStr;
-    final String? prerelease;
+    String? prerelease;
     if (dashIdx != -1) {
       coreStr = raw.substring(0, dashIdx);
       prerelease = raw.substring(dashIdx + 1);
@@ -167,6 +187,14 @@ class UpdateService {
         .split('.')
         .map((s) => int.tryParse(s.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0)
         .toList();
+
+    // On Windows, Flutter builds encode "X.Y.Z-dev.N" as 4 numeric components "X.Y.Z.N"
+    // in FileVersion/ProductVersion (e.g. "0.5.7.2").
+    // If there was no '-' dash but 4 parts exist and the 4th part > 0, treat it as dev.N.
+    if (prerelease == null && parts.length >= 4 && parts[3] > 0) {
+      prerelease = 'dev.${parts[3]}';
+    }
+
     while (parts.length < 3) {
       parts.add(0);
     }

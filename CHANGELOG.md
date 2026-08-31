@@ -17,6 +17,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Mobile active downloads pill displays real-time transfer rates alongside completed item counts.
 
 ### Fixed
+- Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
 - Windows self-updater now installs silently in-place without manual wizard prompts or elevated permission resets.
 - Desktop header update pill responds to taps on Windows and Linux without title bar drag interference.
 - Eliminated transient startup flash of the setup screen when reopening with configured servers.
