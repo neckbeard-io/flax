@@ -276,13 +276,13 @@ class _AppChromeState extends ConsumerState<AppChrome>
               OverlayEntry(
                 builder: (context) => Stack(
                   children: [
-                    // Drag strip first, so the buttons above keep their taps.
+                    // Drag strip first, leaving right space so controls keep their taps.
                     if (Platform.isWindows || Platform.isLinux)
-                      const Positioned(
+                      Positioned(
                         top: 0,
                         left: 0,
-                        right: 0,
-                        child: WindowDragArea(),
+                        right: windowButtonsReservedWidth + 120,
+                        child: const WindowDragArea(),
                       ),
                     if (isDesktop)
                       Positioned(

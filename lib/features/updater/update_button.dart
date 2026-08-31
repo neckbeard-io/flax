@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flax/core/logging/app_logger.dart';
 
 import '../../app/router.dart';
 import '../../services/updater/update_provider.dart';
@@ -22,11 +23,12 @@ class UpdateButton extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: () {
+            AppLogger.i('Updater', 'UpdateButton tapped');
             final targetContext = rootNavigatorKey.currentContext ?? context;
             showDialog<void>(
               context: targetContext,

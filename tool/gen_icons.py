@@ -207,6 +207,24 @@ def write_android():
     print(f'Generated {out}')
 
 
+WINDOWS_ICO_PATH = os.path.join(ROOT, 'windows', 'runner', 'resources', 'app_icon.ico')
+ASSET_FLAX_PNG = os.path.join(ROOT, 'assets', 'flax.png')
+
+
+def write_windows():
+    master = full_icon(RENDER_SIZE)
+    ico_sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+    os.makedirs(os.path.dirname(WINDOWS_ICO_PATH), exist_ok=True)
+    master.save(WINDOWS_ICO_PATH, format='ICO', sizes=ico_sizes)
+    print(f'Generated {WINDOWS_ICO_PATH} with sizes: {ico_sizes}')
+
+
+def write_assets():
+    master = full_icon(512)
+    master.save(ASSET_FLAX_PNG, 'PNG')
+    print(f'Generated {ASSET_FLAX_PNG} (512x512)')
+
+
 def main():
     s = RENDER_SIZE
     img = Image.new('RGBA', (s, s), (0, 0, 0, 0))
@@ -231,6 +249,8 @@ def main():
         print(f'Generated {out_path} ({size}x{size})')
 
     write_android()
+    write_windows()
+    write_assets()
     print('Done!')
 
 
