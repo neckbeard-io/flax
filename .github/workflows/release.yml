@@ -123,18 +123,18 @@ jobs:
                   next_base = "0.1.0"
               
               try:
-                  last_tag = subprocess.check_output(
-                      ['git', 'describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*.[0-9]*.[0-9]*'],
+                  tags = subprocess.check_output(
+                      ['git', 'tag', '-l', f'v{next_base}-dev.*'],
                       text=True
-                  ).strip()
-                  rev_count = subprocess.check_output(
-                      ['git', 'rev-list', '--count', f'{last_tag}..HEAD'],
-                      text=True
-                  ).strip()
-                  count = max(1, int(rev_count))
+                  ).split()
+                  dev_numbers = [
+                      int(m.group(1)) for t in tags
+                      if (m := re.match(rf'^v{re.escape(next_base)}-dev\.([0-9]+)$', t))
+                  ]
+                  next_dev_num = max(dev_numbers) + 1 if dev_numbers else 1
               except Exception:
-                  count = 1
-              version = f"{next_base}-dev.{count}"
+                  next_dev_num = 1
+              version = f"{next_base}-dev.{next_dev_num}"
               channel = "dev"
           else:
               sys.exit(f"Unsupported ref for release: {ref_name}")
