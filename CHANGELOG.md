@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Android Auto and Android Automotive support with media browse tree and vehicle transport controls.
 - Multi-language support (EN, DE, FR, ES, JA, ZH) with setup and appearance screen selector.
 - High-performance zero-jank in-memory ring buffer logger for diagnostic retention.
 - Downloads screen now breaks down active downloads track-by-track with live download speeds, ETAs, and queue status.

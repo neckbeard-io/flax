@@ -18,6 +18,8 @@ import 'package:flax/features/settings/audio_output_settings.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
+import 'package:flax/services/audio/audio_handler_provider.dart';
+import 'package:flax/services/audio/flax_audio_handler.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
@@ -192,6 +194,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _nowPlaying.onSeek = (pos) => seek(pos);
   }
 
+  FlaxAudioHandler? get _audioHandler => _ref.read(audioHandlerProvider);
+
   void _initStreams() {
     _subs.add(
       _player.stream.playing.listen((playing) {
@@ -201,6 +205,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
             position: state.position,
             isPlaying: playing,
           );
+          _audioHandler?.updateFromPlayerState(state);
           // Driven off playback actually starting rather than off the calls that
           // load a track, so a queue restored at launch — which opens its track
           // paused and never goes through _playIndex — still announces itself
@@ -551,6 +556,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       isPlaying: isPlaying ?? true,
       artUrl: artUrl,
     );
+    _audioHandler?.updateFromPlayerState(state);
   }
 
   // ── Scrobbling ─────────────────────────────────────────────────────
@@ -1048,18 +1054,24 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
-  Future<void> replaceQueue(List<Song> songs) async {
+  Future<void> playTracks(List<Song> songs, {int initialIndex = 0}) async {
     if (songs.isEmpty) return;
     _resetScrobble();
+    final idx = initialIndex.clamp(0, songs.length - 1);
     state = state.copyWith(
       queue: songs,
-      queueIndex: 0,
-      currentSong: songs.first,
+      queueIndex: idx,
+      currentSong: songs[idx],
     );
-    await _openQueue(songs, 0, play: true);
-    _updateNowPlayingForSong(songs.first);
+    await _openQueue(songs, idx, play: true);
+    _updateNowPlayingForSong(songs[idx]);
     _applyVolumeGain();
     _debounceSaveQueue();
+    _audioHandler?.updateFromPlayerState(state);
+  }
+
+  Future<void> replaceQueue(List<Song> songs) async {
+    await playTracks(songs, initialIndex: 0);
   }
 
   // ── Play queue persistence ──────────────────────────────────────────
@@ -1414,13 +1426,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     state = state.copyWith(shuffle: !state.shuffle);
   }
 
-  void cycleRepeatMode() {
-    final modes = RepeatMode.values;
-    final nextMode = modes[(state.repeatMode.index + 1) % modes.length];
-    state = state.copyWith(repeatMode: nextMode);
-    // Loop is managed at the Flax level for queue repeat;
-    // single-track repeat uses mpv Loop.one
-    switch (nextMode) {
+  void setRepeatMode(RepeatMode mode) {
+    state = state.copyWith(repeatMode: mode);
+    switch (mode) {
       case RepeatMode.one:
         _player.setLoop(mpv.Loop.file);
       case RepeatMode.off:
@@ -1428,6 +1436,14 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         _player.setLoop(mpv.Loop.off);
     }
   }
+
+  void cycleRepeatMode() {
+    final modes = RepeatMode.values;
+    final nextMode = modes[(state.repeatMode.index + 1) % modes.length];
+    setRepeatMode(nextMode);
+  }
+
+  Future<void> playTrackAt(int index) => _playIndex(index);
 
   @override
   void dispose() {

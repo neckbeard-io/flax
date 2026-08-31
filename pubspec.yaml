@@ -64,6 +64,7 @@ dependencies:
   meta: ^1.15.0
   ffi: ^2.2.0
   hotkey_manager: ^0.2.3
+  audio_service: ^0.18.19
 
 dev_dependencies:
   flutter_test:

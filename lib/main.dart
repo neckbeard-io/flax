@@ -11,6 +11,7 @@ import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/locale_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
+import 'package:flax/services/audio/audio_handler_provider.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/platform/orientation_service.dart';
 import 'package:flax/services/platform/window_state.dart';
@@ -72,19 +73,25 @@ Future<void> main() async {
     await WindowStateService.instance.restore();
   }
 
+  final container = ProviderContainer(
+    overrides: [
+      if (savedRoute != null)
+        savedRouteProvider.overrideWith((ref) => savedRoute),
+      if (initialServers.isNotEmpty)
+        serverListProvider.overrideWith(
+          (ref) => ServerListNotifier(initialServers: initialServers),
+        ),
+      if (initialLocale != null)
+        localeProvider.overrideWith((ref) => LocaleNotifier(initialLocale)),
+    ],
+  );
+
+  final audioHandler = await AudioServiceInitializer.initialize(container);
+  if (audioHandler != null) {
+    container.read(audioHandlerProvider.notifier).state = audioHandler;
+  }
+
   runApp(
-    ProviderScope(
-      overrides: [
-        if (savedRoute != null)
-          savedRouteProvider.overrideWith((ref) => savedRoute),
-        if (initialServers.isNotEmpty)
-          serverListProvider.overrideWith(
-            (ref) => ServerListNotifier(initialServers: initialServers),
-          ),
-        if (initialLocale != null)
-          localeProvider.overrideWith((ref) => LocaleNotifier(initialLocale)),
-      ],
-      child: const FlaxApp(),
-    ),
+    UncontrolledProviderScope(container: container, child: const FlaxApp()),
   );
 }
