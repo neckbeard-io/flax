@@ -350,6 +350,21 @@ class MockSubsonicClient extends _i1.Mock implements _i6.SubsonicClient {
           as Uri);
 
   @override
+  Uri getDownloadUri(String? songId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getDownloadUri, [songId]),
+            returnValue: _FakeUri_5(
+              this,
+              Invocation.method(#getDownloadUri, [songId]),
+            ),
+            returnValueForMissingStub: _FakeUri_5(
+              this,
+              Invocation.method(#getDownloadUri, [songId]),
+            ),
+          )
+          as Uri);
+
+  @override
   Uri getCoverArtUri(String? id, {int? size}) =>
       (super.noSuchMethod(
             Invocation.method(#getCoverArtUri, [id], {#size: size}),

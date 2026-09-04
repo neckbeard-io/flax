@@ -111,11 +111,14 @@ class TaskRegistry extends StateNotifier<List<Task>> {
     if (_find(id)?.state.isTerminal ?? false) {
       _estimators.remove(id);
       _onCancel.remove(id);
+      _lastProgressTime.remove(id);
     }
   }
 
+  final _lastProgressTime = <String, DateTime>{};
+
   /// Records a progress reading and recomputes the derived rate and ETA.
-  void _progress(String id, {int? items, int? bytes}) {
+  void _progress(String id, {int? items, int? bytes, bool force = false}) {
     final task = _find(id);
     if (task == null || task.state.isTerminal) return;
 
@@ -132,6 +135,14 @@ class TaskRegistry extends StateNotifier<List<Task>> {
       ProgressUnit.bytes => (bytesDone, task.bytesTotal),
     };
     estimator?.sample(done, now);
+
+    final lastTime = _lastProgressTime[id];
+    if (!force &&
+        lastTime != null &&
+        now.difference(lastTime).inMilliseconds < 100) {
+      return;
+    }
+    _lastProgressTime[id] = now;
 
     _update(
       id,

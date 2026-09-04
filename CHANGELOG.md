@@ -36,6 +36,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Eliminated missing image caution symbols on Android Auto container folders with lead album artwork and vector icons.
 - Eliminated "getting your categories" flash during seekbar interaction by preserving active playback state.
 - Integrated Android audio session focus management so media streams output properly to vehicle audio sinks.
+- Audio caching and album downloads now saturate bandwidth with connection pooling and raw endpoints.
 
 ## v0.5.6 — 2026-08-29
 
