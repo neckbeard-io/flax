@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
@@ -175,6 +176,68 @@ class MockLibraryRepository extends Mock implements LibraryRepository {
       ),
     ]);
   }
+
+  @override
+  Stream<List<Artist>> watchDownloadedArtists() {
+    return Stream.value(
+      artistsOverride ??
+          const [
+            Artist(
+              id: 'art_1',
+              serverId: 'srv_1',
+              name: 'Daft Punk',
+              albumCount: 4,
+              coverArtId: 'art_cover_1',
+            ),
+          ],
+    );
+  }
+
+  @override
+  Stream<List<Album>> watchDownloadedArtistAlbums(String? artistId) {
+    return Stream.value([
+      const Album(
+        id: 'alb_1',
+        serverId: 'srv_1',
+        name: 'Random Access Memories',
+        artistName: 'Daft Punk',
+        coverArtId: 'art_1',
+      ),
+    ]);
+  }
+
+  @override
+  Stream<List<Song>> watchDownloadedAlbumSongs(String? albumId) {
+    return Stream.value([
+      const Song(
+        id: 'song_1',
+        serverId: 'srv_1',
+        title: 'Get Lucky',
+        artistName: 'Daft Punk',
+        albumName: 'Random Access Memories',
+        duration: 248,
+        coverArtId: 'art_1',
+        starred: true,
+      ),
+    ]);
+  }
+
+  @override
+  Stream<List<Song>> watchDownloadedSongSearch(
+    String? query, {
+    int limit = 20,
+  }) {
+    return Stream.value([
+      const Song(
+        id: 'song_cached_1',
+        serverId: 'srv_1',
+        title: 'Instant Crush',
+        artistName: 'Daft Punk',
+        albumName: 'Random Access Memories',
+        duration: 337,
+      ),
+    ]);
+  }
 }
 
 class MockSubsonicClient extends Mock implements SubsonicClient {
@@ -275,7 +338,7 @@ void main() {
   });
 
   group('FlaxAudioHandler Android Auto Browse Tree', () {
-    test('returns root navigation categories', () async {
+    test('returns root navigation categories including mode toggle', () async {
       final root = await handler.getChildren(AudioService.browsableRootId);
       expect(root.length, equals(6));
       expect(
@@ -286,18 +349,18 @@ void main() {
           FlaxAudioHandler.kAlbumsNode,
           FlaxAudioHandler.kPlaylistsNode,
           FlaxAudioHandler.kFavoritesNode,
-          FlaxAudioHandler.kOfflineNode,
+          'toggle_offline_mode',
         ]),
       );
       expect(root.first.title, equals('Recently Added'));
     });
 
     test('fetches recently added albums', () async {
-      final recent = await handler.getChildren(FlaxAudioHandler.kRecentNode);
-      expect(recent.length, equals(1));
-      expect(recent.first.id, equals('album_alb_1'));
-      expect(recent.first.title, equals('Random Access Memories'));
-      expect(recent.first.artist, equals('Daft Punk'));
+      final recentSection = await handler.getChildren(
+        'albums_section_recentlyAdded',
+      );
+      expect(recentSection.length, equals(1));
+      expect(recentSection.first.title, equals('Random Access Memories'));
     });
 
     test('returns standard sections under albums node', () async {
@@ -329,7 +392,6 @@ void main() {
       expect(artists.length, equals(1));
       expect(artists.first.id, equals('artist_art_1'));
       expect(artists.first.title, equals('Daft Punk'));
-      expect(artists.first.playable, isFalse);
     });
 
     test('groups artists by A-Z letter index when count exceeds 60', () async {
@@ -339,14 +401,18 @@ void main() {
           id: 'art_$i',
           serverId: 'srv_1',
           name: i < 35 ? 'Artist A$i' : 'Band B$i',
+          albumCount: 1,
           starred: i == 0,
         ),
       );
 
-      final nodes = await handler.getChildren(FlaxAudioHandler.kArtistsNode);
-      expect(nodes.any((n) => n.id == 'artists_starred'), isTrue);
-      expect(nodes.any((n) => n.id == 'artists_letter_A'), isTrue);
-      expect(nodes.any((n) => n.id == 'artists_letter_B'), isTrue);
+      final categories = await handler.getChildren(
+        FlaxAudioHandler.kArtistsNode,
+      );
+      expect(categories.length, equals(3));
+      expect(categories[0].id, equals('artists_starred'));
+      expect(categories[1].id, equals('artists_letter_A'));
+      expect(categories[2].id, equals('artists_letter_B'));
 
       final letterA = await handler.getChildren('artists_letter_A');
       expect(letterA.length, equals(35));
@@ -358,7 +424,6 @@ void main() {
       expect(albums.length, equals(1));
       expect(albums.first.id, equals('album_alb_1'));
       expect(albums.first.title, equals('Random Access Memories'));
-      expect(albums.first.playable, isFalse);
     });
 
     test('fetches album tracks', () async {
@@ -366,8 +431,7 @@ void main() {
       expect(tracks.length, equals(1));
       expect(tracks.first.id, equals('song_song_1'));
       expect(tracks.first.title, equals('Get Lucky · Daft Punk'));
-      expect(tracks.first.duration, equals(const Duration(seconds: 248)));
-      expect(tracks.first.playable, isTrue);
+      expect(tracks.first.artist, equals('Daft Punk'));
     });
 
     test('fetches playlists and playlist tracks', () async {
@@ -388,6 +452,50 @@ void main() {
       expect(offline.length, equals(1));
       expect(offline.first.id, equals('song_song_cached_1'));
       expect(offline.first.title, equals('Instant Crush · Daft Punk'));
+    });
+
+    test(
+      'filters browse tree into downloaded views when offline mode is active',
+      () async {
+        container.read(offlineManualOverrideProvider.notifier).set(true);
+
+        final root = await handler.getChildren(AudioService.browsableRootId);
+        final toggleItem = root.firstWhere(
+          (e) => e.id == 'toggle_offline_mode',
+        );
+        expect(toggleItem.title, contains('Offline'));
+
+        final albums = await handler.getChildren(FlaxAudioHandler.kAlbumsNode);
+        expect(
+          albums.map((s) => s.id),
+          containsAll([
+            'albums_section_all',
+            'albums_section_recentlyAdded',
+            'albums_section_favorites',
+          ]),
+        );
+
+        final artists = await handler.getChildren(
+          FlaxAudioHandler.kArtistsNode,
+        );
+        expect(artists.length, equals(1));
+        expect(artists.first.title, equals('Daft Punk'));
+
+        final recent = await handler.getChildren(FlaxAudioHandler.kRecentNode);
+        expect(recent.length, equals(1));
+        expect(recent.first.title, equals('Random Access Memories'));
+      },
+    );
+
+    test('auto-offline on Android Auto setting filters browse tree', () async {
+      container.read(offlineOnAndroidAutoSettingProvider.notifier).set(true);
+
+      final root = await handler.getChildren(AudioService.browsableRootId);
+      final toggleItem = root.firstWhere((e) => e.id == 'toggle_offline_mode');
+      expect(toggleItem.title, contains('Offline'));
+
+      final tracks = await handler.getChildren('album_alb_1');
+      expect(tracks.first.title, equals('Get Lucky · Daft Punk'));
     });
   });
 

@@ -26,6 +26,7 @@ class TranscodingScreen extends ConsumerWidget {
 
     final config = server.transcodingConfig;
     final offlineOnCellular = ref.watch(offlineOnCellularSettingProvider);
+    final offlineOnAndroidAuto = ref.watch(offlineOnAndroidAutoSettingProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -91,6 +92,15 @@ class TranscodingScreen extends ConsumerWidget {
             value: offlineOnCellular,
             onChanged: (v) =>
                 ref.read(offlineOnCellularSettingProvider.notifier).set(v),
+          ),
+          SwitchListTile(
+            title: const Text('Auto-offline on Android Auto'),
+            subtitle: const Text(
+              'Automatically switch to offline mode and filter to downloaded music when connected to Android Auto',
+            ),
+            value: offlineOnAndroidAuto,
+            onChanged: (v) =>
+                ref.read(offlineOnAndroidAutoSettingProvider.notifier).set(v),
           ),
           const Divider(),
 

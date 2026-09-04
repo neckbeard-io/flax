@@ -21,6 +21,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Android Auto queue list now formats as Title · Artist on compact vehicle cards.
 - Android Auto Now Playing screen now features interactive Favorite (Heart) and Shuffle toggle actions.
 - Android Auto Now Playing subtitle displays dynamic audiophile codec and resolution badges (e.g. FLAC 24/96, FLAC 16/44.1, MP3 320k).
+- Android Auto browse tree now filters all standard views (Albums, Artists, Recent, Favorites) to downloaded music in offline mode.
+- Auto-offline setting for Android Auto to automatically engage offline mode when connected to vehicle head units.
+- Android Auto root browse menu includes interactive mode toggle to switch between online and offline playback.
 
 ### Fixed
 - Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.

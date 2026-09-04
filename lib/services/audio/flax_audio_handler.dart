@@ -6,6 +6,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
@@ -37,6 +38,18 @@ class FlaxAudioHandler extends BaseAudioHandler {
   static final Uri _icArtistAvatar = Uri.parse(
     'android.resource://com.flaxplayer.flax/drawable/ic_artist_avatar',
   );
+  static final Uri _icOfflineMode = Uri.parse(
+    'android.resource://com.flaxplayer.flax/drawable/ic_offline_mode',
+  );
+
+  bool get _isOffline {
+    final isGlobalOffline = _container.read(isOfflineModeProvider);
+    if (isGlobalOffline) return true;
+    final autoOfflineSetting = _container.read(
+      offlineOnAndroidAutoSettingProvider,
+    );
+    return autoOfflineSetting;
+  }
 
   // Root category node identifiers for Android Auto
   static const String kRootId = 'flax_root';
@@ -214,6 +227,22 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       switch (parentMediaId) {
         case kRecentNode:
+          if (_isOffline) {
+            final albums = await library
+                .watchDownloadedAlbums(
+                  query: const AlbumListQuery(AlbumListType.newest),
+                )
+                .first;
+            AppLogger.i(
+              'AudioHandler',
+              'kRecentNode (offline): returning ${albums.length} albums',
+            );
+            return albums
+                .take(30)
+                .map((a) => albumToMediaItem(a, client))
+                .toList();
+          }
+
           var albums = await library
               .watchAlbumList(const AlbumListQuery(AlbumListType.newest))
               .first;
@@ -251,6 +280,102 @@ class FlaxAudioHandler extends BaseAudioHandler {
               .toList();
 
         case kArtistsNode:
+          if (_isOffline) {
+            final artists = await library.watchDownloadedArtists().first;
+            final starredArtists = artists.where((a) => a.starred).toList();
+
+            if (artists.length <= 60) {
+              AppLogger.i(
+                'AudioHandler',
+                'kArtistsNode (offline <=60): returning ${artists.length} items',
+              );
+              return artists.map((a) => artistToMediaItem(a, client)).toList();
+            }
+
+            final items = <MediaItem>[];
+            final firstStarred = starredArtists.isNotEmpty
+                ? starredArtists.first
+                : null;
+            final starredArtUri = firstStarred?.coverArtId != null
+                ? client.getCoverArtUri(firstStarred!.coverArtId!, size: 400)
+                : (firstStarred?.imageUrl != null
+                      ? Uri.tryParse(firstStarred!.imageUrl!)
+                      : _icFavoriteHeart);
+
+            items.add(
+              MediaItem(
+                id: 'artists_starred',
+                title: '❤️ Favorite Artists',
+                displayTitle: '❤️ Favorite Artists',
+                displaySubtitle: starredArtists.isNotEmpty
+                    ? '${starredArtists.length} ${starredArtists.length == 1 ? 'artist' : 'artists'}'
+                    : '0 artists',
+                artUri: starredArtUri,
+                playable: false,
+                extras: const {
+                  AndroidContentStyle.browsableHintKey:
+                      AndroidContentStyle.gridItemHintValue,
+                },
+              ),
+            );
+
+            final letterCounts = <String, int>{};
+            for (final a in artists) {
+              final name = (a.sortName ?? a.name).trim();
+              final char = name.isNotEmpty ? name[0].toUpperCase() : '#';
+              final key = RegExp(r'[A-Z]').hasMatch(char) ? char : '#';
+              letterCounts[key] = (letterCounts[key] ?? 0) + 1;
+            }
+
+            final sortedKeys = letterCounts.keys.toList()
+              ..sort((a, b) {
+                if (a == '#') return 1;
+                if (b == '#') return -1;
+                return a.compareTo(b);
+              });
+
+            for (final letter in sortedKeys) {
+              final count = letterCounts[letter]!;
+              final firstArtistInLetter = artists.firstWhereOrNull((a) {
+                final name = (a.sortName ?? a.name).trim();
+                if (name.isEmpty) return letter == '#';
+                final char = name[0].toUpperCase();
+                if (letter == '#') return !RegExp(r'[A-Z]').hasMatch(char);
+                return char == letter;
+              });
+              final letterArtUri = firstArtistInLetter?.coverArtId != null
+                  ? client.getCoverArtUri(
+                      firstArtistInLetter!.coverArtId!,
+                      size: 400,
+                    )
+                  : (firstArtistInLetter?.imageUrl != null
+                        ? Uri.tryParse(firstArtistInLetter!.imageUrl!)
+                        : _icArtistAvatar);
+
+              items.add(
+                MediaItem(
+                  id: 'artists_letter_$letter',
+                  title: letter,
+                  displayTitle: letter,
+                  displaySubtitle:
+                      '$count ${count == 1 ? 'artist' : 'artists'}',
+                  artUri: letterArtUri,
+                  playable: false,
+                  extras: const {
+                    AndroidContentStyle.browsableHintKey:
+                        AndroidContentStyle.gridItemHintValue,
+                  },
+                ),
+              );
+            }
+
+            AppLogger.i(
+              'AudioHandler',
+              'kArtistsNode (offline >60): returning ${items.length} letter/favorite categories',
+            );
+            return items;
+          }
+
           try {
             await library.syncAnnotations(force: true);
           } catch (e) {
@@ -381,14 +506,16 @@ class FlaxAudioHandler extends BaseAudioHandler {
         case kAlbumsNode:
           Future<Uri?> getLeadArt(AlbumListType type, {Uri? fallback}) async {
             final query = AlbumListQuery(type);
-            var list = await library.watchAlbumList(query).first;
-            if (list.isEmpty && query.isCacheable) {
+            var list = _isOffline
+                ? await library.watchDownloadedAlbums(query: query).first
+                : await library.watchAlbumList(query).first;
+            if (!_isOffline && list.isEmpty && query.isCacheable) {
               try {
                 await library.refreshAlbumList(query);
                 list = await library.watchAlbumList(query).first;
               } catch (_) {}
             }
-            if (list.isEmpty) {
+            if (!_isOffline && list.isEmpty) {
               try {
                 list = await client.getAlbumList(type, count: 10);
               } catch (_) {}
@@ -437,7 +564,9 @@ class FlaxAudioHandler extends BaseAudioHandler {
               id: 'albums_section_all',
               title: 'All',
               displayTitle: 'All',
-              displaySubtitle: 'Alphabetical discography',
+              displaySubtitle: _isOffline
+                  ? 'All downloaded albums'
+                  : 'Alphabetical discography',
               artUri: allArt,
               playable: false,
               extras: const {
@@ -449,7 +578,9 @@ class FlaxAudioHandler extends BaseAudioHandler {
               id: 'albums_section_recentlyAdded',
               title: 'Recently Added',
               displayTitle: 'Recently Added',
-              displaySubtitle: 'Newest additions',
+              displaySubtitle: _isOffline
+                  ? 'Newest offline additions'
+                  : 'Newest additions',
               artUri: recentArt,
               playable: false,
               extras: const {
@@ -497,7 +628,9 @@ class FlaxAudioHandler extends BaseAudioHandler {
               id: 'albums_section_favorites',
               title: '❤️ Favorites',
               displayTitle: '❤️ Favorites',
-              displaySubtitle: 'Favorite albums',
+              displaySubtitle: _isOffline
+                  ? 'Favorite downloaded albums'
+                  : 'Favorite albums',
               artUri: starredArt,
               playable: false,
               extras: const {
@@ -517,21 +650,40 @@ class FlaxAudioHandler extends BaseAudioHandler {
                     AndroidContentStyle.gridItemHintValue,
               },
             ),
-            MediaItem(
-              id: 'albums_section_downloaded',
-              title: 'Downloaded',
-              displayTitle: 'Downloaded',
-              displaySubtitle: 'Available offline',
-              artUri: downloadedArt,
-              playable: false,
-              extras: const {
-                AndroidContentStyle.browsableHintKey:
-                    AndroidContentStyle.gridItemHintValue,
-              },
-            ),
+            if (!_isOffline)
+              MediaItem(
+                id: 'albums_section_downloaded',
+                title: 'Downloaded',
+                displayTitle: 'Downloaded',
+                displaySubtitle: 'Available offline',
+                artUri: downloadedArt,
+                playable: false,
+                extras: const {
+                  AndroidContentStyle.browsableHintKey:
+                      AndroidContentStyle.gridItemHintValue,
+                },
+              ),
           ];
 
         case kPlaylistsNode:
+          if (_isOffline) {
+            final downloadedSongs = await library.getDownloadedSongs();
+            return [
+              MediaItem(
+                id: kOfflineNode,
+                title: 'Downloaded Tracks',
+                displayTitle: 'Downloaded Tracks',
+                displaySubtitle: '${downloadedSongs.length} offline tracks',
+                artUri: _icMusicNote,
+                playable: false,
+                extras: const {
+                  AndroidContentStyle.browsableHintKey:
+                      AndroidContentStyle.listItemHintValue,
+                },
+              ),
+            ];
+          }
+
           final playlists = await client.getPlaylists();
           return playlists
               .take(50)
@@ -539,6 +691,22 @@ class FlaxAudioHandler extends BaseAudioHandler {
               .toList();
 
         case kFavoritesNode:
+          if (_isOffline) {
+            final starredAlbums = await library
+                .watchDownloadedAlbums(
+                  query: const AlbumListQuery(AlbumListType.starred),
+                )
+                .first;
+            AppLogger.i(
+              'AudioHandler',
+              'kFavoritesNode (offline): returning ${starredAlbums.length} albums',
+            );
+            return starredAlbums
+                .take(50)
+                .map((a) => albumToMediaItem(a, client))
+                .toList();
+          }
+
           try {
             await library.syncAnnotations(force: true);
           } catch (_) {}
@@ -597,6 +765,16 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       // Dynamic sub-nodes (artists_starred, artists_letter_*, artist_{id}, album_{id}, playlist_{id})
       if (parentMediaId == 'artists_starred') {
+        if (_isOffline) {
+          final artists = await library.watchDownloadedArtists().first;
+          final starred = artists.where((a) => a.starred).take(80).toList();
+          AppLogger.i(
+            'AudioHandler',
+            'artists_starred (offline): returning ${starred.length} items',
+          );
+          return starred.map((a) => artistToMediaItem(a, client)).toList();
+        }
+
         try {
           await library.syncAnnotations(force: true);
         } catch (_) {}
@@ -629,6 +807,26 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       if (parentMediaId.startsWith('artists_letter_')) {
         final letter = parentMediaId.substring(15);
+        if (_isOffline) {
+          final artists = await library.watchDownloadedArtists().first;
+          final matching = artists
+              .where((a) {
+                final name = (a.sortName ?? a.name).trim();
+                if (name.isEmpty) return letter == '#';
+                final char = name[0].toUpperCase();
+                if (letter == '#') {
+                  return !RegExp(r'[A-Z]').hasMatch(char);
+                }
+                return char == letter;
+              })
+              .take(80);
+          AppLogger.i(
+            'AudioHandler',
+            'artists_letter_$letter (offline): returning ${matching.length} items',
+          );
+          return matching.map((a) => artistToMediaItem(a, client)).toList();
+        }
+
         var artists = await library.watchArtists().first;
         if (artists.isEmpty) {
           try {
@@ -660,6 +858,28 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       if (parentMediaId.startsWith('albums_letter_')) {
         final letter = parentMediaId.substring(14);
+        if (_isOffline) {
+          final albums = await library
+              .watchDownloadedAlbums(
+                query: const AlbumListQuery(AlbumListType.alphabeticalByName),
+              )
+              .first;
+          final matching = albums
+              .where((a) {
+                final name = a.name.trim();
+                if (name.isEmpty) return letter == '#';
+                final char = name[0].toUpperCase();
+                if (letter == '#') return !RegExp(r'[A-Z]').hasMatch(char);
+                return char == letter;
+              })
+              .take(80);
+          AppLogger.i(
+            'AudioHandler',
+            'albums_letter_$letter (offline): returning ${matching.length} items',
+          );
+          return matching.map((a) => albumToMediaItem(a, client)).toList();
+        }
+
         var albums = await library
             .watchAlbumList(
               const AlbumListQuery(AlbumListType.alphabeticalByName),
@@ -691,6 +911,17 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       if (parentMediaId.startsWith('artist_')) {
         final artistId = parentMediaId.substring(7);
+        if (_isOffline) {
+          final albums = await library
+              .watchDownloadedArtistAlbums(artistId)
+              .first;
+          AppLogger.i(
+            'AudioHandler',
+            'artist_$artistId (offline): returning ${albums.length} albums',
+          );
+          return albums.map((a) => albumToMediaItem(a, client)).toList();
+        }
+
         try {
           await library.refreshArtist(artistId);
         } catch (e) {
@@ -713,6 +944,26 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       if (parentMediaId.startsWith('album_')) {
         final albumId = parentMediaId.substring(6);
+        if (_isOffline) {
+          final songs = await library.watchDownloadedAlbumSongs(albumId).first;
+          AppLogger.i(
+            'AudioHandler',
+            'album_$albumId (offline): returning ${songs.length} songs',
+          );
+          return songs
+              .map(
+                (s) => songToMediaItem(
+                  s,
+                  coverArtUrl: s.coverArtId != null
+                      ? client
+                            .getCoverArtUri(s.coverArtId!, size: 300)
+                            .toString()
+                      : null,
+                ),
+              )
+              .toList();
+        }
+
         try {
           await library.refreshAlbum(albumId);
         } catch (e) {
@@ -744,6 +995,22 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       if (parentMediaId.startsWith('playlist_')) {
         final playlistId = parentMediaId.substring(9);
+        if (_isOffline) {
+          final songs = await library.getDownloadedSongs();
+          return songs
+              .map(
+                (s) => songToMediaItem(
+                  s,
+                  coverArtUrl: s.coverArtId != null
+                      ? client
+                            .getCoverArtUri(s.coverArtId!, size: 300)
+                            .toString()
+                      : null,
+                ),
+              )
+              .toList();
+        }
+
         final songs = await client.getPlaylistSongs(playlistId);
         return songs
             .map(
@@ -807,15 +1074,6 @@ class FlaxAudioHandler extends BaseAudioHandler {
     LibraryRepository library,
     SubsonicClient client,
   ) async {
-    if (section == 'downloaded') {
-      final albums = await library.watchDownloadedAlbums().first;
-      AppLogger.i(
-        'AudioHandler',
-        'albums_section_downloaded: returning ${albums.length} albums',
-      );
-      return albums.take(50).map((a) => albumToMediaItem(a, client)).toList();
-    }
-
     final listType = switch (section) {
       'recentlyAdded' => AlbumListType.newest,
       'recentlyPlayed' => AlbumListType.recent,
@@ -823,8 +1081,67 @@ class FlaxAudioHandler extends BaseAudioHandler {
       'mostPlayed' => AlbumListType.frequent,
       'favorites' => AlbumListType.starred,
       'topRated' => AlbumListType.highest,
+      'downloaded' => AlbumListType.alphabeticalByName,
       _ => AlbumListType.alphabeticalByName,
     };
+
+    if (_isOffline || section == 'downloaded') {
+      final query = AlbumListQuery(listType);
+      final albums = await library.watchDownloadedAlbums(query: query).first;
+      AppLogger.i(
+        'AudioHandler',
+        'albums_section_$section (offline): returning ${albums.length} albums',
+      );
+
+      if (section == 'all' && albums.length > 60) {
+        final letterCounts = <String, int>{};
+        for (final a in albums) {
+          final name = a.name.trim();
+          final char = name.isNotEmpty ? name[0].toUpperCase() : '#';
+          final key = RegExp(r'[A-Z]').hasMatch(char) ? char : '#';
+          letterCounts[key] = (letterCounts[key] ?? 0) + 1;
+        }
+
+        final sortedKeys = letterCounts.keys.toList()
+          ..sort((a, b) {
+            if (a == '#') return 1;
+            if (b == '#') return -1;
+            return a.compareTo(b);
+          });
+
+        return sortedKeys.map((letter) {
+          final count = letterCounts[letter]!;
+          final firstAlbumInLetter = albums.firstWhereOrNull((a) {
+            final name = a.name.trim();
+            if (name.isEmpty) return letter == '#';
+            final char = name[0].toUpperCase();
+            if (letter == '#') return !RegExp(r'[A-Z]').hasMatch(char);
+            return char == letter;
+          });
+          final letterArt = firstAlbumInLetter?.coverArtId != null
+              ? client.getCoverArtUri(
+                  firstAlbumInLetter!.coverArtId!,
+                  size: 400,
+                )
+              : _icAlbumCollection;
+
+          return MediaItem(
+            id: 'albums_letter_$letter',
+            title: letter,
+            displayTitle: letter,
+            displaySubtitle: '$count ${count == 1 ? 'album' : 'albums'}',
+            artUri: letterArt,
+            playable: false,
+            extras: const {
+              AndroidContentStyle.browsableHintKey:
+                  AndroidContentStyle.gridItemHintValue,
+            },
+          );
+        }).toList();
+      }
+
+      return albums.take(50).map((a) => albumToMediaItem(a, client)).toList();
+    }
 
     if (section == 'favorites') {
       try {
@@ -904,10 +1221,13 @@ class FlaxAudioHandler extends BaseAudioHandler {
   }
 
   List<MediaItem> _getRootCategories() {
+    final offline = _isOffline;
     return [
       MediaItem(
         id: kRecentNode,
         title: 'Recently Added',
+        displayTitle: 'Recently Added',
+        displaySubtitle: offline ? 'Downloaded · Newest additions' : null,
         artUri: _icMusicNote,
         playable: false,
         extras: const {
@@ -918,6 +1238,8 @@ class FlaxAudioHandler extends BaseAudioHandler {
       MediaItem(
         id: kArtistsNode,
         title: 'Artists',
+        displayTitle: 'Artists',
+        displaySubtitle: offline ? 'Downloaded artists' : null,
         artUri: _icArtistAvatar,
         playable: false,
         extras: const {
@@ -928,6 +1250,8 @@ class FlaxAudioHandler extends BaseAudioHandler {
       MediaItem(
         id: kAlbumsNode,
         title: 'Albums',
+        displayTitle: 'Albums',
+        displaySubtitle: offline ? 'Downloaded albums & filters' : null,
         artUri: _icAlbumCollection,
         playable: false,
         extras: const {
@@ -938,6 +1262,8 @@ class FlaxAudioHandler extends BaseAudioHandler {
       MediaItem(
         id: kPlaylistsNode,
         title: 'Playlists',
+        displayTitle: 'Playlists',
+        displaySubtitle: offline ? 'Downloaded tracks & playlists' : null,
         artUri: _icMusicNote,
         playable: false,
         extras: const {
@@ -948,6 +1274,8 @@ class FlaxAudioHandler extends BaseAudioHandler {
       MediaItem(
         id: kFavoritesNode,
         title: 'Favorites',
+        displayTitle: 'Favorites',
+        displaySubtitle: offline ? 'Downloaded favorites' : null,
         artUri: _icFavoriteHeart,
         playable: false,
         extras: const {
@@ -956,10 +1284,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
         },
       ),
       MediaItem(
-        id: kOfflineNode,
-        title: 'Downloaded / Offline',
-        artUri: _icMusicNote,
-        playable: false,
+        id: 'toggle_offline_mode',
+        title: offline ? '⚡ Mode: Offline' : '🌐 Mode: Online',
+        displayTitle: offline ? '⚡ Mode: Offline' : '🌐 Mode: Online',
+        displaySubtitle: offline
+            ? 'Filtered to downloaded music · Tap to toggle'
+            : 'Streaming all music · Tap for Offline only',
+        artUri: _icOfflineMode,
+        playable: true,
         extras: const {
           AndroidContentStyle.browsableHintKey:
               AndroidContentStyle.listItemHintValue,
@@ -986,17 +1318,29 @@ class FlaxAudioHandler extends BaseAudioHandler {
     if (library == null) return;
 
     try {
+      if (mediaId == 'toggle_offline_mode') {
+        final current = _isOffline;
+        await _container
+            .read(offlineManualOverrideProvider.notifier)
+            .set(!current);
+        AppLogger.i(
+          'AudioHandler',
+          'Toggled offline mode from Android Auto. Now: ${!current}',
+        );
+        return;
+      }
+
       if (mediaId.startsWith('song_')) {
         final songId = mediaId.substring(5);
         final song = await library.watchSong(songId).first;
         if (song != null) {
           if (song.albumId != null) {
-            final albumSongs = await library
-                .watchAlbumSongs(song.albumId!)
-                .first;
+            final albumSongs = _isOffline
+                ? await library.watchDownloadedAlbumSongs(song.albumId!).first
+                : await library.watchAlbumSongs(song.albumId!).first;
             final idx = albumSongs.indexWhere((s) => s.id == song.id);
             await _player.playTracks(
-              albumSongs,
+              albumSongs.isNotEmpty ? albumSongs : [song],
               initialIndex: idx >= 0 ? idx : 0,
             );
           } else {
@@ -1005,8 +1349,10 @@ class FlaxAudioHandler extends BaseAudioHandler {
         }
       } else if (mediaId.startsWith('album_')) {
         final albumId = mediaId.substring(6);
-        var songs = await library.watchAlbumSongs(albumId).first;
-        if (songs.isEmpty) {
+        var songs = _isOffline
+            ? await library.watchDownloadedAlbumSongs(albumId).first
+            : await library.watchAlbumSongs(albumId).first;
+        if (!_isOffline && songs.isEmpty) {
           try {
             await library.refreshAlbum(albumId);
             songs = await library.watchAlbumSongs(albumId).first;
@@ -1020,8 +1366,10 @@ class FlaxAudioHandler extends BaseAudioHandler {
         }
       } else if (mediaId.startsWith('artist_')) {
         final artistId = mediaId.substring(7);
-        var albums = await library.watchArtistAlbums(artistId).first;
-        if (albums.isEmpty) {
+        var albums = _isOffline
+            ? await library.watchDownloadedArtistAlbums(artistId).first
+            : await library.watchArtistAlbums(artistId).first;
+        if (!_isOffline && albums.isEmpty) {
           try {
             await library.refreshArtist(artistId);
             albums = await library.watchArtistAlbums(artistId).first;
@@ -1031,10 +1379,10 @@ class FlaxAudioHandler extends BaseAudioHandler {
           }
         }
         if (albums.isNotEmpty) {
-          var firstAlbumSongs = await library
-              .watchAlbumSongs(albums.first.id)
-              .first;
-          if (firstAlbumSongs.isEmpty && client != null) {
+          var firstAlbumSongs = _isOffline
+              ? await library.watchDownloadedAlbumSongs(albums.first.id).first
+              : await library.watchAlbumSongs(albums.first.id).first;
+          if (!_isOffline && firstAlbumSongs.isEmpty && client != null) {
             firstAlbumSongs = await client.getAlbumSongs(albums.first.id);
           }
           if (firstAlbumSongs.isNotEmpty) {
@@ -1043,20 +1391,33 @@ class FlaxAudioHandler extends BaseAudioHandler {
         }
       } else if (mediaId.startsWith('playlist_')) {
         final playlistId = mediaId.substring(9);
-        if (client != null) {
+        if (_isOffline) {
+          final songs = await library.getDownloadedSongs();
+          if (songs.isNotEmpty) {
+            await _player.playTracks(songs, initialIndex: 0);
+          }
+        } else if (client != null) {
           final songs = await client.getPlaylistSongs(playlistId);
           if (songs.isNotEmpty) {
             await _player.playTracks(songs, initialIndex: 0);
           }
         }
       } else if (mediaId == kFavoritesNode) {
-        final starredAlbums = await library
-            .watchAlbumList(const AlbumListQuery(AlbumListType.starred))
-            .first;
+        final starredAlbums = _isOffline
+            ? await library
+                  .watchDownloadedAlbums(
+                    query: const AlbumListQuery(AlbumListType.starred),
+                  )
+                  .first
+            : await library
+                  .watchAlbumList(const AlbumListQuery(AlbumListType.starred))
+                  .first;
         if (starredAlbums.isNotEmpty) {
-          final songs = await library
-              .watchAlbumSongs(starredAlbums.first.id)
-              .first;
+          final songs = _isOffline
+              ? await library
+                    .watchDownloadedAlbumSongs(starredAlbums.first.id)
+                    .first
+              : await library.watchAlbumSongs(starredAlbums.first.id).first;
           if (songs.isNotEmpty) {
             await _player.playTracks(songs, initialIndex: 0);
           }
@@ -1095,7 +1456,10 @@ class FlaxAudioHandler extends BaseAudioHandler {
     String query, [
     Map<String, dynamic>? extras,
   ]) async {
-    AppLogger.i('AudioHandler', 'Voice/Text search query: $query');
+    AppLogger.i(
+      'AudioHandler',
+      'Voice/Text search query: $query (offline: $_isOffline)',
+    );
     final library = _library;
     final client = _client;
     if (library == null || client == null || query.trim().isEmpty) {
@@ -1103,9 +1467,9 @@ class FlaxAudioHandler extends BaseAudioHandler {
     }
 
     try {
-      final matchingSongs = await library
-          .watchSongSearch(query, limit: 20)
-          .first;
+      final matchingSongs = _isOffline
+          ? await library.watchDownloadedSongSearch(query, limit: 20).first
+          : await library.watchSongSearch(query, limit: 20).first;
       if (matchingSongs.isNotEmpty) {
         await _player.playTracks(matchingSongs, initialIndex: 0);
         return matchingSongs

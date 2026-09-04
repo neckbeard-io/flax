@@ -22,6 +22,7 @@ class OfflineModeToggle extends ConsumerWidget {
     final tooltip = switch (reason) {
       OfflineReason.manual => 'Offline mode active (manual override)',
       OfflineReason.cellular => 'Offline mode active (cellular network)',
+      OfflineReason.androidAuto => 'Offline mode active (Android Auto)',
       OfflineReason.serverUnreachable =>
         'Offline mode active (server unreachable)',
       OfflineReason.none => 'Toggle Offline mode (only view cached music)',

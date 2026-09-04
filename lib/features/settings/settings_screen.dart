@@ -255,6 +255,15 @@ class SettingsScreen extends ConsumerWidget {
             onChanged: (v) =>
                 ref.read(offlineManualOverrideProvider.notifier).set(v),
           ),
+          SwitchListTile(
+            title: const Text('Auto-offline on Android Auto'),
+            subtitle: const Text(
+              'Automatically filter to downloaded music when connected to Android Auto',
+            ),
+            value: ref.watch(offlineOnAndroidAutoSettingProvider),
+            onChanged: (v) =>
+                ref.read(offlineOnAndroidAutoSettingProvider.notifier).set(v),
+          ),
           Consumer(
             builder: (context, ref, _) {
               final audioConfig = ref.watch(audioCacheConfigProvider);
