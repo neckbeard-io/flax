@@ -27,6 +27,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Android Auto root browse menu includes interactive mode toggle to switch between online and offline playback.
 - Full-hierarchy metadata caching automatically stores lyrics, album sleeves, artist bios, and avatars when caching music.
 - Automated nightly library and artwork background sync on Android via WorkManager.
+- Partial cache indicators: albums and artists with some cached tracks show outlined pin badge, context menus offer both "Complete Caching" and "Remove from Cache".
 
 ### Fixed
 - Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
@@ -41,6 +42,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Integrated Android audio session focus management so media streams output properly to vehicle audio sinks.
 - Audio caching and album downloads now saturate bandwidth with connection pooling and raw endpoints.
 - Active download progress accurately highlights in-flight downloading tracks with speed metrics and sorting above queued items.
+- macOS self-updater no longer fails with "Device not configured" when mounting the DMG; removed App Sandbox from release builds and added DiskImageMounter fallback.
 
 ## v0.5.6 — 2026-08-29
 

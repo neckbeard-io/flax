@@ -54,7 +54,9 @@ class MacOSInstaller {
     String? mountedVolume;
 
     try {
-      // 1. Attach DMG using standard Apple plist output without custom mountpoint
+      // 1. Attach DMG — try hdiutil first, fall back to DiskImageMounter
+      String? mountPoint;
+
       final mountRes = await Process.run('hdiutil', [
         'attach',
         dmgPath,
@@ -65,17 +67,50 @@ class MacOSInstaller {
         '-noverify',
       ]);
 
-      if (mountRes.exitCode != 0) {
-        throw Exception(
-          'Failed to attach DMG (exit code ${mountRes.exitCode}): ${mountRes.stderr.toString().trim()}',
+      if (mountRes.exitCode == 0) {
+        final mountMatch = RegExp(
+          r'<key>mount-point</key>\s*<string>([^<]+)</string>',
+        ).firstMatch(mountRes.stdout.toString());
+        mountPoint = mountMatch?.group(1);
+      } else {
+        // hdiutil can fail under App Sandbox or restricted entitlements.
+        // Fall back to DiskImageMounter which runs out-of-process.
+        AppLogger.w(
+          'Updater',
+          'hdiutil attach failed (${mountRes.exitCode}): '
+              '${mountRes.stderr.toString().trim()}. '
+              'Falling back to DiskImageMounter.',
         );
+        await Process.run('open', ['-a', 'DiskImageMounter', dmgPath]);
+
+        // Poll /Volumes for the mount to appear (up to 8 seconds)
+        final volumeName = p
+            .basenameWithoutExtension(dmgPath)
+            .replaceAll(RegExp(r'-macos.*'), '');
+        for (var i = 0; i < 32; i++) {
+          await Future.delayed(const Duration(milliseconds: 250));
+          final volumes = Directory(
+            '/Volumes',
+          ).listSync().whereType<Directory>().map((d) => d.path).toList();
+          final match = volumes.firstWhere(
+            (v) =>
+                v.toLowerCase().contains('flax') ||
+                v.toLowerCase().contains(volumeName.toLowerCase()),
+            orElse: () => '',
+          );
+          if (match.isNotEmpty && Directory(match).listSync().isNotEmpty) {
+            mountPoint = match;
+            break;
+          }
+        }
+        if (mountPoint == null) {
+          throw Exception(
+            'DMG did not mount within timeout after DiskImageMounter fallback.',
+          );
+        }
       }
 
-      // Parse mount point from plist stdout
-      final mountMatch = RegExp(
-        r'<key>mount-point</key>\s*<string>([^<]+)</string>',
-      ).firstMatch(mountRes.stdout.toString());
-      final mountPoint = mountMatch?.group(1) ?? '/Volumes/flax';
+      mountPoint ??= '/Volumes/flax';
       mountedVolume = mountPoint;
 
       final mountDir = Directory(mountPoint);
