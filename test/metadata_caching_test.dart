@@ -42,6 +42,10 @@ void main() {
       expect(config.artistArtQuality, MetadataQuality.medium);
       expect(config.cacheArtistInfo, isTrue);
       expect(config.concurrency, 4);
+      expect(config.backgroundSyncEnabled, isFalse);
+      expect(config.backgroundSyncRequiresCharging, isTrue);
+      expect(config.backgroundSyncWifiOnly, isTrue);
+      expect(config.backgroundSyncIntervalHours, 24);
     });
 
     test('round trip JSON serialization', () {
@@ -50,6 +54,10 @@ void main() {
         artistArtQuality: MetadataQuality.low,
         cacheArtistInfo: false,
         concurrency: 6,
+        backgroundSyncEnabled: true,
+        backgroundSyncRequiresCharging: false,
+        backgroundSyncWifiOnly: false,
+        backgroundSyncIntervalHours: 12,
       );
 
       final json = config.toJson();
@@ -59,6 +67,10 @@ void main() {
       expect(restored.artistArtQuality, MetadataQuality.low);
       expect(restored.cacheArtistInfo, isFalse);
       expect(restored.concurrency, 6);
+      expect(restored.backgroundSyncEnabled, isTrue);
+      expect(restored.backgroundSyncRequiresCharging, isFalse);
+      expect(restored.backgroundSyncWifiOnly, isFalse);
+      expect(restored.backgroundSyncIntervalHours, 12);
     });
 
     test('concurrency is clamped between 1 and 8', () {
@@ -74,12 +86,17 @@ void main() {
       final updated = config.copyWith(
         albumArtQuality: MetadataQuality.low,
         cacheArtistInfo: false,
+        backgroundSyncEnabled: true,
+        backgroundSyncRequiresCharging: false,
       );
 
       expect(updated.albumArtQuality, MetadataQuality.low);
       expect(updated.artistArtQuality, MetadataQuality.medium);
       expect(updated.cacheArtistInfo, isFalse);
       expect(updated.concurrency, 4);
+      expect(updated.backgroundSyncEnabled, isTrue);
+      expect(updated.backgroundSyncRequiresCharging, isFalse);
+      expect(updated.backgroundSyncWifiOnly, isTrue);
     });
   });
 

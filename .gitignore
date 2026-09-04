@@ -43,6 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/build/
+.gradle/
 
 # Release signing material — never commit. The test keystore lives in the
 # FLAX_KEYSTORE_BASE64 / FLAX_KEYSTORE_PASSWORD GitHub secrets for CI, and in

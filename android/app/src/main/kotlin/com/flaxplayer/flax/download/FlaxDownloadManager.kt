@@ -23,16 +23,22 @@ object FlaxDownloadManager {
     val totalSessionBytes = AtomicLong(0)
 
     var maxConcurrency: Int = 4
+    var customNotificationTitle: String? = null
 
     fun setEventSink(sink: EventChannel.EventSink?) {
         eventSink = sink
     }
 
-    fun enqueue(context: Context, tasks: List<DownloadTask>, concurrency: Int = 4) {
-        maxConcurrency = concurrency.coerceIn(1, 16)
-        tasks.forEach { canceledSongIds.remove(it.songId) }
-        pendingQueue.addAll(tasks)
-        totalEnqueuedTasks.addAndGet(tasks.size)
+    fun enqueue(context: Context, tasks: List<DownloadTask>, concurrency: Int = 4, notificationTitle: String? = null) {
+        maxConcurrency = concurrency.coerceIn(1, 32)
+        customNotificationTitle = notificationTitle
+        val existingIds = pendingQueue.map { it.songId }.toSet() + activeTasks.keys
+        val newTasks = tasks.filter { it.songId !in existingIds }
+        if (newTasks.isEmpty()) return
+
+        newTasks.forEach { canceledSongIds.remove(it.songId) }
+        pendingQueue.addAll(newTasks)
+        totalEnqueuedTasks.addAndGet(newTasks.size)
 
         val intent = Intent(context, FlaxDownloadService::class.java).apply {
             action = FlaxDownloadService.ACTION_START_DOWNLOADS
@@ -67,6 +73,7 @@ object FlaxDownloadManager {
         pendingQueue.clear()
         activeTasks.clear()
         canceledSongIds.clear()
+        customNotificationTitle = null
         totalEnqueuedTasks.set(0)
         completedSessionTasks.set(0)
         totalSessionBytes.set(0)
@@ -81,6 +88,7 @@ object FlaxDownloadManager {
     fun resetSession() {
         activeTasks.clear()
         canceledSongIds.clear()
+        customNotificationTitle = null
         totalEnqueuedTasks.set(0)
         completedSessionTasks.set(0)
         totalSessionBytes.set(0)

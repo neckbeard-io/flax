@@ -183,16 +183,26 @@ class NativeDownloader {
     return _eventStream!;
   }
 
+  /// Explicitly requests POST_NOTIFICATIONS permission on Android 13+.
+  static Future<void> requestNotificationPermission() async {
+    if (!isSupported) return;
+    try {
+      await _methodChannel.invokeMethod('requestNotificationPermission');
+    } catch (_) {}
+  }
+
   /// Starts downloading a batch of tasks via the native Android foreground service.
   static Future<bool> startDownload({
     required List<NativeDownloadTask> tasks,
     int concurrency = 4,
+    String? notificationTitle,
   }) async {
     if (!isSupported || tasks.isEmpty) return false;
     try {
       final success = await _methodChannel.invokeMethod<bool>('startDownload', {
         'tasks': tasks.map((t) => t.toJson()).toList(),
         'concurrency': concurrency,
+        'notificationTitle': ?notificationTitle,
       });
       return success ?? false;
     } catch (e) {

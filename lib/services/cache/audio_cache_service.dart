@@ -434,29 +434,16 @@ class AudioCacheService {
         state: DownloadState.complete,
       );
 
-      // Cascade: Lyrics (asynchronous in background, non-blocking)
-      _cacheLyrics(client, serverId, song).ignore();
-
-      // Cascade: Cover Art & Metadata
-      if (song.coverArtId != null) {
-        final coverUri = client.getCoverArtUri(song.coverArtId!);
-        ArtCache.instance.downloadFile(coverUri.toString()).ignore();
-      }
+      // Cascade full hierarchy metadata: lyrics, covers, album metadata, artist bio & avatar
+      _cacheSongHierarchyMetadata(
+        client: client,
+        dao: dao,
+        repo: repo,
+        serverId: serverId,
+        song: song,
+      ).ignore();
 
       if (isStandAloneTask) {
-        if (song.albumId != null) {
-          repo.refreshAlbum(song.albumId!).ignore();
-        }
-        if (song.artistId != null) {
-          _cacheArtistMetadata(
-            client,
-            dao,
-            repo,
-            serverId,
-            song.artistId!,
-          ).ignore();
-        }
-
         // Enforce unified audio cache limit across all cached tracks (LRU)
         _enforceUnifiedCacheLimit(serverId).ignore();
 
@@ -482,6 +469,63 @@ class AudioCacheService {
       }
       return null;
     }
+  }
+
+  Future<void> _cacheSongHierarchyMetadata({
+    required SubsonicClient client,
+    required LibraryDao dao,
+    LibraryRepository? repo,
+    required String serverId,
+    required Song song,
+  }) async {
+    try {
+      // 1. Lyrics
+      _cacheLyrics(client, serverId, song).ignore();
+
+      // 2. Track / Album Cover Art
+      if (song.coverArtId != null) {
+        final coverUri = client.getCoverArtUri(song.coverArtId!);
+        ArtCache.instance.downloadFile(coverUri.toString()).ignore();
+      }
+
+      // 3. Album Metadata & Sleeve
+      if (song.albumId != null) {
+        final refreshFuture = repo != null
+            ? repo.refreshAlbum(song.albumId!)
+            : Future<void>.value();
+        refreshFuture.then((_) async {
+          final album = await dao.watchAlbum(serverId, song.albumId!).first;
+          if (album != null) {
+            if (album.coverArtId != null &&
+                album.coverArtId != song.coverArtId) {
+              final albumCoverUri = client.getCoverArtUri(album.coverArtId!);
+              ArtCache.instance.downloadFile(albumCoverUri.toString()).ignore();
+            }
+            if (album.artistId != null &&
+                (song.artistId == null || song.artistId!.isEmpty)) {
+              _cacheArtistMetadata(
+                client,
+                dao,
+                repo,
+                serverId,
+                album.artistId!,
+              ).ignore();
+            }
+          }
+        }).ignore();
+      }
+
+      // 4. Artist Metadata, Biography, MusicBrainz ID & Avatar Photo
+      if (song.artistId != null && song.artistId!.isNotEmpty) {
+        _cacheArtistMetadata(
+          client,
+          dao,
+          repo,
+          serverId,
+          song.artistId!,
+        ).ignore();
+      }
+    } catch (_) {}
   }
 
   Future<void> _cacheLyrics(
@@ -520,12 +564,14 @@ class AudioCacheService {
   Future<void> _cacheArtistMetadata(
     SubsonicClient client,
     LibraryDao dao,
-    LibraryRepository repo,
+    LibraryRepository? repo,
     String serverId,
     String artistId,
   ) async {
     try {
-      await repo.refreshArtist(artistId);
+      if (repo != null) {
+        await repo.refreshArtist(artistId);
+      }
       final artist = await dao.watchArtist(serverId, artistId).first;
       if (artist != null && artist.coverArtId != null) {
         final artistArtUri = client.getCoverArtUri(artist.coverArtId!);
@@ -824,6 +870,7 @@ class AudioCacheService {
     final client = _ref.read(subsonicClientProvider);
     final dao = _ref.read(libraryDaoProvider);
     final server = _ref.read(activeServerProvider);
+    final repo = _ref.read(libraryRepositoryProvider);
     if (client == null || server == null || songs.isEmpty) return;
 
     final transcodeParams = TranscodingService.resolveDownloadParameters(
@@ -838,6 +885,14 @@ class AudioCacheService {
     if (uncompleted.isEmpty) {
       handle?.complete();
       return;
+    }
+
+    if (isPinned) {
+      await dao.updateSongsDownloadState(
+        serverId,
+        uncompleted.map((s) => s.id).toList(),
+        state: DownloadState.queued,
+      );
     }
 
     final nativeTasks = <NativeDownloadTask>[];
@@ -897,6 +952,13 @@ class AudioCacheService {
         case NativeTaskStartedEvent():
           if (songIds.contains(event.songId)) {
             handle?.note('Track "${event.title}"');
+            dao
+                .updateSongDownload(
+                  event.serverId,
+                  event.songId,
+                  state: DownloadState.downloading,
+                )
+                .ignore();
           }
         case NativeProgressEvent():
           if (songIds.contains(event.songId)) {
@@ -913,6 +975,11 @@ class AudioCacheService {
         case NativeTaskCompletedEvent():
           if (songIds.contains(event.songId)) {
             completedSongIds.add(event.songId);
+            final file = File(event.localPath);
+            final fileSize = file.existsSync() ? file.lengthSync() : 0;
+            if (fileSize > 0) {
+              songBytesMap[event.songId] = fileSize;
+            }
             dao
                 .updateSongDownload(
                   event.serverId,
@@ -925,15 +992,22 @@ class AudioCacheService {
                 .where((s) => s.id == event.songId)
                 .firstOrNull;
             if (matchingSong != null) {
-              _cacheLyrics(client, event.serverId, matchingSong).ignore();
-              if (matchingSong.coverArtId != null) {
-                final coverUri = client.getCoverArtUri(
-                  matchingSong.coverArtId!,
-                );
-                ArtCache.instance.downloadFile(coverUri.toString()).ignore();
-              }
+              _cacheSongHierarchyMetadata(
+                client: client,
+                dao: dao,
+                repo: repo,
+                serverId: event.serverId,
+                song: matchingSong,
+              ).ignore();
             }
-            handle?.progress(items: completedSongIds.length);
+            final totalBatchBytes = songBytesMap.values.fold<int>(
+              0,
+              (a, b) => a + b,
+            );
+            handle?.progress(
+              items: completedSongIds.length,
+              bytes: totalBatchBytes,
+            );
             checkBatchDone();
           }
         case NativeTaskFailedEvent():
@@ -953,6 +1027,14 @@ class AudioCacheService {
         case NativeTaskCanceledEvent():
           if (songIds.contains(event.songId)) {
             failedSongIds.add(event.songId);
+            dao
+                .updateSongDownload(
+                  serverId,
+                  event.songId,
+                  localPath: null,
+                  state: DownloadState.none,
+                )
+                .ignore();
             checkBatchDone();
           }
         case NativeQueueCompletedEvent():
@@ -982,6 +1064,7 @@ class AudioCacheService {
       if (!completer.isCompleted) completer.complete();
     });
 
+    await NativeDownloader.requestNotificationPermission();
     final started = await NativeDownloader.startDownload(
       tasks: nativeTasks,
       concurrency: concurrency,
@@ -992,6 +1075,90 @@ class AudioCacheService {
       handle?.fail('Failed to start native download service');
     }
     await sub.cancel();
+
+    final remainingUnfinished = songIds
+        .difference(completedSongIds)
+        .difference(failedSongIds)
+        .toList();
+    if (remainingUnfinished.isNotEmpty) {
+      await dao.updateSongsDownloadState(
+        serverId,
+        remainingUnfinished,
+        state: DownloadState.none,
+      );
+    }
+  }
+
+  bool _isResuming = false;
+
+  /// Automatically resumes any pending or interrupted downloads from the database.
+  Future<void> resumePendingDownloads() async {
+    if (_isResuming) return;
+    _isResuming = true;
+    try {
+      final server = _ref.read(activeServerProvider);
+      final dao = _ref.read(libraryDaoProvider);
+      final client = _ref.read(subsonicClientProvider);
+      if (server == null || client == null) return;
+
+      final activeTasks = _ref.read(activeTasksProvider);
+      if (activeTasks.any((t) => t.kind == TaskKind.audioDownload)) return;
+
+      final activeSongs = await dao.watchActiveDownloadSongs(server.id).first;
+      if (activeSongs.isEmpty) return;
+
+      final uncompleted = activeSongs
+          .where((s) => s.downloadState != DownloadState.complete)
+          .toList();
+      if (uncompleted.isEmpty) return;
+
+      AppLogger.i(
+        'AudioCache',
+        'Resuming ${uncompleted.length} pending downloads',
+      );
+      final taskRegistry = _ref.read(taskRegistryProvider.notifier);
+      final cancelToken = CancelToken();
+      final handle = taskRegistry.start(
+        kind: TaskKind.audioDownload,
+        label: 'Downloading ${uncompleted.length} queued tracks',
+        serverId: server.id,
+        onCancel: () => cancelToken.cancel(),
+      );
+
+      final totalBytesKnown = uncompleted.fold<int>(
+        0,
+        (sum, s) => sum + (s.size ?? 0),
+      );
+      final hasTotalBytes =
+          totalBytesKnown > 0 &&
+          uncompleted.every((s) => s.size != null && s.size! > 0);
+      handle.enumerated(
+        items: uncompleted.length,
+        bytes: hasTotalBytes ? totalBytesKnown : null,
+      );
+
+      if (NativeDownloader.isSupported) {
+        await _cacheSongsNative(
+          uncompleted,
+          isPinned: true,
+          handle: handle,
+          cancelToken: cancelToken,
+        );
+      } else {
+        for (final song in uncompleted) {
+          if (cancelToken.isCancelled || handle.isCanceled) break;
+          await cacheSong(
+            song,
+            isPinned: true,
+            parentHandle: handle,
+            cancelToken: cancelToken,
+          );
+        }
+        handle.complete();
+      }
+    } finally {
+      _isResuming = false;
+    }
   }
 
   /// Removes a song from offline cache.

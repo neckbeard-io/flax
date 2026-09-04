@@ -64,6 +64,10 @@ class MetadataCacheConfig {
   final bool cacheArtistInfo;
   final int concurrency;
   final DateTime? lastSyncedAt;
+  final bool backgroundSyncEnabled;
+  final bool backgroundSyncRequiresCharging;
+  final bool backgroundSyncWifiOnly;
+  final int backgroundSyncIntervalHours;
 
   const MetadataCacheConfig({
     this.albumArtQuality = MetadataQuality.medium,
@@ -71,6 +75,10 @@ class MetadataCacheConfig {
     this.cacheArtistInfo = true,
     this.concurrency = 4,
     this.lastSyncedAt,
+    this.backgroundSyncEnabled = false,
+    this.backgroundSyncRequiresCharging = true,
+    this.backgroundSyncWifiOnly = true,
+    this.backgroundSyncIntervalHours = 24,
   });
 
   MetadataCacheConfig copyWith({
@@ -80,6 +88,10 @@ class MetadataCacheConfig {
     int? concurrency,
     DateTime? lastSyncedAt,
     bool clearLastSyncedAt = false,
+    bool? backgroundSyncEnabled,
+    bool? backgroundSyncRequiresCharging,
+    bool? backgroundSyncWifiOnly,
+    int? backgroundSyncIntervalHours,
   }) {
     return MetadataCacheConfig(
       albumArtQuality: albumArtQuality ?? this.albumArtQuality,
@@ -89,6 +101,14 @@ class MetadataCacheConfig {
       lastSyncedAt: clearLastSyncedAt
           ? null
           : (lastSyncedAt ?? this.lastSyncedAt),
+      backgroundSyncEnabled:
+          backgroundSyncEnabled ?? this.backgroundSyncEnabled,
+      backgroundSyncRequiresCharging:
+          backgroundSyncRequiresCharging ?? this.backgroundSyncRequiresCharging,
+      backgroundSyncWifiOnly:
+          backgroundSyncWifiOnly ?? this.backgroundSyncWifiOnly,
+      backgroundSyncIntervalHours:
+          backgroundSyncIntervalHours ?? this.backgroundSyncIntervalHours,
     );
   }
 
@@ -98,6 +118,10 @@ class MetadataCacheConfig {
     'cacheArtistInfo': cacheArtistInfo,
     'concurrency': concurrency,
     'lastSyncedAt': lastSyncedAt?.toIso8601String(),
+    'backgroundSyncEnabled': backgroundSyncEnabled,
+    'backgroundSyncRequiresCharging': backgroundSyncRequiresCharging,
+    'backgroundSyncWifiOnly': backgroundSyncWifiOnly,
+    'backgroundSyncIntervalHours': backgroundSyncIntervalHours,
   };
 
   factory MetadataCacheConfig.fromJson(Map<String, dynamic> json) {
@@ -113,6 +137,12 @@ class MetadataCacheConfig {
       lastSyncedAt: json['lastSyncedAt'] != null
           ? DateTime.tryParse(json['lastSyncedAt'] as String)
           : null,
+      backgroundSyncEnabled: json['backgroundSyncEnabled'] as bool? ?? false,
+      backgroundSyncRequiresCharging:
+          json['backgroundSyncRequiresCharging'] as bool? ?? true,
+      backgroundSyncWifiOnly: json['backgroundSyncWifiOnly'] as bool? ?? true,
+      backgroundSyncIntervalHours:
+          (json['backgroundSyncIntervalHours'] as num?)?.toInt() ?? 24,
     );
   }
 }

@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:flax/core/logging/app_logger.dart';
 
 import 'package:flax/core/providers/library_provider.dart';
@@ -12,6 +15,7 @@ import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/database/library_dao.dart';
+import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 
@@ -184,6 +188,9 @@ class MetadataSyncService {
   /// Cancels an in-progress metadata sync immediately.
   void cancel() {
     _isCanceled = true;
+    if (NativeDownloader.isSupported) {
+      NativeDownloader.cancelAll().ignore();
+    }
     final handle = _activeHandle;
     if (handle != null) {
       _ref.read(taskRegistryProvider.notifier).cancel(handle.id);
@@ -198,6 +205,10 @@ class MetadataSyncService {
   }) async {
     if (isRunning) return;
 
+    if (NativeDownloader.isSupported) {
+      await NativeDownloader.requestNotificationPermission();
+    }
+
     _isCanceled = false;
     final taskRegistry = _ref.read(taskRegistryProvider.notifier);
     final handle = taskRegistry.start(
@@ -206,6 +217,9 @@ class MetadataSyncService {
       serverId: server.id,
       onCancel: () {
         _isCanceled = true;
+        if (NativeDownloader.isSupported) {
+          NativeDownloader.cancelAll().ignore();
+        }
       },
     );
     _activeHandle = handle;
@@ -257,7 +271,8 @@ class MetadataSyncService {
 
       // 2. Build sync work items for MISSING metadata & artwork only (parallel checks)
       handle.note('Checking for missing artwork and metadata...');
-      final workItems = <_SyncWorkItem>[];
+      final artWorkItems = <_SyncWorkItem>[];
+      final infoWorkItems = <_SyncWorkItem>[];
 
       if (config.albumArtQuality != MetadataQuality.disabled) {
         final reqSize = config.albumArtQuality.requestSize;
@@ -279,7 +294,7 @@ class MetadataSyncService {
           );
           for (var j = 0; j < chunk.length; j++) {
             if (files[j] == null) {
-              workItems.add(
+              artWorkItems.add(
                 _AlbumArtWorkItem(
                   album: chunk[j],
                   quality: config.albumArtQuality,
@@ -310,7 +325,7 @@ class MetadataSyncService {
           );
           for (var j = 0; j < chunk.length; j++) {
             if (files[j] == null) {
-              workItems.add(
+              artWorkItems.add(
                 _ArtistArtWorkItem(
                   artist: chunk[j],
                   quality: config.artistArtQuality,
@@ -325,16 +340,17 @@ class MetadataSyncService {
         for (final artist in artists) {
           if (_isCanceled || handle.isCanceled) return;
           if (artist.biography == null) {
-            workItems.add(_ArtistInfoWorkItem(artist: artist));
+            infoWorkItems.add(_ArtistInfoWorkItem(artist: artist));
           }
         }
       }
 
       if (_isCanceled || handle.isCanceled) return;
 
-      handle.enumerated(items: workItems.length);
+      final totalItems = artWorkItems.length + infoWorkItems.length;
+      handle.enumerated(items: totalItems);
 
-      if (workItems.isEmpty) {
+      if (totalItems == 0) {
         // Record timestamp on completion
         _ref
             .read(serverListProvider.notifier)
@@ -352,38 +368,195 @@ class MetadataSyncService {
 
       // 3. Process work items with worker concurrency pool (up to 24 workers)
       final concurrency = config.concurrency.clamp(1, 24);
-      int currentIndex = 0;
       int itemsDone = 0;
       int bytesDone = 0;
 
-      Future<void> worker() async {
-        while (!_isCanceled && !handle.isCanceled) {
-          final itemIndex = currentIndex++;
-          if (itemIndex >= workItems.length) break;
-          final item = workItems[itemIndex];
+      if (NativeDownloader.isSupported && artWorkItems.isNotEmpty) {
+        // 3a. Process artwork via Android Foreground Service OkHttp engine
+        final tempDir = await getTemporaryDirectory();
+        final tempArtDir = Directory(p.join(tempDir.path, 'flax_sync_art'));
+        if (!tempArtDir.existsSync()) {
+          tempArtDir.createSync(recursive: true);
+        }
 
-          try {
-            if (_isCanceled || handle.isCanceled) break;
-            handle.note(item.description);
-            final bytes = await item.execute(client, dao, server.id, _artCache);
-            if (!_isCanceled && !handle.isCanceled) {
-              itemsDone++;
-              bytesDone += bytes;
-              handle.progress(items: itemsDone, bytes: bytesDone);
-            }
-          } catch (e) {
-            AppLogger.w('Sync', 'Error processing sync item: $e');
-            if (!_isCanceled && !handle.isCanceled) {
-              itemsDone++;
-              handle.itemFailed(1);
-              handle.progress(items: itemsDone, bytes: bytesDone);
+        final nativeTasks = <NativeDownloadTask>[];
+        final taskMetaMap = <String, (String url, String desc)>{};
+
+        for (final item in artWorkItems) {
+          String coverId;
+          int? reqSize;
+          String desc;
+
+          if (item is _AlbumArtWorkItem) {
+            coverId = item.album.coverArtId!;
+            reqSize = item.quality.requestSize;
+            desc = 'Album art: ${item.album.name}';
+          } else if (item is _ArtistArtWorkItem) {
+            coverId = item.artist.coverArtId!;
+            reqSize = item.quality.requestSize;
+            desc = 'Artist photo: ${item.artist.name}';
+          } else {
+            continue;
+          }
+
+          final cacheKey = 'cover-$coverId-${reqSize ?? "orig"}';
+          final uri = client.getCoverArtUri(coverId, size: reqSize);
+          final destPath = p.join(tempArtDir.path, '$cacheKey.jpg');
+
+          nativeTasks.add(
+            NativeDownloadTask(
+              songId: cacheKey,
+              serverId: server.id,
+              title: desc,
+              downloadUrl: uri.toString(),
+              destinationPath: destPath,
+            ),
+          );
+          taskMetaMap[cacheKey] = (uri.toString(), desc);
+        }
+
+        final batchDone = Completer<void>();
+        final sub = NativeDownloader.eventStream.listen((event) async {
+          switch (event) {
+            case NativeTaskStartedEvent():
+              if (taskMetaMap.containsKey(event.songId)) {
+                handle.note(event.title);
+              }
+            case NativeTaskCompletedEvent():
+              final meta = taskMetaMap[event.songId];
+              if (meta != null) {
+                try {
+                  final file = File(event.localPath);
+                  if (file.existsSync()) {
+                    final bytes = await file.readAsBytes();
+                    await _artCache.putFile(
+                      meta.$1,
+                      bytes,
+                      key: event.songId,
+                      fileExtension: 'jpg',
+                    );
+                    file.delete().ignore();
+                    bytesDone += bytes.length;
+                  }
+                } catch (e) {
+                  AppLogger.w(
+                    'Sync',
+                    'Failed to store art cache for ${event.songId}: $e',
+                  );
+                }
+                itemsDone++;
+                handle.progress(items: itemsDone, bytes: bytesDone);
+                if (itemsDone >= nativeTasks.length && !batchDone.isCompleted) {
+                  batchDone.complete();
+                }
+              }
+            case NativeTaskFailedEvent():
+              if (taskMetaMap.containsKey(event.songId)) {
+                itemsDone++;
+                handle.itemFailed(1);
+                handle.progress(items: itemsDone, bytes: bytesDone);
+                if (itemsDone >= nativeTasks.length && !batchDone.isCompleted) {
+                  batchDone.complete();
+                }
+              }
+            case NativeQueueCompletedEvent():
+              if (!batchDone.isCompleted) {
+                batchDone.complete();
+              }
+            case NativeCanceledEvent():
+              if (!batchDone.isCompleted) {
+                batchDone.complete();
+              }
+            default:
+              break;
+          }
+        });
+
+        try {
+          await NativeDownloader.startDownload(
+            tasks: nativeTasks,
+            concurrency: concurrency,
+            notificationTitle: 'Syncing metadata & cover art',
+          );
+          await batchDone.future;
+        } finally {
+          sub.cancel().ignore();
+        }
+      } else if (artWorkItems.isNotEmpty) {
+        // Desktop platforms: Dart worker pool
+        int currentIndex = 0;
+        Future<void> artWorker() async {
+          while (!_isCanceled && !handle.isCanceled) {
+            final itemIndex = currentIndex++;
+            if (itemIndex >= artWorkItems.length) break;
+            final item = artWorkItems[itemIndex];
+
+            try {
+              if (_isCanceled || handle.isCanceled) break;
+              handle.note(item.description);
+              final bytes = await item.execute(
+                client,
+                dao,
+                server.id,
+                _artCache,
+              );
+              if (!_isCanceled && !handle.isCanceled) {
+                itemsDone++;
+                bytesDone += bytes;
+                handle.progress(items: itemsDone, bytes: bytesDone);
+              }
+            } catch (e) {
+              AppLogger.w('Sync', 'Error processing sync item: $e');
+              if (!_isCanceled && !handle.isCanceled) {
+                itemsDone++;
+                handle.itemFailed(1);
+                handle.progress(items: itemsDone, bytes: bytesDone);
+              }
             }
           }
         }
+
+        final workers = List.generate(concurrency, (_) => artWorker());
+        await Future.wait(workers);
       }
 
-      final workers = List.generate(concurrency, (_) => worker());
-      await Future.wait(workers);
+      // 3b. Process artist info items (biographies)
+      if (!_isCanceled && !handle.isCanceled && infoWorkItems.isNotEmpty) {
+        int infoIndex = 0;
+        Future<void> infoWorker() async {
+          while (!_isCanceled && !handle.isCanceled) {
+            final itemIndex = infoIndex++;
+            if (itemIndex >= infoWorkItems.length) break;
+            final item = infoWorkItems[itemIndex];
+
+            try {
+              if (_isCanceled || handle.isCanceled) break;
+              handle.note(item.description);
+              final bytes = await item.execute(
+                client,
+                dao,
+                server.id,
+                _artCache,
+              );
+              if (!_isCanceled && !handle.isCanceled) {
+                itemsDone++;
+                bytesDone += bytes;
+                handle.progress(items: itemsDone, bytes: bytesDone);
+              }
+            } catch (e) {
+              AppLogger.w('Sync', 'Error processing artist info item: $e');
+              if (!_isCanceled && !handle.isCanceled) {
+                itemsDone++;
+                handle.itemFailed(1);
+                handle.progress(items: itemsDone, bytes: bytesDone);
+              }
+            }
+          }
+        }
+
+        final workers = List.generate(concurrency, (_) => infoWorker());
+        await Future.wait(workers);
+      }
 
       if (!_isCanceled && !handle.isCanceled) {
         // Record timestamp on completion

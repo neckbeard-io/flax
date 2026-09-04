@@ -38,8 +38,42 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+
+        val gitVersionName = try {
+            val process = ProcessBuilder("git", "describe", "--tags", "--abbrev=0", "--match", "v*")
+                .redirectOutput(ProcessBuilder.Redirect.PIPE)
+                .start()
+            val tag = process.inputStream.bufferedReader().readText().trim()
+            if (tag.startsWith("v")) tag.substring(1) else tag
+        } catch (_: Exception) {
+            "0.1.0"
+        }
+
+        val gitVersionCode = try {
+            val process = ProcessBuilder("git", "rev-list", "--count", "HEAD")
+                .redirectOutput(ProcessBuilder.Redirect.PIPE)
+                .start()
+            process.inputStream.bufferedReader().readText().trim().toIntOrNull() ?: 1
+        } catch (_: Exception) {
+            1
+        }
+
+        val resolvedVersionName = if (flutter.versionName != null && flutter.versionName != "0.1.0" && flutter.versionName != "1.0.0") {
+            flutter.versionName
+        } else if (gitVersionName.isNotEmpty()) {
+            gitVersionName
+        } else {
+            "0.1.0"
+        }
+
+        val resolvedVersionCode = if (flutter.versionCode != null && flutter.versionCode > 1) {
+            flutter.versionCode
+        } else {
+            gitVersionCode
+        }
+
+        versionCode = resolvedVersionCode
+        versionName = resolvedVersionName
     }
 
     signingConfigs {
@@ -77,5 +111,6 @@ flutter {
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }

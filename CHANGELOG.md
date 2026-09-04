@@ -25,6 +25,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Auto-offline setting for Android Auto to automatically engage offline mode when connected to vehicle head units.
 - High-performance native Android background downloader with Foreground Service, persistent progress notification, and screen-timeout sleep immunity.
 - Android Auto root browse menu includes interactive mode toggle to switch between online and offline playback.
+- Full-hierarchy metadata caching automatically stores lyrics, album sleeves, artist bios, and avatars when caching music.
+- Automated nightly library and artwork background sync on Android via WorkManager.
 
 ### Fixed
 - Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
@@ -38,6 +40,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Eliminated "getting your categories" flash during seekbar interaction by preserving active playback state.
 - Integrated Android audio session focus management so media streams output properly to vehicle audio sinks.
 - Audio caching and album downloads now saturate bandwidth with connection pooling and raw endpoints.
+- Active download progress accurately highlights in-flight downloading tracks with speed metrics and sorting above queued items.
 
 ## v0.5.6 — 2026-08-29
 

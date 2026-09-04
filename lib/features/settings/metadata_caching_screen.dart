@@ -12,6 +12,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/cache/storage_manager.dart';
 import 'package:flax/services/metadata/metadata_sync_service.dart';
+import 'package:flax/services/platform/background_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
@@ -358,6 +359,137 @@ class MetadataCachingScreen extends ConsumerWidget {
             ),
           ],
           const Divider(),
+
+          if (Platform.isAndroid) ...[
+            _SectionTitle(title: 'Automated Background Sync'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text(
+                'Automatically sync new library metadata and album covers in the background using Android WorkManager.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            SwitchListTile(
+              title: const Text('Nightly Background Sync'),
+              subtitle: const Text(
+                'Crawl newest releases and cache missing artwork in the background',
+              ),
+              value: config.backgroundSyncEnabled,
+              onChanged: (v) {
+                final newConfig = config.copyWith(backgroundSyncEnabled: v);
+                _updateConfig(ref, server, newConfig);
+                if (v) {
+                  ref
+                      .read(backgroundSyncServiceProvider)
+                      .schedulePeriodicSync(
+                        intervalHours: newConfig.backgroundSyncIntervalHours,
+                        requiresCharging:
+                            newConfig.backgroundSyncRequiresCharging,
+                        wifiOnly: newConfig.backgroundSyncWifiOnly,
+                      );
+                } else {
+                  ref.read(backgroundSyncServiceProvider).cancelPeriodicSync();
+                }
+              },
+            ),
+            if (config.backgroundSyncEnabled) ...[
+              SwitchListTile(
+                title: const Text('Require Charging'),
+                subtitle: const Text(
+                  'Only run background sync when device is connected to power',
+                ),
+                value: config.backgroundSyncRequiresCharging,
+                onChanged: (v) {
+                  final newConfig = config.copyWith(
+                    backgroundSyncRequiresCharging: v,
+                  );
+                  _updateConfig(ref, server, newConfig);
+                  ref
+                      .read(backgroundSyncServiceProvider)
+                      .schedulePeriodicSync(
+                        intervalHours: newConfig.backgroundSyncIntervalHours,
+                        requiresCharging:
+                            newConfig.backgroundSyncRequiresCharging,
+                        wifiOnly: newConfig.backgroundSyncWifiOnly,
+                      );
+                },
+              ),
+              SwitchListTile(
+                title: const Text('Wi-Fi Only'),
+                subtitle: const Text(
+                  'Only run background sync on unmetered Wi-Fi connections',
+                ),
+                value: config.backgroundSyncWifiOnly,
+                onChanged: (v) {
+                  final newConfig = config.copyWith(backgroundSyncWifiOnly: v);
+                  _updateConfig(ref, server, newConfig);
+                  ref
+                      .read(backgroundSyncServiceProvider)
+                      .schedulePeriodicSync(
+                        intervalHours: newConfig.backgroundSyncIntervalHours,
+                        requiresCharging:
+                            newConfig.backgroundSyncRequiresCharging,
+                        wifiOnly: newConfig.backgroundSyncWifiOnly,
+                      );
+                },
+              ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final syncStatusAsync = ref.watch(
+                    backgroundSyncStatusProvider,
+                  );
+                  final status = syncStatusAsync.valueOrNull;
+                  final lastTime = status?.lastSyncTimestamp;
+                  final lastTimeStr = lastTime != null
+                      ? 'Last background sync: ${_formatRelativeTime(lastTime)}'
+                      : 'Last background sync: None yet';
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      alignment: WrapAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          lastTimeStr,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () async {
+                            await ref
+                                .read(backgroundSyncServiceProvider)
+                                .triggerImmediateSync();
+                            ref.invalidate(backgroundSyncStatusProvider);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Background sync worker triggered',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.play_arrow, size: 16),
+                          label: const Text('Test Sync Worker'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
+            const Divider(),
+          ],
 
           // ── Audio Caching ──
           _SectionTitle(title: 'Audio Caching'),
@@ -1224,4 +1356,13 @@ class _SectionTitle extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatRelativeTime(DateTime dt) {
+  final now = DateTime.now();
+  final diff = now.difference(dt);
+  if (diff.inMinutes < 1) return 'Just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  return '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
 }
