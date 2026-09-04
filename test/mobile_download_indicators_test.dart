@@ -190,7 +190,6 @@ void main() {
         await dao.updateSongDownload(
           serverId,
           's-a',
-          localPath: null,
           state: DownloadState.downloading,
         );
 
@@ -200,6 +199,40 @@ void main() {
         expect(active.first.downloadState, equals(DownloadState.downloading));
         expect(active.last.id, equals('s-b'));
         expect(active.last.downloadState, equals(DownloadState.queued));
+      },
+    );
+
+    test(
+      'updateSongDownload guards completed songs from regressing to downloading',
+      () async {
+        const song = Song(
+          id: 's-preserve',
+          serverId: serverId,
+          title: 'Preserve Test',
+          duration: 180,
+        );
+        await dao.upsertSongs([song], now);
+        await dao.updateSongDownload(
+          serverId,
+          song.id,
+          localPath: '/cache/srv-test-1/s-preserve.mp3',
+          state: DownloadState.complete,
+        );
+
+        // Attempt to move a completed song back to downloading — the DAO
+        // guards against this so the row should remain complete.
+        await dao.updateSongDownload(
+          serverId,
+          song.id,
+          state: DownloadState.downloading,
+        );
+
+        final updatedSong = await dao.watchSong(serverId, song.id).first;
+        expect(updatedSong?.downloadState, equals(DownloadState.complete));
+        expect(
+          updatedSong?.localPath,
+          equals('/cache/srv-test-1/s-preserve.mp3'),
+        );
       },
     );
   });

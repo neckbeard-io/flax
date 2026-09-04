@@ -200,6 +200,26 @@ void main() {
       expect(formatCompactLine(task), '2140/5842 · 18/s · 3 failed');
     });
 
+    test('audio downloads format rate as MB/s or KB/s rather than items/s', () {
+      expect(formatRate(2500000, ProgressUnit.bytes), '2.5 MB/s');
+      expect(formatRate(450000, ProgressUnit.bytes), '450 KB/s');
+      expect(formatRate(12000000, ProgressUnit.bytes), '12 MB/s');
+
+      const audioTask = Task(
+        id: 'audio-1',
+        kind: TaskKind.audioDownload,
+        label: 'Downloading tracks',
+        state: TaskState.running,
+        itemsDone: 3,
+        itemsTotal: 74,
+        bytesDone: 25000000,
+        bytesTotal: 250000000,
+        ratePerSecond: 3200000,
+      );
+      expect(formatProgressLine(audioTask), contains('3.2 MB/s'));
+      expect(formatCompactLine(audioTask), '25 MB · 3.2 MB/s');
+    });
+
     test('a note replaces the counters', () {
       const task = Task(
         id: 'x',

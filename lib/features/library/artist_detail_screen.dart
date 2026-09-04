@@ -296,7 +296,11 @@ class _AlbumTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final downloadedAlbumIds =
         ref.watch(downloadedAlbumIdsProvider).valueOrNull ?? const {};
-    final isCached = downloadedAlbumIds.contains(album.id);
+    final anyDownloadedAlbumIds =
+        ref.watch(anyDownloadedAlbumIdsProvider).valueOrNull ?? const {};
+    final isFullyCached = downloadedAlbumIds.contains(album.id);
+    final isPartiallyCached =
+        anyDownloadedAlbumIds.contains(album.id) && !isFullyCached;
 
     return AlbumContextMenu(
       album: album,
@@ -317,7 +321,7 @@ class _AlbumTile extends ConsumerWidget {
                   child: CoverArtImage(coverArtId: album.coverArtId, size: 48),
                 ),
               ),
-              if (isCached)
+              if (isFullyCached || isPartiallyCached)
                 Positioned(
                   top: -5,
                   right: -5,
@@ -335,9 +339,13 @@ class _AlbumTile extends ConsumerWidget {
                       ],
                     ),
                     child: Icon(
-                      Icons.offline_pin,
+                      isFullyCached
+                          ? Icons.offline_pin
+                          : Icons.offline_pin_outlined,
                       size: 13,
-                      color: theme.colorScheme.primary,
+                      color: isFullyCached
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.secondary,
                     ),
                   ),
                 ),
@@ -798,7 +806,11 @@ class _ArtistRatingRow extends ConsumerWidget {
     final theme = Theme.of(context);
     final downloadedArtistIds =
         ref.watch(downloadedArtistIdsProvider).valueOrNull ?? const {};
-    final isCached = downloadedArtistIds.contains(artist.id);
+    final anyDownloadedArtistIds =
+        ref.watch(anyDownloadedArtistIdsProvider).valueOrNull ?? const {};
+    final isFullyCached = downloadedArtistIds.contains(artist.id);
+    final hasCachedContent = anyDownloadedArtistIds.contains(artist.id);
+    final isPartiallyCached = hasCachedContent && !isFullyCached;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -832,27 +844,30 @@ class _ArtistRatingRow extends ConsumerWidget {
           },
         ),
         const SizedBox(width: 8),
-        HoverIcon(
-          icon: isCached ? Icons.offline_pin : Icons.download,
-          size: size,
-          color: isCached
-              ? theme.colorScheme.primary
-              : theme.colorScheme.onSurfaceVariant,
-          tooltip: isCached
-              ? 'Remove artist from cache'
-              : 'Cache artist offline',
-          onTap: () {
-            final cacheService = ref.read(audioCacheServiceProvider);
-            if (isCached) {
-              cacheService.removeCachedArtist(artist.id);
+        if (isFullyCached)
+          HoverIcon(
+            icon: Icons.offline_pin,
+            size: size,
+            color: theme.colorScheme.primary,
+            tooltip: 'Remove artist from cache',
+            onTap: () {
+              ref.read(audioCacheServiceProvider).removeCachedArtist(artist.id);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Removed "${artist.name}" from offline cache'),
                   duration: const Duration(seconds: 2),
                 ),
               );
-            } else {
-              cacheService.cacheArtist(artist.id);
+            },
+          )
+        else if (isPartiallyCached) ...[
+          HoverIcon(
+            icon: Icons.download_for_offline_outlined,
+            size: size,
+            color: theme.colorScheme.primary,
+            tooltip: 'Complete caching all albums',
+            onTap: () {
+              ref.read(audioCacheServiceProvider).cacheArtist(artist.id);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Caching all albums for "${artist.name}"...'),
@@ -863,9 +878,44 @@ class _ArtistRatingRow extends ConsumerWidget {
                   ),
                 ),
               );
-            }
-          },
-        ),
+            },
+          ),
+          const SizedBox(width: 8),
+          HoverIcon(
+            icon: Icons.delete_outline,
+            size: size,
+            color: theme.colorScheme.onSurfaceVariant,
+            tooltip: 'Remove cached albums',
+            onTap: () {
+              ref.read(audioCacheServiceProvider).removeCachedArtist(artist.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Removed "${artist.name}" from offline cache'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+        ] else
+          HoverIcon(
+            icon: Icons.download,
+            size: size,
+            color: theme.colorScheme.onSurfaceVariant,
+            tooltip: 'Cache artist offline',
+            onTap: () {
+              ref.read(audioCacheServiceProvider).cacheArtist(artist.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Caching all albums for "${artist.name}"...'),
+                  duration: const Duration(seconds: 3),
+                  action: SnackBarAction(
+                    label: 'View',
+                    onPressed: () => context.push('/downloads'),
+                  ),
+                ),
+              );
+            },
+          ),
       ],
     );
   }

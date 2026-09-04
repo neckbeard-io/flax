@@ -646,14 +646,23 @@ class LibraryDao {
   Future<void> updateSongDownload(
     String serverId,
     String songId, {
-    required String? localPath,
+    String? localPath,
     required DownloadState state,
   }) async {
-    await (_db.update(
-      _db.songs,
-    )..where((t) => t.serverId.equals(serverId) & t.id.equals(songId))).write(
+    final query = _db.update(_db.songs)
+      ..where((t) => t.serverId.equals(serverId) & t.id.equals(songId));
+    if (state == DownloadState.downloading) {
+      query.where(
+        (t) => t.downloadState.isNotIn([DownloadState.complete.index]),
+      );
+    }
+    await query.write(
       SongsCompanion(
-        localPath: Value(localPath),
+        localPath: localPath != null
+            ? Value(localPath)
+            : (state == DownloadState.error || state == DownloadState.none
+                  ? const Value(null)
+                  : const Value.absent()),
         downloadState: Value(state.index),
       ),
     );
@@ -728,10 +737,28 @@ class LibraryDao {
 
   Stream<Set<String>> watchDownloadedAlbumIds(String serverId) {
     final query = _db.customSelect(
-      'SELECT album_id FROM songs '
-      'WHERE server_id = ? AND album_id IS NOT NULL '
-      'GROUP BY album_id '
-      'HAVING COUNT(*) > 0 AND COUNT(*) = SUM(CASE WHEN download_state = ? AND local_path IS NOT NULL THEN 1 ELSE 0 END)',
+      'SELECT s.album_id FROM songs s '
+      'LEFT JOIN albums a ON a.server_id = s.server_id AND a.id = s.album_id '
+      'WHERE s.server_id = ? AND s.album_id IS NOT NULL '
+      'GROUP BY s.album_id, a.song_count '
+      'HAVING COUNT(s.id) > 0 '
+      '  AND (a.song_count IS NULL OR a.song_count <= 0 OR COUNT(s.id) >= a.song_count) '
+      '  AND COUNT(s.id) = SUM(CASE WHEN s.download_state = ? AND s.local_path IS NOT NULL THEN 1 ELSE 0 END)',
+      variables: [
+        Variable<String>(serverId),
+        Variable<int>(DownloadState.complete.index),
+      ],
+      readsFrom: {_db.songs, _db.albums},
+    );
+    return query.watch().map(
+      (rows) => rows.map((r) => r.read<String>('album_id')).toSet(),
+    );
+  }
+
+  Stream<Set<String>> watchAnyDownloadedAlbumIds(String serverId) {
+    final query = _db.customSelect(
+      'SELECT DISTINCT album_id FROM songs '
+      'WHERE server_id = ? AND album_id IS NOT NULL AND download_state = ? AND local_path IS NOT NULL',
       variables: [
         Variable<String>(serverId),
         Variable<int>(DownloadState.complete.index),
@@ -745,10 +772,40 @@ class LibraryDao {
 
   Stream<Set<String>> watchDownloadedArtistIds(String serverId) {
     final query = _db.customSelect(
-      'SELECT artist_id FROM songs '
-      'WHERE server_id = ? AND artist_id IS NOT NULL '
-      'GROUP BY artist_id '
-      'HAVING COUNT(*) > 0 AND COUNT(*) = SUM(CASE WHEN download_state = ? AND local_path IS NOT NULL THEN 1 ELSE 0 END)',
+      'WITH fully_downloaded_albums AS ('
+      '  SELECT s.album_id, a.artist_id '
+      '  FROM songs s '
+      '  LEFT JOIN albums a ON a.server_id = s.server_id AND a.id = s.album_id '
+      '  WHERE s.server_id = ? AND s.album_id IS NOT NULL '
+      '  GROUP BY s.album_id, a.song_count, a.artist_id '
+      '  HAVING COUNT(s.id) > 0 '
+      '     AND (a.song_count IS NULL OR a.song_count <= 0 OR COUNT(s.id) >= a.song_count) '
+      '     AND COUNT(s.id) = SUM(CASE WHEN s.download_state = ? AND s.local_path IS NOT NULL THEN 1 ELSE 0 END)'
+      ') '
+      'SELECT ar.id FROM artists ar '
+      'LEFT JOIN albums al ON al.server_id = ar.server_id AND al.artist_id = ar.id '
+      'LEFT JOIN fully_downloaded_albums fda ON fda.album_id = al.id '
+      'WHERE ar.server_id = ? '
+      'GROUP BY ar.id, ar.album_count '
+      'HAVING COUNT(al.id) > 0 '
+      '   AND COUNT(fda.album_id) = COUNT(al.id) '
+      '   AND (ar.album_count <= 0 OR COUNT(fda.album_id) >= ar.album_count)',
+      variables: [
+        Variable<String>(serverId),
+        Variable<int>(DownloadState.complete.index),
+        Variable<String>(serverId),
+      ],
+      readsFrom: {_db.songs, _db.albums, _db.artists},
+    );
+    return query.watch().map(
+      (rows) => rows.map((r) => r.read<String>('id')).toSet(),
+    );
+  }
+
+  Stream<Set<String>> watchAnyDownloadedArtistIds(String serverId) {
+    final query = _db.customSelect(
+      'SELECT DISTINCT artist_id FROM songs '
+      'WHERE server_id = ? AND artist_id IS NOT NULL AND download_state = ? AND local_path IS NOT NULL',
       variables: [
         Variable<String>(serverId),
         Variable<int>(DownloadState.complete.index),

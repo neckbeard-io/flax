@@ -54,6 +54,8 @@ class ArtistsScreen extends ConsumerWidget {
     final artistsAsync = ref.watch(artistsProvider);
     final downloadedArtistIds =
         ref.watch(downloadedArtistIdsProvider).valueOrNull ?? const {};
+    final anyDownloadedArtistIds =
+        ref.watch(anyDownloadedArtistIdsProvider).valueOrNull ?? const {};
 
     return Scaffold(
       body: SafeArea(
@@ -105,9 +107,12 @@ class ArtistsScreen extends ConsumerWidget {
                         itemCount: artists.length,
                         itemBuilder: (context, index) {
                           final artist = artists[index];
-                          final isCached = downloadedArtistIds.contains(
+                          final isFullyCached = downloadedArtistIds.contains(
                             artist.id,
                           );
+                          final isPartiallyCached =
+                              anyDownloadedArtistIds.contains(artist.id) &&
+                              !isFullyCached;
                           return ArtistContextMenu(
                             artist: artist,
                             child: ListTile(
@@ -131,10 +136,14 @@ class ArtistsScreen extends ConsumerWidget {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isCached) ...[
+                                  if (isFullyCached || isPartiallyCached) ...[
                                     Icon(
-                                      Icons.offline_pin,
-                                      color: theme.colorScheme.primary,
+                                      isFullyCached
+                                          ? Icons.offline_pin
+                                          : Icons.offline_pin_outlined,
+                                      color: isFullyCached
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.secondary,
                                       size: 18,
                                     ),
                                     const SizedBox(width: 8),

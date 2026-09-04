@@ -13,6 +13,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/audio/audio_handler_provider.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/services/platform/background_sync_service.dart';
 import 'package:flax/services/platform/orientation_service.dart';
 import 'package:flax/services/platform/window_state.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
@@ -89,6 +90,24 @@ Future<void> main() async {
   final audioHandler = await AudioServiceInitializer.initialize(container);
   if (audioHandler != null) {
     container.read(audioHandlerProvider.notifier).state = audioHandler;
+  }
+
+  // Ensure periodic background sync is scheduled on Android if enabled
+  if (Platform.isAndroid) {
+    final activeServer =
+        initialServers.where((s) => s.isActive).firstOrNull ??
+        initialServers.firstOrNull;
+    if (activeServer != null &&
+        activeServer.metadataCacheConfig.backgroundSyncEnabled) {
+      final cfg = activeServer.metadataCacheConfig;
+      container
+          .read(backgroundSyncServiceProvider)
+          .schedulePeriodicSync(
+            intervalHours: cfg.backgroundSyncIntervalHours,
+            requiresCharging: cfg.backgroundSyncRequiresCharging,
+            wifiOnly: cfg.backgroundSyncWifiOnly,
+          );
+    }
   }
 
   runApp(

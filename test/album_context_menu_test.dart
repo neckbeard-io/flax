@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 
@@ -29,9 +30,11 @@ const _albumWithoutArtist = Album(
 Future<void> _pumpContextMenu(
   WidgetTester tester, {
   required Album album,
+  List<dynamic> overrides = const [],
 }) async {
   await tester.pumpWidget(
     ProviderScope(
+      overrides: overrides.cast(),
       child: MaterialApp(
         home: Scaffold(
           body: Center(
@@ -49,6 +52,7 @@ Future<void> _pumpContextMenu(
       ),
     ),
   );
+  await tester.pump();
 }
 
 void main() {
@@ -91,6 +95,57 @@ void main() {
       expect(find.text('Play Now'), findsOneWidget);
       expect(find.text('Add to Queue'), findsOneWidget);
       expect(find.text('Cache Offline'), findsOneWidget);
+    });
+
+    testWidgets(
+      'shows both Complete Caching and Remove from Cache when partially cached',
+      (tester) async {
+        await _pumpContextMenu(
+          tester,
+          album: _albumWithArtist,
+          overrides: [
+            downloadedAlbumIdsProvider.overrideWith(
+              (ref) => Stream.value(const {}),
+            ),
+            anyDownloadedAlbumIdsProvider.overrideWith(
+              (ref) => Stream.value({'alb-1'}),
+            ),
+          ],
+        );
+
+        final target = find.byKey(const ValueKey('album_target'));
+        await tester.tap(target, buttons: kSecondaryMouseButton);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Complete Caching'), findsOneWidget);
+        expect(find.text('Remove from Cache'), findsOneWidget);
+        expect(find.text('Cache Offline'), findsNothing);
+      },
+    );
+
+    testWidgets('shows only Remove from Cache when fully cached', (
+      tester,
+    ) async {
+      await _pumpContextMenu(
+        tester,
+        album: _albumWithArtist,
+        overrides: [
+          downloadedAlbumIdsProvider.overrideWith(
+            (ref) => Stream.value({'alb-1'}),
+          ),
+          anyDownloadedAlbumIdsProvider.overrideWith(
+            (ref) => Stream.value({'alb-1'}),
+          ),
+        ],
+      );
+
+      final target = find.byKey(const ValueKey('album_target'));
+      await tester.tap(target, buttons: kSecondaryMouseButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Remove from Cache'), findsOneWidget);
+      expect(find.text('Complete Caching'), findsNothing);
+      expect(find.text('Cache Offline'), findsNothing);
     });
   });
 }

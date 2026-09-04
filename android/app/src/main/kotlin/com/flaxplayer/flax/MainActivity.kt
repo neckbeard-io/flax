@@ -1,10 +1,17 @@
 package com.flaxplayer.flax
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.flaxplayer.flax.download.DownloadTask
 import com.flaxplayer.flax.download.FlaxDownloadManager
+import com.flaxplayer.flax.sync.FlaxSyncManager
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -15,6 +22,24 @@ class MainActivity : AudioServiceActivity() {
     private val INSTALLER_CHANNEL = "com.flax/package_installer"
     private val DOWNLOADER_CHANNEL = "com.flax/native_downloader"
     private val DOWNLOADER_EVENTS = "com.flax/native_downloader_events"
+    private val SYNC_CHANNEL = "com.flax/background_sync"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        requestNotificationPermission()
+    }
+
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    1001
+                )
+            }
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -52,9 +77,15 @@ class MainActivity : AudioServiceActivity() {
         // Native downloader method channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DOWNLOADER_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
+                "requestNotificationPermission" -> {
+                    requestNotificationPermission()
+                    result.success(true)
+                }
                 "startDownload" -> {
+                    requestNotificationPermission()
                     val rawTasks = call.argument<List<Map<String, Any?>>>("tasks")
                     val concurrency = call.argument<Int>("concurrency") ?: 4
+                    val notificationTitle = call.argument<String>("notificationTitle")
                     if (rawTasks != null) {
                         val tasks = rawTasks.mapNotNull { map ->
                             val songId = map["songId"] as? String ?: return@mapNotNull null
@@ -75,7 +106,7 @@ class MainActivity : AudioServiceActivity() {
                                 expectedSizeBytes = expectedSizeBytes
                             )
                         }
-                        FlaxDownloadManager.enqueue(this, tasks, concurrency)
+                        FlaxDownloadManager.enqueue(this, tasks, concurrency, notificationTitle)
                         result.success(true)
                     } else {
                         result.error("INVALID_ARGUMENT", "tasks list is required", null)
@@ -110,5 +141,31 @@ class MainActivity : AudioServiceActivity() {
                 }
             }
         )
+
+        // Background sync method channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SYNC_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "schedulePeriodicSync" -> {
+                    val intervalHours = (call.argument<Number>("intervalHours"))?.toLong() ?: 24L
+                    val requiresCharging = call.argument<Boolean>("requiresCharging") ?: true
+                    val wifiOnly = call.argument<Boolean>("wifiOnly") ?: true
+                    FlaxSyncManager.schedulePeriodicSync(this, intervalHours, requiresCharging, wifiOnly)
+                    result.success(true)
+                }
+                "cancelPeriodicSync" -> {
+                    FlaxSyncManager.cancelPeriodicSync(this)
+                    result.success(true)
+                }
+                "triggerImmediateSync" -> {
+                    FlaxSyncManager.triggerImmediateSync(this)
+                    result.success(true)
+                }
+                "getSyncStatus" -> {
+                    val status = FlaxSyncManager.getSyncStatus(this)
+                    result.success(status)
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 }

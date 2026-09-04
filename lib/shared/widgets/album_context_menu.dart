@@ -17,6 +17,9 @@ class AlbumContextMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(downloadedAlbumIdsProvider);
+    ref.watch(anyDownloadedAlbumIdsProvider);
+
     return GestureDetector(
       onSecondaryTapUp: (details) =>
           _showMenu(context, ref, details.globalPosition),
@@ -34,7 +37,11 @@ class AlbumContextMenu extends ConsumerWidget {
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final downloadedAlbumIds =
         ref.read(downloadedAlbumIdsProvider).valueOrNull ?? const {};
-    final isCached = downloadedAlbumIds.contains(album.id);
+    final anyDownloadedAlbumIds =
+        ref.read(anyDownloadedAlbumIdsProvider).valueOrNull ?? const {};
+    final isFullyCached = downloadedAlbumIds.contains(album.id);
+    final hasCachedTracks = anyDownloadedAlbumIds.contains(album.id);
+    final isPartiallyCached = hasCachedTracks && !isFullyCached;
 
     final result = await showMenu<String>(
       context: context,
@@ -59,15 +66,30 @@ class AlbumContextMenu extends ConsumerWidget {
           child: _MenuRow(icon: Icons.queue_music, label: 'Add to Queue'),
         ),
         const PopupMenuDivider(),
-        if (isCached)
+        if (isFullyCached) ...[
           const PopupMenuItem(
             value: 'remove_cache',
             child: _MenuRow(
               icon: Icons.delete_outline,
               label: 'Remove from Cache',
             ),
-          )
-        else
+          ),
+        ] else if (isPartiallyCached) ...[
+          const PopupMenuItem(
+            value: 'cache_offline',
+            child: _MenuRow(
+              icon: Icons.download_for_offline_outlined,
+              label: 'Complete Caching',
+            ),
+          ),
+          const PopupMenuItem(
+            value: 'remove_cache',
+            child: _MenuRow(
+              icon: Icons.delete_outline,
+              label: 'Remove from Cache',
+            ),
+          ),
+        ] else ...[
           const PopupMenuItem(
             value: 'cache_offline',
             child: _MenuRow(
@@ -75,6 +97,7 @@ class AlbumContextMenu extends ConsumerWidget {
               label: 'Cache Offline',
             ),
           ),
+        ],
       ],
     );
 
@@ -148,7 +171,11 @@ class _MenuRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: [Icon(icon, size: 18), const SizedBox(width: 10), Text(label)],
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 10),
+        Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+      ],
     );
   }
 }

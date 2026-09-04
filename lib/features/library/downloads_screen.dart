@@ -12,6 +12,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/library/albums_screen.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/offline_mode_toggle.dart';
@@ -35,6 +36,11 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(audioCacheServiceProvider).resumePendingDownloads();
+      }
+    });
   }
 
   @override
@@ -291,7 +297,8 @@ class _ActiveDownloadsSectionState
               ? 'Downloading ${tasksToDisplay.length} batches'
               : 'Active Downloads');
 
-    final canCancel = tasksToDisplay.any((t) => t.cancelable);
+    final canCancel =
+        tasksToDisplay.isNotEmpty || widget.activeSongs.isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
@@ -398,7 +405,7 @@ class _ActiveDownloadsSectionState
                           icon: const Icon(Icons.close, size: 18),
                           tooltip: 'Cancel Downloads',
                           visualDensity: VisualDensity.compact,
-                          onPressed: () {
+                          onPressed: () async {
                             final registry = ref.read(
                               taskRegistryProvider.notifier,
                             );
@@ -406,6 +413,19 @@ class _ActiveDownloadsSectionState
                               if (t.cancelable) {
                                 registry.cancel(t.id);
                               }
+                            }
+                            if (NativeDownloader.isSupported) {
+                              await NativeDownloader.cancelAll();
+                            }
+                            final server = ref.read(activeServerProvider);
+                            if (server != null &&
+                                widget.activeSongs.isNotEmpty) {
+                              final dao = ref.read(libraryDaoProvider);
+                              await dao.updateSongsDownloadState(
+                                server.id,
+                                widget.activeSongs.map((s) => s.id).toList(),
+                                state: DownloadState.none,
+                              );
                             }
                           },
                         ),
@@ -438,114 +458,131 @@ class _ActiveDownloadsSectionState
             const Divider(height: 1, thickness: 0.5),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 220),
-              child: ListView.separated(
-                shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                itemCount: widget.activeSongs.length,
-                separatorBuilder: (_, _) =>
-                    const Divider(height: 1, thickness: 0.5, indent: 48),
-                itemBuilder: (context, index) {
-                  final song = widget.activeSongs[index];
-                  final isDownloading =
-                      song.downloadState == DownloadState.downloading;
+              child: Builder(
+                builder: (context) {
+                  final sortedSongs = List<Song>.from(widget.activeSongs)
+                    ..sort((a, b) {
+                      if (a.downloadState == b.downloadState) return 0;
+                      if (a.downloadState == DownloadState.downloading) {
+                        return -1;
+                      }
+                      if (b.downloadState == DownloadState.downloading) {
+                        return 1;
+                      }
+                      return 0;
+                    });
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: SizedBox(
-                            width: 32,
-                            height: 32,
-                            child: song.coverArtId != null
-                                ? CoverArtImage(
-                                    coverArtId: song.coverArtId,
-                                    size: 32,
-                                  )
-                                : Container(
-                                    color: theme
-                                        .colorScheme
-                                        .surfaceContainerHighest,
-                                    child: const Icon(
-                                      Icons.music_note,
-                                      size: 16,
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    itemCount: sortedSongs.length,
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, thickness: 0.5, indent: 48),
+                    itemBuilder: (context, index) {
+                      final song = sortedSongs[index];
+                      final isDownloading =
+                          song.downloadState == DownloadState.downloading;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: SizedBox(
+                                width: 32,
+                                height: 32,
+                                child: song.coverArtId != null
+                                    ? CoverArtImage(
+                                        coverArtId: song.coverArtId,
+                                        size: 32,
+                                      )
+                                    : Container(
+                                        color: theme
+                                            .colorScheme
+                                            .surfaceContainerHighest,
+                                        child: const Icon(
+                                          Icons.music_note,
+                                          size: 16,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    song.title,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    song.artistName ?? song.albumName ?? '',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (isDownloading)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (rateStr != null) ...[
+                                    Text(
+                                      rateStr,
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                            color: theme.colorScheme.primary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  const SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
                                     ),
                                   ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                song.title,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                song.artistName ?? song.albumName ?? '',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (isDownloading)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (rateStr != null) ...[
-                                Text(
-                                  rateStr,
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
+                                ],
+                              )
+                            else
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.schedule_outlined,
+                                    size: 13,
+                                    color: theme.colorScheme.onSurfaceVariant,
                                   ),
-                                ),
-                                const SizedBox(width: 6),
-                              ],
-                              const SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Queued',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          )
-                        else
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.schedule_outlined,
-                                size: 13,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Queued',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
+                          ],
+                        ),
+                      );
+                    },
                   );
                 },
               ),

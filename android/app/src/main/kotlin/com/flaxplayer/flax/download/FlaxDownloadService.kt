@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.IBinder
@@ -35,7 +36,7 @@ class FlaxDownloadService : Service() {
         const val ACTION_START_DOWNLOADS = "com.flax.download.START"
         const val ACTION_CHECK_QUEUE = "com.flax.download.CHECK_QUEUE"
         const val ACTION_CANCEL_ALL = "com.flax.download.CANCEL_ALL"
-        const val CHANNEL_ID = "flax_download_channel"
+        const val CHANNEL_ID = "flax_audio_downloads_v2"
         const val NOTIFICATION_ID = 9021
     }
 
@@ -45,13 +46,14 @@ class FlaxDownloadService : Service() {
     private lateinit var notificationManager: NotificationManager
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectionPool(ConnectionPool(16, 5, TimeUnit.MINUTES))
+        .connectionPool(ConnectionPool(32, 5, TimeUnit.MINUTES))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
     private val isDownloading = AtomicBoolean(false)
-    private var activeJob: Job? = null
+    private val activeWorkerCount = java.util.concurrent.atomic.AtomicInteger(0)
+    private val workerLock = Any()
 
     // Speed tracking
     private var lastSpeedCheckTime = System.currentTimeMillis()
@@ -72,26 +74,23 @@ class FlaxDownloadService : Service() {
                 cancelAllDownloads()
             }
             ACTION_CHECK_QUEUE -> {
-                if (FlaxDownloadManager.pendingQueue.isEmpty() && FlaxDownloadManager.activeTasks.isEmpty()) {
-                    isDownloading.set(false)
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
-                }
+                checkQueueStatus()
             }
             ACTION_START_DOWNLOADS -> {
                 val total = FlaxDownloadManager.totalEnqueuedTasks.get()
                 val completed = FlaxDownloadManager.completedSessionTasks.get()
 
                 if (isDownloading.compareAndSet(false, true)) {
-                    startForeground(NOTIFICATION_ID, buildNotification("Downloading music...", completed, total, 0))
-                    startWorkerPool()
-                } else {
-                    // Already running in foreground - update notification with new dynamic queue total
-                    updateNotification("Downloading tracks...", completed, total, currentSpeedBytesPerSec)
-                    if (activeJob?.isActive != true) {
-                        startWorkerPool()
+                    val initialNotification = buildNotification("Downloading music...", completed, total, 0)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        startForeground(NOTIFICATION_ID, initialNotification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                    } else {
+                        startForeground(NOTIFICATION_ID, initialNotification)
                     }
+                } else {
+                    updateNotification("Downloading tracks...", completed, total, currentSpeedBytesPerSec)
                 }
+                ensureWorkersRunning()
             }
         }
         return START_NOT_STICKY
@@ -127,32 +126,47 @@ class FlaxDownloadService : Service() {
         } catch (_: Exception) {}
     }
 
-    private fun startWorkerPool() {
-        activeJob?.cancel()
-        activeJob = serviceScope.launch {
-            val concurrency = FlaxDownloadManager.maxConcurrency
-            val workers = List(concurrency) {
-                launch {
-                    while (isActive) {
-                        val task = FlaxDownloadManager.pendingQueue.poll() ?: break
-                        if (FlaxDownloadManager.canceledSongIds.contains(task.songId)) {
-                            continue
+    private fun ensureWorkersRunning() {
+        synchronized(workerLock) {
+            val concurrency = FlaxDownloadManager.maxConcurrency.coerceAtLeast(1)
+            val current = activeWorkerCount.get()
+            val needed = (concurrency - current).coerceAtLeast(0)
+
+            for (i in 0 until needed) {
+                activeWorkerCount.incrementAndGet()
+                serviceScope.launch {
+                    try {
+                        while (isActive) {
+                            val task = FlaxDownloadManager.pendingQueue.poll() ?: break
+                            if (FlaxDownloadManager.canceledSongIds.contains(task.songId)) {
+                                continue
+                            }
+                            downloadSingleTask(task)
                         }
-                        downloadSingleTask(task)
+                    } catch (_: Exception) {
+                    } finally {
+                        activeWorkerCount.decrementAndGet()
+                        checkQueueStatus()
                     }
                 }
             }
+        }
+    }
 
-            workers.forEach { it.join() }
-
-            if (FlaxDownloadManager.pendingQueue.isEmpty() && FlaxDownloadManager.activeTasks.isEmpty()) {
-                isDownloading.set(false)
-                val finalCompleted = FlaxDownloadManager.completedSessionTasks.get()
-                val finalBytes = FlaxDownloadManager.totalSessionBytes.get()
-                FlaxDownloadManager.notifyQueueCompleted(finalCompleted, finalBytes)
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-            }
+    private fun checkQueueStatus() {
+        if (!FlaxDownloadManager.pendingQueue.isEmpty()) {
+            ensureWorkersRunning()
+            return
+        }
+        if (FlaxDownloadManager.pendingQueue.isEmpty() &&
+            FlaxDownloadManager.activeTasks.isEmpty() &&
+            activeWorkerCount.get() == 0) {
+            isDownloading.set(false)
+            val finalCompleted = FlaxDownloadManager.completedSessionTasks.get()
+            val finalBytes = FlaxDownloadManager.totalSessionBytes.get()
+            FlaxDownloadManager.notifyQueueCompleted(finalCompleted, finalBytes)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
         }
     }
 
@@ -269,11 +283,12 @@ class FlaxDownloadService : Service() {
 
     private fun buildNotification(title: String, completed: Int, total: Int, speed: Long): Notification {
         val speedStr = if (speed > 0) " • ${formatBytes(speed)}/s" else ""
-        val contentTitle = if (total > 0) "Downloading $total tracks$speedStr" else "Downloading music$speedStr"
+        val defaultPrefix = FlaxDownloadManager.customNotificationTitle ?: if (total > 0) "Downloading $total tracks" else "Downloading music"
+        val contentTitle = "$defaultPrefix$speedStr"
         val contentText = if (total > 0) "($completed/$total) $title" else title
 
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pendingOpenIntent = PendingIntent.getActivity(
             this,
@@ -293,13 +308,13 @@ class FlaxDownloadService : Service() {
         )
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_music_note)
+            .setSmallIcon(R.drawable.ic_download_notification)
             .setContentTitle(contentTitle)
             .setContentText(contentText)
             .setContentIntent(pendingOpenIntent)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", pendingCancelIntent)
 
         if (total > 0) {
@@ -313,30 +328,35 @@ class FlaxDownloadService : Service() {
 
     private fun formatBytes(bytes: Long): String {
         return when {
-            bytes >= 1024 * 1024 * 1024 -> String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0))
-            bytes >= 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
-            bytes >= 1024 -> String.format("%.1f KB", bytes / 1024.0)
+            bytes >= 1000L * 1000L * 1000L -> String.format("%.1f GB", bytes / (1000.0 * 1000.0 * 1000.0))
+            bytes >= 1000L * 1000L -> String.format("%.1f MB", bytes / (1000.0 * 1000.0))
+            bytes >= 1000L -> String.format("%.1f KB", bytes / 1000.0)
             else -> "$bytes B"
         }
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                notificationManager.deleteNotificationChannel("flax_download_channel")
+            } catch (_: Exception) {}
+
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Flax Audio Downloads",
-                NotificationManager.IMPORTANCE_LOW
+                "Flax Downloads",
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Shows live download progress and transfer speeds for offline caching."
                 setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
             }
             notificationManager.createNotificationChannel(channel)
         }
     }
 
     private fun cancelAllDownloads() {
-        activeJob?.cancel()
-        FlaxDownloadManager.resetSession()
+        FlaxDownloadManager.cancelAll(this)
         isDownloading.set(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

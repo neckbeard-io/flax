@@ -82,7 +82,9 @@ abstract class LibraryRepository {
   Stream<Set<String>> watchDownloadingSongIds();
   Stream<List<Song>> watchActiveDownloadSongs();
   Stream<Set<String>> watchDownloadedAlbumIds();
+  Stream<Set<String>> watchAnyDownloadedAlbumIds();
   Stream<Set<String>> watchDownloadedArtistIds();
+  Stream<Set<String>> watchAnyDownloadedArtistIds();
   Stream<List<Song>> watchDownloadedSongs();
   Stream<List<Album>> watchDownloadedAlbums({AlbumListQuery? query});
   Stream<List<Artist>> watchDownloadedArtists();
@@ -99,7 +101,7 @@ abstract class LibraryRepository {
   Stream<List<Song>> watchDownloadedSongSearch(String query, {int limit = 20});
   Future<void> updateSongDownload(
     String songId, {
-    required String? localPath,
+    String? localPath,
     required DownloadState state,
   });
   Future<void> updateSongsDownloadState(

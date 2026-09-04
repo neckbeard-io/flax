@@ -11,6 +11,7 @@ import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/updater/update_button.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/updater/mobile_update_coordinator.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
@@ -65,6 +66,7 @@ class _AppChromeState extends ConsumerState<AppChrome>
         WhatsNewCoordinator.checkAndShowIfNeeded(context, ref);
         MobileUpdateCoordinator.checkAndPrompt(context, ref);
         ref.read(serverReachabilityProvider.notifier).probeServer(silent: true);
+        ref.read(audioCacheServiceProvider).resumePendingDownloads();
       }
     });
   }
@@ -93,6 +95,8 @@ class _AppChromeState extends ConsumerState<AppChrome>
 
     final isOffline = ref.read(isOfflineModeProvider);
     if (isOffline) return;
+
+    ref.read(audioCacheServiceProvider).resumePendingDownloads();
 
     final repo = ref.read(libraryRepositoryProvider);
     if (repo == null) return;

@@ -227,6 +227,8 @@ class AlbumGrid extends ConsumerWidget {
     final labelExtent = artGridLabelExtent(context);
     final downloadedAlbumIds =
         ref.watch(downloadedAlbumIdsProvider).valueOrNull ?? const {};
+    final anyDownloadedAlbumIds =
+        ref.watch(anyDownloadedAlbumIdsProvider).valueOrNull ?? const {};
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -251,7 +253,9 @@ class AlbumGrid extends ConsumerWidget {
           itemCount: albums.length,
           itemBuilder: (context, index) {
             final album = albums[index];
-            final isCached = downloadedAlbumIds.contains(album.id);
+            final isFullyCached = downloadedAlbumIds.contains(album.id);
+            final isPartiallyCached =
+                anyDownloadedAlbumIds.contains(album.id) && !isFullyCached;
             return AlbumContextMenu(
               album: album,
               child: Column(
@@ -271,7 +275,7 @@ class AlbumGrid extends ConsumerWidget {
                             child: CoverArtImage(coverArtId: album.coverArtId),
                           ),
                         ),
-                        if (isCached)
+                        if (isFullyCached || isPartiallyCached)
                           Positioned(
                             top: -6,
                             right: -6,
@@ -289,9 +293,13 @@ class AlbumGrid extends ConsumerWidget {
                                 ],
                               ),
                               child: Icon(
-                                Icons.offline_pin,
+                                isFullyCached
+                                    ? Icons.offline_pin
+                                    : Icons.offline_pin_outlined,
                                 size: 14,
-                                color: theme.colorScheme.primary,
+                                color: isFullyCached
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.secondary,
                               ),
                             ),
                           ),

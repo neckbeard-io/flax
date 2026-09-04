@@ -160,7 +160,11 @@ class _AlbumActions extends ConsumerWidget {
     final theme = Theme.of(context);
     final downloadedAlbumIds =
         ref.watch(downloadedAlbumIdsProvider).valueOrNull ?? const {};
-    final isCached = downloadedAlbumIds.contains(album.id);
+    final anyDownloadedAlbumIds =
+        ref.watch(anyDownloadedAlbumIdsProvider).valueOrNull ?? const {};
+    final isFullyCached = downloadedAlbumIds.contains(album.id);
+    final hasCachedTracks = anyDownloadedAlbumIds.contains(album.id);
+    final isPartiallyCached = hasCachedTracks && !isFullyCached;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -195,25 +199,30 @@ class _AlbumActions extends ConsumerWidget {
           },
         ),
         const SizedBox(width: 8),
-        HoverIcon(
-          icon: isCached ? Icons.offline_pin : Icons.download,
-          size: size,
-          color: isCached
-              ? theme.colorScheme.primary
-              : theme.colorScheme.onSurfaceVariant,
-          tooltip: isCached ? 'Remove album from cache' : 'Cache album offline',
-          onTap: () {
-            final cacheService = ref.read(audioCacheServiceProvider);
-            if (isCached) {
-              cacheService.removeCachedAlbum(album.id);
+        if (isFullyCached)
+          HoverIcon(
+            icon: Icons.offline_pin,
+            size: size,
+            color: theme.colorScheme.primary,
+            tooltip: 'Remove album from cache',
+            onTap: () {
+              ref.read(audioCacheServiceProvider).removeCachedAlbum(album.id);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Removed "${album.name}" from offline cache'),
                   duration: const Duration(seconds: 2),
                 ),
               );
-            } else {
-              cacheService.cacheAlbum(album.id);
+            },
+          )
+        else if (isPartiallyCached) ...[
+          HoverIcon(
+            icon: Icons.download_for_offline_outlined,
+            size: size,
+            color: theme.colorScheme.primary,
+            tooltip: 'Complete album caching',
+            onTap: () {
+              ref.read(audioCacheServiceProvider).cacheAlbum(album.id);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Caching "${album.name}"...'),
@@ -224,9 +233,44 @@ class _AlbumActions extends ConsumerWidget {
                   ),
                 ),
               );
-            }
-          },
-        ),
+            },
+          ),
+          const SizedBox(width: 8),
+          HoverIcon(
+            icon: Icons.delete_outline,
+            size: size,
+            color: theme.colorScheme.onSurfaceVariant,
+            tooltip: 'Remove cached tracks',
+            onTap: () {
+              ref.read(audioCacheServiceProvider).removeCachedAlbum(album.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Removed "${album.name}" from offline cache'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+        ] else
+          HoverIcon(
+            icon: Icons.download,
+            size: size,
+            color: theme.colorScheme.onSurfaceVariant,
+            tooltip: 'Cache album offline',
+            onTap: () {
+              ref.read(audioCacheServiceProvider).cacheAlbum(album.id);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Caching "${album.name}"...'),
+                  duration: const Duration(seconds: 3),
+                  action: SnackBarAction(
+                    label: 'View',
+                    onPressed: () => context.push('/downloads'),
+                  ),
+                ),
+              );
+            },
+          ),
       ],
     );
   }
