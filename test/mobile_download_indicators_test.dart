@@ -390,6 +390,57 @@ void main() {
           expect(activeBox.right, lessThanOrEqualTo(390));
         },
       );
+
+      testWidgets(
+        'aggregates multiple queued download batches into unified progress header',
+        (tester) async {
+          debugOverrideIsDesktopPlatform = false;
+          addTearDown(() => debugOverrideIsDesktopPlatform = null);
+
+          final task1 = Task(
+            id: 'task-dl-1',
+            label: 'Caching "Album One"',
+            kind: TaskKind.audioDownload,
+            state: TaskState.running,
+            itemsDone: 3,
+            itemsTotal: 5,
+            ratePerSecond: 2000000,
+            cancelable: true,
+          );
+
+          final task2 = Task(
+            id: 'task-dl-2',
+            label: 'Caching "Album Two"',
+            kind: TaskKind.audioDownload,
+            state: TaskState.running,
+            itemsDone: 2,
+            itemsTotal: 7,
+            ratePerSecond: 1500000,
+            cancelable: true,
+          );
+
+          final container = ProviderContainer(
+            overrides: [
+              activeTasksProvider.overrideWithValue([task1, task2]),
+              activeDownloadSongsProvider.overrideWith(
+                (ref) => Stream.value(const []),
+              ),
+            ],
+          );
+
+          await tester.pumpWidget(
+            UncontrolledProviderScope(
+              container: container,
+              child: const MaterialApp(home: DownloadsScreen()),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('Downloading 2 batches'), findsOneWidget);
+          expect(find.text('5 of 12 tracks'), findsOneWidget);
+          expect(find.text('3.5 MB/s'), findsOneWidget);
+        },
+      );
     });
   });
 }

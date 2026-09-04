@@ -64,7 +64,50 @@ class TaskRegistry extends StateNotifier<List<Task>> {
     final task = _find(id);
     if (task == null || task.state.isTerminal) return;
     _onCancel[id]?.call();
-    _update(id, (t) => t.copyWith(state: TaskState.canceled, clearRate: true));
+    final itemsDone = _latestItems[id] ?? task.itemsDone;
+    final bytesDone = _latestBytes[id] ?? task.bytesDone;
+    _update(
+      id,
+      (t) => t.copyWith(
+        state: TaskState.canceled,
+        itemsDone: itemsDone,
+        bytesDone: bytesDone,
+        clearRate: true,
+      ),
+    );
+  }
+
+  void complete(String id) {
+    final task = _find(id);
+    if (task == null || task.state.isTerminal) return;
+    final itemsDone = _latestItems[id] ?? task.itemsDone;
+    final bytesDone = _latestBytes[id] ?? task.bytesDone;
+    _update(
+      id,
+      (t) => t.copyWith(
+        state: TaskState.done,
+        itemsDone: itemsDone,
+        bytesDone: bytesDone,
+        clearRate: true,
+      ),
+    );
+  }
+
+  void fail(String id, Object error) {
+    final task = _find(id);
+    if (task == null || task.state.isTerminal) return;
+    final itemsDone = _latestItems[id] ?? task.itemsDone;
+    final bytesDone = _latestBytes[id] ?? task.bytesDone;
+    _update(
+      id,
+      (t) => t.copyWith(
+        state: TaskState.failed,
+        itemsDone: itemsDone,
+        bytesDone: bytesDone,
+        error: error.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''),
+        clearRate: true,
+      ),
+    );
   }
 
   /// Drop finished rows from the list. The active ones are untouched.
@@ -111,19 +154,29 @@ class TaskRegistry extends StateNotifier<List<Task>> {
     if (_find(id)?.state.isTerminal ?? false) {
       _estimators.remove(id);
       _onCancel.remove(id);
+      _lastProgressTime.remove(id);
+      _latestItems.remove(id);
+      _latestBytes.remove(id);
     }
   }
 
+  final _lastProgressTime = <String, DateTime>{};
+  final _latestItems = <String, int>{};
+  final _latestBytes = <String, int>{};
+
   /// Records a progress reading and recomputes the derived rate and ETA.
-  void _progress(String id, {int? items, int? bytes}) {
+  void _progress(String id, {int? items, int? bytes, bool force = false}) {
     final task = _find(id);
     if (task == null || task.state.isTerminal) return;
 
     final now = _clock();
     final estimator = _estimators[id];
 
-    final itemsDone = items ?? task.itemsDone;
-    final bytesDone = bytes ?? task.bytesDone;
+    if (items != null) _latestItems[id] = items;
+    if (bytes != null) _latestBytes[id] = bytes;
+
+    final itemsDone = _latestItems[id] ?? task.itemsDone;
+    final bytesDone = _latestBytes[id] ?? task.bytesDone;
 
     // Sample whichever counter this kind actually renders, so the rate matches
     // the number next to it.
@@ -132,6 +185,14 @@ class TaskRegistry extends StateNotifier<List<Task>> {
       ProgressUnit.bytes => (bytesDone, task.bytesTotal),
     };
     estimator?.sample(done, now);
+
+    final lastTime = _lastProgressTime[id];
+    if (!force &&
+        lastTime != null &&
+        now.difference(lastTime).inMilliseconds < 100) {
+      return;
+    }
+    _lastProgressTime[id] = now;
 
     _update(
       id,
@@ -205,21 +266,11 @@ class TaskHandle {
   }
 
   void complete() {
-    _registry._update(
-      id,
-      (t) => t.copyWith(state: TaskState.done, clearRate: true),
-    );
+    _registry.complete(id);
   }
 
   void fail(Object error) {
-    _registry._update(
-      id,
-      (t) => t.copyWith(
-        state: TaskState.failed,
-        error: error.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''),
-        clearRate: true,
-      ),
-    );
+    _registry.fail(id, error);
   }
 
   /// True once the user has canceled. Long loops should check this between

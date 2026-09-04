@@ -12,10 +12,19 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Added
 - Android Auto and Android Automotive support with media browse tree and vehicle transport controls.
+- Android Automotive OS native media source discovery and adaptive vehicle screen layout support.
 - Multi-language support (EN, DE, FR, ES, JA, ZH) with setup and appearance screen selector.
 - High-performance zero-jank in-memory ring buffer logger for diagnostic retention.
 - Downloads screen now breaks down active downloads track-by-track with live download speeds, ETAs, and queue status.
 - Mobile active downloads pill displays real-time transfer rates alongside completed item counts.
+- Android Auto albums tab now features standard library sections (All, Recently Added, Recently Played, Random, Most Played, Favorites, Top Rated, Downloaded).
+- Android Auto queue list now formats as Title · Artist on compact vehicle cards.
+- Android Auto Now Playing screen now features interactive Favorite (Heart) and Shuffle toggle actions.
+- Android Auto Now Playing subtitle displays dynamic audiophile codec and resolution badges (e.g. FLAC 24/96, FLAC 16/44.1, MP3 320k).
+- Android Auto browse tree now filters all standard views (Albums, Artists, Recent, Favorites) to downloaded music in offline mode.
+- Auto-offline setting for Android Auto to automatically engage offline mode when connected to vehicle head units.
+- High-performance native Android background downloader with Foreground Service, persistent progress notification, and screen-timeout sleep immunity.
+- Android Auto root browse menu includes interactive mode toggle to switch between online and offline playback.
 
 ### Fixed
 - Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
@@ -24,6 +33,11 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Eliminated transient startup flash of the setup screen when reopening with configured servers.
 - Android system back button and gesture navigation now pop or navigate back up screens instead of exiting the app.
 - Metadata and artwork sync card no longer clips or pushes content off screen on mobile displays.
+- Android Auto artists browse tree groups by A-Z index with favorite artists sync and vehicle IPC safety.
+- Eliminated missing image caution symbols on Android Auto container folders with lead album artwork and vector icons.
+- Eliminated "getting your categories" flash during seekbar interaction by preserving active playback state.
+- Integrated Android audio session focus management so media streams output properly to vehicle audio sinks.
+- Audio caching and album downloads now saturate bandwidth with connection pooling and raw endpoints.
 
 ## v0.5.6 — 2026-08-29
 

@@ -7,7 +7,6 @@ import 'package:flax/features/player/now_playing_panels.dart';
 import 'package:flax/shared/widgets/desktop_sidebar.dart';
 
 import 'package:flax/services/updater/update_provider.dart';
-import 'package:flax/shared/widgets/layout_metrics.dart';
 
 /// Below this width the sidebar is dropped for the bottom bar even on desktop —
 /// a 220px rail out of a narrow window leaves too little for content.
@@ -16,8 +15,6 @@ const _sidebarMinWidth = 700.0;
 class ShellScaffold extends ConsumerWidget {
   final Widget child;
   const ShellScaffold({super.key, required this.child});
-
-  static bool _isDesktop() => isDesktopPlatform;
 
   /// Routes that take the whole window, with no navigation chrome around them.
   ///
@@ -34,7 +31,7 @@ class ShellScaffold extends ConsumerWidget {
     final index = navIndexForLocation(location);
     final width = MediaQuery.of(context).size.width;
     final wideEnough = width >= _sidebarMinWidth;
-    final useSidebar = _isDesktop() && wideEnough;
+    final useSidebar = wideEnough;
     final immersive = isImmersiveRoute(location, width);
     final updateState = ref.watch(updateNotifierProvider);
 

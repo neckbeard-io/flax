@@ -426,7 +426,7 @@ class MetadataCachingScreen extends ConsumerWidget {
                             (t) => DropdownMenuItem(
                               value: t,
                               child: Text(
-                                '$t ${t == 1 ? "worker" : "workers"}${t == 2 ? " (default)" : ""}',
+                                '$t ${t == 1 ? "worker" : "workers"}${t == 4 ? " (default)" : ""}',
                               ),
                             ),
                           )

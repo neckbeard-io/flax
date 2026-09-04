@@ -33,7 +33,9 @@ class MobileActiveDownloadsPill extends ConsumerWidget {
           sum != null && t.itemsTotal != null ? sum + t.itemsTotal! : null,
     );
 
-    final fraction = primaryTask.fraction;
+    final fraction = totalCount != null && totalCount > 0
+        ? (doneCount / totalCount).clamp(0.0, 1.0)
+        : primaryTask.fraction;
     final rate = primaryTask.ratePerSecond;
     final rateStr = rate != null && rate > 0
         ? formatRate(rate, primaryTask.kind.unit)

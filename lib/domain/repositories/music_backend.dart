@@ -51,6 +51,8 @@ abstract class MusicBackend {
   // Media
   Uri getStreamUri(String songId, {int? maxBitRate, String? format});
 
+  Uri getDownloadUri(String songId);
+
   Uri getCoverArtUri(String id, {int? size});
 
   Future<String?> getLyrics({String? artist, String? title});

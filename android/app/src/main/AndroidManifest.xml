@@ -8,18 +8,29 @@
     <!-- Required for background audio playback and Android Auto MediaSession service. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <!-- Required for background audio downloading and synchronization. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Required for self-updating via sideloaded APKs. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Automotive and hardware features. -->
+    <uses-feature android:name="android.hardware.type.automotive" android:required="false"/>
+    <uses-feature android:name="android.hardware.wifi" android:required="false"/>
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false"/>
+    <uses-feature android:name="android.hardware.screen.landscape" android:required="false"/>
     <application
         android:label="flax"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <meta-data
+            android:name="com.android.automotive"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
         <meta-data
             android:name="com.google.android.gms.car.notification.SmallIcon"
-            android:resource="@mipmap/ic_launcher" />
+            android:resource="@drawable/ic_music_note" />
         <service
             android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"
@@ -28,6 +39,10 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+        <service
+            android:name="com.flaxplayer.flax.download.FlaxDownloadService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
         <receiver
             android:name="androidx.media.session.MediaButtonReceiver"
             android:exported="true">
@@ -51,9 +66,14 @@
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:screenOrientation="portrait"
+            android:screenOrientation="unspecified"
+            android:resizeableActivity="true"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
+            <!-- Declares distraction optimization for Android Automotive full screen -->
+            <meta-data
+                android:name="distractionOptimized"
+                android:value="true" />
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:audio_session/audio_session.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' as mpv;
@@ -445,7 +446,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       );
     }
     await _player.openAll(medias, play: play, index: index);
-    if (play) await _player.play();
+    if (play) {
+      await _activateAudioSession();
+      await _player.play();
+    }
 
     if (currentSong != null && !isCached) {
       final autoCache = _ref.read(audioCacheConfigProvider).autoCacheStreamed;
@@ -453,6 +457,17 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         _ref
             .read(audioCacheServiceProvider)
             .cacheSong(currentSong, isPinned: false);
+      }
+    }
+  }
+
+  Future<void> _activateAudioSession() async {
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        final session = await AudioSession.instance;
+        await session.setActive(true);
+      } catch (e) {
+        AppLogger.w('Player', 'Failed to activate AudioSession: $e');
       }
     }
   }
@@ -501,6 +516,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // pressed skip.
     if (_mpvQueueInSync) {
       await _player.jump(index);
+      await _activateAudioSession();
       await _player.play();
     } else {
       await _openQueue(state.queue, index, play: true);
@@ -1234,6 +1250,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         await _player.seek(state.position);
       }
     } else {
+      await _activateAudioSession();
       await _player.play();
     }
   }

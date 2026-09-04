@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
-import 'package:meta/meta.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+import 'package:meta/meta.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
@@ -17,8 +19,26 @@ class SubsonicClient implements MusicBackend {
   static const String _clientName = 'flax';
 
   SubsonicClient({required this.server, Dio? dio})
-    : _dio =
-          dio ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 10)));
+    : _dio = dio ?? _createDefaultDio();
+
+  static Dio _createDefaultDio() {
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
+    dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.maxConnectionsPerHost = 16;
+        client.idleTimeout = const Duration(seconds: 60);
+        return client;
+      },
+    );
+    return dio;
+  }
 
   // ── Auth helpers ──────────────────────────────────────────────────────
 
@@ -287,6 +307,14 @@ class SubsonicClient implements MusicBackend {
 
     return Uri.parse(
       '${server.baseUrl}/rest/stream',
+    ).replace(queryParameters: params);
+  }
+
+  @override
+  Uri getDownloadUri(String songId) {
+    final params = <String, String>{..._authParams(), 'id': songId};
+    return Uri.parse(
+      '${server.baseUrl}/rest/download',
     ).replace(queryParameters: params);
   }
 

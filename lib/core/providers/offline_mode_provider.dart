@@ -8,9 +8,10 @@ import 'package:flax/services/subsonic/subsonic_client.dart';
 
 const _kOfflineManualPrefKey = 'flax_offline_manual_override';
 const _kOfflineOnCellularPrefKey = 'flax_offline_on_cellular';
+const _kOfflineOnAndroidAutoPrefKey = 'flax_offline_on_android_auto';
 
 /// Reason why the app is currently in offline mode.
-enum OfflineReason { none, manual, cellular, serverUnreachable }
+enum OfflineReason { none, manual, cellular, androidAuto, serverUnreachable }
 
 /// Manual offline mode toggle persisted across sessions.
 final offlineManualOverrideProvider =
@@ -76,6 +77,40 @@ class OfflineOnCellularNotifier extends StateNotifier<bool> {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_kOfflineOnCellularPrefKey, value);
+    } catch (_) {}
+  }
+}
+
+/// Setting: automatically switch to offline mode when using Android Auto or automotive media browser.
+final offlineOnAndroidAutoSettingProvider =
+    StateNotifierProvider<OfflineOnAndroidAutoNotifier, bool>((ref) {
+      return OfflineOnAndroidAutoNotifier();
+    });
+
+class OfflineOnAndroidAutoNotifier extends StateNotifier<bool> {
+  OfflineOnAndroidAutoNotifier() : super(false) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getBool(_kOfflineOnAndroidAutoPrefKey);
+      if (saved != null && mounted) {
+        state = saved;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> toggle() async {
+    await set(!state);
+  }
+
+  Future<void> set(bool value) async {
+    state = value;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kOfflineOnAndroidAutoPrefKey, value);
     } catch (_) {}
   }
 }

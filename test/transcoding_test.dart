@@ -201,6 +201,15 @@ void main() {
 
     test('original stream URL omits maxBitRate and format', () {
       final uri = client.getStreamUri('song-100');
+      expect(uri.path, '/rest/stream');
+      expect(uri.queryParameters['id'], 'song-100');
+      expect(uri.queryParameters['maxBitRate'], isNull);
+      expect(uri.queryParameters['format'], isNull);
+    });
+
+    test('download URL uses rest/download endpoint without transcoding', () {
+      final uri = client.getDownloadUri('song-100');
+      expect(uri.path, '/rest/download');
       expect(uri.queryParameters['id'], 'song-100');
       expect(uri.queryParameters['maxBitRate'], isNull);
       expect(uri.queryParameters['format'], isNull);
@@ -212,6 +221,7 @@ void main() {
         maxBitRate: 256,
         format: 'opus',
       );
+      expect(uri.path, '/rest/stream');
       expect(uri.queryParameters['id'], 'song-100');
       expect(uri.queryParameters['maxBitRate'], '256');
       expect(uri.queryParameters['format'], 'opus');
