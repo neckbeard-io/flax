@@ -246,23 +246,52 @@ class _ActiveDownloadsSectionState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final activeDownload = widget.tasks.firstOrNull;
-    if (activeDownload == null && widget.activeSongs.isEmpty) {
+    final downloadTasks = widget.tasks
+        .where((t) => t.kind == TaskKind.audioDownload)
+        .toList();
+    final tasksToDisplay = downloadTasks.isNotEmpty
+        ? downloadTasks
+        : widget.tasks;
+
+    if (tasksToDisplay.isEmpty && widget.activeSongs.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    final rate = activeDownload?.ratePerSecond;
-    final rateStr = rate != null && rate > 0
-        ? formatRate(rate, activeDownload!.kind.unit)
+    final itemsDone = tasksToDisplay.fold<int>(
+      0,
+      (sum, t) => sum + t.itemsDone,
+    );
+    final itemsTotal = tasksToDisplay.fold<int>(
+      0,
+      (sum, t) => sum + (t.itemsTotal ?? 0),
+    );
+    final effectiveTotal = itemsTotal > 0
+        ? itemsTotal
+        : widget.activeSongs.length;
+    final fraction = effectiveTotal > 0
+        ? (itemsDone / effectiveTotal).clamp(0.0, 1.0)
         : null;
 
-    final etaStr = activeDownload?.eta != null
-        ? formatEta(activeDownload!.eta!)
+    final totalRate = tasksToDisplay.fold<double>(
+      0.0,
+      (sum, t) => sum + (t.ratePerSecond ?? 0.0),
+    );
+    final primaryUnit =
+        tasksToDisplay.firstOrNull?.kind.unit ?? ProgressUnit.bytes;
+    final rateStr = totalRate > 0 ? formatRate(totalRate, primaryUnit) : null;
+
+    final primaryTask = tasksToDisplay.firstOrNull;
+    final etaStr = primaryTask?.eta != null
+        ? formatEta(primaryTask!.eta!)
         : null;
 
-    final fraction = activeDownload?.fraction;
-    final itemsDone = activeDownload?.itemsDone ?? 0;
-    final itemsTotal = activeDownload?.itemsTotal ?? widget.activeSongs.length;
+    final titleLabel = tasksToDisplay.length == 1
+        ? tasksToDisplay.first.label
+        : (tasksToDisplay.isNotEmpty
+              ? 'Downloading ${tasksToDisplay.length} batches'
+              : 'Active Downloads');
+
+    final canCancel = tasksToDisplay.any((t) => t.cancelable);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
@@ -298,7 +327,7 @@ class _ActiveDownloadsSectionState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              activeDownload?.label ?? 'Active Downloads',
+                              titleLabel,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -312,8 +341,8 @@ class _ActiveDownloadsSectionState
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 Text(
-                                  itemsTotal > 0
-                                      ? '$itemsDone of $itemsTotal tracks'
+                                  effectiveTotal > 0
+                                      ? '$itemsDone of $effectiveTotal tracks'
                                       : '${widget.activeSongs.length} tracks queued',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
@@ -364,15 +393,20 @@ class _ActiveDownloadsSectionState
                           ],
                         ),
                       ),
-                      if (activeDownload != null && activeDownload.cancelable)
+                      if (canCancel)
                         IconButton(
                           icon: const Icon(Icons.close, size: 18),
-                          tooltip: 'Cancel Download',
+                          tooltip: 'Cancel Downloads',
                           visualDensity: VisualDensity.compact,
                           onPressed: () {
-                            ref
-                                .read(taskRegistryProvider.notifier)
-                                .cancel(activeDownload.id);
+                            final registry = ref.read(
+                              taskRegistryProvider.notifier,
+                            );
+                            for (final t in tasksToDisplay) {
+                              if (t.cancelable) {
+                                registry.cancel(t.id);
+                              }
+                            }
                           },
                         ),
                       Icon(

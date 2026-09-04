@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -16,6 +17,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/services/cache/storage_manager.dart';
 import 'package:flax/services/database/library_dao.dart';
+import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
@@ -344,6 +346,18 @@ class AudioCacheService {
 
     if (isStandAloneTask) {
       handle?.enumerated(items: 1);
+      if (NativeDownloader.isSupported) {
+        await _cacheSongsNative(
+          [song],
+          isPinned: isPinned,
+          handle: handle,
+          cancelToken: songCancelToken,
+        );
+        if (destFile.existsSync() && destFile.lengthSync() > 0) {
+          return destFile.path;
+        }
+        return null;
+      }
     }
 
     try {
@@ -591,6 +605,16 @@ class AudioCacheService {
       );
     }
 
+    if (NativeDownloader.isSupported && isPinned) {
+      await _cacheSongsNative(
+        songs,
+        isPinned: isPinned,
+        handle: handle,
+        cancelToken: cancelToken,
+      );
+      return;
+    }
+
     final concurrency = _ref
         .read(audioCacheConfigProvider)
         .downloadConcurrency
@@ -720,6 +744,16 @@ class AudioCacheService {
       );
     }
 
+    if (NativeDownloader.isSupported && isPinned) {
+      await _cacheSongsNative(
+        allSongs,
+        isPinned: isPinned,
+        handle: handle,
+        cancelToken: cancelToken,
+      );
+      return;
+    }
+
     final concurrency = _ref
         .read(audioCacheConfigProvider)
         .downloadConcurrency
@@ -779,6 +813,185 @@ class AudioCacheService {
       _enforceUnifiedCacheLimit(allSongs.first.serverId).ignore();
       handle?.complete();
     }
+  }
+
+  Future<void> _cacheSongsNative(
+    List<Song> songs, {
+    required bool isPinned,
+    TaskHandle? handle,
+    CancelToken? cancelToken,
+  }) async {
+    final client = _ref.read(subsonicClientProvider);
+    final dao = _ref.read(libraryDaoProvider);
+    final server = _ref.read(activeServerProvider);
+    if (client == null || server == null || songs.isEmpty) return;
+
+    final transcodeParams = TranscodingService.resolveDownloadParameters(
+      server: server,
+    );
+    final serverId = songs.first.serverId;
+    final musicDir = await _getMusicDir(serverId, isPinned: isPinned);
+
+    final uncompleted = songs
+        .where((s) => s.downloadState != DownloadState.complete)
+        .toList();
+    if (uncompleted.isEmpty) {
+      handle?.complete();
+      return;
+    }
+
+    final nativeTasks = <NativeDownloadTask>[];
+    for (final song in uncompleted) {
+      final ext = transcodeParams.isTranscoded && transcodeParams.format != null
+          ? transcodeParams.format!
+          : (song.suffix?.isNotEmpty == true ? song.suffix! : 'mp3');
+      final destPath = p.join(musicDir.path, '${song.id}.$ext');
+      final downloadUri = transcodeParams.isTranscoded
+          ? client.getStreamUri(
+              song.id,
+              maxBitRate: transcodeParams.maxBitRate,
+              format: transcodeParams.format,
+            )
+          : client.getDownloadUri(song.id);
+
+      nativeTasks.add(
+        NativeDownloadTask(
+          songId: song.id,
+          serverId: serverId,
+          title: song.title,
+          artist: song.artistName,
+          downloadUrl: downloadUri.toString(),
+          destinationPath: destPath,
+          expectedSizeBytes: song.size,
+        ),
+      );
+    }
+
+    final concurrency = _ref
+        .read(audioCacheConfigProvider)
+        .downloadConcurrency
+        .clamp(1, 16);
+
+    final songIds = uncompleted.map((s) => s.id).toSet();
+    final completedSongIds = <String>{};
+    final failedSongIds = <String>{};
+    final songBytesMap = <String, int>{};
+
+    final completer = Completer<void>();
+    StreamSubscription<NativeDownloadEvent>? sub;
+
+    void checkBatchDone() {
+      if (completedSongIds.length + failedSongIds.length >= songIds.length) {
+        _enforceUnifiedCacheLimit(serverId).ignore();
+        if (completedSongIds.isNotEmpty || failedSongIds.isEmpty) {
+          handle?.complete();
+        } else {
+          handle?.fail('All tracks in batch failed to download');
+        }
+        if (!completer.isCompleted) completer.complete();
+      }
+    }
+
+    sub = NativeDownloader.eventStream.listen((event) {
+      switch (event) {
+        case NativeTaskStartedEvent():
+          if (songIds.contains(event.songId)) {
+            handle?.note('Track "${event.title}"');
+          }
+        case NativeProgressEvent():
+          if (songIds.contains(event.songId)) {
+            songBytesMap[event.songId] = event.bytesDownloaded;
+            final totalBatchBytes = songBytesMap.values.fold<int>(
+              0,
+              (a, b) => a + b,
+            );
+            handle?.progress(
+              items: completedSongIds.length,
+              bytes: totalBatchBytes,
+            );
+          }
+        case NativeTaskCompletedEvent():
+          if (songIds.contains(event.songId)) {
+            completedSongIds.add(event.songId);
+            dao
+                .updateSongDownload(
+                  event.serverId,
+                  event.songId,
+                  localPath: event.localPath,
+                  state: DownloadState.complete,
+                )
+                .ignore();
+            final matchingSong = songs
+                .where((s) => s.id == event.songId)
+                .firstOrNull;
+            if (matchingSong != null) {
+              _cacheLyrics(client, event.serverId, matchingSong).ignore();
+              if (matchingSong.coverArtId != null) {
+                final coverUri = client.getCoverArtUri(
+                  matchingSong.coverArtId!,
+                );
+                ArtCache.instance.downloadFile(coverUri.toString()).ignore();
+              }
+            }
+            handle?.progress(items: completedSongIds.length);
+            checkBatchDone();
+          }
+        case NativeTaskFailedEvent():
+          if (songIds.contains(event.songId)) {
+            failedSongIds.add(event.songId);
+            dao
+                .updateSongDownload(
+                  event.serverId,
+                  event.songId,
+                  localPath: null,
+                  state: DownloadState.error,
+                )
+                .ignore();
+            handle?.itemFailed(1);
+            checkBatchDone();
+          }
+        case NativeTaskCanceledEvent():
+          if (songIds.contains(event.songId)) {
+            failedSongIds.add(event.songId);
+            checkBatchDone();
+          }
+        case NativeQueueCompletedEvent():
+          _enforceUnifiedCacheLimit(serverId).ignore();
+          handle?.complete();
+          if (!completer.isCompleted) completer.complete();
+        case NativeCanceledEvent():
+          if (!completer.isCompleted) completer.complete();
+      }
+    });
+
+    cancelToken?.whenCancel.then((_) {
+      final remainingIds = songIds
+          .difference(completedSongIds)
+          .difference(failedSongIds)
+          .toList();
+      if (remainingIds.isNotEmpty) {
+        NativeDownloader.cancelSongs(remainingIds);
+        dao
+            .updateSongsDownloadState(
+              serverId,
+              remainingIds,
+              state: DownloadState.none,
+            )
+            .ignore();
+      }
+      if (!completer.isCompleted) completer.complete();
+    });
+
+    final started = await NativeDownloader.startDownload(
+      tasks: nativeTasks,
+      concurrency: concurrency,
+    );
+    if (started) {
+      await completer.future;
+    } else {
+      handle?.fail('Failed to start native download service');
+    }
+    await sub.cancel();
   }
 
   /// Removes a song from offline cache.
