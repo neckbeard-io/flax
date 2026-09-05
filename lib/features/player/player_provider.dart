@@ -201,7 +201,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _subs.add(
       _player.stream.playing.listen((playing) {
         if (mounted) {
-          state = state.copyWith(isPlaying: playing);
+          state = state.copyWith(
+            isPlaying: playing,
+            clearPlaybackError: playing,
+          );
           _nowPlaying.updatePlaybackState(
             position: state.position,
             isPlaying: playing,
@@ -218,7 +221,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _subs.add(
       _player.stream.position.listen((pos) {
         if (mounted) {
-          state = state.copyWith(position: pos);
+          state = state.copyWith(
+            position: pos,
+            clearPlaybackError: state.playbackError != null,
+          );
           _maybeSubmitScrobble(pos);
           _updateFadeGain();
           // Save queue position every 10 seconds of playback change
@@ -265,7 +271,15 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       _player.stream.error.listen((err) {
         AppLogger.e('Player', 'mpv error: ${err.message}');
         if (mounted) {
-          state = state.copyWith(isPlaying: false, playbackError: err.message);
+          // If playback is active and streaming normally, transient warnings
+          // (such as demuxer warnings, background prefetch TLS notices, etc.)
+          // should not clobber UI playback state or overwrite the codec/bitrate line.
+          if (!state.isPlaying) {
+            state = state.copyWith(
+              isPlaying: false,
+              playbackError: err.message,
+            );
+          }
         }
       }),
     );
@@ -489,6 +503,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       queueIndex: index,
       currentSong: song,
       isPlayingCached: isCached,
+      clearPlaybackError: true,
     );
     _updateNowPlayingForSong(song);
     // ReplayGain is per track, so the output gain has to be recomputed for the
@@ -510,6 +525,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       currentSong: song,
       queueIndex: index,
       isPlayingCached: isCached,
+      clearPlaybackError: true,
     );
     // A jump inside the playlist mpv already holds, rather than a fresh load:
     // reloading would throw away the prefetched next entry every time someone

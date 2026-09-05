@@ -108,6 +108,62 @@ void main() {
       expect(find.byIcon(Icons.offline_pin), findsNothing);
     },
   );
+
+  testWidgets('MiniPlayer displays format badge and bitrate when active', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          playerProvider.overrideWith(
+            (ref) => MockPlayerNotifier(
+              const PlayerState(currentSong: testSong, isPlaying: true),
+            ),
+          ),
+          downloadedSongIdsProvider.overrideWith(
+            (ref) => Stream.value(const {}),
+          ),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(bottomNavigationBar: MiniPlayer()),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.textContaining('FLAC 1411k'), findsOneWidget);
+  });
+
+  testWidgets(
+    'MiniPlayer displays playbackError when player state has an error',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            playerProvider.overrideWith(
+              (ref) => MockPlayerNotifier(
+                const PlayerState(
+                  currentSong: testSong,
+                  isPlaying: false,
+                  playbackError: 'Connection refused',
+                ),
+              ),
+            ),
+            downloadedSongIdsProvider.overrideWith(
+              (ref) => Stream.value(const {}),
+            ),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(bottomNavigationBar: MiniPlayer()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Connection refused'), findsOneWidget);
+      expect(find.textContaining('FLAC'), findsNothing);
+    },
+  );
 }
 
 class MockPlayerNotifier extends StateNotifier<PlayerState>

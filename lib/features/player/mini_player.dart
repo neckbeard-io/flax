@@ -282,6 +282,8 @@ class MiniPlayer extends ConsumerWidget {
             )
           : song.sampleRate.toString();
       parts.add('${song.bitDepth}/$rateKhz');
+    } else if (song.bitRate != null && song.bitRate! > 0) {
+      parts.add('${song.bitRate}k');
     }
     if (transcode?.isTranscoded == true) {
       final source = parts.join(' ');
