@@ -35,6 +35,9 @@ abstract class LibraryRepository {
   /// see [syncIfChanged].
   Future<void> refreshArtists({bool force = false});
 
+  /// When the full artist list was last fetched from the server.
+  Future<DateTime?> artistsFetchedAt();
+
   /// One artist and the albums `getArtist` returns alongside it.
   Future<void> refreshArtist(String artistId, {bool force = false});
   Future<void> refreshAlbumList(AlbumListQuery query, {bool force = false});

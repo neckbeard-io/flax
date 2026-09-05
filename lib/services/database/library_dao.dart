@@ -5,6 +5,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/services/database/database.dart';
 import 'package:flax/services/database/mappers.dart';
+import 'package:flax/services/database/tables/orderings.dart';
 
 /// An annotation written locally that the server has not accepted yet.
 class PendingWrite {
@@ -67,8 +68,17 @@ class LibraryDao {
     return q.watch().map((rows) => rows.map(artistFromRow).toList());
   }
 
-  Future<void> upsertArtists(List<Artist> artists, DateTime now) async {
-    if (artists.isEmpty) return;
+  Future<void> upsertArtists(
+    List<Artist> artists,
+    DateTime now, {
+    bool isFullList = false,
+  }) async {
+    if (artists.isEmpty) {
+      if (isFullList) {
+        // Empty library case handled at caller
+      }
+      return;
+    }
     await _db.batch((b) {
       for (final a in artists) {
         b.insert(
@@ -81,18 +91,28 @@ class LibraryDao {
         );
       }
     });
+    if (isFullList) {
+      await setArtistsListFetchedAt(artists.first.serverId, now);
+    }
   }
 
-  /// When the artist list was last written, or null if it never has been.
+  /// When the full artist list was last written, or null if it never has been.
   Future<DateTime?> artistsFetchedAt(String serverId) async {
-    final q = _db.select(_db.artists)
-      ..where((t) => t.serverId.equals(serverId))
-      ..orderBy([
-        (t) => OrderingTerm(expression: t.fetchedAt, mode: OrderingMode.desc),
-      ])
-      ..limit(1);
-    final row = await q.getSingleOrNull();
-    return row?.fetchedAt;
+    final val = await syncValue(serverId, SyncKeys.artistsListFetchedAt);
+    if (val != null) {
+      return DateTime.tryParse(val);
+    }
+    return null;
+  }
+
+  /// Records that the full artist list was successfully fetched for the server.
+  Future<void> setArtistsListFetchedAt(String serverId, DateTime now) async {
+    await putSyncValue(
+      serverId,
+      SyncKeys.artistsListFetchedAt,
+      now.toIso8601String(),
+      now,
+    );
   }
 
   // ── Albums ───────────────────────────────────────────────────────────────

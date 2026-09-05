@@ -81,4 +81,7 @@ abstract final class SyncKeys {
   /// When the starred set was last reconciled. Separate because annotations
   /// change without a scan and the beacon is blind to them.
   static const lastStarredSyncAt = 'lastStarredSyncAt';
+
+  /// When the full artists list was last fetched from the server.
+  static const artistsListFetchedAt = 'artistsListFetchedAt';
 }

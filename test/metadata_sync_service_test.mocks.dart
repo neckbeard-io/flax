@@ -677,9 +677,17 @@ class MockLibraryDao extends _i1.Mock implements _i9.LibraryDao {
           as _i7.Stream<List<_i2.Artist>>);
 
   @override
-  _i7.Future<void> upsertArtists(List<_i2.Artist>? artists, DateTime? now) =>
+  _i7.Future<void> upsertArtists(
+    List<_i2.Artist>? artists,
+    DateTime? now, {
+    bool? isFullList = false,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#upsertArtists, [artists, now]),
+            Invocation.method(
+              #upsertArtists,
+              [artists, now],
+              {#isFullList: isFullList},
+            ),
             returnValue: _i7.Future<void>.value(),
             returnValueForMissingStub: _i7.Future<void>.value(),
           )
@@ -693,6 +701,15 @@ class MockLibraryDao extends _i1.Mock implements _i9.LibraryDao {
             returnValueForMissingStub: _i7.Future<DateTime?>.value(),
           )
           as _i7.Future<DateTime?>);
+
+  @override
+  _i7.Future<void> setArtistsListFetchedAt(String? serverId, DateTime? now) =>
+      (super.noSuchMethod(
+            Invocation.method(#setArtistsListFetchedAt, [serverId, now]),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
 
   @override
   _i7.Stream<_i2.Album?> watchAlbum(String? serverId, String? albumId) =>
@@ -1039,6 +1056,236 @@ class MockLibraryDao extends _i1.Mock implements _i9.LibraryDao {
             returnValueForMissingStub: _i7.Future<void>.value(),
           )
           as _i7.Future<void>);
+
+  @override
+  _i7.Future<void> updateSongDownload(
+    String? serverId,
+    String? songId, {
+    String? localPath,
+    required _i8.DownloadState? state,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #updateSongDownload,
+              [serverId, songId],
+              {#localPath: localPath, #state: state},
+            ),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
+
+  @override
+  _i7.Future<void> updateSongsDownloadState(
+    String? serverId,
+    List<String>? songIds, {
+    required _i8.DownloadState? state,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #updateSongsDownloadState,
+              [serverId, songIds],
+              {#state: state},
+            ),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
+
+  @override
+  _i7.Future<void> clearAllSongDownloads(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#clearAllSongDownloads, [serverId]),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
+
+  @override
+  _i7.Future<void> migrateLocalPaths(
+    String? oldBasePath,
+    String? newBasePath,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#migrateLocalPaths, [oldBasePath, newBasePath]),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
+
+  @override
+  _i7.Stream<Set<String>> watchDownloadedSongIds(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchDownloadedSongIds, [serverId]),
+            returnValue: _i7.Stream<Set<String>>.empty(),
+            returnValueForMissingStub: _i7.Stream<Set<String>>.empty(),
+          )
+          as _i7.Stream<Set<String>>);
+
+  @override
+  _i7.Stream<List<_i2.Song>> watchActiveDownloadSongs(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchActiveDownloadSongs, [serverId]),
+            returnValue: _i7.Stream<List<_i2.Song>>.empty(),
+            returnValueForMissingStub: _i7.Stream<List<_i2.Song>>.empty(),
+          )
+          as _i7.Stream<List<_i2.Song>>);
+
+  @override
+  _i7.Stream<Set<String>> watchDownloadingSongIds(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchDownloadingSongIds, [serverId]),
+            returnValue: _i7.Stream<Set<String>>.empty(),
+            returnValueForMissingStub: _i7.Stream<Set<String>>.empty(),
+          )
+          as _i7.Stream<Set<String>>);
+
+  @override
+  _i7.Stream<Set<String>> watchDownloadedAlbumIds(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchDownloadedAlbumIds, [serverId]),
+            returnValue: _i7.Stream<Set<String>>.empty(),
+            returnValueForMissingStub: _i7.Stream<Set<String>>.empty(),
+          )
+          as _i7.Stream<Set<String>>);
+
+  @override
+  _i7.Stream<Set<String>> watchAnyDownloadedAlbumIds(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchAnyDownloadedAlbumIds, [serverId]),
+            returnValue: _i7.Stream<Set<String>>.empty(),
+            returnValueForMissingStub: _i7.Stream<Set<String>>.empty(),
+          )
+          as _i7.Stream<Set<String>>);
+
+  @override
+  _i7.Stream<Set<String>> watchDownloadedArtistIds(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchDownloadedArtistIds, [serverId]),
+            returnValue: _i7.Stream<Set<String>>.empty(),
+            returnValueForMissingStub: _i7.Stream<Set<String>>.empty(),
+          )
+          as _i7.Stream<Set<String>>);
+
+  @override
+  _i7.Stream<Set<String>> watchAnyDownloadedArtistIds(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchAnyDownloadedArtistIds, [serverId]),
+            returnValue: _i7.Stream<Set<String>>.empty(),
+            returnValueForMissingStub: _i7.Stream<Set<String>>.empty(),
+          )
+          as _i7.Stream<Set<String>>);
+
+  @override
+  _i7.Future<List<_i2.Song>> getDownloadedSongs(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getDownloadedSongs, [serverId]),
+            returnValue: _i7.Future<List<_i2.Song>>.value(<_i2.Song>[]),
+            returnValueForMissingStub: _i7.Future<List<_i2.Song>>.value(
+              <_i2.Song>[],
+            ),
+          )
+          as _i7.Future<List<_i2.Song>>);
+
+  @override
+  _i7.Stream<List<_i2.Song>> watchDownloadedSongs(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchDownloadedSongs, [serverId]),
+            returnValue: _i7.Stream<List<_i2.Song>>.empty(),
+            returnValueForMissingStub: _i7.Stream<List<_i2.Song>>.empty(),
+          )
+          as _i7.Stream<List<_i2.Song>>);
+
+  @override
+  _i7.Stream<List<_i2.Album>> watchDownloadedAlbums(
+    String? serverId, [
+    _i10.AlbumListQuery? query,
+  ]) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchDownloadedAlbums, [serverId, query]),
+            returnValue: _i7.Stream<List<_i2.Album>>.empty(),
+            returnValueForMissingStub: _i7.Stream<List<_i2.Album>>.empty(),
+          )
+          as _i7.Stream<List<_i2.Album>>);
+
+  @override
+  _i7.Stream<List<_i2.Artist>> watchDownloadedArtists(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchDownloadedArtists, [serverId]),
+            returnValue: _i7.Stream<List<_i2.Artist>>.empty(),
+            returnValueForMissingStub: _i7.Stream<List<_i2.Artist>>.empty(),
+          )
+          as _i7.Stream<List<_i2.Artist>>);
+
+  @override
+  _i7.Stream<List<_i2.Album>> watchDownloadedArtistAlbums(
+    String? serverId,
+    String? artistId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchDownloadedArtistAlbums, [
+              serverId,
+              artistId,
+            ]),
+            returnValue: _i7.Stream<List<_i2.Album>>.empty(),
+            returnValueForMissingStub: _i7.Stream<List<_i2.Album>>.empty(),
+          )
+          as _i7.Stream<List<_i2.Album>>);
+
+  @override
+  _i7.Stream<List<_i2.Song>> watchDownloadedAlbumSongs(
+    String? serverId,
+    String? albumId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchDownloadedAlbumSongs, [serverId, albumId]),
+            returnValue: _i7.Stream<List<_i2.Song>>.empty(),
+            returnValueForMissingStub: _i7.Stream<List<_i2.Song>>.empty(),
+          )
+          as _i7.Stream<List<_i2.Song>>);
+
+  @override
+  _i7.Stream<List<_i2.Song>> searchDownloadedSongs(
+    String? serverId,
+    String? term,
+    int? limit,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#searchDownloadedSongs, [serverId, term, limit]),
+            returnValue: _i7.Stream<List<_i2.Song>>.empty(),
+            returnValueForMissingStub: _i7.Stream<List<_i2.Song>>.empty(),
+          )
+          as _i7.Stream<List<_i2.Song>>);
+
+  @override
+  _i7.Stream<List<_i2.Album>> searchDownloadedAlbums(
+    String? serverId,
+    String? term,
+    int? limit,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#searchDownloadedAlbums, [serverId, term, limit]),
+            returnValue: _i7.Stream<List<_i2.Album>>.empty(),
+            returnValueForMissingStub: _i7.Stream<List<_i2.Album>>.empty(),
+          )
+          as _i7.Stream<List<_i2.Album>>);
+
+  @override
+  _i7.Stream<List<_i2.Artist>> searchDownloadedArtists(
+    String? serverId,
+    String? term,
+    int? limit,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#searchDownloadedArtists, [
+              serverId,
+              term,
+              limit,
+            ]),
+            returnValue: _i7.Stream<List<_i2.Artist>>.empty(),
+            returnValueForMissingStub: _i7.Stream<List<_i2.Artist>>.empty(),
+          )
+          as _i7.Stream<List<_i2.Artist>>);
 
   @override
   _i7.Future<void> deleteServer(String? serverId) =>

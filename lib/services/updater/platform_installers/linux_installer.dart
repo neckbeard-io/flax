@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:path/path.dart' as p;
 
 class LinuxInstaller {
   /// Detects whether host is Debian/Ubuntu based (.deb) or Fedora/RHEL/openSUSE (.rpm).
@@ -57,31 +56,40 @@ class LinuxInstaller {
             '--strip-components=1',
           ]);
           if (tarRes.exitCode == 0) {
-            final scriptFile = File(p.join(stagingDir.path, 'update.sh'));
             final currentPid = pid;
+            final scriptPath = '/tmp/flax_linux_update_$currentPid.sh';
+            final scriptFile = File(scriptPath);
             final targetDirPath = destDir.path;
 
             await scriptFile.writeAsString('''#!/bin/bash
+exec > /tmp/flax_linux_update.log 2>&1
+set -ex
+
 PID=$currentPid
 STAGING_DIR="${stagingDir.path}"
 TARGET_DIR="$targetDirPath"
+SCRIPT_PATH="$scriptPath"
 
 while kill -0 "\$PID" 2>/dev/null; do
   sleep 0.1
 done
-sleep 0.2
+sleep 0.3
 
 rm -rf "\$TARGET_DIR"/*
 cp -r "\$STAGING_DIR"/* "\$TARGET_DIR"/
-rm -rf "\$STAGING_DIR"
+chmod +x "\$TARGET_DIR/flax"
 
+# Launch updated version BEFORE cleanup
 "\$TARGET_DIR/flax" &
+
+rm -rf "\$STAGING_DIR" 2>/dev/null || true
+rm -f "\$SCRIPT_PATH" 2>/dev/null || true
 ''');
             await Process.run('chmod', ['+x', scriptFile.path]);
             await Process.start('/bin/bash', [
               scriptFile.path,
             ], mode: ProcessStartMode.detached);
-            await Future.delayed(const Duration(milliseconds: 100));
+            await Future.delayed(const Duration(milliseconds: 150));
             exit(0);
           }
         }

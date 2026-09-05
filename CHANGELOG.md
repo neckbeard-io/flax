@@ -41,8 +41,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Eliminated "getting your categories" flash during seekbar interaction by preserving active playback state.
 - Integrated Android audio session focus management so media streams output properly to vehicle audio sinks.
 - Audio caching and album downloads now saturate bandwidth with connection pooling and raw endpoints.
-- Active download progress accurately highlights in-flight downloading tracks with speed metrics and sorting above queued items.
 - macOS self-updater no longer fails with "Device not configured" when mounting the DMG; removed App Sandbox from release builds and added DiskImageMounter fallback.
+- macOS and Linux in-place self-updaters cleanly swap application bundles and relaunch without script truncation or permission issues.
+- Artists screen now populates full library artist list rather than stalling when single artists were previously fetched or favorited.
 
 ## v0.5.6 — 2026-08-29
 

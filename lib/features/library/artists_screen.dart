@@ -30,10 +30,10 @@ final artistsProvider = StreamProvider<List<Artist>>((ref) async* {
   }
 
   final cached = await repo.watchArtists().first;
-  if (cached.isEmpty) {
-    // Nothing to paint yet, so stay in the loading state until the first fetch
-    // lands. Emitting an empty list here would render a cold cache as an empty
-    // library, which looks like a broken server.
+  final fullListFetched = await repo.artistsFetchedAt();
+  if (cached.isEmpty || fullListFetched == null) {
+    // Nothing or only individual cached artists present yet, so stay in the loading
+    // state until the full artist list fetch lands.
     await repo.refreshArtists();
   } else {
     // Paint immediately and revalidate behind it. The refresh is deduplicated

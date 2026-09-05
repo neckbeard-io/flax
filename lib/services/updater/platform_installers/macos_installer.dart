@@ -132,9 +132,8 @@ class MacOSInstaller {
 
       final stagedAppPath = p.join(stagingDir.path, p.basename(appSource.path));
 
-      // Copy new .app bundle to staging directory
-      final cpStagedRes = await Process.run('cp', [
-        '-R',
+      // Copy new .app bundle to staging directory using ditto
+      final cpStagedRes = await Process.run('ditto', [
         appSource.path,
         stagedAppPath,
       ]);
@@ -148,42 +147,50 @@ class MacOSInstaller {
       await Process.run('hdiutil', ['detach', mountPoint, '-force', '-quiet']);
       mountedVolume = null;
 
-      // Strip quarantine on staged app
-      await Process.run('xattr', [
-        '-dr',
-        'com.apple.quarantine',
-        stagedAppPath,
-      ]);
+      // Strip quarantine and ensure standard execute permissions on staged app
+      await Process.run('xattr', ['-cr', stagedAppPath]);
+      await Process.run('chmod', ['-R', '755', stagedAppPath]);
 
-      // Create detached update script that waits for current process to exit,
-      // replaces the app bundle, and launches the updated version.
-      final scriptFile = File(p.join(stagingDir.path, 'update.sh'));
+      // Create detached update script in /tmp so it outlives the staging directory.
       final currentPid = pid;
+      final scriptPath = '/tmp/flax_macos_update_$currentPid.sh';
+      final scriptFile = File(scriptPath);
 
       await scriptFile.writeAsString('''#!/bin/bash
+exec > /tmp/flax_macos_update.log 2>&1
+set -ex
+
 PID=$currentPid
 STAGED_APP="$stagedAppPath"
 TARGET_APP="$targetAppPath"
 STAGING_DIR="${stagingDir.path}"
+SCRIPT_PATH="$scriptPath"
 
-# 1. Wait for Flax process to terminate completely
+# 1. Wait for running Flax process to terminate completely
 while kill -0 "\$PID" 2>/dev/null; do
   sleep 0.1
 done
 
-# Small buffer for OS file handles to release
-sleep 0.2
+# Buffer for OS file handles to release
+sleep 0.3
 
-# 2. Atomically swap in the new app bundle
-rm -rf "\$TARGET_APP"
-cp -R "\$STAGED_APP" "\$TARGET_APP"
-xattr -dr com.apple.quarantine "\$TARGET_APP" 2>/dev/null || true
+# 2. Safely swap in the new app bundle
+rm -rf "\$TARGET_APP" 2>/dev/null || true
+if [ -d "\$TARGET_APP" ]; then
+  mv "\$TARGET_APP" "\$STAGING_DIR/old_app" 2>/dev/null || true
+  rm -rf "\$TARGET_APP" 2>/dev/null || true
+fi
 
-# 3. Clean up staging folder
-rm -rf "\$STAGING_DIR"
+ditto "\$STAGED_APP" "\$TARGET_APP"
+chmod -R 755 "\$TARGET_APP"
+xattr -cr "\$TARGET_APP" 2>/dev/null || true
 
-# 4. Relaunch updated Flax
+# 3. Relaunch updated Flax BEFORE cleaning up
 open -n "\$TARGET_APP"
+
+# 4. Clean up staging folder and update script
+rm -rf "\$STAGING_DIR" 2>/dev/null || true
+rm -f "\$SCRIPT_PATH" 2>/dev/null || true
 ''');
 
       await Process.run('chmod', ['+x', scriptFile.path]);
@@ -194,7 +201,7 @@ open -n "\$TARGET_APP"
       ], mode: ProcessStartMode.detached);
 
       // Brief delay before exit to ensure detached script has spawned
-      await Future.delayed(const Duration(milliseconds: 100));
+      await Future.delayed(const Duration(milliseconds: 150));
       exit(0);
     } catch (e, st) {
       AppLogger.e(

@@ -107,9 +107,17 @@ class LibraryRepositoryImpl implements LibraryRepository {
         if (!await _shouldFetch(SyncPolicy.stableList, fetchedAt)) return;
       }
       final artists = await _backend.getArtists();
-      await _dao.upsertArtists(artists, _clock());
+      final now = _clock();
+      if (artists.isNotEmpty) {
+        await _dao.upsertArtists(artists, now, isFullList: true);
+      } else {
+        await _dao.setArtistsListFetchedAt(_serverId, now);
+      }
     });
   }
+
+  @override
+  Future<DateTime?> artistsFetchedAt() => _dao.artistsFetchedAt(_serverId);
 
   @override
   Future<void> refreshArtist(String artistId, {bool force = false}) {
