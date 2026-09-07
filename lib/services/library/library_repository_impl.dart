@@ -1,3 +1,4 @@
+import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
@@ -102,16 +103,20 @@ class LibraryRepositoryImpl implements LibraryRepository {
   @override
   Future<void> refreshArtists({bool force = false}) {
     return _once('artists', () async {
-      if (!force) {
-        final fetchedAt = await _dao.artistsFetchedAt(_serverId);
-        if (!await _shouldFetch(SyncPolicy.stableList, fetchedAt)) return;
-      }
-      final artists = await _backend.getArtists();
-      final now = _clock();
-      if (artists.isNotEmpty) {
-        await _dao.upsertArtists(artists, now, isFullList: true);
-      } else {
-        await _dao.setArtistsListFetchedAt(_serverId, now);
+      try {
+        if (!force) {
+          final fetchedAt = await _dao.artistsFetchedAt(_serverId);
+          if (!await _shouldFetch(SyncPolicy.stableList, fetchedAt)) return;
+        }
+        final artists = await _backend.getArtists();
+        final now = _clock();
+        if (artists.isNotEmpty) {
+          await _dao.upsertArtists(artists, now, isFullList: true);
+        } else {
+          await _dao.setArtistsListFetchedAt(_serverId, now);
+        }
+      } catch (e) {
+        AppLogger.w('Library', 'refreshArtists failed: $e');
       }
     });
   }
@@ -122,17 +127,24 @@ class LibraryRepositoryImpl implements LibraryRepository {
   @override
   Future<void> refreshArtist(String artistId, {bool force = false}) {
     return _once('artist:$artistId', () async {
-      if (!force && !await _artistAlbumsIncomplete(artistId)) {
-        final fetchedAt = await _dao.artistAlbumsFetchedAt(_serverId, artistId);
-        if (!await _shouldFetch(SyncPolicy.artistDetail, fetchedAt)) return;
+      try {
+        if (!force && !await _artistAlbumsIncomplete(artistId)) {
+          final fetchedAt = await _dao.artistAlbumsFetchedAt(
+            _serverId,
+            artistId,
+          );
+          if (!await _shouldFetch(SyncPolicy.artistDetail, fetchedAt)) return;
+        }
+        // One `getArtist` gives both, where this used to be a getArtist plus a
+        // name search whose results were filtered by matching artist name.
+        final artist = await _backend.getArtist(artistId);
+        final albums = await _backend.getArtistAlbums(artistId);
+        final now = _clock();
+        await _dao.upsertArtists([artist], now);
+        await _dao.upsertAlbums(albums, now);
+      } catch (e) {
+        AppLogger.w('Library', 'refreshArtist($artistId) failed: $e');
       }
-      // One `getArtist` gives both, where this used to be a getArtist plus a
-      // name search whose results were filtered by matching artist name.
-      final artist = await _backend.getArtist(artistId);
-      final albums = await _backend.getArtistAlbums(artistId);
-      final now = _clock();
-      await _dao.upsertArtists([artist], now);
-      await _dao.upsertAlbums(albums, now);
     });
   }
 
@@ -152,32 +164,36 @@ class LibraryRepositoryImpl implements LibraryRepository {
   @override
   Future<void> refreshAlbumList(AlbumListQuery query, {bool force = false}) {
     return _once('list:${query.type.name}:${query.filterKey}', () async {
-      if (!force && query.isCacheable) {
-        final fetchedAt = await _dao.albumListFetchedAt(_serverId, query);
-        if (!await _shouldFetch(SyncPolicy.forList(query.type), fetchedAt)) {
-          return;
+      try {
+        if (!force && query.isCacheable) {
+          final fetchedAt = await _dao.albumListFetchedAt(_serverId, query);
+          if (!await _shouldFetch(SyncPolicy.forList(query.type), fetchedAt)) {
+            return;
+          }
         }
-      }
 
-      final albums = await _backend.getAlbumList(
-        query.type,
-        count: 500,
-        genre: query.genre,
-        fromYear: query.fromYear,
-        toYear: query.toYear,
-      );
-
-      final now = _clock();
-      await _dao.upsertAlbums(albums, now);
-      // Random is never persisted as an ordering — a cached "random" shelf never
-      // reshuffles. Its entities are still worth keeping.
-      if (query.isCacheable) {
-        await _dao.replaceAlbumList(
-          _serverId,
-          query,
-          albums.map((a) => a.id).toList(),
-          now,
+        final albums = await _backend.getAlbumList(
+          query.type,
+          count: 500,
+          genre: query.genre,
+          fromYear: query.fromYear,
+          toYear: query.toYear,
         );
+
+        final now = _clock();
+        await _dao.upsertAlbums(albums, now);
+        // Random is never persisted as an ordering — a cached "random" shelf never
+        // reshuffles. Its entities are still worth keeping.
+        if (query.isCacheable) {
+          await _dao.replaceAlbumList(
+            _serverId,
+            query,
+            albums.map((a) => a.id).toList(),
+            now,
+          );
+        }
+      } catch (e) {
+        AppLogger.w('Library', 'refreshAlbumList(${query.type}) failed: $e');
       }
     });
   }
@@ -185,15 +201,19 @@ class LibraryRepositoryImpl implements LibraryRepository {
   @override
   Future<void> refreshAlbum(String albumId, {bool force = false}) {
     return _once('album:$albumId', () async {
-      if (!force && !await _albumSongsIncomplete(albumId)) {
-        final fetchedAt = await _dao.albumDetailFetchedAt(_serverId, albumId);
-        if (!await _shouldFetch(SyncPolicy.albumDetail, fetchedAt)) return;
+      try {
+        if (!force && !await _albumSongsIncomplete(albumId)) {
+          final fetchedAt = await _dao.albumDetailFetchedAt(_serverId, albumId);
+          if (!await _shouldFetch(SyncPolicy.albumDetail, fetchedAt)) return;
+        }
+        final album = await _backend.getAlbum(albumId);
+        final songs = await _backend.getAlbumSongs(albumId);
+        final now = _clock();
+        await _dao.upsertAlbums([album], now);
+        await _dao.upsertSongs(songs, now);
+      } catch (e) {
+        AppLogger.w('Library', 'refreshAlbum($albumId) failed: $e');
       }
-      final album = await _backend.getAlbum(albumId);
-      final songs = await _backend.getAlbumSongs(albumId);
-      final now = _clock();
-      await _dao.upsertAlbums([album], now);
-      await _dao.upsertSongs(songs, now);
     });
   }
 
@@ -218,16 +238,20 @@ class LibraryRepositoryImpl implements LibraryRepository {
     int songCount = 20,
   }) {
     return _once('search:$query', () async {
-      final result = await _backend.search(
-        query,
-        artistCount: artistCount,
-        albumCount: albumCount,
-        songCount: songCount,
-      );
-      final now = _clock();
-      await _dao.upsertArtists(result.artists, now);
-      await _dao.upsertAlbums(result.albums, now);
-      await _dao.upsertSongs(result.songs, now);
+      try {
+        final result = await _backend.search(
+          query,
+          artistCount: artistCount,
+          albumCount: albumCount,
+          songCount: songCount,
+        );
+        final now = _clock();
+        await _dao.upsertArtists(result.artists, now);
+        await _dao.upsertAlbums(result.albums, now);
+        await _dao.upsertSongs(result.songs, now);
+      } catch (e) {
+        AppLogger.w('Library', 'cacheSearch("$query") failed: $e');
+      }
     });
   }
 

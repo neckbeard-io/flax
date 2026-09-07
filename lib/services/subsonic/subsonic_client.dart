@@ -109,7 +109,11 @@ class SubsonicClient implements MusicBackend {
   Future<String?> tryPing({Duration? timeout}) async {
     try {
       final options = timeout != null
-          ? Options(sendTimeout: timeout, receiveTimeout: timeout)
+          ? Options(
+              connectTimeout: timeout,
+              sendTimeout: timeout,
+              receiveTimeout: timeout,
+            )
           : null;
       await _get('ping', null, options);
       return null;

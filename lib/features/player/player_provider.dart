@@ -167,6 +167,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       super(const PlayerState()) {
     _initProbe();
     _initStreams();
+    _initAudioSessionListeners();
     _initMediaKeys();
     _initEqListener();
     _initPlaybackSettings();
@@ -283,6 +284,61 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         }
       }),
     );
+  }
+
+  void _initAudioSessionListeners() {
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+    _initAudioSessionListenersAsync();
+  }
+
+  Future<void> _initAudioSessionListenersAsync() async {
+    try {
+      final session = await AudioSession.instance;
+      _subs.add(
+        session.becomingNoisyEventStream.listen((_) {
+          AppLogger.i(
+            'Player',
+            'Audio becoming noisy (car turned off, headphones/AA disconnected), pausing playback',
+          );
+          if (state.isPlaying) {
+            pause();
+          }
+        }),
+      );
+      _subs.add(
+        session.interruptionEventStream.listen((event) {
+          AppLogger.i(
+            'Player',
+            'Audio interruption: type=${event.type}, begin=${event.begin}',
+          );
+          if (event.begin) {
+            switch (event.type) {
+              case AudioInterruptionType.duck:
+                break;
+              case AudioInterruptionType.pause:
+              case AudioInterruptionType.unknown:
+                if (state.isPlaying) {
+                  pause();
+                }
+                break;
+            }
+          }
+        }),
+      );
+      _subs.add(
+        session.devicesChangedEventStream.listen((event) {
+          AppLogger.i(
+            'Player',
+            'Audio devices changed: removed=${event.devicesRemoved.map((d) => d.name).toList()}',
+          );
+          if (event.devicesRemoved.isNotEmpty && state.isPlaying) {
+            pause();
+          }
+        }),
+      );
+    } catch (e) {
+      AppLogger.w('Player', 'Failed to initialize AudioSession listeners: $e');
+    }
   }
 
   void _onTrackCompleted() {

@@ -20,8 +20,14 @@ final offlineManualOverrideProvider =
     });
 
 class OfflineManualNotifier extends StateNotifier<bool> {
-  OfflineManualNotifier() : super(false) {
-    _load();
+  OfflineManualNotifier({bool? initialValue}) : super(initialValue ?? false) {
+    if (initialValue == null) {
+      _load();
+    }
+  }
+
+  static bool loadFromPrefs(SharedPreferences prefs) {
+    return prefs.getBool(_kOfflineManualPrefKey) ?? false;
   }
 
   Future<void> _load() async {
@@ -54,8 +60,15 @@ final offlineOnCellularSettingProvider =
     });
 
 class OfflineOnCellularNotifier extends StateNotifier<bool> {
-  OfflineOnCellularNotifier() : super(false) {
-    _load();
+  OfflineOnCellularNotifier({bool? initialValue})
+    : super(initialValue ?? false) {
+    if (initialValue == null) {
+      _load();
+    }
+  }
+
+  static bool loadFromPrefs(SharedPreferences prefs) {
+    return prefs.getBool(_kOfflineOnCellularPrefKey) ?? false;
   }
 
   Future<void> _load() async {
@@ -88,8 +101,15 @@ final offlineOnAndroidAutoSettingProvider =
     });
 
 class OfflineOnAndroidAutoNotifier extends StateNotifier<bool> {
-  OfflineOnAndroidAutoNotifier() : super(false) {
-    _load();
+  OfflineOnAndroidAutoNotifier({bool? initialValue})
+    : super(initialValue ?? false) {
+    if (initialValue == null) {
+      _load();
+    }
+  }
+
+  static bool loadFromPrefs(SharedPreferences prefs) {
+    return prefs.getBool(_kOfflineOnAndroidAutoPrefKey) ?? false;
   }
 
   Future<void> _load() async {

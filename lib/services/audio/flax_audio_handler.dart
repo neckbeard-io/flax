@@ -1533,6 +1533,12 @@ class FlaxAudioHandler extends BaseAudioHandler {
   Future<void> stop() async => _player.pause();
 
   @override
+  Future<void> onTaskRemoved() async {
+    await pause();
+    await super.onTaskRemoved();
+  }
+
+  @override
   Future<void> skipToNext() async => _player.next();
 
   @override

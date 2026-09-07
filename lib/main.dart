@@ -9,6 +9,7 @@ import 'package:flax/app/app.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/locale_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/audio/audio_handler_provider.dart';
@@ -30,19 +31,30 @@ Future<void> main() async {
   ArtCache.configureDecodedImageCache();
   await AudioCacheService.initialize();
 
-  // Load last visited route, servers, and locale for launch persistence across all platforms.
+  // Load last visited route, servers, locale, and offline preferences for launch persistence across all platforms.
   String? savedRoute;
   List<Server> initialServers = [];
   Locale? initialLocale;
+  bool initialOfflineManual = false;
+  bool initialOfflineOnCellular = false;
+  bool initialOfflineOnAndroidAuto = false;
   try {
     final prefs = await SharedPreferences.getInstance();
     savedRoute = prefs.getString(lastRouteStorageKey);
     initialServers = ServerListNotifier.loadServersFromPrefs(prefs);
     initialLocale = LocaleNotifier.loadLocaleFromPrefs(prefs);
+    initialOfflineManual = OfflineManualNotifier.loadFromPrefs(prefs);
+    initialOfflineOnCellular = OfflineOnCellularNotifier.loadFromPrefs(prefs);
+    initialOfflineOnAndroidAuto = OfflineOnAndroidAutoNotifier.loadFromPrefs(
+      prefs,
+    );
   } catch (_) {
     savedRoute = null;
     initialServers = [];
     initialLocale = null;
+    initialOfflineManual = false;
+    initialOfflineOnCellular = false;
+    initialOfflineOnAndroidAuto = false;
   }
 
   if (WindowStateService.isSupported) {
@@ -84,6 +96,18 @@ Future<void> main() async {
         ),
       if (initialLocale != null)
         localeProvider.overrideWith((ref) => LocaleNotifier(initialLocale)),
+      offlineManualOverrideProvider.overrideWith(
+        (ref) => OfflineManualNotifier(initialValue: initialOfflineManual),
+      ),
+      offlineOnCellularSettingProvider.overrideWith(
+        (ref) =>
+            OfflineOnCellularNotifier(initialValue: initialOfflineOnCellular),
+      ),
+      offlineOnAndroidAutoSettingProvider.overrideWith(
+        (ref) => OfflineOnAndroidAutoNotifier(
+          initialValue: initialOfflineOnAndroidAuto,
+        ),
+      ),
     ],
   );
 

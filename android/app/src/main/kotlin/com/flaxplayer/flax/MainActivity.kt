@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -50,6 +51,19 @@ class MainActivity : AudioServiceActivity() {
                 val filePath = call.argument<String>("filePath")
                 if (filePath != null) {
                     try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            if (!packageManager.canRequestPackageInstalls()) {
+                                val permissionIntent = Intent(
+                                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                    Uri.parse("package:$packageName")
+                                ).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                startActivity(permissionIntent)
+                                result.success(false)
+                                return@setMethodCallHandler
+                            }
+                        }
                         val file = File(filePath)
                         val uri: Uri = FileProvider.getUriForFile(
                             this,
