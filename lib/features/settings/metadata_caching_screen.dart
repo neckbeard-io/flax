@@ -388,6 +388,7 @@ class MetadataCachingScreen extends ConsumerWidget {
                         requiresCharging:
                             newConfig.backgroundSyncRequiresCharging,
                         wifiOnly: newConfig.backgroundSyncWifiOnly,
+                        fullMetadata: newConfig.backgroundSyncFullMetadata,
                       );
                 } else {
                   ref.read(backgroundSyncServiceProvider).cancelPeriodicSync();
@@ -395,6 +396,28 @@ class MetadataCachingScreen extends ConsumerWidget {
               },
             ),
             if (config.backgroundSyncEnabled) ...[
+              SwitchListTile(
+                title: const Text('Full Library Metadata Sync'),
+                subtitle: const Text(
+                  'Deep scan all albums, artists, and missing artwork rather than only recent additions and favorites',
+                ),
+                value: config.backgroundSyncFullMetadata,
+                onChanged: (v) {
+                  final newConfig = config.copyWith(
+                    backgroundSyncFullMetadata: v,
+                  );
+                  _updateConfig(ref, server, newConfig);
+                  ref
+                      .read(backgroundSyncServiceProvider)
+                      .schedulePeriodicSync(
+                        intervalHours: newConfig.backgroundSyncIntervalHours,
+                        requiresCharging:
+                            newConfig.backgroundSyncRequiresCharging,
+                        wifiOnly: newConfig.backgroundSyncWifiOnly,
+                        fullMetadata: newConfig.backgroundSyncFullMetadata,
+                      );
+                },
+              ),
               SwitchListTile(
                 title: const Text('Require Charging'),
                 subtitle: const Text(
@@ -413,6 +436,7 @@ class MetadataCachingScreen extends ConsumerWidget {
                         requiresCharging:
                             newConfig.backgroundSyncRequiresCharging,
                         wifiOnly: newConfig.backgroundSyncWifiOnly,
+                        fullMetadata: newConfig.backgroundSyncFullMetadata,
                       );
                 },
               ),
@@ -432,6 +456,7 @@ class MetadataCachingScreen extends ConsumerWidget {
                         requiresCharging:
                             newConfig.backgroundSyncRequiresCharging,
                         wifiOnly: newConfig.backgroundSyncWifiOnly,
+                        fullMetadata: newConfig.backgroundSyncFullMetadata,
                       );
                 },
               ),

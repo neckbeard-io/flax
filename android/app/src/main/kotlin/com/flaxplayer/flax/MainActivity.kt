@@ -158,7 +158,8 @@ class MainActivity : AudioServiceActivity() {
                     val intervalHours = (call.argument<Number>("intervalHours"))?.toLong() ?: 24L
                     val requiresCharging = call.argument<Boolean>("requiresCharging") ?: true
                     val wifiOnly = call.argument<Boolean>("wifiOnly") ?: true
-                    FlaxSyncManager.schedulePeriodicSync(this, intervalHours, requiresCharging, wifiOnly)
+                    val fullMetadata = call.argument<Boolean>("fullMetadata") ?: false
+                    FlaxSyncManager.schedulePeriodicSync(this, intervalHours, requiresCharging, wifiOnly, fullMetadata)
                     result.success(true)
                 }
                 "cancelPeriodicSync" -> {

@@ -352,21 +352,60 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
   }
 
   Widget _buildDownloadProgress(ThemeData theme, AutoEqState state) {
+    final progress = state.downloadProgress;
+    final received = state.bytesReceived;
+    final total = state.bytesTotal;
+
+    String? progressDetail;
+    if (received != null && total != null && total > 0) {
+      final receivedMb = (received / (1024 * 1024)).toStringAsFixed(1);
+      final totalMb = (total / (1024 * 1024)).toStringAsFixed(1);
+      final percent = ((progress ?? 0) * 100).toInt();
+      progressDetail = '$receivedMb MB / $totalMb MB ($percent%)';
+    }
+
     return Expanded(
       child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 24),
-              Text(
-                state.downloadStatus ?? 'Downloading...',
-                style: theme.textTheme.bodyLarge,
-                textAlign: TextAlign.center,
-              ),
-            ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.headphones,
+                  size: 48,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(height: 24),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 8,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  state.downloadStatus ?? 'Downloading AutoEQ database...',
+                  style: theme.textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                if (progressDetail != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    progressDetail,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontFamily: 'monospace',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),

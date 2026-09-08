@@ -19,7 +19,8 @@ object FlaxSyncManager {
         context: Context,
         intervalHours: Long = 24,
         requiresCharging: Boolean = true,
-        wifiOnly: Boolean = true
+        wifiOnly: Boolean = true,
+        fullMetadata: Boolean = false
     ) {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)

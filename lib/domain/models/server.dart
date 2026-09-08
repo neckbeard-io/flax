@@ -68,6 +68,7 @@ class MetadataCacheConfig {
   final bool backgroundSyncRequiresCharging;
   final bool backgroundSyncWifiOnly;
   final int backgroundSyncIntervalHours;
+  final bool backgroundSyncFullMetadata;
 
   const MetadataCacheConfig({
     this.albumArtQuality = MetadataQuality.medium,
@@ -79,6 +80,7 @@ class MetadataCacheConfig {
     this.backgroundSyncRequiresCharging = true,
     this.backgroundSyncWifiOnly = true,
     this.backgroundSyncIntervalHours = 24,
+    this.backgroundSyncFullMetadata = false,
   });
 
   MetadataCacheConfig copyWith({
@@ -92,6 +94,7 @@ class MetadataCacheConfig {
     bool? backgroundSyncRequiresCharging,
     bool? backgroundSyncWifiOnly,
     int? backgroundSyncIntervalHours,
+    bool? backgroundSyncFullMetadata,
   }) {
     return MetadataCacheConfig(
       albumArtQuality: albumArtQuality ?? this.albumArtQuality,
@@ -109,6 +112,8 @@ class MetadataCacheConfig {
           backgroundSyncWifiOnly ?? this.backgroundSyncWifiOnly,
       backgroundSyncIntervalHours:
           backgroundSyncIntervalHours ?? this.backgroundSyncIntervalHours,
+      backgroundSyncFullMetadata:
+          backgroundSyncFullMetadata ?? this.backgroundSyncFullMetadata,
     );
   }
 
@@ -122,6 +127,7 @@ class MetadataCacheConfig {
     'backgroundSyncRequiresCharging': backgroundSyncRequiresCharging,
     'backgroundSyncWifiOnly': backgroundSyncWifiOnly,
     'backgroundSyncIntervalHours': backgroundSyncIntervalHours,
+    'backgroundSyncFullMetadata': backgroundSyncFullMetadata,
   };
 
   factory MetadataCacheConfig.fromJson(Map<String, dynamic> json) {
@@ -143,6 +149,8 @@ class MetadataCacheConfig {
       backgroundSyncWifiOnly: json['backgroundSyncWifiOnly'] as bool? ?? true,
       backgroundSyncIntervalHours:
           (json['backgroundSyncIntervalHours'] as num?)?.toInt() ?? 24,
+      backgroundSyncFullMetadata:
+          json['backgroundSyncFullMetadata'] as bool? ?? false,
     );
   }
 }

@@ -23,6 +23,7 @@ class BackgroundSyncService {
     int intervalHours = 24,
     bool requiresCharging = true,
     bool wifiOnly = true,
+    bool fullMetadata = false,
   }) async {
     if (!isSupported) return false;
     try {
@@ -31,6 +32,7 @@ class BackgroundSyncService {
             'intervalHours': intervalHours,
             'requiresCharging': requiresCharging,
             'wifiOnly': wifiOnly,
+            'fullMetadata': fullMetadata,
           });
       return success ?? false;
     } catch (e) {

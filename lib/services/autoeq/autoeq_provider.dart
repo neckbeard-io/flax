@@ -20,6 +20,9 @@ class AutoEqState {
   final bool dbAvailable;
   final bool downloading;
   final String? downloadStatus;
+  final double? downloadProgress;
+  final int? bytesReceived;
+  final int? bytesTotal;
   final AutoEqProfile? activeProfile;
   final List<AutoEqProfile> searchResults;
   final String searchQuery;
@@ -33,6 +36,9 @@ class AutoEqState {
     this.dbAvailable = false,
     this.downloading = false,
     this.downloadStatus,
+    this.downloadProgress,
+    this.bytesReceived,
+    this.bytesTotal,
     this.activeProfile,
     this.searchResults = const [],
     this.searchQuery = '',
@@ -47,6 +53,10 @@ class AutoEqState {
     bool? dbAvailable,
     bool? downloading,
     String? downloadStatus,
+    double? downloadProgress,
+    int? bytesReceived,
+    int? bytesTotal,
+    bool clearProgress = false,
     AutoEqProfile? activeProfile,
     bool clearActiveProfile = false,
     List<AutoEqProfile>? searchResults,
@@ -62,6 +72,13 @@ class AutoEqState {
       dbAvailable: dbAvailable ?? this.dbAvailable,
       downloading: downloading ?? this.downloading,
       downloadStatus: downloadStatus ?? this.downloadStatus,
+      downloadProgress: clearProgress
+          ? null
+          : (downloadProgress ?? this.downloadProgress),
+      bytesReceived: clearProgress
+          ? null
+          : (bytesReceived ?? this.bytesReceived),
+      bytesTotal: clearProgress ? null : (bytesTotal ?? this.bytesTotal),
       activeProfile: clearActiveProfile
           ? null
           : (activeProfile ?? this.activeProfile),
@@ -179,12 +196,25 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
             totalKnown = true;
           }
           task?.progress(bytes: received);
+          if (mounted) {
+            final progress = total > 0
+                ? (received / total).clamp(0.0, 1.0)
+                : null;
+            state = state.copyWith(
+              downloadProgress: progress,
+              bytesReceived: received,
+              bytesTotal: total > 0 ? total : null,
+            );
+          }
         },
       )) {
         transferring = false;
         task?.note(status);
         if (mounted) {
-          state = state.copyWith(downloadStatus: status);
+          state = state.copyWith(
+            downloadStatus: status,
+            clearProgress: status != 'Downloading database...',
+          );
         }
       }
       task?.complete();
@@ -196,6 +226,7 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
           updateAvailable: false,
           dbDate: meta?['commitTime'] as String?,
           downloadStatus: 'Database ready (${_db.profileCount} profiles)',
+          clearProgress: true,
         );
 
         // Populate the list here rather than leaving it to the UI. The screen
@@ -212,9 +243,6 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
         }
       }
     } catch (e) {
-      // A cancel arrives here as a DioException. The registry already moved the
-      // task to canceled, so reporting it again as a failure would be wrong —
-      // and so would showing the user an error for something they asked for.
       final canceled = cancelToken.isCancelled;
       if (!canceled) task?.fail(e);
       if (mounted) {
@@ -224,6 +252,7 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
           error: canceled
               ? null
               : e.toString().replaceFirst(RegExp(r'^Exception:\s*'), ''),
+          clearProgress: true,
         );
       }
     }

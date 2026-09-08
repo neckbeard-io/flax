@@ -102,4 +102,44 @@ void main() {
     },
     skip: cachePath == null,
   );
+
+  testWidgets('renders determinate progress bar and metrics when downloading', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          autoEqProvider.overrideWith(
+            (ref) => _MockAutoEqNotifier(
+              const AutoEqState(
+                downloading: true,
+                downloadStatus: 'Downloading database...',
+                downloadProgress: 0.45,
+                bytesReceived: 4718592, // 4.5 MB
+                bytesTotal: 10485760, // 10.0 MB
+              ),
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: AutoEqScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(find.text('Downloading database...'), findsOneWidget);
+    expect(find.text('4.5 MB / 10.0 MB (45%)'), findsOneWidget);
+  });
+}
+
+class _MockAutoEqNotifier extends StateNotifier<AutoEqState>
+    implements AutoEqNotifier {
+  _MockAutoEqNotifier(super.state);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

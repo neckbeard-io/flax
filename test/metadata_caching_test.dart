@@ -46,6 +46,7 @@ void main() {
       expect(config.backgroundSyncRequiresCharging, isTrue);
       expect(config.backgroundSyncWifiOnly, isTrue);
       expect(config.backgroundSyncIntervalHours, 24);
+      expect(config.backgroundSyncFullMetadata, isFalse);
     });
 
     test('round trip JSON serialization', () {
@@ -58,6 +59,7 @@ void main() {
         backgroundSyncRequiresCharging: false,
         backgroundSyncWifiOnly: false,
         backgroundSyncIntervalHours: 12,
+        backgroundSyncFullMetadata: true,
       );
 
       final json = config.toJson();
@@ -71,6 +73,7 @@ void main() {
       expect(restored.backgroundSyncRequiresCharging, isFalse);
       expect(restored.backgroundSyncWifiOnly, isFalse);
       expect(restored.backgroundSyncIntervalHours, 12);
+      expect(restored.backgroundSyncFullMetadata, isTrue);
     });
 
     test('concurrency is clamped between 1 and 8', () {

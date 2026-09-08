@@ -30,6 +30,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Automated nightly library and artwork background sync on Android via WorkManager.
 - Partial cache indicators: albums and artists with some cached tracks show outlined pin badge, context menus offer both "Complete Caching" and "Remove from Cache".
 - Password manager autofill support on server setup via AutofillGroup and semantic autofill hints.
+- AutoEQ database download shows determinate progress bar with live byte transfer metrics.
+- Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
 - Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
