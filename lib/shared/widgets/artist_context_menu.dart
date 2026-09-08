@@ -6,6 +6,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/shared/widgets/caching_snack_bar.dart';
 
 /// Wraps a child widget with a context menu (right-click / long-press)
 /// providing artist-related actions.
@@ -118,25 +119,17 @@ class ArtistContextMenu extends ConsumerWidget {
       case 'cache_offline':
         ref.read(audioCacheServiceProvider).cacheArtist(artist.id);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Caching all albums for "${artist.name}"...'),
-              duration: const Duration(seconds: 3),
-              action: SnackBarAction(
-                label: 'View',
-                onPressed: () => context.push('/downloads'),
-              ),
-            ),
+          showCachingSnackBar(
+            context,
+            message: 'Caching all albums for "${artist.name}"...',
           );
         }
       case 'remove_cache':
         ref.read(audioCacheServiceProvider).removeCachedArtist(artist.id);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Removed "${artist.name}" from offline cache'),
-              duration: const Duration(seconds: 2),
-            ),
+          showCacheRemovedSnackBar(
+            context,
+            message: 'Removed "${artist.name}" from offline cache',
           );
         }
     }

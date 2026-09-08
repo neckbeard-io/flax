@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/core/tasks/task.dart';
+import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/updater/update_button.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
@@ -245,6 +247,15 @@ class _AppChromeState extends ConsumerState<AppChrome>
 
   @override
   Widget build(BuildContext context) {
+    // If background tasks were actively running and the queue has now emptied,
+    // automatically dismiss any active caching or download snackbars so they
+    // do not remain stuck on screen when there is no longer a queue to view.
+    ref.listen<List<Task>>(activeTasksProvider, (previous, next) {
+      if ((previous?.isNotEmpty ?? false) && next.isEmpty) {
+        ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+      }
+    });
+
     final isDesktop = isDesktopPlatform;
 
     final top = MediaQuery.of(context).padding.top;

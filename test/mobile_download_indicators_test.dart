@@ -7,7 +7,9 @@ import 'package:flax/features/library/downloads_screen.dart';
 import 'package:flax/services/database/database.dart';
 import 'package:flax/services/database/library_dao.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
+import 'package:flax/shared/widgets/app_chrome.dart';
 import 'package:flax/shared/widgets/artist_context_menu.dart';
+import 'package:flax/shared/widgets/caching_snack_bar.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/mobile_downloads_pill.dart';
 import 'package:flax/shared/widgets/song_context_menu.dart';
@@ -342,6 +344,92 @@ void main() {
       );
       expect(find.text('View'), findsOneWidget);
     });
+
+    testWidgets(
+      'showCachingSnackBar auto-dismisses after duration without user interaction',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => showCachingSnackBar(
+                    context,
+                    message: 'Caching test album...',
+                    duration: const Duration(seconds: 1),
+                  ),
+                  child: const Text('Show SnackBar'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Show SnackBar'));
+        // Settle entrance animation so the timer is scheduled
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.text('Caching test album...'), findsOneWidget);
+        expect(find.text('View'), findsOneWidget);
+
+        // Advance past duration and wait for exit animation to complete
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Caching test album...'), findsNothing);
+        expect(find.text('View'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'AppChrome dismisses active SnackBar when active background tasks empty',
+      (tester) async {
+        final task = Task(
+          id: 'task-test-dl',
+          label: 'Caching album',
+          kind: TaskKind.audioDownload,
+          state: TaskState.running,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            activeTasksProvider.overrideWithValue([task]),
+          ],
+        );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              builder: (context, child) => AppChrome(child: child!),
+              home: Scaffold(
+                body: Builder(
+                  builder: (context) => ElevatedButton(
+                    onPressed: () => showCachingSnackBar(
+                      context,
+                      message: 'Caching album in progress...',
+                    ),
+                    child: const Text('Trigger Caching'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('Trigger Caching'));
+        await tester.pump();
+        expect(find.text('Caching album in progress...'), findsOneWidget);
+
+        // Now queue finishes (transitions to empty)
+        container.updateOverrides([activeTasksProvider.overrideWithValue([])]);
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        // Should be immediately dismissed because there is no more queue to view
+        expect(find.text('Caching album in progress...'), findsNothing);
+      },
+    );
 
     group('DownloadsScreen Active Queue & Speed Metrics', () {
       testWidgets(

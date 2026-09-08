@@ -11,6 +11,7 @@ import 'package:flax/features/library/album_sort.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
+import 'package:flax/shared/widgets/caching_snack_bar.dart';
 import 'package:flax/shared/widgets/country_chip.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
@@ -852,11 +853,9 @@ class _ArtistRatingRow extends ConsumerWidget {
             tooltip: 'Remove artist from cache',
             onTap: () {
               ref.read(audioCacheServiceProvider).removeCachedArtist(artist.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Removed "${artist.name}" from offline cache'),
-                  duration: const Duration(seconds: 2),
-                ),
+              showCacheRemovedSnackBar(
+                context,
+                message: 'Removed "${artist.name}" from offline cache',
               );
             },
           )
@@ -868,15 +867,9 @@ class _ArtistRatingRow extends ConsumerWidget {
             tooltip: 'Complete caching all albums',
             onTap: () {
               ref.read(audioCacheServiceProvider).cacheArtist(artist.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Caching all albums for "${artist.name}"...'),
-                  duration: const Duration(seconds: 3),
-                  action: SnackBarAction(
-                    label: 'View',
-                    onPressed: () => context.push('/downloads'),
-                  ),
-                ),
+              showCachingSnackBar(
+                context,
+                message: 'Caching all albums for "${artist.name}"...',
               );
             },
           ),
@@ -888,11 +881,9 @@ class _ArtistRatingRow extends ConsumerWidget {
             tooltip: 'Remove cached albums',
             onTap: () {
               ref.read(audioCacheServiceProvider).removeCachedArtist(artist.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Removed "${artist.name}" from offline cache'),
-                  duration: const Duration(seconds: 2),
-                ),
+              showCacheRemovedSnackBar(
+                context,
+                message: 'Removed "${artist.name}" from offline cache',
               );
             },
           ),
@@ -904,15 +895,9 @@ class _ArtistRatingRow extends ConsumerWidget {
             tooltip: 'Cache artist offline',
             onTap: () {
               ref.read(audioCacheServiceProvider).cacheArtist(artist.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Caching all albums for "${artist.name}"...'),
-                  duration: const Duration(seconds: 3),
-                  action: SnackBarAction(
-                    label: 'View',
-                    onPressed: () => context.push('/downloads'),
-                  ),
-                ),
+              showCachingSnackBar(
+                context,
+                message: 'Caching all albums for "${artist.name}"...',
               );
             },
           ),

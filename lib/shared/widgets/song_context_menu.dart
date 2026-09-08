@@ -6,6 +6,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/shared/widgets/caching_snack_bar.dart';
 
 /// Wraps a child widget with a context menu (right-click / long-press)
 /// providing song-related actions.
@@ -116,25 +117,17 @@ class SongContextMenu extends ConsumerWidget {
       case 'cache_offline':
         ref.read(audioCacheServiceProvider).cacheSong(song, isPinned: true);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Downloading "${song.title}"...'),
-              duration: const Duration(seconds: 3),
-              action: SnackBarAction(
-                label: 'View',
-                onPressed: () => context.push('/downloads'),
-              ),
-            ),
+          showCachingSnackBar(
+            context,
+            message: 'Downloading "${song.title}"...',
           );
         }
       case 'remove_cache':
         ref.read(audioCacheServiceProvider).removeCachedSong(song.id);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Removed "${song.title}" from offline cache'),
-              duration: const Duration(seconds: 2),
-            ),
+          showCacheRemovedSnackBar(
+            context,
+            message: 'Removed "${song.title}" from offline cache',
           );
         }
     }

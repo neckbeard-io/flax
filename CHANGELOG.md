@@ -34,6 +34,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- Caching notification automatically dismisses on timeout or when download queue finishes instead of remaining stuck on screen.
 - Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
 - Windows self-updater now installs silently in-place without manual wizard prompts or elevated permission resets.
 - Desktop header update pill responds to taps on Windows and Linux without title bar drag interference.
