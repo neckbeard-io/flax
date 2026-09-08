@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flax/services/updater/platform_installers/macos_installer.dart';
 import 'package:flax/services/updater/update_models.dart';
@@ -184,6 +185,122 @@ void main() {
         testRelease.conciseChangelog,
         equals('### Added\n- Self-updater framework.'),
       );
+    });
+
+    test('ReleaseInfo copyWith works as expected', () {
+      final updated = testRelease.copyWith(
+        title: 'New Title',
+        body: 'New Body',
+      );
+      expect(updated.title, equals('New Title'));
+      expect(updated.body, equals('New Body'));
+      expect(updated.tagName, equals(testRelease.tagName));
+    });
+  });
+
+  group('UpdateService fetchLatestRelease with changelog aggregation', () {
+    late Dio dio;
+    late UpdateService service;
+
+    setUp(() {
+      dio = Dio();
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            handler.resolve(
+              Response(
+                requestOptions: options,
+                data: [
+                  {
+                    'tag_name': 'v0.5.7-dev.18',
+                    'name': 'flax v0.5.7-dev.18',
+                    'body':
+                        '### Fixed\n- Fix 18.\n\n---\nFor installation instructions...',
+                    'html_url':
+                        'https://github.com/neckbeard-io/flax/releases/tag/v0.5.7-dev.18',
+                    'published_at': '2026-09-08T07:14:22Z',
+                    'prerelease': true,
+                    'assets': [],
+                  },
+                  {
+                    'tag_name': 'v0.5.7-dev.17',
+                    'name': 'flax v0.5.7-dev.17',
+                    'body':
+                        '### Fixed\n- Fix 17.\n\n---\nFor installation instructions...',
+                    'html_url':
+                        'https://github.com/neckbeard-io/flax/releases/tag/v0.5.7-dev.17',
+                    'published_at': '2026-09-08T04:06:19Z',
+                    'prerelease': true,
+                    'assets': [],
+                  },
+                  {
+                    'tag_name': 'v0.5.7-dev.16',
+                    'name': 'flax v0.5.7-dev.16',
+                    'body':
+                        '### Added\n- Feat 16.\n\n---\nFor installation instructions...',
+                    'html_url':
+                        'https://github.com/neckbeard-io/flax/releases/tag/v0.5.7-dev.16',
+                    'published_at': '2026-09-08T03:25:11Z',
+                    'prerelease': true,
+                    'assets': [],
+                  },
+                  {
+                    'tag_name': 'v0.5.6',
+                    'name': 'flax v0.5.6',
+                    'body':
+                        '### Added\n- Stable 0.5.6.\n\n---\nFor installation instructions...',
+                    'html_url':
+                        'https://github.com/neckbeard-io/flax/releases/tag/v0.5.6',
+                    'published_at': '2026-08-29T06:25:48Z',
+                    'prerelease': false,
+                    'assets': [],
+                  },
+                ],
+              ),
+            );
+          },
+        ),
+      );
+      service = UpdateService(dio: dio);
+    });
+
+    test('single-version hop retains clean single release changelog', () async {
+      final release = await service.fetchLatestRelease(
+        channel: UpdateChannel.dev,
+        currentVersion: '0.5.7-dev.17',
+      );
+      expect(release, isNotNull);
+      expect(release!.version, equals('0.5.7-dev.18'));
+      expect(release.conciseChangelog, equals('### Fixed\n- Fix 18.'));
+    });
+
+    test(
+      'multi-version hop aggregates changelogs of intermediate releases',
+      () async {
+        final release = await service.fetchLatestRelease(
+          channel: UpdateChannel.dev,
+          currentVersion: '0.5.7-dev.16',
+        );
+        expect(release, isNotNull);
+        expect(release!.version, equals('0.5.7-dev.18'));
+        expect(
+          release.conciseChangelog,
+          equals(
+            '## v0.5.7-dev.18\n### Fixed\n- Fix 18.\n\n'
+            '## v0.5.7-dev.17\n### Fixed\n- Fix 17.',
+          ),
+        );
+      },
+    );
+
+    test('stable channel filters out pre-releases', () async {
+      final release = await service.fetchLatestRelease(
+        channel: UpdateChannel.stable,
+        currentVersion: '0.5.5',
+      );
+      expect(release, isNotNull);
+      expect(release!.version, equals('0.5.6'));
+      expect(release.conciseChangelog, equals('### Added\n- Stable 0.5.6.'));
     });
   });
 

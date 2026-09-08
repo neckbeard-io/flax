@@ -75,8 +75,14 @@ class UpdateService {
   }
 
   /// Checks GitHub Releases API for new versions based on the selected [channel].
+  ///
+  /// When [currentVersion] is supplied and multiple intermediate releases exist
+  /// between [currentVersion] and the latest release, the changelogs of those
+  /// intermediate releases are aggregated so the user sees all changes introduced
+  /// since their installed version without seeing changes they already have.
   Future<ReleaseInfo?> fetchLatestRelease({
     UpdateChannel channel = UpdateChannel.stable,
+    String? currentVersion,
   }) async {
     final response = await _dio.get<List<dynamic>>(
       releasesUrl,
@@ -97,13 +103,41 @@ class UpdateService {
         .map(ReleaseInfo.fromJson)
         .toList();
 
+    final List<ReleaseInfo> eligibleReleases;
     if (channel == UpdateChannel.stable) {
-      return releases.firstWhereOrNull(
-        (r) => !r.isPrerelease && !r.tagName.toLowerCase().contains('-dev'),
-      );
+      eligibleReleases = releases
+          .where(
+            (r) => !r.isPrerelease && !r.tagName.toLowerCase().contains('-dev'),
+          )
+          .toList();
     } else {
-      return releases.firstOrNull;
+      eligibleReleases = releases;
     }
+
+    final latest = eligibleReleases.firstOrNull;
+    if (latest == null) return null;
+
+    // If currentVersion is provided, aggregate intermediate releases
+    if (currentVersion != null && currentVersion.trim().isNotEmpty) {
+      final newerReleases = eligibleReleases
+          .where((r) => compareSemver(r.version, currentVersion) > 0)
+          .toList();
+
+      if (newerReleases.length > 1) {
+        final aggregatedNotes = newerReleases
+            .map((r) {
+              final notes = r.conciseChangelog.isNotEmpty
+                  ? r.conciseChangelog
+                  : 'Internal improvements and bug fixes.';
+              return '## ${r.tagName}\n$notes';
+            })
+            .join('\n\n');
+
+        return latest.copyWith(body: aggregatedNotes);
+      }
+    }
+
+    return latest;
   }
 
   /// Compares two semver strings (e.g. "0.5.6-dev.1" vs "0.5.5" or "0.5.6").

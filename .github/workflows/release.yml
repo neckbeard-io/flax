@@ -439,6 +439,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/download-artifact@v4
         with:
@@ -458,27 +460,128 @@ jobs:
       - name: Extract changelog section
         run: |
           VERSION="${{ needs.setup.outputs.version }}"
-          python3 - "$VERSION" <<'PY' > changelog.md
-          import re, sys
+          CHANNEL="${{ needs.setup.outputs.channel }}"
+          python3 - "$VERSION" "$CHANNEL" <<'PY' > changelog.md
+          import os, re, subprocess, sys
+
           version = sys.argv[1]
+          channel = sys.argv[2] if len(sys.argv) > 2 else "stable"
           text = open('CHANGELOG.md').read()
-          # The section runs from its own heading to the next release heading.
+
+          # For stable releases or if an explicit header exists, extract matching section.
           match = re.search(
               r'^## v%s\b.*?$(.*?)(?=^## |\Z)' % re.escape(version),
               text, re.S | re.M)
-          if not match or not match.group(1).strip():
-              # For dev builds, fall back to Unreleased if specific version tag is not yet closed off
-              unreleased_match = re.search(r'^## Unreleased\b.*?$(.*?)(?=^## |\Z)', text, re.S | re.M)
-              if unreleased_match and unreleased_match.group(1).strip():
-                  print(unreleased_match.group(1).strip())
-              else:
-                  sys.exit(
-                      'CHANGELOG.md has no content under "## v%s" or "## Unreleased".\n'
-                      'Close the Unreleased section off before releasing: rename it '
-                      'to "## v%s — <YYYY-MM-DD>" and open a fresh Unreleased above '
-                      'it, in its own commit.' % (version, version))
-          else:
+
+          if match and match.group(1).strip():
               print(match.group(1).strip())
+          elif channel == 'dev' or '-dev.' in version:
+              # For dev pre-releases, extract the delta since the previous tag
+              try:
+                  tags = subprocess.check_output(
+                      ['git', 'tag', '--sort=-v:refname'],
+                      text=True
+                  ).split()
+                  prev_tag = None
+                  for t in tags:
+                      if t == f'v{version}':
+                          continue
+                      try:
+                          subprocess.check_output(
+                              ['git', 'merge-base', '--is-ancestor', t, 'HEAD'],
+                              stderr=subprocess.DEVNULL
+                          )
+                          prev_tag = t
+                          break
+                      except subprocess.CalledProcessError:
+                          pass
+              except Exception:
+                  prev_tag = None
+
+              range_spec = f'{prev_tag}..HEAD' if prev_tag else 'HEAD'
+              
+              diff = ''
+              try:
+                  diff = subprocess.check_output(
+                      ['git', 'diff', range_spec, 'CHANGELOG.md'],
+                      text=True
+                  )
+              except Exception:
+                  pass
+
+              added_lines = [
+                  l[1:].strip() for l in diff.splitlines()
+                  if l.startswith('+') and not l.startswith('+++') and l[1:].strip().startswith('- ')
+              ]
+
+              unreleased_section = text.split('\n## ')[1] if '\n## ' in text else text
+              added_block = ''
+              fixed_block = ''
+              if '### Added' in unreleased_section:
+                  part = unreleased_section.split('### Added')[1]
+                  if '### Fixed' in part:
+                      added_block, fixed_block = part.split('### Fixed', 1)
+                  else:
+                      added_block = part
+              elif '### Fixed' in unreleased_section:
+                  fixed_block = unreleased_section.split('### Fixed')[1]
+
+              added_items = [l for l in added_lines if l in added_block]
+              fixed_items = [l for l in added_lines if l in fixed_block]
+              remaining = [l for l in added_lines if l not in added_items and l not in fixed_items]
+
+              output_sections = []
+              if added_items:
+                  output_sections.append('### Added\n' + '\n'.join(added_items))
+              if fixed_items:
+                  output_sections.append('### Fixed\n' + '\n'.join(fixed_items))
+              if remaining:
+                  output_sections.append('### Other Changes\n' + '\n'.join(remaining))
+
+              release_notes = '\n\n'.join(output_sections).strip()
+
+              # Fallback to conventional commit messages if CHANGELOG was not updated
+              if not release_notes:
+                  try:
+                      log = subprocess.check_output(
+                          ['git', 'log', range_spec, '--pretty=format:%s'],
+                          text=True
+                      ).strip().splitlines()
+                      feat_commits = []
+                      fix_commits = []
+                      other_commits = []
+                      for line in log:
+                          l = line.strip()
+                          if not l:
+                              continue
+                          if l.startswith('feat'):
+                              msg = re.sub(r'^feat(\([^)]+\))?:\s*', '', l)
+                              feat_commits.append(f'- {msg}')
+                          elif l.startswith('fix'):
+                              msg = re.sub(r'^fix(\([^)]+\))?:\s*', '', l)
+                              fix_commits.append(f'- {msg}')
+                          elif not any(l.startswith(p) for p in ['chore', 'ci', 'test', 'docs', 'style']):
+                              other_commits.append(f'- {l}')
+                      if feat_commits:
+                          output_sections.append('### Added\n' + '\n'.join(feat_commits))
+                      if fix_commits:
+                          output_sections.append('### Fixed\n' + '\n'.join(fix_commits))
+                      if other_commits:
+                          output_sections.append('### Changed\n' + '\n'.join(other_commits))
+                      release_notes = '\n\n'.join(output_sections).strip()
+                  except Exception:
+                      pass
+
+              if not release_notes:
+                  release_notes = 'Internal improvements and bug fixes.'
+
+              print(release_notes)
+          else:
+              sys.exit(
+                  'CHANGELOG.md has no content under "## v%s".\n'
+                  'Close the Unreleased section off before releasing: rename it '
+                  'to "## v%s — <YYYY-MM-DD>" and open a fresh Unreleased above '
+                  'it, in its own commit.' % (version, version))
           PY
           echo "--- release notes ---"
           cat changelog.md

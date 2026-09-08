@@ -75,6 +75,28 @@ class ReleaseInfo {
     return body.trim();
   }
 
+  ReleaseInfo copyWith({
+    String? tagName,
+    String? version,
+    String? title,
+    String? body,
+    String? htmlUrl,
+    DateTime? publishedAt,
+    bool? isPrerelease,
+    List<ReleaseAsset>? assets,
+  }) {
+    return ReleaseInfo(
+      tagName: tagName ?? this.tagName,
+      version: version ?? this.version,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      htmlUrl: htmlUrl ?? this.htmlUrl,
+      publishedAt: publishedAt ?? this.publishedAt,
+      isPrerelease: isPrerelease ?? this.isPrerelease,
+      assets: assets ?? this.assets,
+    );
+  }
+
   factory ReleaseInfo.fromJson(Map<String, dynamic> json) {
     final tag = json['tag_name'] as String? ?? '';
     final version = tag.startsWith('v') ? tag.substring(1) : tag;

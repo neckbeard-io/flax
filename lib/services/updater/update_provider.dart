@@ -73,7 +73,10 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
     }
 
     try {
-      final latest = await _service.fetchLatestRelease(channel: state.channel);
+      final latest = await _service.fetchLatestRelease(
+        channel: state.channel,
+        currentVersion: state.currentVersion,
+      );
       final now = DateTime.now();
 
       if (latest == null) {
