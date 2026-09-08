@@ -146,10 +146,17 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
     );
 
     try {
+      var lastProgressUpdate = DateTime.now();
       final localPath = await _service.downloadAsset(
         asset,
         cancelToken: _cancelToken,
         onProgress: (received, total) {
+          final now = DateTime.now();
+          if (now.difference(lastProgressUpdate).inMilliseconds < 100 &&
+              received < total) {
+            return;
+          }
+          lastProgressUpdate = now;
           final progress = total > 0 ? (received / total) : 0.0;
           state = state.copyWith(
             downloadProgress: progress.clamp(0.0, 1.0),

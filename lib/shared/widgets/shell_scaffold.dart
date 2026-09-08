@@ -33,7 +33,9 @@ class ShellScaffold extends ConsumerWidget {
     final wideEnough = width >= _sidebarMinWidth;
     final useSidebar = wideEnough;
     final immersive = isImmersiveRoute(location, width);
-    final updateState = ref.watch(updateNotifierProvider);
+    final isUpdateAvailable = ref.watch(
+      updateNotifierProvider.select((s) => s.isUpdateAvailable),
+    );
 
     if (immersive) return child;
 
@@ -60,12 +62,10 @@ class ShellScaffold extends ConsumerWidget {
               destinations: [
                 for (final d in mobileNavDestinations)
                   NavigationDestination(
-                    icon:
-                        (d.path == '/settings' && updateState.isUpdateAvailable)
+                    icon: (d.path == '/settings' && isUpdateAvailable)
                         ? Badge(child: Icon(d.icon))
                         : Icon(d.icon),
-                    selectedIcon:
-                        (d.path == '/settings' && updateState.isUpdateAvailable)
+                    selectedIcon: (d.path == '/settings' && isUpdateAvailable)
                         ? Badge(child: Icon(d.selectedIcon))
                         : Icon(d.selectedIcon),
                     label: d.localizedLabel(context),

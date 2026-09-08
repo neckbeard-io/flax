@@ -294,6 +294,20 @@ class UpdateService {
       targetFile.deleteSync();
     }
 
+    if (Platform.isAndroid) {
+      try {
+        return await AndroidInstaller.downloadApk(
+          asset.downloadUrl,
+          targetPath,
+          onProgress: onProgress,
+          cancelToken: cancelToken,
+        );
+      } catch (e) {
+        if (cancelToken?.isCancelled ?? false) rethrow;
+        // Fall back to Dio if native download fails (e.g. in test mocks)
+      }
+    }
+
     await _dio.download(
       asset.downloadUrl,
       targetPath,
