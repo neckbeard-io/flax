@@ -4,6 +4,7 @@ import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/library/downloads_screen.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/database/database.dart';
 import 'package:flax/services/database/library_dao.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
@@ -496,7 +497,7 @@ void main() {
           // Header summary & speeds
           expect(find.text('Caching "Piece of Mind"'), findsOneWidget);
           expect(find.text('2 of 5 tracks'), findsOneWidget);
-          expect(find.text('2.8 MB/s'), findsWidgets);
+          expect(find.text('2.8 MB/s'), findsOneWidget);
           expect(find.text('ETA: less than a minute'), findsOneWidget);
 
           // Individual tracks list
@@ -562,6 +563,81 @@ void main() {
           expect(find.text('3.5 MB/s'), findsOneWidget);
         },
       );
+
+      testWidgets(
+        'renders distinct individual track download speed separate from aggregate batch speed',
+        (tester) async {
+          debugOverrideIsDesktopPlatform = false;
+          addTearDown(() => debugOverrideIsDesktopPlatform = null);
+
+          final task = Task(
+            id: 'task-dl-batch',
+            label: 'Downloading 2 tracks',
+            kind: TaskKind.audioDownload,
+            state: TaskState.running,
+            itemsDone: 0,
+            itemsTotal: 2,
+            ratePerSecond: 10000000, // 10.0 MB/s aggregate batch rate
+          );
+
+          const activeSong1 = Song(
+            id: 's-1',
+            serverId: 'srv-1',
+            title: 'Song One',
+            downloadState: DownloadState.downloading,
+          );
+
+          const activeSong2 = Song(
+            id: 's-2',
+            serverId: 'srv-1',
+            title: 'Song Two',
+            downloadState: DownloadState.queued,
+          );
+
+          final container = ProviderContainer(
+            overrides: [
+              activeTasksProvider.overrideWithValue([task]),
+              activeDownloadSongsProvider.overrideWith(
+                (ref) => Stream.value([activeSong1, activeSong2]),
+              ),
+              songDownloadProgressProvider.overrideWith(
+                () => _MockSongDownloadProgressNotifier({
+                  's-1': const SongDownloadProgress(
+                    bytesDownloaded: 2097152,
+                    totalBytes: 8388608,
+                    speedBytesPerSec: 2500000, // 2.5 MB/s for Song One
+                  ),
+                }),
+              ),
+            ],
+          );
+
+          await tester.pumpWidget(
+            UncontrolledProviderScope(
+              container: container,
+              child: const MaterialApp(home: DownloadsScreen()),
+            ),
+          );
+          await tester.pump();
+
+          // Header summary must display the aggregate rate (10 MB/s)
+          expect(find.text('10 MB/s'), findsOneWidget);
+
+          // Active track row must display its OWN distinct rate (2.5 MB/s), NOT 10 MB/s
+          expect(find.text('2.5 MB/s'), findsOneWidget);
+
+          // Queued track row must display 'Queued' and not show speed
+          expect(find.text('Queued'), findsOneWidget);
+        },
+      );
     });
   });
+}
+
+class _MockSongDownloadProgressNotifier extends SongDownloadProgressNotifier {
+  final Map<String, SongDownloadProgress> _initial;
+  _MockSongDownloadProgressNotifier(this._initial);
+
+  @override
+  Map<String, SongDownloadProgress> build() => _initial;
 }

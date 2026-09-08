@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -23,6 +25,7 @@ class _ServerConnectionScreenState
 
   bool _initialized = false;
   bool _testingConnection = false;
+  bool _detectingWifi = false;
   String? _testResult;
   bool? _testSuccess;
   String? _currentWifiSsid;
@@ -36,13 +39,25 @@ class _ServerConnectionScreenState
     _detectCurrentWifi();
   }
 
-  Future<void> _detectCurrentWifi() async {
-    final resolver = ref.read(networkTargetResolverProvider.notifier);
-    final ssid = await resolver.getCurrentSsid();
-    if (mounted) {
-      setState(() {
-        _currentWifiSsid = ssid;
-      });
+  Future<void> _detectCurrentWifi({bool requestPermission = false}) async {
+    if (requestPermission) {
+      setState(() => _detectingWifi = true);
+    }
+    try {
+      final resolver = ref.read(networkTargetResolverProvider.notifier);
+      if (requestPermission && Platform.isAndroid) {
+        await resolver.requestLocationPermission();
+      }
+      final ssid = await resolver.getCurrentSsid();
+      if (mounted) {
+        setState(() {
+          _currentWifiSsid = ssid;
+        });
+      }
+    } finally {
+      if (mounted && requestPermission) {
+        setState(() => _detectingWifi = false);
+      }
     }
   }
 
@@ -126,6 +141,7 @@ class _ServerConnectionScreenState
     final stopwatch = Stopwatch()..start();
     final ok = await NetworkTargetResolver.probeLocalEndpoint(
       url,
+      server: _getServer(ref.read(serverListProvider)),
       trustSelfSigned: testConfig.trustSelfSignedCerts,
       timeout: Duration(milliseconds: testConfig.probeTimeoutMs),
     );
@@ -432,24 +448,22 @@ class _ServerConnectionScreenState
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Text(
-                'Specify the Wi-Fi network names where this local IP is reachable. If empty, local target is attempted on any Wi-Fi or Ethernet.',
+                'Specify the Wi-Fi network names where this local IP is reachable. If empty, local target is automatically attempted on any Wi-Fi or Ethernet.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
 
-            // Current Wi-Fi quick-add button
-            if (_currentWifiSsid != null && _currentWifiSsid!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
+            // Current Wi-Fi quick-add and detect/refresh button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (_currentWifiSsid != null && _currentWifiSsid!.isNotEmpty)
                     ActionChip(
                       avatar: const Icon(Icons.add, size: 16),
                       label: Text('Add Current Wi-Fi: "$_currentWifiSsid"'),
@@ -466,9 +480,30 @@ class _ServerConnectionScreenState
                               );
                             },
                     ),
-                  ],
-                ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: _detectingWifi
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.wifi_find, size: 16),
+                    label: Text(
+                      _currentWifiSsid != null
+                          ? 'Refresh Wi-Fi Name'
+                          : 'Detect Current Wi-Fi',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    onPressed: _detectingWifi
+                        ? null
+                        : () => _detectCurrentWifi(requestPermission: true),
+                  ),
+                ],
               ),
+            ),
 
             // Configured SSIDs chips
             Padding(

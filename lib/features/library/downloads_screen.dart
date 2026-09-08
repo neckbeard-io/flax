@@ -252,6 +252,7 @@ class _ActiveDownloadsSectionState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final songProgressMap = ref.watch(songDownloadProgressProvider);
     final downloadTasks = widget.tasks
         .where((t) => t.kind == TaskKind.audioDownload)
         .toList();
@@ -482,6 +483,16 @@ class _ActiveDownloadsSectionState
                       final song = sortedSongs[index];
                       final isDownloading =
                           song.downloadState == DownloadState.downloading;
+                      final trackProgress = songProgressMap[song.id];
+                      final trackRateStr =
+                          (trackProgress != null &&
+                              trackProgress.speedBytesPerSec > 0)
+                          ? formatRate(
+                              trackProgress.speedBytesPerSec.toDouble(),
+                              ProgressUnit.bytes,
+                            )
+                          : null;
+                      final trackFraction = trackProgress?.fraction;
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(
@@ -541,9 +552,9 @@ class _ActiveDownloadsSectionState
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (rateStr != null) ...[
+                                  if (trackRateStr != null) ...[
                                     Text(
-                                      rateStr,
+                                      trackRateStr,
                                       style: theme.textTheme.labelSmall
                                           ?.copyWith(
                                             color: theme.colorScheme.primary,
@@ -552,11 +563,12 @@ class _ActiveDownloadsSectionState
                                     ),
                                     const SizedBox(width: 6),
                                   ],
-                                  const SizedBox(
+                                  SizedBox(
                                     width: 12,
                                     height: 12,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
+                                      value: trackFraction,
                                     ),
                                   ),
                                 ],

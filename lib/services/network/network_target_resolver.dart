@@ -1,9 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:flax/core/logging/app_logger.dart';
@@ -79,6 +83,7 @@ final effectiveBaseUrlProvider = Provider<String?>((ref) {
 });
 
 class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
+  static const _downloaderChannel = MethodChannel('com.flax/native_downloader');
   final Ref _ref;
   final NetworkInfo _networkInfo;
   Timer? _debounceTimer;
@@ -92,6 +97,14 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
         ),
       ) {
     _init();
+  }
+
+  /// Explicitly requests Android location permission needed to read Wi-Fi SSIDs.
+  Future<void> requestLocationPermission() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _downloaderChannel.invokeMethod('requestLocationPermission');
+    } catch (_) {}
   }
 
   void _init() {
@@ -167,7 +180,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
     // Determine current connectivity
     List<ConnectivityResult> connectivity;
     try {
-      connectivity = await Connectivity().checkConnectivity();
+      connectivity = await _ref.read(connectivityProvider.future);
     } catch (_) {
       connectivity = [ConnectivityResult.none];
     }
@@ -195,20 +208,23 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
 
     // Check if current SSID matches configured target SSIDs
     bool ssidMatches = false;
-    if (config.targetSsids.isEmpty) {
-      // If no SSIDs configured, any Wi-Fi or Ethernet can trigger local endpoint probing
-      ssidMatches = true;
-    } else if (hasEthernet) {
-      // Ethernet implies direct local LAN access
+    bool ssidUnknown = false;
+    if (config.targetSsids.isEmpty || hasEthernet) {
+      // If no SSIDs configured or on wired Ethernet, trigger local endpoint probing
       ssidMatches = true;
     } else if (currentSsid != null) {
       final normalizedCurrent = currentSsid.trim().toLowerCase();
       ssidMatches = config.targetSsids.any(
         (s) => s.trim().toLowerCase() == normalizedCurrent,
       );
+    } else {
+      // currentSsid is null/unknown (e.g. Android location permission not granted,
+      // or device location services disabled). Rather than rejecting local routing,
+      // probe localBaseUrl directly. If local LAN responds, we are on the local network.
+      ssidUnknown = true;
     }
 
-    if (!ssidMatches) {
+    if (!ssidMatches && !ssidUnknown) {
       AppLogger.d(
         'NetworkTarget',
         () =>
@@ -234,6 +250,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
     final stopwatch = Stopwatch()..start();
     final reachable = await probeLocalEndpoint(
       localBaseUrl,
+      server: server,
       trustSelfSigned: config.trustSelfSignedCerts,
       timeout: Duration(milliseconds: config.probeTimeoutMs),
     );
@@ -250,12 +267,14 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
         isProbing: false,
         isLocalReachable: true,
         lastProbeLatencyMs: stopwatch.elapsedMilliseconds,
-        statusMessage: 'Connected directly via local network',
+        statusMessage: currentSsid != null
+            ? 'Connected directly via local network ($currentSsid)'
+            : 'Connected directly via local network',
       );
     } else {
       AppLogger.w(
         'NetworkTarget',
-        'Local endpoint $localBaseUrl unreachable on matching Wi-Fi ($currentSsid).',
+        'Local endpoint $localBaseUrl unreachable (Wi-Fi: ${currentSsid ?? "unknown"}).',
       );
       if (config.fallbackToExternal) {
         state = state.copyWith(
@@ -299,6 +318,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
   /// Probes an endpoint to verify whether it is alive and responding.
   static Future<bool> probeLocalEndpoint(
     String baseUrl, {
+    Server? server,
     bool trustSelfSigned = false,
     Duration timeout = const Duration(milliseconds: 1500),
   }) async {
@@ -323,14 +343,37 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
     );
 
     try {
-      final url = baseUrl.endsWith('/')
-          ? '${baseUrl}rest/ping?v=1.16.1&c=flax&f=json'
-          : '$baseUrl/rest/ping?v=1.16.1&c=flax&f=json';
+      final cleanBase = baseUrl.endsWith('/')
+          ? baseUrl.substring(0, baseUrl.length - 1)
+          : baseUrl;
 
-      final res = await dio.get(url);
+      final queryParams = <String, String>{
+        'v': '1.16.1',
+        'c': 'flax',
+        'f': 'json',
+      };
+
+      if (server != null) {
+        final salt = List.generate(
+          16,
+          (_) => Random.secure().nextInt(36).toRadixString(36),
+        ).join();
+        final token = md5
+            .convert(utf8.encode('${server.tokenHash}$salt'))
+            .toString();
+        queryParams['u'] = server.username;
+        queryParams['t'] = token;
+        queryParams['s'] = salt;
+      }
+
+      final uri = Uri.parse(
+        '$cleanBase/rest/ping',
+      ).replace(queryParameters: queryParams);
+
+      final res = await dio.getUri(uri);
       return res.statusCode != null &&
-          res.statusCode! >= 200 &&
-          res.statusCode! < 400;
+          ((res.statusCode! >= 200 && res.statusCode! < 400) ||
+              res.statusCode == 401);
     } catch (_) {
       return false;
     }

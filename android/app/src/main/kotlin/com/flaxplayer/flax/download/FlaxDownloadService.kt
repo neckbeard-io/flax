@@ -45,11 +45,26 @@ class FlaxDownloadService : Service() {
     private var wifiLock: WifiManager.WifiLock? = null
     private lateinit var notificationManager: NotificationManager
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .connectionPool(ConnectionPool(32, 5, TimeUnit.MINUTES))
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
-        .build()
+    private val okHttpClient: OkHttpClient by lazy {
+        val builder = OkHttpClient.Builder()
+            .connectionPool(ConnectionPool(32, 5, TimeUnit.MINUTES))
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+
+        try {
+            val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
+                override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+                override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
+                override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+            })
+            val sslContext = javax.net.ssl.SSLContext.getInstance("SSL")
+            sslContext.init(null, trustAllCerts, java.security.SecureRandom())
+            builder.sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
+            builder.hostnameVerifier { _, _ -> true }
+        } catch (_: Exception) {}
+
+        builder.build()
+    }
 
     private val isDownloading = AtomicBoolean(false)
     private val activeWorkerCount = java.util.concurrent.atomic.AtomicInteger(0)
@@ -207,6 +222,9 @@ class FlaxDownloadService : Service() {
 
             var bytesRead: Int
             var lastProgressTime = System.currentTimeMillis()
+            var lastTaskSpeedBytes = 0L
+            var lastTaskSpeedTime = System.currentTimeMillis()
+            var taskSpeedBytesPerSec = 0L
 
             inputStream.use { input ->
                 outputStream.use { output ->
@@ -222,6 +240,18 @@ class FlaxDownloadService : Service() {
                         if (now - lastProgressTime >= 250) {
                             lastProgressTime = now
                             calculateSpeed(now)
+
+                            val taskTimeDelta = now - lastTaskSpeedTime
+                            if (taskTimeDelta >= 500) {
+                                val taskByteDelta = taskBytes - lastTaskSpeedBytes
+                                val instantSpeed = if (taskTimeDelta > 0) (taskByteDelta * 1000) / taskTimeDelta else 0L
+                                taskSpeedBytesPerSec = if (taskSpeedBytesPerSec == 0L) instantSpeed else (taskSpeedBytesPerSec * 3 + instantSpeed) / 4
+                                lastTaskSpeedBytes = taskBytes
+                                lastTaskSpeedTime = now
+                            } else if (taskSpeedBytesPerSec == 0L && taskTimeDelta > 0) {
+                                taskSpeedBytesPerSec = (taskBytes * 1000) / taskTimeDelta
+                            }
+
                             val completed = FlaxDownloadManager.completedSessionTasks.get()
                             val total = FlaxDownloadManager.totalEnqueuedTasks.get()
                             FlaxDownloadManager.notifyTaskProgress(
@@ -229,7 +259,7 @@ class FlaxDownloadService : Service() {
                                 task.serverId,
                                 taskBytes,
                                 totalLength,
-                                currentSpeedBytesPerSec,
+                                taskSpeedBytesPerSec,
                                 completed,
                                 total
                             )

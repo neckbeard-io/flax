@@ -1,8 +1,10 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/features/settings/server_connection_screen.dart';
@@ -178,6 +180,95 @@ void main() {
       );
       expect(await unknownResolver.getCurrentSsid(), isNull);
     });
+
+    test('rejects local target when SSID explicitly does not match', () async {
+      final server = Server(
+        id: 'srv-1',
+        name: 'Server',
+        url: 'https://music.remote.com',
+        username: 'user',
+        tokenHash: 'token',
+        salt: 'salt',
+        isActive: true,
+        localNetworkConfig: const LocalNetworkConfig(
+          enabled: true,
+          targetSsids: ['Home_Mesh'],
+          localHost: '192.168.1.100',
+        ),
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          connectivityProvider.overrideWith(
+            (ref) => Future.value([ConnectivityResult.wifi]),
+          ),
+          networkInfoProvider.overrideWithValue(
+            MockNetworkInfo(wifiName: 'CoffeeShop_WiFi'),
+          ),
+          serverListProvider.overrideWith(
+            (ref) => ServerListNotifier(initialServers: [server]),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final resolver = container.read(networkTargetResolverProvider.notifier);
+      await resolver.evaluate(force: true);
+
+      final state = container.read(networkTargetResolverProvider);
+      expect(state.activeTarget, EndpointTargetType.external);
+      expect(state.effectiveBaseUrl, 'https://music.remote.com');
+      expect(state.currentSsid, 'CoffeeShop_WiFi');
+    });
+
+    test(
+      'attempts local target probe instead of rejecting when SSID is null/unknown on Wi-Fi',
+      () async {
+        final server = Server(
+          id: 'srv-2',
+          name: 'Home Server',
+          url: 'https://music.remote.com',
+          username: 'user',
+          tokenHash: 'token',
+          salt: 'salt',
+          isActive: true,
+          localNetworkConfig: const LocalNetworkConfig(
+            enabled: true,
+            targetSsids: ['Home_Mesh'],
+            localHost: '192.168.1.100',
+            probeTimeoutMs: 50, // Short timeout for unit test
+          ),
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            connectivityProvider.overrideWith(
+              (ref) => Future.value([ConnectivityResult.wifi]),
+            ),
+            networkInfoProvider.overrideWithValue(
+              MockNetworkInfo(wifiName: null), // Null SSID on Android
+            ),
+            serverListProvider.overrideWith(
+              (ref) => ServerListNotifier(initialServers: [server]),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final resolver = container.read(networkTargetResolverProvider.notifier);
+        // evaluate should attempt local probe; since 192.168.1.100 is unreachable in unit test,
+        // it records the probe attempt and falls back to external rather than bailing on SSID mismatch
+        await resolver.evaluate(force: true);
+
+        final state = container.read(networkTargetResolverProvider);
+        // isLocalReachable is evaluated (false in offline test environment)
+        expect(state.isLocalReachable, isFalse);
+        expect(
+          state.statusMessage,
+          'Local endpoint unreachable. Routed via external URL.',
+        );
+      },
+    );
   });
 
   group('ServerConnectionScreen Widgets', () {

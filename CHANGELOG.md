@@ -34,6 +34,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- Individual songs in the download queue show their own transfer speeds rather than duplicating the batch rate.
+- Local server routing automatically probes LAN endpoints on Wi-Fi even when Android hides the SSID.
+- Added Wi-Fi detection button and permission handling for Android in Server Connection settings.
 - Caching notification automatically dismisses on timeout or when download queue finishes instead of remaining stuck on screen.
 - Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
 - Windows self-updater now installs silently in-place without manual wizard prompts or elevated permission resets.

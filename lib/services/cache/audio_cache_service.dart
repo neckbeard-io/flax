@@ -140,6 +140,48 @@ final audioCacheServiceProvider = Provider<AudioCacheService>((ref) {
   return AudioCacheService(ref);
 });
 
+/// Progress metrics for an individually downloading track.
+class SongDownloadProgress {
+  final int bytesDownloaded;
+  final int totalBytes;
+  final int speedBytesPerSec;
+
+  const SongDownloadProgress({
+    this.bytesDownloaded = 0,
+    this.totalBytes = 0,
+    this.speedBytesPerSec = 0,
+  });
+
+  double? get fraction =>
+      totalBytes > 0 ? (bytesDownloaded / totalBytes).clamp(0.0, 1.0) : null;
+}
+
+final songDownloadProgressProvider =
+    NotifierProvider<
+      SongDownloadProgressNotifier,
+      Map<String, SongDownloadProgress>
+    >(SongDownloadProgressNotifier.new);
+
+class SongDownloadProgressNotifier
+    extends Notifier<Map<String, SongDownloadProgress>> {
+  @override
+  Map<String, SongDownloadProgress> build() => const {};
+
+  void updateProgress(String songId, SongDownloadProgress progress) {
+    state = {...state, songId: progress};
+  }
+
+  void removeSong(String songId) {
+    if (!state.containsKey(songId)) return;
+    final next = Map<String, SongDownloadProgress>.from(state)..remove(songId);
+    state = next;
+  }
+
+  void clear() {
+    if (state.isNotEmpty) state = const {};
+  }
+}
+
 /// Audio caching and offline synchronization service.
 class AudioCacheService {
   final Ref _ref;
@@ -381,6 +423,9 @@ class AudioCacheService {
         final tempFile = File('${destFile.path}.tmp');
         var lastReportedBytes = 0;
         var lastProgressTime = DateTime.now();
+        var lastSpeedBytes = 0;
+        var lastSpeedTime = DateTime.now();
+        var trackSpeed = 0;
 
         await _dio.download(
           downloadUri.toString(),
@@ -396,6 +441,32 @@ class AudioCacheService {
             final delta = received - lastReportedBytes;
             final now = DateTime.now();
             final isDone = total > 0 && received >= total;
+
+            final speedElapsed = now.difference(lastSpeedTime).inMilliseconds;
+            if (speedElapsed >= 500) {
+              final speedDelta = received - lastSpeedBytes;
+              final instant = speedElapsed > 0
+                  ? (speedDelta * 1000) ~/ speedElapsed
+                  : 0;
+              trackSpeed = trackSpeed == 0
+                  ? instant
+                  : ((trackSpeed * 3 + instant) ~/ 4);
+              lastSpeedBytes = received;
+              lastSpeedTime = now;
+            } else if (trackSpeed == 0 && speedElapsed > 0) {
+              trackSpeed = (received * 1000) ~/ speedElapsed;
+            }
+
+            _ref
+                .read(songDownloadProgressProvider.notifier)
+                .updateProgress(
+                  song.id,
+                  SongDownloadProgress(
+                    bytesDownloaded: received,
+                    totalBytes: total,
+                    speedBytesPerSec: trackSpeed,
+                  ),
+                );
 
             if (delta > 0 &&
                 (isDone ||
@@ -468,6 +539,8 @@ class AudioCacheService {
         }
       }
       return null;
+    } finally {
+      _ref.read(songDownloadProgressProvider.notifier).removeSong(song.id);
     }
   }
 
@@ -971,9 +1044,22 @@ class AudioCacheService {
               items: completedSongIds.length,
               bytes: totalBatchBytes,
             );
+            _ref
+                .read(songDownloadProgressProvider.notifier)
+                .updateProgress(
+                  event.songId,
+                  SongDownloadProgress(
+                    bytesDownloaded: event.bytesDownloaded,
+                    totalBytes: event.totalBytes,
+                    speedBytesPerSec: event.speedBytesPerSec,
+                  ),
+                );
           }
         case NativeTaskCompletedEvent():
           if (songIds.contains(event.songId)) {
+            _ref
+                .read(songDownloadProgressProvider.notifier)
+                .removeSong(event.songId);
             completedSongIds.add(event.songId);
             final file = File(event.localPath);
             final fileSize = file.existsSync() ? file.lengthSync() : 0;
@@ -1012,6 +1098,9 @@ class AudioCacheService {
           }
         case NativeTaskFailedEvent():
           if (songIds.contains(event.songId)) {
+            _ref
+                .read(songDownloadProgressProvider.notifier)
+                .removeSong(event.songId);
             failedSongIds.add(event.songId);
             dao
                 .updateSongDownload(
@@ -1026,6 +1115,9 @@ class AudioCacheService {
           }
         case NativeTaskCanceledEvent():
           if (songIds.contains(event.songId)) {
+            _ref
+                .read(songDownloadProgressProvider.notifier)
+                .removeSong(event.songId);
             failedSongIds.add(event.songId);
             dao
                 .updateSongDownload(
@@ -1038,15 +1130,18 @@ class AudioCacheService {
             checkBatchDone();
           }
         case NativeQueueCompletedEvent():
+          _ref.read(songDownloadProgressProvider.notifier).clear();
           _enforceUnifiedCacheLimit(serverId).ignore();
           handle?.complete();
           if (!completer.isCompleted) completer.complete();
         case NativeCanceledEvent():
+          _ref.read(songDownloadProgressProvider.notifier).clear();
           if (!completer.isCompleted) completer.complete();
       }
     });
 
     cancelToken?.whenCancel.then((_) {
+      _ref.read(songDownloadProgressProvider.notifier).clear();
       final remainingIds = songIds
           .difference(completedSongIds)
           .difference(failedSongIds)
