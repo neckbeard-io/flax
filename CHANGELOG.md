@@ -28,6 +28,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full-hierarchy metadata caching automatically stores lyrics, album sleeves, artist bios, and avatars when caching music.
 - Automated nightly library and artwork background sync on Android via WorkManager.
 - Partial cache indicators: albums and artists with some cached tracks show outlined pin badge, context menus offer both "Complete Caching" and "Remove from Cache".
+- Password manager autofill support on server setup via AutofillGroup and semantic autofill hints.
 
 ### Fixed
 - Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
