@@ -10,6 +10,7 @@ import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/providers/locale_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/domain/models/server.dart';
 import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/core/tasks/task.dart';
@@ -21,6 +22,7 @@ import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/features/updater/update_dialog.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/hotkeys/hotkey_service.dart';
+import 'package:flax/services/network/network_target_resolver.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/update_service.dart';
@@ -47,43 +49,84 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           // ── Servers & Connection ──
           _SectionTitle(title: 'Servers & Connection'),
-          ...servers.map(
-            (s) => ListTile(
+          ...servers.map((s) {
+            final isCurrent = s.isActive;
+            String subtitleText = s.url;
+            if (isCurrent && s.localNetworkConfig.enabled) {
+              final targetState = ref.watch(networkTargetResolverProvider);
+              if (targetState.isUsingLocal) {
+                final ms = targetState.lastProbeLatencyMs != null
+                    ? ' · ${targetState.lastProbeLatencyMs} ms'
+                    : '';
+                subtitleText = 'Local LAN (${targetState.effectiveBaseUrl})$ms';
+              } else if (targetState.isProbing) {
+                subtitleText = '${s.url} · Probing local endpoint...';
+              } else if (targetState.isLocalReachable == false) {
+                subtitleText = '${s.url} · Local unreachable · Remote fallback';
+              }
+            }
+
+            return ListTile(
               leading: Icon(
                 s.isActive ? Icons.check_circle : Icons.circle_outlined,
                 color: s.isActive ? theme.colorScheme.primary : null,
               ),
               title: Text(s.name),
-              subtitle: Text(s.url, style: theme.textTheme.bodySmall),
+              subtitle: Text(subtitleText, style: theme.textTheme.bodySmall),
               onTap: () =>
                   ref.read(serverListProvider.notifier).setActiveServer(s.id),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Remove server?'),
-                      content: Text('Remove "${s.name}"?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.tune),
+                    tooltip: 'Connection Settings',
+                    onPressed: () =>
+                        context.push('/settings/server-connection?id=${s.id}'),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Remove server?'),
+                          content: Text('Remove "${s.name}"?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Remove'),
+                            ),
+                          ],
                         ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Remove'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                    ref.read(serverListProvider.notifier).removeServer(s.id);
-                  }
-                },
+                      );
+                      if (confirm == true) {
+                        ref
+                            .read(serverListProvider.notifier)
+                            .removeServer(s.id);
+                      }
+                    },
+                  ),
+                ],
               ),
+            );
+          }),
+          if (activeServer != null)
+            ListTile(
+              title: const Text('Local Network Target'),
+              subtitle: Text(
+                _localNetworkSubtitle(
+                  ref.watch(networkTargetResolverProvider),
+                  activeServer,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/server-connection'),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: OutlinedButton.icon(
@@ -566,4 +609,29 @@ String _audioOutputSubtitle(AudioOutputSettings settings) {
       ? 'Direct DAC'
       : settings.sampleRate;
   return '${settings.deviceDescription} · $dacMode';
+}
+
+String _localNetworkSubtitle(NetworkTargetState target, Server server) {
+  if (!server.localNetworkConfig.enabled) {
+    return 'Disabled · Connects via remote URL';
+  }
+  if (target.isUsingLocal) {
+    final wifi = target.currentSsid != null
+        ? ' on "${target.currentSsid}"'
+        : '';
+    final latency = target.lastProbeLatencyMs != null
+        ? ' · ${target.lastProbeLatencyMs} ms'
+        : '';
+    return 'Active: ${target.effectiveBaseUrl}$wifi$latency';
+  }
+  if (target.isProbing) {
+    return 'Probing local endpoint...';
+  }
+  if (target.isLocalReachable == false) {
+    final wifi = target.currentSsid != null
+        ? ' on "${target.currentSsid}"'
+        : '';
+    return 'Unreachable$wifi · Routed via remote';
+  }
+  return 'Remote: ${server.baseUrl} · Away from home Wi-Fi';
 }

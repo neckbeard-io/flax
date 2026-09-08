@@ -11,6 +11,7 @@ import connectivity_plus
 import dynamic_color
 import hotkey_manager_macos
 import mpv_audio_kit
+import network_info_plus
 import package_info_plus
 import screen_retriever_macos
 import shared_preferences_foundation
@@ -26,6 +27,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   DynamicColorPlugin.register(with: registry.registrar(forPlugin: "DynamicColorPlugin"))
   HotkeyManagerMacosPlugin.register(with: registry.registrar(forPlugin: "HotkeyManagerMacosPlugin"))
   MpvAudioKitPlugin.register(with: registry.registrar(forPlugin: "MpvAudioKitPlugin"))
+  NetworkInfoPlusPlugin.register(with: registry.registrar(forPlugin: "NetworkInfoPlusPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
   ScreenRetrieverMacosPlugin.register(with: registry.registrar(forPlugin: "ScreenRetrieverMacosPlugin"))
   SharedPreferencesPlugin.register(with: registry.registrar(forPlugin: "SharedPreferencesPlugin"))

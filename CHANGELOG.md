@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Wi-Fi driven local network routing switches traffic directly to server LAN IP on home networks.
 - Android Auto and Android Automotive support with media browse tree and vehicle transport controls.
 - Android Automotive OS native media source discovery and adaptive vehicle screen layout support.
 - Multi-language support (EN, DE, FR, ES, JA, ZH) with setup and appearance screen selector.

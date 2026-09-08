@@ -147,6 +147,99 @@ class MetadataCacheConfig {
   }
 }
 
+class LocalNetworkConfig {
+  final bool enabled;
+  final List<String> targetSsids;
+  final String localHost;
+  final int localPort;
+  final bool useHttps;
+  final bool trustSelfSignedCerts;
+  final bool fallbackToExternal;
+  final int probeTimeoutMs;
+
+  const LocalNetworkConfig({
+    this.enabled = false,
+    this.targetSsids = const [],
+    this.localHost = '',
+    this.localPort = 4533,
+    this.useHttps = false,
+    this.trustSelfSignedCerts = false,
+    this.fallbackToExternal = true,
+    this.probeTimeoutMs = 1500,
+  });
+
+  LocalNetworkConfig copyWith({
+    bool? enabled,
+    List<String>? targetSsids,
+    String? localHost,
+    int? localPort,
+    bool? useHttps,
+    bool? trustSelfSignedCerts,
+    bool? fallbackToExternal,
+    int? probeTimeoutMs,
+  }) {
+    return LocalNetworkConfig(
+      enabled: enabled ?? this.enabled,
+      targetSsids: targetSsids ?? this.targetSsids,
+      localHost: localHost ?? this.localHost,
+      localPort: localPort ?? this.localPort,
+      useHttps: useHttps ?? this.useHttps,
+      trustSelfSignedCerts: trustSelfSignedCerts ?? this.trustSelfSignedCerts,
+      fallbackToExternal: fallbackToExternal ?? this.fallbackToExternal,
+      probeTimeoutMs: probeTimeoutMs ?? this.probeTimeoutMs,
+    );
+  }
+
+  /// Returns the formatted base URL for the local target, or null if localHost is empty.
+  String? get localBaseUrl {
+    final trimmedHost = localHost.trim();
+    if (trimmedHost.isEmpty) return null;
+
+    final hostWithoutScheme = trimmedHost
+        .replaceFirst(RegExp(r'^https?:\/\/'), '')
+        .replaceFirst(RegExp(r'\/.*$'), '');
+
+    if (hostWithoutScheme.contains(':')) {
+      final parts = hostWithoutScheme.split(':');
+      final host = parts[0];
+      final port = int.tryParse(parts[1]) ?? localPort;
+      final scheme = useHttps ? 'https' : 'http';
+      return '$scheme://$host:$port';
+    }
+
+    final scheme = useHttps ? 'https' : 'http';
+    return '$scheme://$hostWithoutScheme:$localPort';
+  }
+
+  Map<String, dynamic> toJson() => {
+    'enabled': enabled,
+    'targetSsids': targetSsids,
+    'localHost': localHost,
+    'localPort': localPort,
+    'useHttps': useHttps,
+    'trustSelfSignedCerts': trustSelfSignedCerts,
+    'fallbackToExternal': fallbackToExternal,
+    'probeTimeoutMs': probeTimeoutMs,
+  };
+
+  factory LocalNetworkConfig.fromJson(Map<String, dynamic> json) {
+    return LocalNetworkConfig(
+      enabled: json['enabled'] as bool? ?? false,
+      targetSsids:
+          (json['targetSsids'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      localHost: json['localHost'] as String? ?? '',
+      localPort: (json['localPort'] as num?)?.toInt() ?? 4533,
+      useHttps: json['useHttps'] as bool? ?? false,
+      trustSelfSignedCerts: json['trustSelfSignedCerts'] as bool? ?? false,
+      fallbackToExternal: json['fallbackToExternal'] as bool? ?? true,
+      probeTimeoutMs: (json['probeTimeoutMs'] as num?)?.toInt() ?? 1500,
+    );
+  }
+}
+
 class Server {
   final String id;
   final String name;
@@ -159,6 +252,7 @@ class Server {
   final DateTime? lastSync;
   final TranscodingConfig transcodingConfig;
   final MetadataCacheConfig metadataCacheConfig;
+  final LocalNetworkConfig localNetworkConfig;
 
   const Server({
     required this.id,
@@ -172,6 +266,7 @@ class Server {
     this.lastSync,
     this.transcodingConfig = const TranscodingConfig(),
     this.metadataCacheConfig = const MetadataCacheConfig(),
+    this.localNetworkConfig = const LocalNetworkConfig(),
   });
 
   Server copyWith({
@@ -186,6 +281,7 @@ class Server {
     DateTime? lastSync,
     TranscodingConfig? transcodingConfig,
     MetadataCacheConfig? metadataCacheConfig,
+    LocalNetworkConfig? localNetworkConfig,
   }) {
     return Server(
       id: id ?? this.id,
@@ -199,6 +295,7 @@ class Server {
       lastSync: lastSync ?? this.lastSync,
       transcodingConfig: transcodingConfig ?? this.transcodingConfig,
       metadataCacheConfig: metadataCacheConfig ?? this.metadataCacheConfig,
+      localNetworkConfig: localNetworkConfig ?? this.localNetworkConfig,
     );
   }
 
@@ -217,6 +314,7 @@ class Server {
     'lastSync': lastSync?.toIso8601String(),
     'transcodingConfig': transcodingConfig.toJson(),
     'metadataCacheConfig': metadataCacheConfig.toJson(),
+    'localNetworkConfig': localNetworkConfig.toJson(),
   };
 
   factory Server.fromJson(Map<String, dynamic> json) {
@@ -242,6 +340,11 @@ class Server {
               json['metadataCacheConfig'] as Map<String, dynamic>,
             )
           : const MetadataCacheConfig(),
+      localNetworkConfig: json['localNetworkConfig'] != null
+          ? LocalNetworkConfig.fromJson(
+              json['localNetworkConfig'] as Map<String, dynamic>,
+            )
+          : const LocalNetworkConfig(),
     );
   }
 }

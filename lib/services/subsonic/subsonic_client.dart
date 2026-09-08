@@ -13,15 +13,23 @@ import 'package:flax/domain/repositories/music_backend.dart';
 
 class SubsonicClient implements MusicBackend {
   final Server server;
+  final String? customBaseUrl;
   final Dio _dio;
 
   static const String _apiVersion = '1.16.1';
   static const String _clientName = 'flax';
 
-  SubsonicClient({required this.server, Dio? dio})
-    : _dio = dio ?? _createDefaultDio();
+  SubsonicClient({required this.server, this.customBaseUrl, Dio? dio})
+    : _dio =
+          dio ??
+          _createDefaultDio(server: server, customBaseUrl: customBaseUrl);
 
-  static Dio _createDefaultDio() {
+  String get baseUrl {
+    final base = customBaseUrl ?? server.baseUrl;
+    return base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+  }
+
+  static Dio _createDefaultDio({Server? server, String? customBaseUrl}) {
     final dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 10),
@@ -34,6 +42,9 @@ class SubsonicClient implements MusicBackend {
         final client = HttpClient();
         client.maxConnectionsPerHost = 16;
         client.idleTimeout = const Duration(seconds: 60);
+        if (server?.localNetworkConfig.trustSelfSignedCerts == true) {
+          client.badCertificateCallback = (cert, host, port) => true;
+        }
         return client;
       },
     );
@@ -75,7 +86,7 @@ class SubsonicClient implements MusicBackend {
     AppLogger.d('Subsonic', () => 'GET $endpoint: ${extra ?? const {}}');
 
     final response = await _dio.get<Map<String, dynamic>>(
-      '${server.baseUrl}/rest/$endpoint',
+      '$baseUrl/rest/$endpoint',
       queryParameters: params,
       options: options,
     );
@@ -124,7 +135,7 @@ class SubsonicClient implements MusicBackend {
         return 'Connection timed out. Check the server URL and your network.';
       }
       if (e.type == DioExceptionType.connectionError) {
-        return 'Could not reach server. Check the URL (${server.baseUrl}).';
+        return 'Could not reach server. Check the URL ($baseUrl).';
       }
       if (e.response?.statusCode == 404) {
         return 'Server returned 404. Is this a Navidrome/Subsonic server?';
@@ -309,17 +320,13 @@ class SubsonicClient implements MusicBackend {
     if (maxBitRate != null) params['maxBitRate'] = maxBitRate.toString();
     if (format != null) params['format'] = format;
 
-    return Uri.parse(
-      '${server.baseUrl}/rest/stream',
-    ).replace(queryParameters: params);
+    return Uri.parse('$baseUrl/rest/stream').replace(queryParameters: params);
   }
 
   @override
   Uri getDownloadUri(String songId) {
     final params = <String, String>{..._authParams(), 'id': songId};
-    return Uri.parse(
-      '${server.baseUrl}/rest/download',
-    ).replace(queryParameters: params);
+    return Uri.parse('$baseUrl/rest/download').replace(queryParameters: params);
   }
 
   @override
@@ -328,7 +335,7 @@ class SubsonicClient implements MusicBackend {
     if (size != null) params['size'] = size.toString();
 
     return Uri.parse(
-      '${server.baseUrl}/rest/getCoverArt',
+      '$baseUrl/rest/getCoverArt',
     ).replace(queryParameters: params);
   }
 

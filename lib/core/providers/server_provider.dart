@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flax/domain/models/server.dart';
+import 'package:flax/services/network/network_target_resolver.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
 final serverListProvider =
@@ -23,7 +24,8 @@ final activeServerProvider = Provider<Server?>((ref) {
 final subsonicClientProvider = Provider<SubsonicClient?>((ref) {
   final server = ref.watch(activeServerProvider);
   if (server == null) return null;
-  return SubsonicClient(server: server);
+  final effectiveUrl = ref.watch(effectiveBaseUrlProvider);
+  return SubsonicClient(server: server, customBaseUrl: effectiveUrl);
 });
 
 class ServerListNotifier extends StateNotifier<List<Server>> {
