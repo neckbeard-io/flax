@@ -325,17 +325,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
           }
         }),
       );
-      _subs.add(
-        session.devicesChangedEventStream.listen((event) {
-          AppLogger.i(
-            'Player',
-            'Audio devices changed: removed=${event.devicesRemoved.map((d) => d.name).toList()}',
-          );
-          if (event.devicesRemoved.isNotEmpty && state.isPlaying) {
-            pause();
-          }
-        }),
-      );
     } catch (e) {
       AppLogger.w('Player', 'Failed to initialize AudioSession listeners: $e');
     }

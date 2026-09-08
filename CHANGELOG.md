@@ -48,6 +48,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Audio playback now automatically pauses when Android Auto, car Bluetooth, or headphones disconnect (`AUDIO_BECOMING_NOISY`).
 - Cold-start offline mode resilience: preloaded offline settings on launch and resilient local database fallback prevent startup stalls when offline.
 - Android in-place updater prompts unknown source permissions seamlessly.
+- Eliminated Android startup crash caused by audio session device inspection and early activity lifecycle permission requests.
 
 ## v0.5.6 — 2026-08-29
 

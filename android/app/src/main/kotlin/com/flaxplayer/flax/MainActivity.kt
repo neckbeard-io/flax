@@ -25,11 +25,6 @@ class MainActivity : AudioServiceActivity() {
     private val DOWNLOADER_EVENTS = "com.flax/native_downloader_events"
     private val SYNC_CHANNEL = "com.flax/background_sync"
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        requestNotificationPermission()
-    }
-
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
