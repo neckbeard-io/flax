@@ -288,6 +288,7 @@ class FlaxDownloadService : Service() {
         }
     }
 
+    @Synchronized
     private fun calculateSpeed(now: Long) {
         val timeDelta = now - lastSpeedCheckTime
         if (timeDelta >= 1000) {

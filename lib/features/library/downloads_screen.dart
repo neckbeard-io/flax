@@ -279,10 +279,15 @@ class _ActiveDownloadsSectionState
         ? (itemsDone / effectiveTotal).clamp(0.0, 1.0)
         : null;
 
-    final totalRate = tasksToDisplay.fold<double>(
+    final batchRate = tasksToDisplay.fold<double>(
       0.0,
       (sum, t) => sum + (t.ratePerSecond ?? 0.0),
     );
+    final activeTracksRate = songProgressMap.values.fold<double>(
+      0.0,
+      (sum, p) => sum + (p.speedBytesPerSec > 0 ? p.speedBytesPerSec : 0),
+    );
+    final totalRate = batchRate > 0 ? batchRate : activeTracksRate;
     final primaryUnit =
         tasksToDisplay.firstOrNull?.kind.unit ?? ProgressUnit.bytes;
     final rateStr = totalRate > 0 ? formatRate(totalRate, primaryUnit) : null;

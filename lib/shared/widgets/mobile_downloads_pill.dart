@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/core/tasks/task_registry.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 
 /// A compact, animated mobile status pill shown in top app bars when background
@@ -36,7 +37,16 @@ class MobileActiveDownloadsPill extends ConsumerWidget {
     final fraction = totalCount != null && totalCount > 0
         ? (doneCount / totalCount).clamp(0.0, 1.0)
         : primaryTask.fraction;
-    final rate = primaryTask.ratePerSecond;
+    final batchRate = primaryTask.ratePerSecond;
+    final songProgressMap = ref.watch(songDownloadProgressProvider);
+    final activeTracksRate = songProgressMap.values.fold<double>(
+      0.0,
+      (sum, p) => sum + (p.speedBytesPerSec > 0 ? p.speedBytesPerSec : 0),
+    );
+
+    final rate = (batchRate != null && batchRate > 0)
+        ? batchRate
+        : (activeTracksRate > 0 ? activeTracksRate : null);
     final rateStr = rate != null && rate > 0
         ? formatRate(rate, primaryTask.kind.unit)
         : null;

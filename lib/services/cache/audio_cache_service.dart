@@ -1007,6 +1007,22 @@ class AudioCacheService {
 
     final completer = Completer<void>();
     StreamSubscription<NativeDownloadEvent>? sub;
+    var lastProgressUpdate = DateTime.now();
+
+    void updateHandleProgress({bool force = false}) {
+      final now = DateTime.now();
+      if (force || now.difference(lastProgressUpdate).inMilliseconds >= 250) {
+        lastProgressUpdate = now;
+        final totalBatchBytes = songBytesMap.values.fold<int>(
+          0,
+          (a, b) => a + b,
+        );
+        handle?.progress(
+          items: completedSongIds.length,
+          bytes: totalBatchBytes,
+        );
+      }
+    }
 
     void checkBatchDone() {
       if (completedSongIds.length + failedSongIds.length >= songIds.length) {
@@ -1036,14 +1052,7 @@ class AudioCacheService {
         case NativeProgressEvent():
           if (songIds.contains(event.songId)) {
             songBytesMap[event.songId] = event.bytesDownloaded;
-            final totalBatchBytes = songBytesMap.values.fold<int>(
-              0,
-              (a, b) => a + b,
-            );
-            handle?.progress(
-              items: completedSongIds.length,
-              bytes: totalBatchBytes,
-            );
+            updateHandleProgress();
             _ref
                 .read(songDownloadProgressProvider.notifier)
                 .updateProgress(
@@ -1086,14 +1095,7 @@ class AudioCacheService {
                 song: matchingSong,
               ).ignore();
             }
-            final totalBatchBytes = songBytesMap.values.fold<int>(
-              0,
-              (a, b) => a + b,
-            );
-            handle?.progress(
-              items: completedSongIds.length,
-              bytes: totalBatchBytes,
-            );
+            updateHandleProgress(force: true);
             checkBatchDone();
           }
         case NativeTaskFailedEvent():

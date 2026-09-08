@@ -87,6 +87,19 @@ void main() {
       e.sample(100, t0.add(const Duration(seconds: 1)));
       expect(e.ratePerSecond, greaterThanOrEqualTo(0));
     });
+
+    test('bursts of sub-millisecond samples do not spike rate estimate', () {
+      final e = RateEstimator();
+      e.sample(0, t0);
+      for (var i = 1; i <= 30; i++) {
+        // Events spaced 10ms apart, carrying 150KB each (~15 MB/s)
+        e.sample(i * 150000, t0.add(Duration(milliseconds: i * 10)));
+      }
+      expect(e.ratePerSecond, isNotNull);
+      // Rate should be near 15 MB/s, well below 30 MB/s, and definitely not 300+ MB/s
+      expect(e.ratePerSecond!, lessThan(30 * 1024 * 1024));
+      expect(e.ratePerSecond!, greaterThan(5 * 1024 * 1024));
+    });
   });
 
   group('Task', () {

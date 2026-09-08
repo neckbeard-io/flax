@@ -29,31 +29,37 @@ class RateEstimator {
   final Duration warmup;
 
   DateTime? _firstAt;
-  DateTime? _lastAt;
   int? _lastDone;
+  DateTime? _lastRateAt;
+  int? _lastRateDone;
   double? _rate;
 
   /// Feed a cumulative progress reading. [done] is total-so-far, not a delta.
   void sample(int done, DateTime at) {
     _firstAt ??= at;
-
-    final lastAt = _lastAt;
-    final lastDone = _lastDone;
-    _lastAt = at;
     _lastDone = done;
 
-    if (lastAt == null || lastDone == null) return;
+    if (_lastRateAt == null || _lastRateDone == null) {
+      _lastRateAt = at;
+      _lastRateDone = done;
+      return;
+    }
 
-    final elapsed = at.difference(lastAt).inMicroseconds / 1e6;
+    final elapsed = at.difference(_lastRateAt!).inMicroseconds / 1e6;
     // Two readings in the same instant carry no rate information, and dividing
-    // by the gap would be a divide by zero.
-    if (elapsed <= 0) return;
+    // by the gap would be a divide by zero. Also require at least 50ms of elapsed
+    // time to prevent buffer arrival jitter from concurrent worker threads
+    // causing false instant speed spikes.
+    if (elapsed < 0.05) return;
 
     // Progress should never go backwards, but a re-enumeration or a retry could
     // make it look like it does. Treat that as no progress rather than as a
     // negative rate that would poison the average.
-    final delta = math.max(0, done - lastDone);
+    final delta = math.max(0, done - _lastRateDone!);
     final instant = delta / elapsed;
+
+    _lastRateAt = at;
+    _lastRateDone = done;
 
     final previous = _rate;
     if (previous == null) {
