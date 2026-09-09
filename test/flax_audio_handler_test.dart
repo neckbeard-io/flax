@@ -242,6 +242,9 @@ class MockLibraryRepository extends Mock implements LibraryRepository {
 
 class MockSubsonicClient extends Mock implements SubsonicClient {
   @override
+  Future<String?> tryPing({Duration? timeout}) async => null;
+
+  @override
   Uri getCoverArtUri(String? id, {int? size}) {
     return Uri.parse(
       'https://music.example.com/rest/getCoverArt?id=$id&size=$size',

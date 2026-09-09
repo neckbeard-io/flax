@@ -11,7 +11,14 @@ const _kOfflineOnCellularPrefKey = 'flax_offline_on_cellular';
 const _kOfflineOnAndroidAutoPrefKey = 'flax_offline_on_android_auto';
 
 /// Reason why the app is currently in offline mode.
-enum OfflineReason { none, manual, cellular, androidAuto, serverUnreachable }
+enum OfflineReason {
+  none,
+  manual,
+  cellular,
+  androidAuto,
+  serverUnreachable,
+  noNetwork,
+}
 
 /// Manual offline mode toggle persisted across sessions.
 final offlineManualOverrideProvider =
@@ -183,6 +190,23 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
         state = const ServerReachability();
       }
     });
+
+    _ref.listen<AsyncValue<List<ConnectivityResult>>>(
+      connectivityStreamProvider,
+      (prev, next) {
+        final current = next.valueOrNull;
+        if (current != null) {
+          final hasNetwork = current.any(
+            (c) =>
+                c != ConnectivityResult.none &&
+                c != ConnectivityResult.bluetooth,
+          );
+          if (hasNetwork && !state.isReachable && !state.isProbing) {
+            probeServer(silent: true);
+          }
+        }
+      },
+    );
   }
 
   /// Probes the server with a hard 3-second timeout.
@@ -197,7 +221,12 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
     }
 
     state = state.copyWith(isProbing: true);
-    final error = await client.tryPing(timeout: timeout);
+    String? error;
+    try {
+      error = await client.tryPing(timeout: timeout);
+    } catch (e) {
+      error = e.toString();
+    }
     final isReachable = error == null;
 
     final wasReachable = state.isReachable;
@@ -270,18 +299,25 @@ final isOfflineModeProvider = Provider<bool>((ref) {
   final manual = ref.watch(offlineManualOverrideProvider);
   if (manual) return true;
 
+  final connectivity =
+      ref.watch(connectivityStreamProvider).valueOrNull ??
+      ref.watch(connectivityProvider).valueOrNull;
+  if (connectivity != null) {
+    final hasConnection = connectivity.any(
+      (c) => c != ConnectivityResult.none && c != ConnectivityResult.bluetooth,
+    );
+    if (!hasConnection) {
+      return true;
+    }
+  }
+
   final onCellularSetting = ref.watch(offlineOnCellularSettingProvider);
-  if (onCellularSetting) {
-    final connectivity =
-        ref.watch(connectivityStreamProvider).valueOrNull ??
-        ref.watch(connectivityProvider).valueOrNull;
-    if (connectivity != null) {
-      final hasWifiOrEthernet =
-          connectivity.contains(ConnectivityResult.wifi) ||
-          connectivity.contains(ConnectivityResult.ethernet);
-      if (!hasWifiOrEthernet) {
-        return true;
-      }
+  if (onCellularSetting && connectivity != null) {
+    final hasWifiOrEthernet =
+        connectivity.contains(ConnectivityResult.wifi) ||
+        connectivity.contains(ConnectivityResult.ethernet);
+    if (!hasWifiOrEthernet) {
+      return true;
     }
   }
 
@@ -303,18 +339,25 @@ final offlineReasonProvider = Provider<OfflineReason>((ref) {
   final manual = ref.watch(offlineManualOverrideProvider);
   if (manual) return OfflineReason.manual;
 
+  final connectivity =
+      ref.watch(connectivityStreamProvider).valueOrNull ??
+      ref.watch(connectivityProvider).valueOrNull;
+  if (connectivity != null) {
+    final hasConnection = connectivity.any(
+      (c) => c != ConnectivityResult.none && c != ConnectivityResult.bluetooth,
+    );
+    if (!hasConnection) {
+      return OfflineReason.noNetwork;
+    }
+  }
+
   final onCellularSetting = ref.watch(offlineOnCellularSettingProvider);
-  if (onCellularSetting) {
-    final connectivity =
-        ref.watch(connectivityStreamProvider).valueOrNull ??
-        ref.watch(connectivityProvider).valueOrNull;
-    if (connectivity != null) {
-      final hasWifiOrEthernet =
-          connectivity.contains(ConnectivityResult.wifi) ||
-          connectivity.contains(ConnectivityResult.ethernet);
-      if (!hasWifiOrEthernet) {
-        return OfflineReason.cellular;
-      }
+  if (onCellularSetting && connectivity != null) {
+    final hasWifiOrEthernet =
+        connectivity.contains(ConnectivityResult.wifi) ||
+        connectivity.contains(ConnectivityResult.ethernet);
+    if (!hasWifiOrEthernet) {
+      return OfflineReason.cellular;
     }
   }
 

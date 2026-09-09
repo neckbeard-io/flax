@@ -15,6 +15,6 @@ final connectivityProvider = FutureProvider<List<ConnectivityResult>>((
   try {
     return await Connectivity().checkConnectivity();
   } catch (_) {
-    return [ConnectivityResult.wifi];
+    return [ConnectivityResult.none];
   }
 });

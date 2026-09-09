@@ -46,6 +46,44 @@ void main() {
       expect(container.read(offlineReasonProvider), OfflineReason.none);
     });
 
+    test(
+      'no network connection triggers offline mode and noNetwork reason',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            connectivityStreamProvider.overrideWith(
+              (ref) => Stream.value([ConnectivityResult.none]),
+            ),
+            connectivityProvider.overrideWith(
+              (ref) => Future.value([ConnectivityResult.none]),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(connectivityStreamProvider.future);
+
+        expect(container.read(isOfflineModeProvider), isTrue);
+        expect(container.read(offlineReasonProvider), OfflineReason.noNetwork);
+      },
+    );
+
+    test(
+      'empty connectivity results triggers offline mode and noNetwork reason',
+      () async {
+        final container = ProviderContainer(
+          overrides: [
+            connectivityStreamProvider.overrideWith((ref) => Stream.value([])),
+            connectivityProvider.overrideWith((ref) => Future.value([])),
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(connectivityStreamProvider.future);
+
+        expect(container.read(isOfflineModeProvider), isTrue);
+        expect(container.read(offlineReasonProvider), OfflineReason.noNetwork);
+      },
+    );
+
     test('manual override enters offline mode', () async {
       final container = ProviderContainer();
       addTearDown(container.dispose);

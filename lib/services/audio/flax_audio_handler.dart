@@ -74,9 +74,6 @@ class FlaxAudioHandler extends BaseAudioHandler {
         buffering: false,
       ),
     );
-    try {
-      _library?.syncAnnotations(force: true);
-    } catch (_) {}
   }
 
   LibraryRepository? get _library => _container.read(libraryRepositoryProvider);

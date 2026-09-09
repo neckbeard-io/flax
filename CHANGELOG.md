@@ -34,6 +34,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- App opens immediately on Android without startup hangs or offline stalls.
+- Library screens instantly display downloaded music when offline or server unreachable.
 - Self-updater APK downloads on Android now use high-throughput native HTTP/2 stack.
 - Total download speed spiking erratically from concurrent worker event bursts.
 - Dev pre-releases now extract precise tag-to-tag changelog deltas, and in-app self-updater aggregates skipped versions cleanly.

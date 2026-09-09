@@ -34,9 +34,11 @@ final artistDetailProvider = StreamProvider.family<Artist, String>((
   if (!isOffline) {
     final cached = await repo.watchArtist(id).first;
     if (cached == null) {
-      await repo.refreshArtist(id);
+      try {
+        await repo.refreshArtist(id);
+      } catch (_) {}
     } else {
-      repo.refreshArtist(id);
+      repo.refreshArtist(id).catchError((_) {});
     }
   }
 
@@ -70,9 +72,17 @@ final artistAlbumsProvider = StreamProvider.family<List<Album>, String>((
 
   final cached = await repo.watchArtistAlbums(artistId).first;
   if (cached.isEmpty) {
-    await repo.refreshArtist(artistId);
+    try {
+      await repo.refreshArtist(artistId);
+    } catch (_) {
+      final downloaded = await repo.watchDownloadedArtistAlbums(artistId).first;
+      if (downloaded.isNotEmpty) {
+        yield* repo.watchDownloadedArtistAlbums(artistId);
+        return;
+      }
+    }
   } else {
-    repo.refreshArtist(artistId);
+    repo.refreshArtist(artistId).catchError((_) {});
   }
 
   yield* repo.watchArtistAlbums(artistId);

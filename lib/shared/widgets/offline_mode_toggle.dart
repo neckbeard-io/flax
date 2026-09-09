@@ -25,24 +25,27 @@ class OfflineModeToggle extends ConsumerWidget {
       OfflineReason.androidAuto => 'Offline mode active (Android Auto)',
       OfflineReason.serverUnreachable =>
         'Offline mode active (server unreachable)',
+      OfflineReason.noNetwork => 'Offline mode active (no network connection)',
       OfflineReason.none => 'Toggle Offline mode (only view cached music)',
     };
 
     final activeColor = switch (reason) {
-      OfflineReason.serverUnreachable => theme.colorScheme.error,
+      OfflineReason.serverUnreachable ||
+      OfflineReason.noNetwork => theme.colorScheme.error,
       OfflineReason.cellular => Colors.orange[700] ?? theme.colorScheme.primary,
       _ => theme.colorScheme.primary,
     };
 
     final activeContainerColor = switch (reason) {
-      OfflineReason.serverUnreachable =>
+      OfflineReason.serverUnreachable || OfflineReason.noNetwork =>
         theme.colorScheme.errorContainer.withValues(alpha: 0.8),
       OfflineReason.cellular => Colors.orange.withValues(alpha: 0.2),
       _ => theme.colorScheme.primaryContainer,
     };
 
     final onActiveContainerColor = switch (reason) {
-      OfflineReason.serverUnreachable => theme.colorScheme.onErrorContainer,
+      OfflineReason.serverUnreachable ||
+      OfflineReason.noNetwork => theme.colorScheme.onErrorContainer,
       OfflineReason.cellular => Colors.orange[800] ?? theme.colorScheme.primary,
       _ => theme.colorScheme.onPrimaryContainer,
     };
@@ -251,6 +254,7 @@ class _OfflineStatusInnerBanner extends ConsumerWidget {
     final text = switch (reason) {
       OfflineReason.cellular => 'Offline (Cellular streaming disabled)',
       OfflineReason.serverUnreachable => 'Offline (Server unreachable)',
+      OfflineReason.noNetwork => 'Offline (No network connection)',
       _ => 'Offline Mode active',
     };
 
