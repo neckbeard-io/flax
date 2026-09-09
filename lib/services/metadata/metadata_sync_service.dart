@@ -33,6 +33,7 @@ class MetadataCacheSummary {
   final int artistInfoBytes;
 
   final DateTime? lastSyncedAt;
+  final MetadataCacheConfig? config;
 
   const MetadataCacheSummary({
     this.albumArtCached = 0,
@@ -45,16 +46,28 @@ class MetadataCacheSummary {
     this.artistInfoTotal = 0,
     this.artistInfoBytes = 0,
     this.lastSyncedAt,
+    this.config,
   });
 
   int get totalBytes => albumArtBytes + artistArtBytes + artistInfoBytes;
 
   bool get isFullyCached {
-    final albumOk = albumArtTotal == 0 || albumArtCached >= albumArtTotal;
+    final albumEnabled =
+        config == null || config!.albumArtQuality != MetadataQuality.disabled;
+    final artistArtEnabled =
+        config == null || config!.artistArtQuality != MetadataQuality.disabled;
+    final artistInfoEnabled = config == null || config!.cacheArtistInfo;
+
+    final albumOk =
+        !albumEnabled || albumArtTotal == 0 || albumArtCached >= albumArtTotal;
     final artistArtOk =
-        artistArtTotal == 0 || artistArtCached >= artistArtTotal;
+        !artistArtEnabled ||
+        artistArtTotal == 0 ||
+        artistArtCached >= artistArtTotal;
     final artistInfoOk =
-        artistInfoTotal == 0 || artistInfoCached >= artistInfoTotal;
+        !artistInfoEnabled ||
+        artistInfoTotal == 0 ||
+        artistInfoCached >= artistInfoTotal;
     return albumOk && artistArtOk && artistInfoOk;
   }
 }
@@ -87,8 +100,31 @@ class MetadataSyncService {
   Future<MetadataCacheSummary> getSummary(Server server, LibraryDao dao) async {
     try {
       final albums = await dao.getAllAlbums(server.id);
-      final artists = await dao.getAllArtists(server.id);
+      var artists = await dao.getAllArtists(server.id);
       final config = server.metadataCacheConfig;
+
+      // Reconcile artists referenced by albums if artists list has not been fully fetched
+      final knownArtistIds = {for (final a in artists) a.id};
+      final missingArtists = <Artist>[];
+      final seenMissingIds = <String>{};
+      for (final alb in albums) {
+        final aId = alb.artistId;
+        if (aId != null &&
+            aId.isNotEmpty &&
+            !knownArtistIds.contains(aId) &&
+            seenMissingIds.add(aId)) {
+          missingArtists.add(
+            Artist(
+              id: aId,
+              serverId: server.id,
+              name: alb.artistName ?? 'Unknown Artist',
+            ),
+          );
+        }
+      }
+      if (missingArtists.isNotEmpty) {
+        artists = [...artists, ...missingArtists];
+      }
 
       int albumArtCached = 0;
       int albumArtBytes = 0;
@@ -124,9 +160,15 @@ class MetadataSyncService {
 
       int artistArtCached = 0;
       int artistArtBytes = 0;
-      final artistArtTotal = artists
+      final isFullListFetched = await dao.artistsFetchedAt(server.id) != null;
+      final artistsWithCover = artists
           .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
           .length;
+      final artistArtTotal = isFullListFetched
+          ? artistsWithCover
+          : (artists.length > artistsWithCover
+                ? artists.length
+                : artistsWithCover);
 
       if (config.artistArtQuality != MetadataQuality.disabled) {
         final reqSize = config.artistArtQuality.requestSize;
@@ -178,6 +220,7 @@ class MetadataSyncService {
         artistInfoTotal: artistInfoTotal,
         artistInfoBytes: artistInfoBytes,
         lastSyncedAt: config.lastSyncedAt,
+        config: config,
       );
     } catch (e) {
       AppLogger.w('Sync', 'Error calculating metadata cache summary: $e');
@@ -255,16 +298,49 @@ class MetadataSyncService {
         AppLogger.w('Sync', 'Error fetching full album list: $e');
       }
 
-      if (artists.isEmpty) {
-        try {
-          final fetchedArtists = await client.getArtists();
-          if (!_isCanceled && !handle.isCanceled && fetchedArtists.isNotEmpty) {
-            await dao.upsertArtists(fetchedArtists, DateTime.now());
-            artists = fetchedArtists;
+      try {
+        handle.note('Indexing library: fetching artists...');
+        final fetchedArtists = await client.getArtists();
+        if (!_isCanceled && !handle.isCanceled) {
+          if (fetchedArtists.isNotEmpty) {
+            await dao.upsertArtists(
+              fetchedArtists,
+              DateTime.now(),
+              isFullList: true,
+            );
+          } else {
+            await dao.setArtistsListFetchedAt(server.id, DateTime.now());
           }
-        } catch (e) {
-          AppLogger.w('Sync', 'Error fetching artists: $e');
+          artists = await dao.getAllArtists(server.id);
         }
+      } catch (e) {
+        AppLogger.w('Sync', 'Error fetching artists: $e');
+      }
+
+      if (_isCanceled || handle.isCanceled) return;
+
+      // Reconcile any artists referenced by albums that were not in the artist index
+      final knownArtistIds = {for (final a in artists) a.id};
+      final missingArtists = <Artist>[];
+      final seenMissing = <String>{};
+      for (final alb in albums) {
+        final aId = alb.artistId;
+        if (aId != null &&
+            aId.isNotEmpty &&
+            !knownArtistIds.contains(aId) &&
+            seenMissing.add(aId)) {
+          missingArtists.add(
+            Artist(
+              id: aId,
+              serverId: server.id,
+              name: alb.artistName ?? 'Unknown Artist',
+            ),
+          );
+        }
+      }
+      if (missingArtists.isNotEmpty) {
+        await dao.upsertArtists(missingArtists, DateTime.now());
+        artists = await dao.getAllArtists(server.id);
       }
 
       if (_isCanceled || handle.isCanceled) return;
@@ -699,6 +775,27 @@ final metadataCacheSummaryProvider =
 
       final dao = ref.watch(libraryDaoProvider);
       final service = ref.watch(metadataSyncServiceProvider);
+
+      final client = ref.watch(subsonicClientProvider);
+      if (client != null && server.id == client.server.id) {
+        final fetchedAt = await dao.artistsFetchedAt(serverId);
+        if (fetchedAt == null) {
+          try {
+            final fetched = await client.getArtists();
+            if (fetched.isNotEmpty) {
+              await dao.upsertArtists(
+                fetched,
+                DateTime.now(),
+                isFullList: true,
+              );
+            } else {
+              await dao.setArtistsListFetchedAt(serverId, DateTime.now());
+            }
+          } catch (e) {
+            AppLogger.w('Sync', 'Failed to prefetch artists for summary: $e');
+          }
+        }
+      }
 
       return service.getSummary(server, dao);
     });
