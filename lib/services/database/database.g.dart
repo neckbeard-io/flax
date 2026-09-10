@@ -5762,6 +5762,405 @@ class SyncStatesCompanion extends UpdateCompanion<SyncStateRow> {
   }
 }
 
+class $PendingScrobblesTable extends PendingScrobbles
+    with TableInfo<$PendingScrobblesTable, PendingScrobbleRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingScrobblesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
+    'server_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _songIdMeta = const VerificationMeta('songId');
+  @override
+  late final GeneratedColumn<String> songId = GeneratedColumn<String>(
+    'song_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _listenedAtMeta = const VerificationMeta(
+    'listenedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> listenedAt = GeneratedColumn<DateTime>(
+    'listened_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    serverId,
+    songId,
+    listenedAt,
+    attempts,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_scrobbles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingScrobbleRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_serverIdMeta);
+    }
+    if (data.containsKey('song_id')) {
+      context.handle(
+        _songIdMeta,
+        songId.isAcceptableOrUnknown(data['song_id']!, _songIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_songIdMeta);
+    }
+    if (data.containsKey('listened_at')) {
+      context.handle(
+        _listenedAtMeta,
+        listenedAt.isAcceptableOrUnknown(data['listened_at']!, _listenedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_listenedAtMeta);
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingScrobbleRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingScrobbleRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_id'],
+      )!,
+      songId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}song_id'],
+      )!,
+      listenedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}listened_at'],
+      )!,
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PendingScrobblesTable createAlias(String alias) {
+    return $PendingScrobblesTable(attachedDatabase, alias);
+  }
+}
+
+class PendingScrobbleRow extends DataClass
+    implements Insertable<PendingScrobbleRow> {
+  final int id;
+  final String serverId;
+  final String songId;
+  final DateTime listenedAt;
+  final int attempts;
+  final DateTime createdAt;
+  const PendingScrobbleRow({
+    required this.id,
+    required this.serverId,
+    required this.songId,
+    required this.listenedAt,
+    required this.attempts,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['server_id'] = Variable<String>(serverId);
+    map['song_id'] = Variable<String>(songId);
+    map['listened_at'] = Variable<DateTime>(listenedAt);
+    map['attempts'] = Variable<int>(attempts);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PendingScrobblesCompanion toCompanion(bool nullToAbsent) {
+    return PendingScrobblesCompanion(
+      id: Value(id),
+      serverId: Value(serverId),
+      songId: Value(songId),
+      listenedAt: Value(listenedAt),
+      attempts: Value(attempts),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PendingScrobbleRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingScrobbleRow(
+      id: serializer.fromJson<int>(json['id']),
+      serverId: serializer.fromJson<String>(json['serverId']),
+      songId: serializer.fromJson<String>(json['songId']),
+      listenedAt: serializer.fromJson<DateTime>(json['listenedAt']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'serverId': serializer.toJson<String>(serverId),
+      'songId': serializer.toJson<String>(songId),
+      'listenedAt': serializer.toJson<DateTime>(listenedAt),
+      'attempts': serializer.toJson<int>(attempts),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PendingScrobbleRow copyWith({
+    int? id,
+    String? serverId,
+    String? songId,
+    DateTime? listenedAt,
+    int? attempts,
+    DateTime? createdAt,
+  }) => PendingScrobbleRow(
+    id: id ?? this.id,
+    serverId: serverId ?? this.serverId,
+    songId: songId ?? this.songId,
+    listenedAt: listenedAt ?? this.listenedAt,
+    attempts: attempts ?? this.attempts,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PendingScrobbleRow copyWithCompanion(PendingScrobblesCompanion data) {
+    return PendingScrobbleRow(
+      id: data.id.present ? data.id.value : this.id,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
+      songId: data.songId.present ? data.songId.value : this.songId,
+      listenedAt: data.listenedAt.present
+          ? data.listenedAt.value
+          : this.listenedAt,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingScrobbleRow(')
+          ..write('id: $id, ')
+          ..write('serverId: $serverId, ')
+          ..write('songId: $songId, ')
+          ..write('listenedAt: $listenedAt, ')
+          ..write('attempts: $attempts, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, serverId, songId, listenedAt, attempts, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingScrobbleRow &&
+          other.id == this.id &&
+          other.serverId == this.serverId &&
+          other.songId == this.songId &&
+          other.listenedAt == this.listenedAt &&
+          other.attempts == this.attempts &&
+          other.createdAt == this.createdAt);
+}
+
+class PendingScrobblesCompanion extends UpdateCompanion<PendingScrobbleRow> {
+  final Value<int> id;
+  final Value<String> serverId;
+  final Value<String> songId;
+  final Value<DateTime> listenedAt;
+  final Value<int> attempts;
+  final Value<DateTime> createdAt;
+  const PendingScrobblesCompanion({
+    this.id = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.songId = const Value.absent(),
+    this.listenedAt = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  PendingScrobblesCompanion.insert({
+    this.id = const Value.absent(),
+    required String serverId,
+    required String songId,
+    required DateTime listenedAt,
+    this.attempts = const Value.absent(),
+    required DateTime createdAt,
+  }) : serverId = Value(serverId),
+       songId = Value(songId),
+       listenedAt = Value(listenedAt),
+       createdAt = Value(createdAt);
+  static Insertable<PendingScrobbleRow> custom({
+    Expression<int>? id,
+    Expression<String>? serverId,
+    Expression<String>? songId,
+    Expression<DateTime>? listenedAt,
+    Expression<int>? attempts,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (serverId != null) 'server_id': serverId,
+      if (songId != null) 'song_id': songId,
+      if (listenedAt != null) 'listened_at': listenedAt,
+      if (attempts != null) 'attempts': attempts,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  PendingScrobblesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? serverId,
+    Value<String>? songId,
+    Value<DateTime>? listenedAt,
+    Value<int>? attempts,
+    Value<DateTime>? createdAt,
+  }) {
+    return PendingScrobblesCompanion(
+      id: id ?? this.id,
+      serverId: serverId ?? this.serverId,
+      songId: songId ?? this.songId,
+      listenedAt: listenedAt ?? this.listenedAt,
+      attempts: attempts ?? this.attempts,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<String>(serverId.value);
+    }
+    if (songId.present) {
+      map['song_id'] = Variable<String>(songId.value);
+    }
+    if (listenedAt.present) {
+      map['listened_at'] = Variable<DateTime>(listenedAt.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingScrobblesCompanion(')
+          ..write('id: $id, ')
+          ..write('serverId: $serverId, ')
+          ..write('songId: $songId, ')
+          ..write('listenedAt: $listenedAt, ')
+          ..write('attempts: $attempts, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$FlaxDatabase extends GeneratedDatabase {
   _$FlaxDatabase(QueryExecutor e) : super(e);
   $FlaxDatabaseManager get managers => $FlaxDatabaseManager(this);
@@ -5776,6 +6175,9 @@ abstract class _$FlaxDatabase extends GeneratedDatabase {
     this,
   );
   late final $SyncStatesTable syncStates = $SyncStatesTable(this);
+  late final $PendingScrobblesTable pendingScrobbles = $PendingScrobblesTable(
+    this,
+  );
   late final Index artistSort = Index(
     'artist_sort',
     'CREATE INDEX artist_sort ON artists (server_id, sort_name)',
@@ -5808,6 +6210,7 @@ abstract class _$FlaxDatabase extends GeneratedDatabase {
     albumListEntries,
     playlistEntries,
     syncStates,
+    pendingScrobbles,
     artistSort,
     albumArtist,
     albumName,
@@ -8468,6 +8871,231 @@ typedef $$SyncStatesTableProcessedTableManager =
       SyncStateRow,
       PrefetchHooks Function()
     >;
+typedef $$PendingScrobblesTableCreateCompanionBuilder =
+    PendingScrobblesCompanion Function({
+      Value<int> id,
+      required String serverId,
+      required String songId,
+      required DateTime listenedAt,
+      Value<int> attempts,
+      required DateTime createdAt,
+    });
+typedef $$PendingScrobblesTableUpdateCompanionBuilder =
+    PendingScrobblesCompanion Function({
+      Value<int> id,
+      Value<String> serverId,
+      Value<String> songId,
+      Value<DateTime> listenedAt,
+      Value<int> attempts,
+      Value<DateTime> createdAt,
+    });
+
+class $$PendingScrobblesTableFilterComposer
+    extends Composer<_$FlaxDatabase, $PendingScrobblesTable> {
+  $$PendingScrobblesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get songId => $composableBuilder(
+    column: $table.songId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get listenedAt => $composableBuilder(
+    column: $table.listenedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingScrobblesTableOrderingComposer
+    extends Composer<_$FlaxDatabase, $PendingScrobblesTable> {
+  $$PendingScrobblesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get songId => $composableBuilder(
+    column: $table.songId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get listenedAt => $composableBuilder(
+    column: $table.listenedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingScrobblesTableAnnotationComposer
+    extends Composer<_$FlaxDatabase, $PendingScrobblesTable> {
+  $$PendingScrobblesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
+
+  GeneratedColumn<String> get songId =>
+      $composableBuilder(column: $table.songId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get listenedAt => $composableBuilder(
+    column: $table.listenedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$PendingScrobblesTableTableManager
+    extends
+        RootTableManager<
+          _$FlaxDatabase,
+          $PendingScrobblesTable,
+          PendingScrobbleRow,
+          $$PendingScrobblesTableFilterComposer,
+          $$PendingScrobblesTableOrderingComposer,
+          $$PendingScrobblesTableAnnotationComposer,
+          $$PendingScrobblesTableCreateCompanionBuilder,
+          $$PendingScrobblesTableUpdateCompanionBuilder,
+          (
+            PendingScrobbleRow,
+            BaseReferences<
+              _$FlaxDatabase,
+              $PendingScrobblesTable,
+              PendingScrobbleRow
+            >,
+          ),
+          PendingScrobbleRow,
+          PrefetchHooks Function()
+        > {
+  $$PendingScrobblesTableTableManager(
+    _$FlaxDatabase db,
+    $PendingScrobblesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingScrobblesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PendingScrobblesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PendingScrobblesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> serverId = const Value.absent(),
+                Value<String> songId = const Value.absent(),
+                Value<DateTime> listenedAt = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => PendingScrobblesCompanion(
+                id: id,
+                serverId: serverId,
+                songId: songId,
+                listenedAt: listenedAt,
+                attempts: attempts,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String serverId,
+                required String songId,
+                required DateTime listenedAt,
+                Value<int> attempts = const Value.absent(),
+                required DateTime createdAt,
+              }) => PendingScrobblesCompanion.insert(
+                id: id,
+                serverId: serverId,
+                songId: songId,
+                listenedAt: listenedAt,
+                attempts: attempts,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingScrobblesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$FlaxDatabase,
+      $PendingScrobblesTable,
+      PendingScrobbleRow,
+      $$PendingScrobblesTableFilterComposer,
+      $$PendingScrobblesTableOrderingComposer,
+      $$PendingScrobblesTableAnnotationComposer,
+      $$PendingScrobblesTableCreateCompanionBuilder,
+      $$PendingScrobblesTableUpdateCompanionBuilder,
+      (
+        PendingScrobbleRow,
+        BaseReferences<
+          _$FlaxDatabase,
+          $PendingScrobblesTable,
+          PendingScrobbleRow
+        >,
+      ),
+      PendingScrobbleRow,
+      PrefetchHooks Function()
+    >;
 
 class $FlaxDatabaseManager {
   final _$FlaxDatabase _db;
@@ -8486,4 +9114,6 @@ class $FlaxDatabaseManager {
       $$PlaylistEntriesTableTableManager(_db, _db.playlistEntries);
   $$SyncStatesTableTableManager get syncStates =>
       $$SyncStatesTableTableManager(_db, _db.syncStates);
+  $$PendingScrobblesTableTableManager get pendingScrobbles =>
+      $$PendingScrobblesTableTableManager(_db, _db.pendingScrobbles);
 }

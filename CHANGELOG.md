@@ -11,6 +11,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Option to isolate playback queue locally, preventing server queues from overwriting device state.
+- Offline scrobbles now persist locally and automatically flush when server connection restores.
 - Artist country flags and active years now display on Now Playing and persist locally.
 - In-app sanitized diagnostics export and one-click GitHub issue reporting tool in Settings.
 - Wi-Fi driven local network routing switches traffic directly to server LAN IP on home networks.

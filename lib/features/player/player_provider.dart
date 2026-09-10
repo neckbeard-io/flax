@@ -18,6 +18,7 @@ import 'package:flax/features/player/gapless_probe.dart';
 import 'package:flax/features/settings/audio_output_settings.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/playback_settings.dart';
+import 'package:flax/features/settings/queue_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/services/audio/audio_handler_provider.dart';
 import 'package:flax/services/audio/flax_audio_handler.dart';
@@ -25,6 +26,7 @@ import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/platform/now_playing_service.dart';
+import 'package:flax/services/scrobble/scrobble_sync_service.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/async/coalescing_runner.dart';
 import 'package:flax/shared/audio/eq_filter.dart';
@@ -688,16 +690,43 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (threshold == null || position < threshold) return;
 
     _scrobbleSubmittedId = song.id;
-    _scrobble(song.id, submission: true);
+    _scrobble(song.id, submission: true, listenedAt: DateTime.now());
   }
 
-  Future<void> _scrobble(String id, {required bool submission}) async {
+  Future<void> _scrobble(
+    String id, {
+    required bool submission,
+    DateTime? listenedAt,
+  }) async {
     final client = _ref.read(subsonicClientProvider);
-    if (client == null) return;
-    try {
-      await client.scrobble(id, submission: submission);
-    } catch (e) {
-      AppLogger.w('Player', 'scrobble (submission: $submission) failed: $e');
+    final at = listenedAt ?? DateTime.now();
+
+    bool succeeded = false;
+    if (client != null) {
+      try {
+        await client
+            .scrobble(id, submission: submission, time: submission ? at : null)
+            .timeout(const Duration(seconds: 5));
+        succeeded = true;
+        if (submission) {
+          // Piggyback: Successful online scrobble triggers drain of any queued backlog
+          _ref.read(scrobbleSyncServiceProvider).drainPendingScrobbles();
+        }
+      } catch (e) {
+        AppLogger.w('Player', 'scrobble (submission: $submission) failed: $e');
+      }
+    }
+
+    // When a completed play submission fails (or client is null/offline),
+    // persist locally in Drift SQLite to sync once connection is restored.
+    if (!succeeded && submission) {
+      try {
+        await _ref
+            .read(scrobbleSyncServiceProvider)
+            .enqueuePendingScrobble(id, at);
+      } catch (e) {
+        AppLogger.e('Player', 'Failed to persist offline scrobble: $e');
+      }
     }
   }
 
@@ -1160,8 +1189,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   static const _prefsKeyMuted = 'flax_muted';
 
   Future<void> _restorePlayQueue() async {
-    // Try server first, fall back to local
-    final restored = await _restoreFromServer() || await _restoreFromLocal();
+    final syncQueue = _ref.read(syncQueueWithServerProvider);
+    // If server sync is disabled, restore exclusively from local cache
+    final restored = syncQueue
+        ? (await _restoreFromServer() || await _restoreFromLocal())
+        : await _restoreFromLocal();
     if (!restored) {
       AppLogger.i('Player', 'No play queue to restore');
     }
@@ -1268,6 +1300,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
     // Always save locally
     _saveLocal(state.queue, song.id, state.position.inMilliseconds);
+
+    // Only save to server if server queue sync is enabled
+    final syncQueue = _ref.read(syncQueueWithServerProvider);
+    if (!syncQueue) return;
 
     // Try to save to server
     try {

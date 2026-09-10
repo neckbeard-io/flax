@@ -486,9 +486,17 @@ class MockSubsonicClient extends _i1.Mock implements _i3.SubsonicClient {
           as _i8.Future<void>);
 
   @override
-  _i8.Future<void> scrobble(String? id, {bool? submission = true}) =>
+  _i8.Future<void> scrobble(
+    String? id, {
+    bool? submission = true,
+    DateTime? time,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#scrobble, [id], {#submission: submission}),
+            Invocation.method(
+              #scrobble,
+              [id],
+              {#submission: submission, #time: time},
+            ),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )
@@ -702,6 +710,29 @@ class MockLibraryDao extends _i1.Mock implements _i10.LibraryDao {
             returnValueForMissingStub: _i8.Stream<_i2.Artist?>.empty(),
           )
           as _i8.Stream<_i2.Artist?>);
+
+  @override
+  _i8.Future<void> updateArtistCountry(
+    String? serverId,
+    String? artistId, {
+    String? country,
+    String? countryCode,
+    String? activeYears,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #updateArtistCountry,
+              [serverId, artistId],
+              {
+                #country: country,
+                #countryCode: countryCode,
+                #activeYears: activeYears,
+              },
+            ),
+            returnValue: _i8.Future<void>.value(),
+            returnValueForMissingStub: _i8.Future<void>.value(),
+          )
+          as _i8.Future<void>);
 
   @override
   _i8.Stream<List<_i2.Artist>> searchArtists(

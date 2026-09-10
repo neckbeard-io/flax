@@ -156,3 +156,13 @@ class Playlists extends Table {
   @override
   Set<Column> get primaryKey => {serverId, id};
 }
+
+@DataClassName('PendingScrobbleRow')
+class PendingScrobbles extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get serverId => text()();
+  TextColumn get songId => text()();
+  DateTimeColumn get listenedAt => dateTime()();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime()();
+}

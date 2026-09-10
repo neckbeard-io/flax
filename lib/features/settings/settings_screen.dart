@@ -19,6 +19,7 @@ import 'package:flax/features/settings/diagnostics_dialog.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/lyrics_settings.dart';
 import 'package:flax/features/settings/playback_settings.dart';
+import 'package:flax/features/settings/queue_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
 import 'package:flax/features/updater/update_dialog.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
@@ -43,6 +44,7 @@ class SettingsScreen extends ConsumerWidget {
     final servers = ref.watch(serverListProvider);
     final activeServer = ref.watch(activeServerProvider);
     final scrobble = ref.watch(scrobbleEnabledProvider);
+    final syncQueueWithServer = ref.watch(syncQueueWithServerProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n?.settingsTitle ?? 'Settings')),
@@ -229,6 +231,17 @@ class SettingsScreen extends ConsumerWidget {
             value: scrobble,
             onChanged: (v) =>
                 ref.read(scrobbleEnabledProvider.notifier).setEnabled(v),
+          ),
+          SwitchListTile(
+            title: const Text('Sync Queue with Server'),
+            subtitle: Text(
+              syncQueueWithServer
+                  ? 'Sync active queue and playback position with the server across devices'
+                  : 'Keep active queue local to this device; prevents other devices from overwriting playback state',
+            ),
+            value: syncQueueWithServer,
+            onChanged: (v) =>
+                ref.read(syncQueueWithServerProvider.notifier).setEnabled(v),
           ),
           SwitchListTile(
             title: const Text('Auto-switch to Now Playing'),

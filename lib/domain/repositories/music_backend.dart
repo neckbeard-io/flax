@@ -72,7 +72,7 @@ abstract class MusicBackend {
   /// expensive query, so call it on app focus or an explicit refresh, never on a
   /// timer.
   Future<SearchResult> getStarred();
-  Future<void> scrobble(String id, {bool submission = true});
+  Future<void> scrobble(String id, {bool submission = true, DateTime? time});
 
   // Playlists
   Future<List<Playlist>> getPlaylists();

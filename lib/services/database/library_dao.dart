@@ -1128,4 +1128,64 @@ class LibraryDao {
         ))
         .go();
   }
+
+  // ── Pending scrobbles ──────────────────────────────────────────────────
+
+  Future<int> insertPendingScrobble(
+    String serverId,
+    String songId,
+    DateTime listenedAt, {
+    DateTime? now,
+  }) async {
+    final createdAt = now ?? DateTime.now();
+    return _db
+        .into(_db.pendingScrobbles)
+        .insert(
+          PendingScrobblesCompanion.insert(
+            serverId: serverId,
+            songId: songId,
+            listenedAt: listenedAt,
+            createdAt: createdAt,
+          ),
+        );
+  }
+
+  Future<List<PendingScrobbleRow>> getPendingScrobbles(
+    String serverId, {
+    int limit = 100,
+  }) async {
+    final q = _db.select(_db.pendingScrobbles)
+      ..where((t) => t.serverId.equals(serverId))
+      ..orderBy([(t) => OrderingTerm.asc(t.listenedAt)])
+      ..limit(limit);
+    return q.get();
+  }
+
+  Future<void> deletePendingScrobble(int id) async {
+    await (_db.delete(
+      _db.pendingScrobbles,
+    )..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<void> incrementPendingScrobbleAttempts(int id) async {
+    await _db.customUpdate(
+      'UPDATE pending_scrobbles SET attempts = attempts + 1 WHERE id = ?',
+      variables: [Variable.withInt(id)],
+      updates: {_db.pendingScrobbles},
+    );
+  }
+
+  Future<int> pruneFailedPendingScrobbles({int maxAttempts = 5}) async {
+    return (_db.delete(
+      _db.pendingScrobbles,
+    )..where((t) => t.attempts.isBiggerOrEqualValue(maxAttempts))).go();
+  }
+
+  Stream<int> watchPendingScrobblesCount(String serverId) {
+    final count = _db.pendingScrobbles.id.count();
+    final q = _db.selectOnly(_db.pendingScrobbles)
+      ..addColumns([count])
+      ..where(_db.pendingScrobbles.serverId.equals(serverId));
+    return q.map((row) => row.read(count) ?? 0).watchSingle();
+  }
 }

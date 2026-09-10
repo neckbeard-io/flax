@@ -434,8 +434,16 @@ class SubsonicClient implements MusicBackend {
   }
 
   @override
-  Future<void> scrobble(String id, {bool submission = true}) async {
-    await _get('scrobble', {'id': id, 'submission': submission});
+  Future<void> scrobble(
+    String id, {
+    bool submission = true,
+    DateTime? time,
+  }) async {
+    final params = <String, dynamic>{'id': id, 'submission': submission};
+    if (time != null) {
+      params['time'] = time.millisecondsSinceEpoch;
+    }
+    await _get('scrobble', params);
   }
 
   // ── Playlists ─────────────────────────────────────────────────────────

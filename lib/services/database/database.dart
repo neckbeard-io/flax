@@ -26,6 +26,7 @@ part 'database.g.dart';
     AlbumListEntries,
     PlaylistEntries,
     SyncStates,
+    PendingScrobbles,
   ],
 )
 class FlaxDatabase extends _$FlaxDatabase {
@@ -37,7 +38,7 @@ class FlaxDatabase extends _$FlaxDatabase {
   FlaxDatabase.open() : super(_openOnDisk());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -49,6 +50,9 @@ class FlaxDatabase extends _$FlaxDatabase {
         await m.addColumn(artists, artists.country);
         await m.addColumn(artists, artists.countryCode);
         await m.addColumn(artists, artists.activeYears);
+      }
+      if (from < 3) {
+        await m.createTable(pendingScrobbles);
       }
     },
     beforeOpen: (details) async {
