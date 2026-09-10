@@ -182,6 +182,30 @@ class SubsonicClient implements MusicBackend {
     }
   }
 
+  /// Retrieves server identification, versioning, and OpenSubsonic capabilities.
+  Future<SubsonicServerInfo> getServerInfo({Duration? timeout}) async {
+    try {
+      final options = timeout != null
+          ? Options(
+              connectTimeout: timeout,
+              sendTimeout: timeout,
+              receiveTimeout: timeout,
+            )
+          : null;
+      final pingData = await _get('ping', null, options);
+      final extensions = await getOpenSubsonicExtensions();
+      return SubsonicServerInfo(
+        apiVersion: pingData['version'] as String? ?? _apiVersion,
+        serverType: pingData['type'] as String?,
+        serverVersion: pingData['serverVersion'] as String?,
+        openSubsonic: pingData['openSubsonic'] == true,
+        extensions: extensions,
+      );
+    } catch (_) {
+      return const SubsonicServerInfo(apiVersion: _apiVersion);
+    }
+  }
+
   // ── Browsing ──────────────────────────────────────────────────────────
 
   @override
@@ -749,4 +773,21 @@ class SubsonicException implements Exception {
 
   @override
   String toString() => 'SubsonicException($code): $message';
+}
+
+/// Structured server versioning, brand information, and extension capabilities.
+class SubsonicServerInfo {
+  final String apiVersion;
+  final String? serverType;
+  final String? serverVersion;
+  final bool openSubsonic;
+  final Map<String, int> extensions;
+
+  const SubsonicServerInfo({
+    required this.apiVersion,
+    this.serverType,
+    this.serverVersion,
+    this.openSubsonic = false,
+    this.extensions = const {},
+  });
 }

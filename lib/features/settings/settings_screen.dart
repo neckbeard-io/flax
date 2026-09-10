@@ -15,6 +15,7 @@ import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
+import 'package:flax/features/settings/diagnostics_dialog.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/lyrics_settings.dart';
 import 'package:flax/features/settings/playback_settings.dart';
@@ -480,6 +481,19 @@ class _AboutTile extends ConsumerWidget {
                   },
                   child: const Text('Check Now'),
                 ),
+        ),
+        ListTile(
+          title: const Text('Export Diagnostics & Report Issue'),
+          subtitle: const Text(
+            'Generate sanitized system info and recent logs for GitHub issue reporting',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            showDialog<void>(
+              context: context,
+              builder: (_) => const DiagnosticsDialog(),
+            );
+          },
         ),
       ],
     );
