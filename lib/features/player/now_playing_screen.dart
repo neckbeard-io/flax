@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
+import 'package:flax/features/library/artist_detail_screen.dart';
 import 'package:flax/features/player/artist_panel.dart';
+import 'package:flax/shared/widgets/country_chip.dart';
 import 'package:flax/features/player/lyrics_panel.dart';
 import 'package:flax/features/player/now_playing_panels.dart';
 import 'package:flax/features/player/player_provider.dart';
@@ -230,6 +232,18 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         ref.watch(downloadedSongIdsProvider).valueOrNull ?? const {};
     final isSongCached =
         state.isPlayingCached || downloadedSongIds.contains(song.id);
+    final artist = song.artistId != null
+        ? ref.watch(artistDetailProvider(song.artistId!)).valueOrNull
+        : null;
+    final mbInfo = song.artistId != null
+        ? ref.watch(musicBrainzInfoProvider(song.artistId!)).valueOrNull
+        : null;
+    final countryCode = artist?.countryCode ?? mbInfo?.countryCode;
+    final countryLabel = artist?.countryLabel ?? mbInfo?.countryLabel;
+    final isFlagLoading =
+        song.artistId != null &&
+        countryCode == null &&
+        ref.watch(musicBrainzInfoProvider(song.artistId!)).isLoading;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -275,20 +289,47 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  HoverLink(
-                    text: song.artistName ?? '',
-                    onTap: song.artistId != null
-                        ? () {
-                            Navigator.of(context).pop();
-                            context.push('/artists/${song.artistId}');
-                          }
-                        : null,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: song.artistId != null
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: HoverLink(
+                          text: song.artistName ?? '',
+                          onTap: song.artistId != null
+                              ? () {
+                                  Navigator.of(context).pop();
+                                  context.push('/artists/${song.artistId}');
+                                }
+                              : null,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: song.artistId != null
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      if (CountryFlagIcon.isSupported(countryCode)) ...[
+                        const SizedBox(width: 8),
+                        Tooltip(
+                          message: countryLabel ?? countryCode!,
+                          child: CountryFlagIcon(countryCode: countryCode!),
+                        ),
+                      ] else if (isFlagLoading) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          width: infoChipLeadingWidth,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),

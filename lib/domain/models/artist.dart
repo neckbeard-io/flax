@@ -1,3 +1,5 @@
+import 'package:flax/shared/country.dart';
+
 class Artist {
   final String id;
   final String serverId;
@@ -15,6 +17,9 @@ class Artist {
   final String? biography;
   final String? imageUrl;
   final List<String>? genres;
+  final String? country;
+  final String? countryCode;
+  final String? activeYears;
 
   const Artist({
     required this.id,
@@ -30,7 +35,13 @@ class Artist {
     this.biography,
     this.imageUrl,
     this.genres,
+    this.country,
+    this.countryCode,
+    this.activeYears,
   });
+
+  /// Country name for display, resolved from [countryCode] when possible.
+  String? get countryLabel => countryName(countryCode) ?? country;
 
   Artist copyWith({
     String? id,
@@ -46,6 +57,9 @@ class Artist {
     String? biography,
     String? imageUrl,
     List<String>? genres,
+    String? country,
+    String? countryCode,
+    String? activeYears,
   }) {
     return Artist(
       id: id ?? this.id,
@@ -61,6 +75,9 @@ class Artist {
       biography: biography ?? this.biography,
       imageUrl: imageUrl ?? this.imageUrl,
       genres: genres ?? this.genres,
+      country: country ?? this.country,
+      countryCode: countryCode ?? this.countryCode,
+      activeYears: activeYears ?? this.activeYears,
     );
   }
 }

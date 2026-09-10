@@ -44,6 +44,10 @@ class Artists extends Table {
   /// queried on their own, so a join table would cost more than it returns.
   TextColumn get genresJson => text().nullable()();
 
+  TextColumn get country => text().nullable()();
+  TextColumn get countryCode => text().nullable()();
+  TextColumn get activeYears => text().nullable()();
+
   DateTimeColumn get fetchedAt => dateTime()();
   DateTimeColumn get lastSeenAt => dateTime()();
   BoolColumn get dirty => boolean().withDefault(const Constant(false))();

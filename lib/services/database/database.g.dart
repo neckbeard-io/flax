@@ -152,6 +152,39 @@ class $ArtistsTable extends Artists with TableInfo<$ArtistsTable, ArtistRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _countryMeta = const VerificationMeta(
+    'country',
+  );
+  @override
+  late final GeneratedColumn<String> country = GeneratedColumn<String>(
+    'country',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _countryCodeMeta = const VerificationMeta(
+    'countryCode',
+  );
+  @override
+  late final GeneratedColumn<String> countryCode = GeneratedColumn<String>(
+    'country_code',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _activeYearsMeta = const VerificationMeta(
+    'activeYears',
+  );
+  @override
+  late final GeneratedColumn<String> activeYears = GeneratedColumn<String>(
+    'active_years',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _fetchedAtMeta = const VerificationMeta(
     'fetchedAt',
   );
@@ -202,6 +235,9 @@ class $ArtistsTable extends Artists with TableInfo<$ArtistsTable, ArtistRow> {
     biography,
     imageUrl,
     genresJson,
+    country,
+    countryCode,
+    activeYears,
     fetchedAt,
     lastSeenAt,
     dirty,
@@ -305,6 +341,30 @@ class $ArtistsTable extends Artists with TableInfo<$ArtistsTable, ArtistRow> {
         genresJson.isAcceptableOrUnknown(data['genres_json']!, _genresJsonMeta),
       );
     }
+    if (data.containsKey('country')) {
+      context.handle(
+        _countryMeta,
+        country.isAcceptableOrUnknown(data['country']!, _countryMeta),
+      );
+    }
+    if (data.containsKey('country_code')) {
+      context.handle(
+        _countryCodeMeta,
+        countryCode.isAcceptableOrUnknown(
+          data['country_code']!,
+          _countryCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('active_years')) {
+      context.handle(
+        _activeYearsMeta,
+        activeYears.isAcceptableOrUnknown(
+          data['active_years']!,
+          _activeYearsMeta,
+        ),
+      );
+    }
     if (data.containsKey('fetched_at')) {
       context.handle(
         _fetchedAtMeta,
@@ -391,6 +451,18 @@ class $ArtistsTable extends Artists with TableInfo<$ArtistsTable, ArtistRow> {
         DriftSqlType.string,
         data['${effectivePrefix}genres_json'],
       ),
+      country: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}country'],
+      ),
+      countryCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}country_code'],
+      ),
+      activeYears: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}active_years'],
+      ),
       fetchedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}fetched_at'],
@@ -434,6 +506,9 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
   /// JSON array. Genres are a short unordered list per artist and are never
   /// queried on their own, so a join table would cost more than it returns.
   final String? genresJson;
+  final String? country;
+  final String? countryCode;
+  final String? activeYears;
   final DateTime fetchedAt;
   final DateTime lastSeenAt;
   final bool dirty;
@@ -451,6 +526,9 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
     this.biography,
     this.imageUrl,
     this.genresJson,
+    this.country,
+    this.countryCode,
+    this.activeYears,
     required this.fetchedAt,
     required this.lastSeenAt,
     required this.dirty,
@@ -486,6 +564,15 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
     }
     if (!nullToAbsent || genresJson != null) {
       map['genres_json'] = Variable<String>(genresJson);
+    }
+    if (!nullToAbsent || country != null) {
+      map['country'] = Variable<String>(country);
+    }
+    if (!nullToAbsent || countryCode != null) {
+      map['country_code'] = Variable<String>(countryCode);
+    }
+    if (!nullToAbsent || activeYears != null) {
+      map['active_years'] = Variable<String>(activeYears);
     }
     map['fetched_at'] = Variable<DateTime>(fetchedAt);
     map['last_seen_at'] = Variable<DateTime>(lastSeenAt);
@@ -524,6 +611,15 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
       genresJson: genresJson == null && nullToAbsent
           ? const Value.absent()
           : Value(genresJson),
+      country: country == null && nullToAbsent
+          ? const Value.absent()
+          : Value(country),
+      countryCode: countryCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(countryCode),
+      activeYears: activeYears == null && nullToAbsent
+          ? const Value.absent()
+          : Value(activeYears),
       fetchedAt: Value(fetchedAt),
       lastSeenAt: Value(lastSeenAt),
       dirty: Value(dirty),
@@ -549,6 +645,9 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
       biography: serializer.fromJson<String?>(json['biography']),
       imageUrl: serializer.fromJson<String?>(json['imageUrl']),
       genresJson: serializer.fromJson<String?>(json['genresJson']),
+      country: serializer.fromJson<String?>(json['country']),
+      countryCode: serializer.fromJson<String?>(json['countryCode']),
+      activeYears: serializer.fromJson<String?>(json['activeYears']),
       fetchedAt: serializer.fromJson<DateTime>(json['fetchedAt']),
       lastSeenAt: serializer.fromJson<DateTime>(json['lastSeenAt']),
       dirty: serializer.fromJson<bool>(json['dirty']),
@@ -571,6 +670,9 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
       'biography': serializer.toJson<String?>(biography),
       'imageUrl': serializer.toJson<String?>(imageUrl),
       'genresJson': serializer.toJson<String?>(genresJson),
+      'country': serializer.toJson<String?>(country),
+      'countryCode': serializer.toJson<String?>(countryCode),
+      'activeYears': serializer.toJson<String?>(activeYears),
       'fetchedAt': serializer.toJson<DateTime>(fetchedAt),
       'lastSeenAt': serializer.toJson<DateTime>(lastSeenAt),
       'dirty': serializer.toJson<bool>(dirty),
@@ -591,6 +693,9 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
     Value<String?> biography = const Value.absent(),
     Value<String?> imageUrl = const Value.absent(),
     Value<String?> genresJson = const Value.absent(),
+    Value<String?> country = const Value.absent(),
+    Value<String?> countryCode = const Value.absent(),
+    Value<String?> activeYears = const Value.absent(),
     DateTime? fetchedAt,
     DateTime? lastSeenAt,
     bool? dirty,
@@ -610,6 +715,9 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
     biography: biography.present ? biography.value : this.biography,
     imageUrl: imageUrl.present ? imageUrl.value : this.imageUrl,
     genresJson: genresJson.present ? genresJson.value : this.genresJson,
+    country: country.present ? country.value : this.country,
+    countryCode: countryCode.present ? countryCode.value : this.countryCode,
+    activeYears: activeYears.present ? activeYears.value : this.activeYears,
     fetchedAt: fetchedAt ?? this.fetchedAt,
     lastSeenAt: lastSeenAt ?? this.lastSeenAt,
     dirty: dirty ?? this.dirty,
@@ -639,6 +747,13 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
       genresJson: data.genresJson.present
           ? data.genresJson.value
           : this.genresJson,
+      country: data.country.present ? data.country.value : this.country,
+      countryCode: data.countryCode.present
+          ? data.countryCode.value
+          : this.countryCode,
+      activeYears: data.activeYears.present
+          ? data.activeYears.value
+          : this.activeYears,
       fetchedAt: data.fetchedAt.present ? data.fetchedAt.value : this.fetchedAt,
       lastSeenAt: data.lastSeenAt.present
           ? data.lastSeenAt.value
@@ -663,6 +778,9 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
           ..write('biography: $biography, ')
           ..write('imageUrl: $imageUrl, ')
           ..write('genresJson: $genresJson, ')
+          ..write('country: $country, ')
+          ..write('countryCode: $countryCode, ')
+          ..write('activeYears: $activeYears, ')
           ..write('fetchedAt: $fetchedAt, ')
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('dirty: $dirty')
@@ -685,6 +803,9 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
     biography,
     imageUrl,
     genresJson,
+    country,
+    countryCode,
+    activeYears,
     fetchedAt,
     lastSeenAt,
     dirty,
@@ -706,6 +827,9 @@ class ArtistRow extends DataClass implements Insertable<ArtistRow> {
           other.biography == this.biography &&
           other.imageUrl == this.imageUrl &&
           other.genresJson == this.genresJson &&
+          other.country == this.country &&
+          other.countryCode == this.countryCode &&
+          other.activeYears == this.activeYears &&
           other.fetchedAt == this.fetchedAt &&
           other.lastSeenAt == this.lastSeenAt &&
           other.dirty == this.dirty);
@@ -725,6 +849,9 @@ class ArtistsCompanion extends UpdateCompanion<ArtistRow> {
   final Value<String?> biography;
   final Value<String?> imageUrl;
   final Value<String?> genresJson;
+  final Value<String?> country;
+  final Value<String?> countryCode;
+  final Value<String?> activeYears;
   final Value<DateTime> fetchedAt;
   final Value<DateTime> lastSeenAt;
   final Value<bool> dirty;
@@ -743,6 +870,9 @@ class ArtistsCompanion extends UpdateCompanion<ArtistRow> {
     this.biography = const Value.absent(),
     this.imageUrl = const Value.absent(),
     this.genresJson = const Value.absent(),
+    this.country = const Value.absent(),
+    this.countryCode = const Value.absent(),
+    this.activeYears = const Value.absent(),
     this.fetchedAt = const Value.absent(),
     this.lastSeenAt = const Value.absent(),
     this.dirty = const Value.absent(),
@@ -762,6 +892,9 @@ class ArtistsCompanion extends UpdateCompanion<ArtistRow> {
     this.biography = const Value.absent(),
     this.imageUrl = const Value.absent(),
     this.genresJson = const Value.absent(),
+    this.country = const Value.absent(),
+    this.countryCode = const Value.absent(),
+    this.activeYears = const Value.absent(),
     required DateTime fetchedAt,
     required DateTime lastSeenAt,
     this.dirty = const Value.absent(),
@@ -785,6 +918,9 @@ class ArtistsCompanion extends UpdateCompanion<ArtistRow> {
     Expression<String>? biography,
     Expression<String>? imageUrl,
     Expression<String>? genresJson,
+    Expression<String>? country,
+    Expression<String>? countryCode,
+    Expression<String>? activeYears,
     Expression<DateTime>? fetchedAt,
     Expression<DateTime>? lastSeenAt,
     Expression<bool>? dirty,
@@ -804,6 +940,9 @@ class ArtistsCompanion extends UpdateCompanion<ArtistRow> {
       if (biography != null) 'biography': biography,
       if (imageUrl != null) 'image_url': imageUrl,
       if (genresJson != null) 'genres_json': genresJson,
+      if (country != null) 'country': country,
+      if (countryCode != null) 'country_code': countryCode,
+      if (activeYears != null) 'active_years': activeYears,
       if (fetchedAt != null) 'fetched_at': fetchedAt,
       if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (dirty != null) 'dirty': dirty,
@@ -825,6 +964,9 @@ class ArtistsCompanion extends UpdateCompanion<ArtistRow> {
     Value<String?>? biography,
     Value<String?>? imageUrl,
     Value<String?>? genresJson,
+    Value<String?>? country,
+    Value<String?>? countryCode,
+    Value<String?>? activeYears,
     Value<DateTime>? fetchedAt,
     Value<DateTime>? lastSeenAt,
     Value<bool>? dirty,
@@ -844,6 +986,9 @@ class ArtistsCompanion extends UpdateCompanion<ArtistRow> {
       biography: biography ?? this.biography,
       imageUrl: imageUrl ?? this.imageUrl,
       genresJson: genresJson ?? this.genresJson,
+      country: country ?? this.country,
+      countryCode: countryCode ?? this.countryCode,
+      activeYears: activeYears ?? this.activeYears,
       fetchedAt: fetchedAt ?? this.fetchedAt,
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       dirty: dirty ?? this.dirty,
@@ -893,6 +1038,15 @@ class ArtistsCompanion extends UpdateCompanion<ArtistRow> {
     if (genresJson.present) {
       map['genres_json'] = Variable<String>(genresJson.value);
     }
+    if (country.present) {
+      map['country'] = Variable<String>(country.value);
+    }
+    if (countryCode.present) {
+      map['country_code'] = Variable<String>(countryCode.value);
+    }
+    if (activeYears.present) {
+      map['active_years'] = Variable<String>(activeYears.value);
+    }
     if (fetchedAt.present) {
       map['fetched_at'] = Variable<DateTime>(fetchedAt.value);
     }
@@ -924,6 +1078,9 @@ class ArtistsCompanion extends UpdateCompanion<ArtistRow> {
           ..write('biography: $biography, ')
           ..write('imageUrl: $imageUrl, ')
           ..write('genresJson: $genresJson, ')
+          ..write('country: $country, ')
+          ..write('countryCode: $countryCode, ')
+          ..write('activeYears: $activeYears, ')
           ..write('fetchedAt: $fetchedAt, ')
           ..write('lastSeenAt: $lastSeenAt, ')
           ..write('dirty: $dirty, ')
@@ -5674,6 +5831,9 @@ typedef $$ArtistsTableCreateCompanionBuilder =
       Value<String?> biography,
       Value<String?> imageUrl,
       Value<String?> genresJson,
+      Value<String?> country,
+      Value<String?> countryCode,
+      Value<String?> activeYears,
       required DateTime fetchedAt,
       required DateTime lastSeenAt,
       Value<bool> dirty,
@@ -5694,6 +5854,9 @@ typedef $$ArtistsTableUpdateCompanionBuilder =
       Value<String?> biography,
       Value<String?> imageUrl,
       Value<String?> genresJson,
+      Value<String?> country,
+      Value<String?> countryCode,
+      Value<String?> activeYears,
       Value<DateTime> fetchedAt,
       Value<DateTime> lastSeenAt,
       Value<bool> dirty,
@@ -5771,6 +5934,21 @@ class $$ArtistsTableFilterComposer
 
   ColumnFilters<String> get genresJson => $composableBuilder(
     column: $table.genresJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get country => $composableBuilder(
+    column: $table.country,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get countryCode => $composableBuilder(
+    column: $table.countryCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get activeYears => $composableBuilder(
+    column: $table.activeYears,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5864,6 +6042,21 @@ class $$ArtistsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get country => $composableBuilder(
+    column: $table.country,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get countryCode => $composableBuilder(
+    column: $table.countryCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get activeYears => $composableBuilder(
+    column: $table.activeYears,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get fetchedAt => $composableBuilder(
     column: $table.fetchedAt,
     builder: (column) => ColumnOrderings(column),
@@ -5938,6 +6131,19 @@ class $$ArtistsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get country =>
+      $composableBuilder(column: $table.country, builder: (column) => column);
+
+  GeneratedColumn<String> get countryCode => $composableBuilder(
+    column: $table.countryCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get activeYears => $composableBuilder(
+    column: $table.activeYears,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get fetchedAt =>
       $composableBuilder(column: $table.fetchedAt, builder: (column) => column);
 
@@ -5991,6 +6197,9 @@ class $$ArtistsTableTableManager
                 Value<String?> biography = const Value.absent(),
                 Value<String?> imageUrl = const Value.absent(),
                 Value<String?> genresJson = const Value.absent(),
+                Value<String?> country = const Value.absent(),
+                Value<String?> countryCode = const Value.absent(),
+                Value<String?> activeYears = const Value.absent(),
                 Value<DateTime> fetchedAt = const Value.absent(),
                 Value<DateTime> lastSeenAt = const Value.absent(),
                 Value<bool> dirty = const Value.absent(),
@@ -6009,6 +6218,9 @@ class $$ArtistsTableTableManager
                 biography: biography,
                 imageUrl: imageUrl,
                 genresJson: genresJson,
+                country: country,
+                countryCode: countryCode,
+                activeYears: activeYears,
                 fetchedAt: fetchedAt,
                 lastSeenAt: lastSeenAt,
                 dirty: dirty,
@@ -6029,6 +6241,9 @@ class $$ArtistsTableTableManager
                 Value<String?> biography = const Value.absent(),
                 Value<String?> imageUrl = const Value.absent(),
                 Value<String?> genresJson = const Value.absent(),
+                Value<String?> country = const Value.absent(),
+                Value<String?> countryCode = const Value.absent(),
+                Value<String?> activeYears = const Value.absent(),
                 required DateTime fetchedAt,
                 required DateTime lastSeenAt,
                 Value<bool> dirty = const Value.absent(),
@@ -6047,6 +6262,9 @@ class $$ArtistsTableTableManager
                 biography: biography,
                 imageUrl: imageUrl,
                 genresJson: genresJson,
+                country: country,
+                countryCode: countryCode,
+                activeYears: activeYears,
                 fetchedAt: fetchedAt,
                 lastSeenAt: lastSeenAt,
                 dirty: dirty,

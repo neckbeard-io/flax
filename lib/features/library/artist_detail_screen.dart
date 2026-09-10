@@ -104,22 +104,51 @@ final musicBrainzInfoProvider =
       ref,
       artistId,
     ) async {
-      // Order matters for latency. This used to await artistInfoProvider first,
-      // which is Navidrome's getArtistInfo2 — and Navidrome fetches that from
-      // Last.fm — so the MusicBrainz request could not even start until a slow
-      // third-party call had returned, putting two of them in series. getArtist is
-      // a plain local Navidrome lookup and already parses musicBrainzId, so start
-      // from that instead and only fall back to the slow path when it is absent.
+      final isOffline = ref.watch(isOfflineModeProvider);
       final artist = await ref.watch(artistDetailProvider(artistId).future);
+      if (artist.countryCode != null ||
+          artist.country != null ||
+          artist.activeYears != null) {
+        return MusicBrainzArtistInfo(
+          country: artist.country,
+          countryCode: artist.countryCode,
+          explicitActiveYears: artist.activeYears,
+        );
+      }
+      if (isOffline) return null;
+
+      MusicBrainzArtistInfo? info;
       if (artist.musicBrainzId != null) {
-        return MusicBrainzService.getArtistInfo(artist.musicBrainzId!);
+        info = await MusicBrainzService.getArtistInfo(artist.musicBrainzId!);
       }
 
-      final artistInfo = await ref.watch(artistInfoProvider(artistId).future);
-      if (artistInfo?.musicBrainzId != null) {
-        return MusicBrainzService.getArtistInfo(artistInfo!.musicBrainzId!);
+      if (info == null) {
+        final artistInfo = await ref.watch(artistInfoProvider(artistId).future);
+        if (artistInfo?.musicBrainzId != null) {
+          info = await MusicBrainzService.getArtistInfo(
+            artistInfo!.musicBrainzId!,
+          );
+        }
       }
-      return MusicBrainzService.searchArtist(artist.name);
+
+      info ??= await MusicBrainzService.searchArtist(artist.name);
+
+      if (info != null &&
+          (info.country != null ||
+              info.countryCode != null ||
+              info.activeYears != null)) {
+        final repo = ref.read(libraryRepositoryProvider);
+        if (repo != null) {
+          await repo.updateArtistCountry(
+            artistId,
+            country: info.country,
+            countryCode: info.countryCode,
+            activeYears: info.activeYears,
+          );
+        }
+      }
+
+      return info;
     });
 
 // ── Screen ────────────────────────────────────────────────────────────
@@ -128,7 +157,8 @@ class ArtistDetailScreen extends ConsumerWidget {
   final String artistId;
   const ArtistDetailScreen({super.key, required this.artistId});
 
-  static bool get _isDesktop => isDesktopPlatform;
+  static bool _isDesktop(BuildContext context) =>
+      isDesktopPlatform && MediaQuery.sizeOf(context).width >= 700;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -137,6 +167,7 @@ class ArtistDetailScreen extends ConsumerWidget {
     final artistInfoAsync = ref.watch(artistInfoProvider(artistId));
     final mbInfoAsync = ref.watch(musicBrainzInfoProvider(artistId));
     final sortMode = ref.watch(albumSortProvider);
+    final isDesktop = _isDesktop(context);
 
     return Scaffold(
       body: artistAsync.when(
@@ -153,7 +184,7 @@ class ArtistDetailScreen extends ConsumerWidget {
               artistInfoAsync.isLoading || mbInfoAsync.isLoading;
           return CustomScrollView(
             slivers: [
-              if (_isDesktop)
+              if (isDesktop)
                 SliverToBoxAdapter(
                   child: _DesktopArtistHeader(
                     artist: artist,
@@ -163,7 +194,7 @@ class ArtistDetailScreen extends ConsumerWidget {
                     infoLoading: infoLoading,
                   ),
                 ),
-              if (_isDesktop)
+              if (isDesktop)
                 SliverToBoxAdapter(
                   child: _ArtistInfoPanel(
                     artist: artist,
@@ -175,7 +206,12 @@ class ArtistDetailScreen extends ConsumerWidget {
               else ...[
                 _buildAppBar(context, artist, artistInfo),
                 SliverToBoxAdapter(
-                  child: _ArtistActionsBar(artist: artist, artistId: artistId),
+                  child: _ArtistActionsBar(
+                    artist: artist,
+                    artistId: artistId,
+                    mbInfo: mbInfo,
+                    infoLoading: infoLoading,
+                  ),
                 ),
               ],
               SliverToBoxAdapter(child: _buildSortBar(context, ref, sortMode)),
@@ -562,27 +598,53 @@ class _ArtistInfoPanelState extends State<_ArtistInfoPanel> {
 /// flag — and Subsonic's setRating/star take an artist id like any other
 /// entity, so nothing special is needed beyond a model field to read back.
 class _ArtistActionsBar extends ConsumerWidget {
-  const _ArtistActionsBar({required this.artist, required this.artistId});
+  const _ArtistActionsBar({
+    required this.artist,
+    required this.artistId,
+    this.mbInfo,
+    this.infoLoading = false,
+  });
 
   final Artist artist;
   final String artistId;
+  final MusicBrainzArtistInfo? mbInfo;
+  final bool infoLoading;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final hasCountryOrYears =
+        artist.countryCode != null ||
+        artist.country != null ||
+        artist.activeYears != null ||
+        mbInfo?.countryLabel != null ||
+        mbInfo?.activeYears != null;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${artist.albumCount} '
-            '${artist.albumCount == 1 ? "album" : "albums"}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+          Row(
+            children: [
+              Text(
+                '${artist.albumCount} '
+                '${artist.albumCount == 1 ? "album" : "albums"}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const Spacer(),
+              _ArtistRatingRow(artist: artist, artistId: artistId, size: 20),
+            ],
           ),
-          const Spacer(),
-          _ArtistRatingRow(artist: artist, artistId: artistId, size: 20),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 22,
+            child: infoLoading && mbInfo == null && !hasCountryOrYears
+                ? const _LoadingBar(width: 160)
+                : _ArtistChips(mbInfo: mbInfo, artist: artist),
+          ),
         ],
       ),
     );
@@ -671,9 +733,14 @@ class _DesktopArtistHeader extends ConsumerWidget {
                       // can take seconds.
                       SizedBox(
                         height: 22,
-                        child: infoLoading && mbInfo == null
+                        child:
+                            infoLoading &&
+                                mbInfo == null &&
+                                artist.countryCode == null &&
+                                artist.country == null &&
+                                artist.activeYears == null
                             ? const _LoadingBar(width: 220)
-                            : _ArtistChips(mbInfo: mbInfo),
+                            : _ArtistChips(mbInfo: mbInfo, artist: artist),
                       ),
                       const SizedBox(height: 12),
                       _ArtistRatingRow(artist: artist, artistId: artistId),
@@ -771,15 +838,16 @@ class _LoadingBar extends StatelessWidget {
 /// Country and active-years chips, shared by the desktop header and the phone
 /// info panel so the two cannot present the same metadata differently.
 class _ArtistChips extends StatelessWidget {
-  const _ArtistChips({required this.mbInfo});
+  const _ArtistChips({this.mbInfo, this.artist});
 
   final MusicBrainzArtistInfo? mbInfo;
+  final Artist? artist;
 
   @override
   Widget build(BuildContext context) {
-    final mb = mbInfo;
-    final country = mb?.countryLabel;
-    final years = mb?.activeYears;
+    final country = artist?.countryLabel ?? mbInfo?.countryLabel;
+    final countryCode = artist?.countryCode ?? mbInfo?.countryCode;
+    final years = artist?.activeYears ?? mbInfo?.activeYears;
     if (country == null && years == null) return const SizedBox.shrink();
 
     return Wrap(
@@ -791,7 +859,7 @@ class _ArtistChips extends StatelessWidget {
           InfoChip(
             label: country,
             icon: Icons.public,
-            countryCode: mb?.countryCode,
+            countryCode: countryCode,
           ),
         if (years != null) InfoChip(label: years, icon: Icons.calendar_today),
       ],

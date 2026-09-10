@@ -150,4 +150,25 @@ void main() {
       reason: 'album list shifted by ${after - before}px when info loaded',
     );
   });
+
+  testWidgets('mobile screen renders country chips without overflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const ui.Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      _harness(
+        info: Future.value(const ArtistInfo(biography: _bio)),
+        mb: Future.value(_mbInfo),
+        size: const Size(390, 844),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Canada'), findsOneWidget);
+    expect(find.text('1999–present'), findsOneWidget);
+  });
 }

@@ -34,6 +34,9 @@ Artist artistFromRow(ArtistRow r) => Artist(
   biography: r.biography,
   imageUrl: r.imageUrl,
   genres: _decodeGenres(r.genresJson),
+  country: r.country,
+  countryCode: r.countryCode,
+  activeYears: r.activeYears,
 );
 
 ArtistsCompanion artistToCompanion(Artist a, DateTime now) => ArtistsCompanion(
@@ -55,6 +58,9 @@ ArtistsCompanion artistToCompanion(Artist a, DateTime now) => ArtistsCompanion(
   genresJson: a.genres == null || a.genres!.isEmpty
       ? const Value.absent()
       : Value(jsonEncode(a.genres)),
+  country: _absentIfNull(a.country),
+  countryCode: _absentIfNull(a.countryCode),
+  activeYears: _absentIfNull(a.activeYears),
   fetchedAt: Value(now),
   lastSeenAt: Value(now),
 );

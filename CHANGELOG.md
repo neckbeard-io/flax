@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Artist country flags and active years now display on Now Playing and persist locally.
 - In-app sanitized diagnostics export and one-click GitHub issue reporting tool in Settings.
 - Wi-Fi driven local network routing switches traffic directly to server LAN IP on home networks.
 - Android Auto and Android Automotive support with media browse tree and vehicle transport controls.

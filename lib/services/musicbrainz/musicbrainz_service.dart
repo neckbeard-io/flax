@@ -15,16 +15,48 @@ class MusicBrainzService {
   );
 
   static final _cache = <String, MusicBrainzArtistInfo>{};
+  static DateTime _lastRequest = DateTime.fromMillisecondsSinceEpoch(0);
+
+  static Future<void> _throttle() async {
+    final now = DateTime.now();
+    final elapsed = now.difference(_lastRequest);
+    if (elapsed < const Duration(milliseconds: 1050)) {
+      await Future<void>.delayed(const Duration(milliseconds: 1050) - elapsed);
+    }
+    _lastRequest = DateTime.now();
+  }
+
+  static Future<Response<dynamic>?> _getWithRetry(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        await _throttle();
+        return await _dio.get<dynamic>(path, queryParameters: queryParameters);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 503 && attempt == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 1500));
+          continue;
+        }
+        return null;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
 
   /// Fetch artist info by MusicBrainz ID. No API key required.
   static Future<MusicBrainzArtistInfo?> getArtistInfo(String mbid) async {
     if (_cache.containsKey(mbid)) return _cache[mbid];
 
     try {
-      final response = await _dio.get(
+      final response = await _getWithRetry(
         '/artist/$mbid',
         queryParameters: {'fmt': 'json', 'inc': 'tags'},
       );
+      if (response == null) return null;
 
       final data = response.data as Map<String, dynamic>;
 
@@ -73,10 +105,11 @@ class MusicBrainzService {
   /// Search for an artist by name and return MusicBrainz info.
   static Future<MusicBrainzArtistInfo?> searchArtist(String name) async {
     try {
-      final response = await _dio.get(
+      final response = await _getWithRetry(
         '/artist',
         queryParameters: {'query': 'artist:"$name"', 'fmt': 'json', 'limit': 1},
       );
+      if (response == null) return null;
 
       final data = response.data as Map<String, dynamic>;
       final artists = data['artists'] as List<dynamic>? ?? [];

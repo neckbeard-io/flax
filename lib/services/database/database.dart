@@ -37,12 +37,19 @@ class FlaxDatabase extends _$FlaxDatabase {
   FlaxDatabase.open() : super(_openOnDisk());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(artists, artists.country);
+        await m.addColumn(artists, artists.countryCode);
+        await m.addColumn(artists, artists.activeYears);
+      }
     },
     beforeOpen: (details) async {
       // Drift does not enable this by default, and without it the cascade on

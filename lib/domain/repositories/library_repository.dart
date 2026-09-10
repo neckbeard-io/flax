@@ -40,6 +40,14 @@ abstract class LibraryRepository {
 
   /// One artist and the albums `getArtist` returns alongside it.
   Future<void> refreshArtist(String artistId, {bool force = false});
+
+  /// Updates local country, country code, and active years for an artist.
+  Future<void> updateArtistCountry(
+    String artistId, {
+    String? country,
+    String? countryCode,
+    String? activeYears,
+  });
   Future<void> refreshAlbumList(AlbumListQuery query, {bool force = false});
   Future<void> refreshAlbum(String albumId, {bool force = false});
 

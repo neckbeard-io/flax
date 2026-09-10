@@ -148,6 +148,22 @@ class LibraryRepositoryImpl implements LibraryRepository {
     });
   }
 
+  @override
+  Future<void> updateArtistCountry(
+    String artistId, {
+    String? country,
+    String? countryCode,
+    String? activeYears,
+  }) {
+    return _dao.updateArtistCountry(
+      _serverId,
+      artistId,
+      country: country,
+      countryCode: countryCode,
+      activeYears: activeYears,
+    );
+  }
+
   /// Whether fewer of an artist's albums are cached than the artist claims.
   ///
   /// A timestamp cannot answer this. Album lists cache albums for whichever

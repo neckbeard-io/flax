@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/library/artist_detail_screen.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/shared/widgets/country_chip.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
@@ -30,6 +31,12 @@ class ArtistPanel extends ConsumerWidget {
     final artistId = song.artistId!;
     final artist = ref.watch(artistDetailProvider(artistId)).valueOrNull;
     final info = ref.watch(artistInfoProvider(artistId)).valueOrNull;
+    final mbInfo = ref.watch(musicBrainzInfoProvider(artistId)).valueOrNull;
+    final countryCode = artist?.countryCode ?? mbInfo?.countryCode;
+    final countryLabel = artist?.countryLabel ?? mbInfo?.countryLabel;
+    final isFlagLoading =
+        countryCode == null &&
+        ref.watch(musicBrainzInfoProvider(artistId)).isLoading;
 
     return ArtistPanelView(
       artistName: song.artistName ?? artist?.name ?? '',
@@ -38,6 +45,9 @@ class ArtistPanel extends ConsumerWidget {
       coverArtId: artist?.coverArtId,
       biography: info?.biography ?? artist?.biography,
       similarArtists: info?.similarArtists ?? const [],
+      countryCode: countryCode,
+      countryLabel: countryLabel,
+      isFlagLoading: isFlagLoading,
       onArtistTap: (id) => context.push('/artists/$id'),
     );
   }
@@ -55,6 +65,9 @@ class ArtistPanelView extends StatelessWidget {
   final String? coverArtId;
   final String? biography;
   final List<SimilarArtist> similarArtists;
+  final String? countryCode;
+  final String? countryLabel;
+  final bool isFlagLoading;
   final ValueChanged<String>? onArtistTap;
 
   const ArtistPanelView({
@@ -65,6 +78,9 @@ class ArtistPanelView extends StatelessWidget {
     this.coverArtId,
     this.biography,
     this.similarArtists = const [],
+    this.countryCode,
+    this.countryLabel,
+    this.isFlagLoading = false,
     this.onArtistTap,
   });
 
@@ -97,13 +113,41 @@ class ArtistPanelView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        HoverLink(
-          text: artistName,
-          maxLines: 2,
-          onTap: onArtistTap != null ? () => onArtistTap!(artistId!) : null,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: HoverLink(
+                text: artistName,
+                maxLines: 2,
+                onTap: onArtistTap != null
+                    ? () => onArtistTap!(artistId!)
+                    : null,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            if (CountryFlagIcon.isSupported(countryCode)) ...[
+              const SizedBox(width: 8),
+              Tooltip(
+                message: countryLabel ?? countryCode!,
+                child: CountryFlagIcon(countryCode: countryCode!),
+              ),
+            ] else if (isFlagLoading) ...[
+              const SizedBox(width: 8),
+              Container(
+                width: infoChipLeadingWidth,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.12,
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ],
+          ],
         ),
         if (hasBio) ...[
           const SizedBox(height: 12),

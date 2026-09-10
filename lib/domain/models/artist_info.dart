@@ -43,6 +43,8 @@ class MusicBrainzArtistInfo {
   final bool? ended;
   final List<String> tags;
 
+  final String? explicitActiveYears;
+
   const MusicBrainzArtistInfo({
     this.country,
     this.countryCode,
@@ -51,6 +53,7 @@ class MusicBrainzArtistInfo {
     this.endDate,
     this.ended,
     this.tags = const [],
+    this.explicitActiveYears,
   });
 
   /// Country name for display, resolved from [countryCode] when possible.
@@ -60,10 +63,14 @@ class MusicBrainzArtistInfo {
   String? get countryLabel => countryName(countryCode) ?? country;
 
   String? get activeYears {
+    if (explicitActiveYears != null) return explicitActiveYears;
     if (beginDate == null) return null;
-    final start = beginDate!.substring(0, 4);
+    final start = beginDate!.length >= 4
+        ? beginDate!.substring(0, 4)
+        : beginDate!;
     if (ended == true && endDate != null) {
-      return '$start–${endDate!.substring(0, 4)}';
+      final end = endDate!.length >= 4 ? endDate!.substring(0, 4) : endDate!;
+      return '$start–$end';
     }
     return '$start–present';
   }

@@ -940,6 +940,42 @@ void main() {
       // watcher updates.
       expect(seen, containsAllInOrder([false, true]));
     });
+
+    test(
+      'updateArtistCountry persists metadata and survives server refresh',
+      () async {
+        await dao.upsertArtists([
+          Artist(id: 'ar1', serverId: sid, name: 'Rush', albumCount: 19),
+        ], now);
+
+        expect((await dao.watchArtist(sid, 'ar1').first)?.countryCode, isNull);
+
+        await dao.updateArtistCountry(
+          sid,
+          'ar1',
+          country: 'Canada',
+          countryCode: 'CA',
+          activeYears: '1968–2018',
+        );
+
+        final updated = await dao.watchArtist(sid, 'ar1').first;
+        expect(updated?.country, 'Canada');
+        expect(updated?.countryCode, 'CA');
+        expect(updated?.countryLabel, 'Canada');
+        expect(updated?.activeYears, '1968–2018');
+
+        // Server refresh (which does not have country) must not wipe local country
+        await dao.upsertArtists([
+          Artist(id: 'ar1', serverId: sid, name: 'Rush', albumCount: 20),
+        ], now.add(const Duration(days: 1)));
+
+        final refreshed = await dao.watchArtist(sid, 'ar1').first;
+        expect(refreshed?.albumCount, 20);
+        expect(refreshed?.country, 'Canada');
+        expect(refreshed?.countryCode, 'CA');
+        expect(refreshed?.activeYears, '1968–2018');
+      },
+    );
   });
 }
 

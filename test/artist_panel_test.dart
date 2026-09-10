@@ -9,6 +9,7 @@ import 'package:flax/features/library/artist_detail_screen.dart';
 import 'package:flax/features/player/artist_panel.dart';
 import 'package:flax/features/player/now_playing_panels.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/shared/widgets/country_chip.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 
 class _FakePlayerNotifier extends StateNotifier<PlayerState>
@@ -123,6 +124,44 @@ void main() {
       expect(find.text('A great bio.'), findsOneWidget);
       expect(find.text('Similar Artists'), findsNothing);
       expect(find.byType(HoverArtwork), findsOneWidget);
+    });
+
+    testWidgets(
+      'renders CountryFlagIcon beside artist name when countryCode is provided',
+      (tester) async {
+        await tester.pumpWidget(
+          _harness(
+            child: const ArtistPanelView(
+              artistName: 'Rush',
+              artistId: 'ar-rush',
+              countryCode: 'CA',
+              countryLabel: 'Canada',
+            ),
+          ),
+        );
+
+        expect(find.text('Rush'), findsOneWidget);
+        expect(find.byType(CountryFlagIcon), findsOneWidget);
+      },
+    );
+
+    testWidgets('renders placeholder slot while isFlagLoading is true', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _harness(
+          child: const ArtistPanelView(
+            artistName: 'Loading Artist',
+            artistId: 'ar-load',
+            isFlagLoading: true,
+          ),
+        ),
+      );
+
+      expect(find.text('Loading Artist'), findsOneWidget);
+      expect(find.byType(CountryFlagIcon), findsNothing);
+      // Placeholder container is present
+      expect(find.byType(Container), findsWidgets);
     });
 
     testWidgets('renders cleanly without overflow at panel width breakpoints', (

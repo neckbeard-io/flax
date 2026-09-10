@@ -57,6 +57,27 @@ class LibraryDao {
     );
   }
 
+  Future<void> updateArtistCountry(
+    String serverId,
+    String artistId, {
+    String? country,
+    String? countryCode,
+    String? activeYears,
+  }) async {
+    final companion = ArtistsCompanion(
+      country: country != null ? Value(country) : const Value.absent(),
+      countryCode: countryCode != null
+          ? Value(countryCode)
+          : const Value.absent(),
+      activeYears: activeYears != null
+          ? Value(activeYears)
+          : const Value.absent(),
+    );
+    await (_db.update(_db.artists)
+          ..where((t) => t.serverId.equals(serverId) & t.id.equals(artistId)))
+        .write(companion);
+  }
+
   Stream<List<Artist>> searchArtists(String serverId, String term, int limit) {
     if (term.trim().isEmpty) return Stream.value(const []);
     final q = _db.select(_db.artists)
