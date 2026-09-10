@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:flax/services/updater/platform_installers/macos_installer.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_service.dart';
@@ -310,5 +312,111 @@ void main() {
       expect(appPath, isNotEmpty);
       expect(appPath.endsWith('.app'), isTrue);
     });
+
+    test('getMountedVolumes returns valid volume list without throwing', () {
+      final volumes = MacOSInstaller.getMountedVolumes();
+      expect(volumes, isNotNull);
+    });
+
+    test(
+      'findAppBundleInside finds existing app bundle in directory',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'flax-test-mount-',
+        );
+        addTearDown(() async {
+          try {
+            await tempDir.delete(recursive: true);
+          } catch (_) {}
+        });
+
+        final fakeAppDir = Directory(p.join(tempDir.path, 'flax.app'));
+        await fakeAppDir.create(recursive: true);
+
+        final result = await MacOSInstaller.findAppBundleInside(
+          tempDir.path,
+          '/Applications/flax.app',
+        );
+        expect(result, isNotNull);
+        expect(p.basename(result!), equals('flax.app'));
+      },
+    );
+
+    test('findAppBundleInside returns null when no app exists', () async {
+      final tempDir = await Directory.systemTemp.createTemp('flax-test-empty-');
+      addTearDown(() async {
+        try {
+          await tempDir.delete(recursive: true);
+        } catch (_) {}
+      });
+
+      final result = await MacOSInstaller.findAppBundleInside(
+        tempDir.path,
+        '/Applications/flax.app',
+      );
+      expect(result, isNull);
+    });
+
+    test(
+      'findAppBundleInside finds app bundle inside attached DMG private mount',
+      () async {
+        if (!Platform.isMacOS) return;
+
+        final tempDir = await Directory.systemTemp.createTemp('flax-dmg-test-');
+        addTearDown(() async {
+          try {
+            await tempDir.delete(recursive: true);
+          } catch (_) {}
+        });
+
+        final pkgDir = Directory(p.join(tempDir.path, 'pkg'));
+        final appDir = Directory(p.join(pkgDir.path, 'flax.app'));
+        await appDir.create(recursive: true);
+
+        final dmgPath = p.join(tempDir.path, 'test.dmg');
+        await Process.run('hdiutil', [
+          'create',
+          '-volname',
+          'flax_unit_test',
+          '-srcfolder',
+          pkgDir.path,
+          '-ov',
+          '-format',
+          'UDZO',
+          dmgPath,
+        ]);
+
+        final mountDir = Directory(p.join(tempDir.path, 'mnt'));
+        await mountDir.create();
+
+        final mountRes = await Process.run('hdiutil', [
+          'attach',
+          dmgPath,
+          '-mountpoint',
+          mountDir.path,
+          '-nobrowse',
+          '-readonly',
+          '-noautoopen',
+          '-noverify',
+        ]);
+        expect(mountRes.exitCode, equals(0));
+
+        try {
+          final found = await MacOSInstaller.findAppBundleInside(
+            mountDir.path,
+            '/Applications/flax.app',
+          );
+          expect(found, isNotNull);
+          expect(p.basename(found!), equals('flax.app'));
+        } finally {
+          await Process.run('hdiutil', [
+            'detach',
+            mountDir.path,
+            '-force',
+            '-quiet',
+          ]);
+        }
+      },
+    );
   });
 }

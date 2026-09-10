@@ -38,6 +38,103 @@ class MacOSInstaller {
     return '/Applications/flax.app';
   }
 
+  /// Returns currently mounted volume paths under /Volumes, safe against
+  /// macOS TCC permission errors (PathAccessException / errno = 1).
+  static List<String> getMountedVolumes() {
+    try {
+      final volumes = Directory(
+        '/Volumes',
+      ).listSync().whereType<Directory>().map((d) => d.path).toList();
+      if (volumes.isNotEmpty) return volumes;
+    } catch (_) {}
+
+    try {
+      final res = Process.runSync('mount', []);
+      if (res.exitCode == 0) {
+        final matches = RegExp(
+          r'on\s+(/Volumes/[^\s(]+)',
+        ).allMatches(res.stdout.toString());
+        return matches.map((m) => m.group(1)!).toList();
+      }
+    } catch (_) {}
+
+    return const [];
+  }
+
+  /// Locates the .app bundle inside the mounted DMG volume without failing on
+  /// macOS TCC directory listing restrictions.
+  static Future<String?> findAppBundleInside(
+    String mountPoint,
+    String targetAppPath,
+  ) async {
+    final targetName = p.basename(targetAppPath);
+    final candidates = <String>{
+      p.join(mountPoint, targetName),
+      p.join(mountPoint, 'flax.app'),
+      p.join(mountPoint, 'Flax.app'),
+    };
+
+    // 1. Direct candidate path existence check (fast, avoids directory enumeration)
+    for (final candidate in candidates) {
+      try {
+        if (Directory(candidate).existsSync()) {
+          return candidate;
+        }
+      } catch (_) {}
+    }
+
+    // 2. Out-of-process `find` tool (bypasses in-process TCC directory enumeration limits)
+    try {
+      final findRes = await Process.run('find', [
+        mountPoint,
+        '-maxdepth',
+        '2',
+        '-name',
+        '*.app',
+      ]);
+      if (findRes.exitCode == 0) {
+        final lines = findRes.stdout
+            .toString()
+            .split('\n')
+            .map((l) => l.trim())
+            .where((l) => l.endsWith('.app'))
+            .toList();
+        if (lines.isNotEmpty) {
+          return lines.first;
+        }
+      }
+    } catch (_) {}
+
+    // 3. Fallback to Directory.listSync() in a safe try-catch block
+    try {
+      final entries = Directory(mountPoint).listSync();
+      final appSource = entries
+          .whereType<Directory>()
+          .where((d) => d.path.endsWith('.app'))
+          .firstOrNull;
+      if (appSource != null) {
+        return appSource.path;
+      }
+    } catch (e) {
+      AppLogger.w(
+        'Updater',
+        'Directory.listSync failed on $mountPoint ($e), falling back to candidate checks.',
+      );
+    }
+
+    // 4. Shell test -d fallback on candidates
+    for (final candidate in candidates) {
+      try {
+        final testRes = await Process.run('test', ['-d', candidate]);
+        if (testRes.exitCode == 0) {
+          return candidate;
+        }
+      } catch (_) {}
+    }
+
+    return null;
+  }
+
   /// Installs the update from the downloaded .dmg directly by staging the new
   /// .app bundle, detaching the DMG, and launching a background updater script
   /// that swaps the bundle once this process exits, then relaunches Flax.
@@ -51,90 +148,118 @@ class MacOSInstaller {
       'Starting macOS in-place update: target=$targetAppPath, dmg=$dmgPath',
     );
     final stagingDir = await Directory.systemTemp.createTemp('flax-update-');
+    final privateMountDir = Directory(p.join(stagingDir.path, 'mnt'));
+    await privateMountDir.create(recursive: true);
     String? mountedVolume;
 
     try {
-      // 1. Attach DMG — try hdiutil first, fall back to DiskImageMounter
+      // 1. Attach DMG:
+      // Try attaching to a private mountpoint inside staging directory first.
+      // Mounting to a private temp directory completely avoids macOS TCC
+      // "Removable Volumes" permission restrictions (errno = 1).
       String? mountPoint;
 
-      final mountRes = await Process.run('hdiutil', [
+      final privateMountRes = await Process.run('hdiutil', [
         'attach',
         dmgPath,
-        '-plist',
+        '-mountpoint',
+        privateMountDir.path,
         '-nobrowse',
         '-readonly',
         '-noautoopen',
         '-noverify',
       ]);
 
-      if (mountRes.exitCode == 0) {
-        final mountMatch = RegExp(
-          r'<key>mount-point</key>\s*<string>([^<]+)</string>',
-        ).firstMatch(mountRes.stdout.toString());
-        mountPoint = mountMatch?.group(1);
+      if (privateMountRes.exitCode == 0) {
+        mountPoint = privateMountDir.path;
+        mountedVolume = mountPoint;
+        AppLogger.i(
+          'Updater',
+          'Attached DMG to private mountpoint: $mountPoint',
+        );
       } else {
-        // hdiutil can fail under App Sandbox or restricted entitlements.
-        // Fall back to DiskImageMounter which runs out-of-process.
         AppLogger.w(
           'Updater',
-          'hdiutil attach failed (${mountRes.exitCode}): '
-              '${mountRes.stderr.toString().trim()}. '
-              'Falling back to DiskImageMounter.',
+          'hdiutil attach with private mountpoint failed (${privateMountRes.exitCode}): '
+              '${privateMountRes.stderr.toString().trim()}. Falling back to standard attach.',
         );
-        await Process.run('open', ['-a', 'DiskImageMounter', dmgPath]);
 
-        // Poll /Volumes for the mount to appear (up to 8 seconds)
-        final volumeName = p
-            .basenameWithoutExtension(dmgPath)
-            .replaceAll(RegExp(r'-macos.*'), '');
-        for (var i = 0; i < 32; i++) {
-          await Future.delayed(const Duration(milliseconds: 250));
-          final volumes = Directory(
-            '/Volumes',
-          ).listSync().whereType<Directory>().map((d) => d.path).toList();
-          final match = volumes.firstWhere(
-            (v) =>
-                v.toLowerCase().contains('flax') ||
-                v.toLowerCase().contains(volumeName.toLowerCase()),
-            orElse: () => '',
+        // Fallback 1a: Standard hdiutil attach
+        final mountRes = await Process.run('hdiutil', [
+          'attach',
+          dmgPath,
+          '-plist',
+          '-nobrowse',
+          '-readonly',
+          '-noautoopen',
+          '-noverify',
+        ]);
+
+        if (mountRes.exitCode == 0) {
+          final mountMatch = RegExp(
+            r'<key>mount-point</key>\s*<string>([^<]+)</string>',
+          ).firstMatch(mountRes.stdout.toString());
+          mountPoint = mountMatch?.group(1);
+          mountedVolume = mountPoint;
+          AppLogger.i(
+            'Updater',
+            'Attached DMG to standard volume: $mountPoint',
           );
-          if (match.isNotEmpty && Directory(match).listSync().isNotEmpty) {
-            mountPoint = match;
-            break;
+        } else {
+          // Fallback 1b: DiskImageMounter (runs out-of-process)
+          AppLogger.w(
+            'Updater',
+            'Standard hdiutil attach failed (${mountRes.exitCode}): '
+                '${mountRes.stderr.toString().trim()}. Falling back to DiskImageMounter.',
+          );
+          await Process.run('open', ['-a', 'DiskImageMounter', dmgPath]);
+
+          // Poll mounted volumes (up to 8 seconds) using getMountedVolumes()
+          final volumeName = p
+              .basenameWithoutExtension(dmgPath)
+              .replaceAll(RegExp(r'-macos.*'), '');
+          for (var i = 0; i < 32; i++) {
+            await Future.delayed(const Duration(milliseconds: 250));
+            final volumes = getMountedVolumes();
+            final match = volumes.firstWhere(
+              (v) =>
+                  v.toLowerCase().contains('flax') ||
+                  v.toLowerCase().contains(volumeName.toLowerCase()),
+              orElse: () => '',
+            );
+            if (match.isNotEmpty) {
+              mountPoint = match;
+              mountedVolume = mountPoint;
+              break;
+            }
           }
-        }
-        if (mountPoint == null) {
-          throw Exception(
-            'DMG did not mount within timeout after DiskImageMounter fallback.',
-          );
+          if (mountPoint == null) {
+            throw Exception(
+              'DMG did not mount within timeout after DiskImageMounter fallback.',
+            );
+          }
         }
       }
 
       mountPoint ??= '/Volumes/flax';
-      mountedVolume = mountPoint;
+      mountedVolume ??= mountPoint;
 
-      final mountDir = Directory(mountPoint);
-      if (!mountDir.existsSync()) {
-        throw Exception('Mounted volume does not exist: $mountPoint');
-      }
-
-      final entries = mountDir.listSync();
-      final appSource = entries
-          .whereType<Directory>()
-          .where((d) => d.path.endsWith('.app'))
-          .firstOrNull;
-
-      if (appSource == null) {
+      // 2. Locate .app bundle inside mount point
+      final appSourcePath = await findAppBundleInside(
+        mountPoint,
+        targetAppPath,
+      );
+      if (appSourcePath == null) {
         throw Exception(
           'No .app bundle found inside mounted DMG ($mountPoint).',
         );
       }
 
-      final stagedAppPath = p.join(stagingDir.path, p.basename(appSource.path));
+      final stagedAppPath = p.join(stagingDir.path, p.basename(appSourcePath));
 
-      // Copy new .app bundle to staging directory using ditto
+      // 3. Copy new .app bundle to staging directory using ditto
       final cpStagedRes = await Process.run('ditto', [
-        appSource.path,
+        appSourcePath,
         stagedAppPath,
       ]);
       if (cpStagedRes.exitCode != 0) {
@@ -143,15 +268,20 @@ class MacOSInstaller {
         );
       }
 
-      // Detach the DMG now that files are in staging
-      await Process.run('hdiutil', ['detach', mountPoint, '-force', '-quiet']);
+      // 4. Detach the DMG now that files are in staging
+      await Process.run('hdiutil', [
+        'detach',
+        mountedVolume,
+        '-force',
+        '-quiet',
+      ]);
       mountedVolume = null;
 
       // Strip quarantine and ensure standard execute permissions on staged app
       await Process.run('xattr', ['-cr', stagedAppPath]);
       await Process.run('chmod', ['-R', '755', stagedAppPath]);
 
-      // Create detached update script in /tmp so it outlives the staging directory.
+      // 5. Create detached update script in /tmp so it outlives the staging directory.
       final currentPid = pid;
       final scriptPath = '/tmp/flax_macos_update_$currentPid.sh';
       final scriptFile = File(scriptPath);
@@ -222,7 +352,9 @@ rm -f "\$SCRIPT_PATH" 2>/dev/null || true
         } catch (_) {}
       }
       if (stagingDir.existsSync()) {
-        stagingDir.deleteSync(recursive: true);
+        try {
+          stagingDir.deleteSync(recursive: true);
+        } catch (_) {}
       }
 
       // Graceful fallback: open the DMG directly in Finder

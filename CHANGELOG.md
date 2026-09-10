@@ -38,6 +38,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- macOS self-updater attaches to a private mount to prevent volume listing permission errors.
 - Metadata and artwork sync indexes all artists instead of stopping early on partial libraries.
 - App opens immediately on Android without startup hangs or offline stalls.
 - Library screens instantly display downloaded music when offline or server unreachable.
