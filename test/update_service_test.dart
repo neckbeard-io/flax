@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:flax/services/updater/platform_installers/macos_installer.dart';
+import 'package:flax/services/updater/platform_installers/windows_installer.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_service.dart';
 
@@ -416,6 +417,124 @@ void main() {
             '-quiet',
           ]);
         }
+      },
+    );
+  });
+
+  group('WindowsInstaller tests', () {
+    test(
+      'buildInstallerArgs configures user-level silent install correctly',
+      () {
+        final args = WindowsInstaller.buildInstallerArgs(
+          installDir: r'C:\Users\tester\AppData\Local\Programs\flax',
+          silent: true,
+          isUserWritable: true,
+        );
+
+        expect(args, contains('/VERYSILENT'));
+        expect(args, contains('/SP-'));
+        expect(args, contains('/SUPPRESSMSGBOXES'));
+        expect(args, contains('/NORESTART'));
+        expect(args, contains('/CURRENTUSER'));
+        expect(args, isNot(contains('/ALLUSERS')));
+        expect(
+          args,
+          contains(r'/DIR="C:\Users\tester\AppData\Local\Programs\flax"'),
+        );
+      },
+    );
+
+    test(
+      'buildInstallerArgs configures administrative install for non-writable dirs',
+      () {
+        final args = WindowsInstaller.buildInstallerArgs(
+          installDir: r'C:\Program Files\flax',
+          silent: true,
+          isUserWritable: false,
+        );
+
+        expect(args, isNot(contains('/CURRENTUSER')));
+        expect(args, contains('/ALLUSERS'));
+        expect(args, contains(r'/DIR="C:\Program Files\flax"'));
+      },
+    );
+
+    test('buildInstallerArgs respects non-silent mode', () {
+      final args = WindowsInstaller.buildInstallerArgs(
+        installDir: r'C:\Users\tester\flax',
+        silent: false,
+      );
+
+      expect(args, isNot(contains('/VERYSILENT')));
+      expect(args, contains(r'/DIR="C:\Users\tester\flax"'));
+    });
+
+    test('escapePowerShellString escapes single quotes properly', () {
+      expect(
+        WindowsInstaller.escapePowerShellString(r"C:\Users\O'Connor\flax"),
+        equals(r"C:\Users\O''Connor\flax"),
+      );
+      expect(
+        WindowsInstaller.escapePowerShellString(r'C:\Simple\Path'),
+        equals(r'C:\Simple\Path'),
+      );
+    });
+
+    test(
+      'buildUpdateScript contains process wait, execution, relaunch, and cleanup',
+      () {
+        final script = WindowsInstaller.buildUpdateScript(
+          currentPid: 12345,
+          setupExePath: r'C:\Temp\flax_setup.exe',
+          installerArgs: ['/VERYSILENT', '/CURRENTUSER'],
+          targetExePath:
+              r'C:\Users\tester\AppData\Local\Programs\flax\flax.exe',
+          scriptPath: r'C:\Temp\update_12345.ps1',
+        );
+
+        // Verifies it waits for the current process to exit
+        expect(script, contains(r'$proc = Get-Process -Id 12345'));
+        expect(script, contains(r'$proc.WaitForExit(10000)'));
+
+        // Verifies it launches Inno Setup silently
+        expect(
+          script,
+          contains(r"Start-Process -FilePath 'C:\Temp\flax_setup.exe'"),
+        );
+        expect(script, contains(r"-ArgumentList '/VERYSILENT /CURRENTUSER'"));
+        expect(script, contains(r'-Wait -PassThru'));
+
+        // Verifies it checks if running and relaunches Flax
+        expect(script, contains(r"Get-Process -Name 'flax'"));
+        expect(
+          script,
+          contains(
+            r"Start-Process -FilePath 'C:\Users\tester\AppData\Local\Programs\flax\flax.exe'",
+          ),
+        );
+
+        // Verifies cleanup of installer and script
+        expect(script, contains(r"Remove-Item -Path 'C:\Temp\flax_setup.exe'"));
+        expect(
+          script,
+          contains(r"Remove-Item -Path 'C:\Temp\update_12345.ps1'"),
+        );
+      },
+    );
+
+    test(
+      'canWriteWithoutElevation checks write permissions on directory',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'flax-perm-test-',
+        );
+        addTearDown(() async {
+          try {
+            await tempDir.delete(recursive: true);
+          } catch (_) {}
+        });
+
+        expect(WindowsInstaller.canWriteWithoutElevation(tempDir.path), isTrue);
       },
     );
   });

@@ -53,7 +53,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Added Wi-Fi detection button and permission handling for Android in Server Connection settings.
 - Caching notification automatically dismisses on timeout or when download queue finishes instead of remaining stuck on screen.
 - Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
-- Windows self-updater now installs silently in-place without manual wizard prompts or elevated permission resets.
+- Windows self-updater runs silently without privilege escalation and relaunches automatically.
 - Desktop header update pill responds to taps on Windows and Linux without title bar drag interference.
 - Eliminated transient startup flash of the setup screen when reopening with configured servers.
 - Android system back button and gesture navigation now pop or navigate back up screens instead of exiting the app.
