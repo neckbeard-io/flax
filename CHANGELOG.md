@@ -12,7 +12,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Added
 - Orphaned cache cleanup tool and server reset option in Metadata & Storage settings.
-- Automatic detection and warning card for Navidrome 0.64.0 server item ID migrations.
+- Automatic detection and startup warning banner for Navidrome 0.64.0 item ID migrations.
 - Option to isolate playback queue locally, preventing server queues from overwriting device state.
 - Offline scrobbles now persist locally and automatically flush when server connection restores.
 - Artist country flags and active years now display on Now Playing and persist locally.

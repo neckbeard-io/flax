@@ -288,17 +288,39 @@ class MetadataSyncService {
             server.id,
             SyncKeys.serverVersion,
           );
+          bool migrationDetected = false;
+          if (prevVer != null &&
+              isNavidrome064Migration(prevVer, serverInfo.serverVersion!)) {
+            migrationDetected = true;
+          } else if (isNavidrome064OrNewer(serverInfo.serverVersion!)) {
+            final sample = await dao.getSampleSongIds(server.id, limit: 5);
+            if (sample.isNotEmpty) {
+              int missingCount = 0;
+              for (final sid in sample) {
+                try {
+                  await client.getSong(sid);
+                } on SubsonicException catch (se) {
+                  if (se.code == 70) missingCount++;
+                } catch (_) {}
+              }
+              if (missingCount >= 2 ||
+                  (sample.length == 1 && missingCount == 1)) {
+                migrationDetected = true;
+              }
+            }
+          }
+
           await dao.putSyncValue(
             server.id,
             SyncKeys.serverVersion,
             serverInfo.serverVersion!,
             DateTime.now(),
           );
-          if (prevVer != null &&
-              isNavidrome064Migration(prevVer, serverInfo.serverVersion!)) {
+
+          if (migrationDetected) {
             AppLogger.w(
               'Sync',
-              'Detected Navidrome 0.64.0+ migration from $prevVer to ${serverInfo.serverVersion}',
+              'Detected Navidrome 0.64.0+ migration for ${server.id}',
             );
             await dao.putSyncValue(
               server.id,

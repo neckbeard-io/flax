@@ -20,6 +20,7 @@ import 'package:flax/services/database/tables/orderings.dart';
 import 'package:flax/services/metadata/metadata_sync_service.dart';
 import 'package:flax/services/scrobble/scrobble_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
+import 'package:flax/shared/widgets/server_migration_banner.dart';
 
 class _FakeSubsonicClient extends Fake implements SubsonicClient {
   @override
@@ -123,6 +124,10 @@ void main() {
 
       final songIds = await dao.getAllSongIds(serverId);
       expect(songIds, equals({'song-1', 'song-2'}));
+
+      final sampleSongIds = await dao.getSampleSongIds(serverId, limit: 1);
+      expect(sampleSongIds.length, equals(1));
+      expect(sampleSongIds.first, anyOf('song-1', 'song-2'));
     });
 
     test('clearServerLibrary and deleteSyncValue wipe server state', () async {
@@ -409,6 +414,108 @@ void main() {
           find.text('Reset & Re-sync Server Library'),
         );
         expect(resetBtnRect.right, lessThanOrEqualTo(390));
+      },
+    );
+
+    testWidgets(
+      'ServerMigrationBanner renders on mobile viewport without overflow and responds to dismiss',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        final alertNotifier = ServerMigrationAlertNotifier()
+          ..setAlert('srv-mig-ui', true);
+
+        final container = ProviderContainer(
+          overrides: [
+            activeServerProvider.overrideWith((ref) => testServer),
+            serverMigrationAlertProvider.overrideWith((ref) => alertNotifier),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: Column(
+                  children: [
+                    ServerMigrationBanner(),
+                    Expanded(child: Text('Main Content')),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Navidrome 0.64+ ID Migration Detected'),
+          findsOneWidget,
+        );
+        expect(find.text('Reset & Re-sync Library'), findsOneWidget);
+        expect(find.text('Clean Orphaned Files'), findsOneWidget);
+        expect(find.text('Storage Settings'), findsOneWidget);
+
+        // Action buttons fit within mobile width
+        final resetRect = tester.getRect(find.text('Reset & Re-sync Library'));
+        expect(resetRect.right, lessThanOrEqualTo(390));
+
+        // Dismiss the banner
+        await tester.tap(find.byTooltip('Dismiss alert'));
+        await tester.pumpAndSettle();
+
+        expect(alertNotifier.state['srv-mig-ui'], isNull);
+        expect(
+          find.text('Navidrome 0.64+ ID Migration Detected'),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'ServerMigrationBanner reserves top margin on desktop to clear window controls',
+      (tester) async {
+        final alertNotifier = ServerMigrationAlertNotifier()
+          ..setAlert('srv-mig-ui', true);
+
+        final container = ProviderContainer(
+          overrides: [
+            activeServerProvider.overrideWith((ref) => testServer),
+            serverMigrationAlertProvider.overrideWith((ref) => alertNotifier),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: Column(
+                  children: [
+                    ServerMigrationBanner(),
+                    Expanded(child: Text('Main Content')),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final bannerFinder = find.byType(ServerMigrationBanner);
+        expect(bannerFinder, findsOneWidget);
+        final containerFinder = find.descendant(
+          of: bannerFinder,
+          matching: find.byType(Container),
+        );
+        final containerWidget = tester.widget<Container>(containerFinder.first);
+        final margin = containerWidget.margin as EdgeInsets;
+        expect(margin.top, greaterThanOrEqualTo(44.0));
       },
     );
   });

@@ -2,8 +2,11 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
+import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/services/database/tables/orderings.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
 const _kOfflineManualPrefKey = 'flax_offline_manual_override';
@@ -185,11 +188,12 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
   ServerReachabilityNotifier(this._ref) : super(const ServerReachability()) {
     _ref.listen<SubsonicClient?>(subsonicClientProvider, (prev, next) {
       if (next != null) {
+        _checkStoredMigrationAlert(next.server.id);
         probeServer(silent: true);
       } else {
         state = const ServerReachability();
       }
-    });
+    }, fireImmediately: true);
 
     _ref.listen<AsyncValue<List<ConnectivityResult>>>(
       connectivityStreamProvider,
@@ -207,6 +211,97 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
         }
       },
     );
+  }
+
+  Future<void> _checkStoredMigrationAlert(String serverId) async {
+    try {
+      final dao = _ref.read(libraryDaoProvider);
+      final stored = await dao.syncValue(serverId, SyncKeys.migrationDetected);
+      if (stored == 'true') {
+        _ref
+            .read(serverMigrationAlertProvider.notifier)
+            .setAlert(serverId, true);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _checkServerMigration(SubsonicClient client) async {
+    final serverId = client.server.id;
+    final dao = _ref.read(libraryDaoProvider);
+
+    try {
+      AppLogger.d(
+        'Reachability',
+        () => 'Checking server migration for $serverId',
+      );
+      final stored = await dao.syncValue(serverId, SyncKeys.migrationDetected);
+      if (stored == 'true') {
+        AppLogger.d(
+          'Reachability',
+          () => 'Stored migration alert already active for $serverId',
+        );
+        _ref
+            .read(serverMigrationAlertProvider.notifier)
+            .setAlert(serverId, true);
+        return;
+      }
+
+      final info = await client.getServerInfo(
+        timeout: const Duration(seconds: 4),
+      );
+      final ver = info.serverVersion;
+      if (ver == null) return;
+
+      final prevVer = await dao.syncValue(serverId, SyncKeys.serverVersion);
+      bool migrationDetected = false;
+      if (prevVer != null && isNavidrome064Migration(prevVer, ver)) {
+        migrationDetected = true;
+      } else if (isNavidrome064OrNewer(ver)) {
+        // Navidrome 0.64.0+ re-encoded all track/song IDs into canonical 128-bit Base62 format.
+        // Check if locally indexed songs still exist upstream.
+        final sample = await dao.getSampleSongIds(serverId, limit: 5);
+        if (sample.isNotEmpty) {
+          int missingCount = 0;
+          for (final songId in sample) {
+            try {
+              await client.getSong(songId);
+            } on SubsonicException catch (se) {
+              if (se.code == 70) {
+                missingCount++;
+              }
+            } catch (_) {}
+          }
+          if (missingCount >= 2 || (sample.length == 1 && missingCount == 1)) {
+            migrationDetected = true;
+          }
+        }
+      }
+
+      await dao.putSyncValue(
+        serverId,
+        SyncKeys.serverVersion,
+        ver,
+        DateTime.now(),
+      );
+
+      if (migrationDetected) {
+        AppLogger.w(
+          'Reachability',
+          'Navidrome 0.64+ ID migration detected on server probe for $serverId',
+        );
+        await dao.putSyncValue(
+          serverId,
+          SyncKeys.migrationDetected,
+          'true',
+          DateTime.now(),
+        );
+        _ref
+            .read(serverMigrationAlertProvider.notifier)
+            .setAlert(serverId, true);
+      }
+    } catch (e, st) {
+      AppLogger.w('Reachability', 'Error checking server migration: $e\n$st');
+    }
   }
 
   /// Probes the server with a hard 3-second timeout.
@@ -236,6 +331,10 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
       lastError: error,
       lastChecked: DateTime.now(),
     );
+
+    if (isReachable) {
+      _checkServerMigration(client);
+    }
 
     if (!isReachable && wasReachable && !silent) {
       // Trigger toaster notification

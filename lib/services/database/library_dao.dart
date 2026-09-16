@@ -1125,6 +1125,21 @@ class LibraryDao {
     return rows.map((r) => r.read(_db.songs.id)!).toSet();
   }
 
+  /// Returns a small sample of known song IDs for [serverId] in the local database,
+  /// ordered by oldest fetched first to reliably detect upstream ID changes.
+  Future<List<String>> getSampleSongIds(
+    String serverId, {
+    int limit = 5,
+  }) async {
+    final q = _db.selectOnly(_db.songs)
+      ..addColumns([_db.songs.id])
+      ..where(_db.songs.serverId.equals(serverId))
+      ..orderBy([OrderingTerm.asc(_db.songs.fetchedAt)])
+      ..limit(limit);
+    final rows = await q.get();
+    return rows.map((r) => r.read(_db.songs.id)!).toList();
+  }
+
   /// Returns all known album IDs for [serverId] in the local database.
   Future<Set<String>> getAllAlbumIds(String serverId) async {
     final q = _db.selectOnly(_db.albums)

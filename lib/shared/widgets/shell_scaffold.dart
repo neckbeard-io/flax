@@ -8,6 +8,8 @@ import 'package:flax/shared/widgets/desktop_sidebar.dart';
 
 import 'package:flax/services/updater/update_provider.dart';
 
+import 'package:flax/shared/widgets/server_migration_banner.dart';
+
 /// Below this width the sidebar is dropped for the bottom bar even on desktop —
 /// a 220px rail out of a narrow window leaves too little for content.
 const _sidebarMinWidth = 700.0;
@@ -42,7 +44,14 @@ class ShellScaffold extends ConsumerWidget {
     final content = Row(
       children: [
         if (useSidebar) const DesktopSidebar(),
-        Expanded(child: child),
+        Expanded(
+          child: Column(
+            children: [
+              const ServerMigrationBanner(),
+              Expanded(child: child),
+            ],
+          ),
+        ),
       ],
     );
 
