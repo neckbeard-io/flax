@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -135,6 +136,22 @@ class ScrobbleSyncService {
             'ScrobbleSync',
             'Failed scrobble drain for item ${item.id} (song ${item.songId}): $e',
           );
+
+          final isNotFound =
+              (e is SubsonicException && e.code == 70) ||
+              (e is DioException && e.response?.statusCode == 404);
+
+          if (isNotFound) {
+            // Song ID no longer exists upstream (e.g. Navidrome 0.64.0 ID migration).
+            // Prune immediately and continue draining the rest of the queue.
+            await dao.deletePendingScrobble(item.id);
+            AppLogger.w(
+              'ScrobbleSync',
+              'Pruned scrobble ${item.id} for missing song ${item.songId} (not found on server)',
+            );
+            continue;
+          }
+
           if (item.attempts >= 4) {
             // Poison pill protection: drop after 5 failed attempts
             await dao.deletePendingScrobble(item.id);

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:meta/meta.dart';
 
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -21,6 +22,24 @@ import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
+
+/// Result of an orphaned cache file cleanup pass.
+class OrphanCleanupResult {
+  final int filesDeleted;
+  final int bytesFreed;
+
+  const OrphanCleanupResult({
+    required this.filesDeleted,
+    required this.bytesFreed,
+  });
+
+  String get freedDisplayString {
+    if (bytesFreed < 1024 * 1024) {
+      return '${(bytesFreed / 1024).toStringAsFixed(1)} KB';
+    }
+    return '${(bytesFreed / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+}
 
 /// Configuration for the audio cache and offline storage.
 class AudioCacheConfig {
@@ -188,6 +207,10 @@ class AudioCacheService {
   final Dio _dio;
 
   static String? _cachedBasePath;
+
+  /// Visible for testing to clear or override the cached base path.
+  @visibleForTesting
+  static set cachedBasePath(String? path) => _cachedBasePath = path;
 
   /// Initializes the local audio cache base directory path.
   static Future<void> initialize({
@@ -1344,6 +1367,129 @@ class AudioCacheService {
   /// Purges metadata and artwork caches.
   Future<void> clearMetadataAndArtworkCache() async {
     await ArtCache.instance.emptyCache();
+  }
+
+  /// Purges cached lyrics for [serverId].
+  Future<void> clearLyricsCache(String serverId) async {
+    final base = await _getBaseDir();
+    final dir = Directory(p.join(base.path, 'lyrics', serverId));
+    if (dir.existsSync()) {
+      try {
+        dir.deleteSync(recursive: true);
+      } catch (_) {}
+    }
+  }
+
+  /// Sweeps and removes cached audio and lyrics files that have no corresponding
+  /// song in the local database for [serverId].
+  Future<OrphanCleanupResult> cleanupOrphanedFiles(String serverId) async {
+    final dao = _ref.read(libraryDaoProvider);
+    final validSongIds = await dao.getAllSongIds(serverId);
+    if (validSongIds.isEmpty) {
+      // If the database has 0 songs indexed for this server, do not prune to avoid
+      // deleting offline music before metadata is synchronized.
+      return const OrphanCleanupResult(filesDeleted: 0, bytesFreed: 0);
+    }
+
+    final base = await _getBaseDir();
+    var filesDeleted = 0;
+    var bytesFreed = 0;
+
+    final dirsToCheck = [
+      Directory(p.join(base.path, 'music', 'offline', serverId)),
+      Directory(p.join(base.path, 'music', 'rolling', serverId)),
+      Directory(p.join(base.path, 'music', 'cache', serverId)),
+    ];
+
+    for (final dir in dirsToCheck) {
+      if (!dir.existsSync()) continue;
+      try {
+        for (final entity in dir.listSync()) {
+          if (entity is File && !entity.path.endsWith('.tmp')) {
+            final songId = p.basenameWithoutExtension(entity.path);
+            if (!validSongIds.contains(songId)) {
+              final len = entity.lengthSync();
+              try {
+                entity.deleteSync();
+                filesDeleted++;
+                bytesFreed += len;
+                // Also clean up matching lyrics if present
+                final lyricsDir = Directory(
+                  p.join(base.path, 'lyrics', serverId),
+                );
+                final lrcFile = File(p.join(lyricsDir.path, '$songId.lrc'));
+                if (lrcFile.existsSync()) {
+                  final lrcLen = lrcFile.lengthSync();
+                  lrcFile.deleteSync();
+                  filesDeleted++;
+                  bytesFreed += lrcLen;
+                }
+              } catch (e) {
+                AppLogger.w(
+                  'Cache',
+                  'Failed to remove orphaned file ${entity.path}: $e',
+                );
+              }
+            }
+          }
+        }
+      } catch (e) {
+        AppLogger.w('Cache', 'Error scanning directory ${dir.path}: $e');
+      }
+    }
+
+    // Also scan lyrics directory for orphaned .lrc files
+    final lyricsDir = Directory(p.join(base.path, 'lyrics', serverId));
+    if (lyricsDir.existsSync()) {
+      try {
+        for (final entity in lyricsDir.listSync()) {
+          if (entity is File && entity.path.endsWith('.lrc')) {
+            final songId = p.basenameWithoutExtension(entity.path);
+            if (!validSongIds.contains(songId)) {
+              final len = entity.lengthSync();
+              try {
+                entity.deleteSync();
+                filesDeleted++;
+                bytesFreed += len;
+              } catch (_) {}
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    return OrphanCleanupResult(
+      filesDeleted: filesDeleted,
+      bytesFreed: bytesFreed,
+    );
+  }
+
+  /// Completely resets all cached audio, lyrics, artwork, and local database entries
+  /// for [serverId].
+  Future<void> resetServerData(String serverId) async {
+    final dao = _ref.read(libraryDaoProvider);
+    final base = await _getBaseDir();
+
+    // 1. Delete on-disk audio directories for this server
+    for (final sub in ['offline', 'rolling', 'cache']) {
+      final dir = Directory(p.join(base.path, 'music', sub, serverId));
+      if (dir.existsSync()) {
+        try {
+          dir.deleteSync(recursive: true);
+        } catch (_) {}
+      }
+    }
+
+    // 2. Delete lyrics directory
+    await clearLyricsCache(serverId);
+
+    // 3. Clear artwork cache
+    try {
+      await ArtCache.instance.emptyCache();
+    } catch (_) {}
+
+    // 4. Wipe all local database entries for this server
+    await dao.clearServerLibrary(serverId);
   }
 
   /// Returns total audio cache size in bytes.

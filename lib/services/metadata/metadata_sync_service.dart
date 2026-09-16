@@ -15,6 +15,7 @@ import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/database/library_dao.dart';
+import 'package:flax/services/database/tables/orderings.dart';
 import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
@@ -275,6 +276,45 @@ class MetadataSyncService {
       var albums = await dao.watchAllAlbums(server.id).first;
       var artists = await dao.watchArtists(server.id).first;
 
+      // Check server version for Navidrome 0.64.0+ migration
+      try {
+        final serverInfo = await client.getServerInfo(
+          timeout: const Duration(seconds: 5),
+        );
+        if (serverInfo.serverType?.toLowerCase().contains('navidrome') ==
+                true &&
+            serverInfo.serverVersion != null) {
+          final prevVer = await dao.syncValue(
+            server.id,
+            SyncKeys.serverVersion,
+          );
+          await dao.putSyncValue(
+            server.id,
+            SyncKeys.serverVersion,
+            serverInfo.serverVersion!,
+            DateTime.now(),
+          );
+          if (prevVer != null &&
+              isNavidrome064Migration(prevVer, serverInfo.serverVersion!)) {
+            AppLogger.w(
+              'Sync',
+              'Detected Navidrome 0.64.0+ migration from $prevVer to ${serverInfo.serverVersion}',
+            );
+            await dao.putSyncValue(
+              server.id,
+              SyncKeys.migrationDetected,
+              'true',
+              DateTime.now(),
+            );
+            _ref
+                .read(serverMigrationAlertProvider.notifier)
+                .setAlert(server.id, true);
+          }
+        }
+      } catch (e) {
+        AppLogger.w('Sync', 'Could not probe server version: $e');
+      }
+
       try {
         var offset = 0;
         const pageSize = 500;
@@ -291,6 +331,26 @@ class MetadataSyncService {
           offset += pageSize;
         }
         if (!_isCanceled && !handle.isCanceled && allFetched.isNotEmpty) {
+          // If local database has albums but none match newly fetched IDs, migration occurred
+          if (albums.length >= 10) {
+            final localIds = albums.map((a) => a.id).toSet();
+            final hasMatch = allFetched.any((a) => localIds.contains(a.id));
+            if (!hasMatch) {
+              AppLogger.w(
+                'Sync',
+                'Detected ID migration for server ${server.id} (0% album ID match)',
+              );
+              await dao.putSyncValue(
+                server.id,
+                SyncKeys.migrationDetected,
+                'true',
+                DateTime.now(),
+              );
+              _ref
+                  .read(serverMigrationAlertProvider.notifier)
+                  .setAlert(server.id, true);
+            }
+          }
           await dao.upsertAlbums(allFetched, DateTime.now());
           albums = allFetched;
         }
@@ -795,6 +855,16 @@ final metadataCacheSummaryProvider =
             AppLogger.w('Sync', 'Failed to prefetch artists for summary: $e');
           }
         }
+      }
+
+      final migrationDetected = await dao.syncValue(
+        serverId,
+        SyncKeys.migrationDetected,
+      );
+      if (migrationDetected == 'true') {
+        ref
+            .read(serverMigrationAlertProvider.notifier)
+            .setAlert(serverId, true);
       }
 
       return service.getSummary(server, dao);

@@ -11,6 +11,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/cache/storage_manager.dart';
+import 'package:flax/services/database/tables/orderings.dart';
 import 'package:flax/services/metadata/metadata_sync_service.dart';
 import 'package:flax/services/platform/background_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
@@ -73,6 +74,8 @@ class MetadataCachingScreen extends ConsumerWidget {
     final audioSummary =
         audioSummaryAsync.valueOrNull ?? const AudioCacheSummary();
     final config = server.metadataCacheConfig;
+    final hasMigrationAlert =
+        ref.watch(serverMigrationAlertProvider)[server.id] ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -81,6 +84,19 @@ class MetadataCachingScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
+          if (hasMigrationAlert)
+            _MigrationWarningCard(
+              server: server,
+              onReset: () => _showResetAndResyncDialog(context, ref, server),
+              onDismiss: () async {
+                await ref
+                    .read(libraryDaoProvider)
+                    .deleteSyncValue(server.id, SyncKeys.migrationDetected);
+                ref
+                    .read(serverMigrationAlertProvider.notifier)
+                    .clearAlert(server.id);
+              },
+            ),
           // ── Cache Status Overview ──
           _SectionTitle(title: 'Cache Status'),
           Padding(
@@ -677,6 +693,63 @@ class MetadataCachingScreen extends ConsumerWidget {
               label: const Text('Clear Metadata & Artwork Cache'),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Clean Orphaned Files?'),
+                    content: const Text(
+                      'Scans cached audio and lyrics on disk and deletes any files whose songs no longer exist in your local library.\n\nThis safely reclaims storage without deleting current library tracks.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Clean'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  final result = await ref
+                      .read(audioCacheServiceProvider)
+                      .cleanupOrphanedFiles(server.id);
+                  ref.invalidate(audioCacheSummaryProvider(server.id));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          result.filesDeleted > 0
+                              ? 'Removed ${result.filesDeleted} orphaned file${result.filesDeleted == 1 ? "" : "s"} (${result.freedDisplayString} freed)'
+                              : 'No orphaned files found',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+              icon: const Icon(Icons.cleaning_services_outlined),
+              label: const Text('Clean Orphaned Files'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+                side: BorderSide(color: theme.colorScheme.error),
+              ),
+              onPressed: () => _showResetAndResyncDialog(context, ref, server),
+              icon: const Icon(Icons.restart_alt),
+              label: const Text('Reset & Re-sync Server Library'),
+            ),
+          ),
           const SizedBox(height: 24),
         ],
       ),
@@ -688,6 +761,55 @@ class MetadataCachingScreen extends ConsumerWidget {
         .read(serverListProvider.notifier)
         .updateServer(server.copyWith(metadataCacheConfig: config));
     ref.invalidate(metadataCacheSummaryProvider(server.id));
+  }
+
+  Future<void> _showResetAndResyncDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Server server,
+  ) async {
+    final theme = Theme.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset & Re-sync Library?'),
+        content: const Text(
+          'This will remove all downloaded audio, lyrics, cached artwork, and local library metadata for this server, and immediately perform a fresh synchronization.\n\nRecommended if your server upgraded to Navidrome 0.64.0 or re-encoded its library item IDs.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+              foregroundColor: theme.colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reset & Re-sync'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ref.read(audioCacheServiceProvider).resetServerData(server.id);
+      await ref
+          .read(libraryDaoProvider)
+          .deleteSyncValue(server.id, SyncKeys.migrationDetected);
+      ref.read(serverMigrationAlertProvider.notifier).clearAlert(server.id);
+      ref.invalidate(audioCacheSummaryProvider(server.id));
+      ref.invalidate(metadataCacheSummaryProvider(server.id));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Library reset. Starting synchronization...'),
+          ),
+        );
+        _startSyncWithNetworkCheck(context, ref, server);
+      }
+    }
   }
 
   Future<void> _startSyncWithNetworkCheck(
@@ -1390,4 +1512,84 @@ String _formatRelativeTime(DateTime dt) {
   if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
   if (diff.inHours < 24) return '${diff.inHours}h ago';
   return '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+}
+
+class _MigrationWarningCard extends StatelessWidget {
+  final Server server;
+  final VoidCallback onReset;
+  final VoidCallback onDismiss;
+
+  const _MigrationWarningCard({
+    required this.server,
+    required this.onReset,
+    required this.onDismiss,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Card(
+        color: theme.colorScheme.errorContainer,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: theme.colorScheme.onErrorContainer,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Navidrome 0.64.0 Migration Detected',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Your server migrated its database IDs. Existing offline downloads and cached library records must be reset to stay in sync.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onErrorContainer,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.error,
+                      foregroundColor: theme.colorScheme.onError,
+                    ),
+                    onPressed: onReset,
+                    child: const Text('Reset & Re-sync Now'),
+                  ),
+                  TextButton(
+                    onPressed: onDismiss,
+                    child: Text(
+                      'Dismiss',
+                      style: TextStyle(
+                        color: theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

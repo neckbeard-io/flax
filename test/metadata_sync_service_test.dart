@@ -40,7 +40,13 @@ void main() {
     mockCache = MockBaseCacheManager();
     container = ProviderContainer();
     container.read(serverListProvider.notifier);
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+    when(mockClient.getServerInfo(timeout: anyNamed('timeout'))).thenAnswer(
+      (_) async => const SubsonicServerInfo(
+        apiVersion: '1.16.1',
+        serverType: 'navidrome',
+        serverVersion: '0.64.0',
+      ),
+    );
     service = MetadataSyncService(
       container.read(providerElementProvider),
       cacheManager: mockCache,
