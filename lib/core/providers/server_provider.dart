@@ -117,3 +117,46 @@ class ServerListNotifier extends StateNotifier<List<Server>> {
     await _save();
   }
 }
+
+/// Checks whether a Navidrome version string corresponds to 0.64.0 or newer.
+bool isNavidrome064OrNewer(String version) {
+  final cleaned = version.replaceFirst(RegExp(r'^[vV]'), '').trim();
+  final parts = cleaned
+      .split('.')
+      .map((p) => int.tryParse(RegExp(r'^\d+').stringMatch(p) ?? '') ?? 0)
+      .toList();
+  if (parts.isEmpty) return false;
+  final major = parts[0];
+  final minor = parts.length > 1 ? parts[1] : 0;
+  return major > 0 || (major == 0 && minor >= 64);
+}
+
+/// Detects if an upgrade from [oldVersion] to [newVersion] crosses the Navidrome 0.64.0 ID migration threshold.
+bool isNavidrome064Migration(String oldVersion, String newVersion) {
+  return !isNavidrome064OrNewer(oldVersion) &&
+      isNavidrome064OrNewer(newVersion);
+}
+
+/// Tracks detected server-side database/ID migrations (e.g. Navidrome 0.64.0)
+/// keyed by server ID.
+class ServerMigrationAlertNotifier extends StateNotifier<Map<String, bool>> {
+  ServerMigrationAlertNotifier() : super(const {});
+
+  void setAlert(String serverId, bool hasAlert) {
+    state = {...state, serverId: hasAlert};
+  }
+
+  void clearAlert(String serverId) {
+    if (state.containsKey(serverId)) {
+      final updated = Map<String, bool>.from(state)..remove(serverId);
+      state = updated;
+    }
+  }
+}
+
+final serverMigrationAlertProvider =
+    StateNotifierProvider<ServerMigrationAlertNotifier, Map<String, bool>>((
+      ref,
+    ) {
+      return ServerMigrationAlertNotifier();
+    });

@@ -682,6 +682,12 @@ class LibraryDao {
         );
   }
 
+  Future<void> deleteSyncValue(String serverId, String key) async {
+    await (_db.delete(
+      _db.syncStates,
+    )..where((t) => t.serverId.equals(serverId) & t.key.equals(key))).go();
+  }
+
   // ── Downloads & Offline Cache ───────────────────────────────────────────
 
   Future<void> updateSongDownload(
@@ -1105,6 +1111,27 @@ class LibraryDao {
         _db.syncStates,
       )..where((t) => t.serverId.equals(serverId))).go();
     });
+  }
+
+  /// Completely resets all local cached entities, orderings, and sync state for [serverId].
+  Future<void> clearServerLibrary(String serverId) => deleteServer(serverId);
+
+  /// Returns all known song IDs for [serverId] in the local database.
+  Future<Set<String>> getAllSongIds(String serverId) async {
+    final q = _db.selectOnly(_db.songs)
+      ..addColumns([_db.songs.id])
+      ..where(_db.songs.serverId.equals(serverId));
+    final rows = await q.get();
+    return rows.map((r) => r.read(_db.songs.id)!).toSet();
+  }
+
+  /// Returns all known album IDs for [serverId] in the local database.
+  Future<Set<String>> getAllAlbumIds(String serverId) async {
+    final q = _db.selectOnly(_db.albums)
+      ..addColumns([_db.albums.id])
+      ..where(_db.albums.serverId.equals(serverId));
+    final rows = await q.get();
+    return rows.map((r) => r.read(_db.albums.id)!).toSet();
   }
 
   /// Drop albums the server has stopped mentioning.

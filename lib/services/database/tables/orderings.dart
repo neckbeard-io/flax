@@ -84,4 +84,10 @@ abstract final class SyncKeys {
 
   /// When the full artists list was last fetched from the server.
   static const artistsListFetchedAt = 'artistsListFetchedAt';
+
+  /// The server version string reported by Subsonic ping.
+  static const serverVersion = 'serverVersion';
+
+  /// Stored flag indicating an ID migration was detected (e.g. Navidrome 0.64.0).
+  static const migrationDetected = 'migrationDetected';
 }

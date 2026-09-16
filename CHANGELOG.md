@@ -11,6 +11,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Orphaned cache cleanup tool and server reset option in Metadata & Storage settings.
+- Automatic detection and warning card for Navidrome 0.64.0 server item ID migrations.
 - Option to isolate playback queue locally, preventing server queues from overwriting device state.
 - Offline scrobbles now persist locally and automatically flush when server connection restores.
 - Artist country flags and active years now display on Now Playing and persist locally.
@@ -38,6 +40,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- Offline scrobble sync skips missing deleted tracks on server without stalling queue.
 - macOS self-updater attaches to a private mount to prevent volume listing permission errors.
 - Metadata and artwork sync indexes all artists instead of stopping early on partial libraries.
 - App opens immediately on Android without startup hangs or offline stalls.
