@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:flax/core/logging/app_logger.dart';
 
+import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/core/tasks/task.dart';
@@ -88,7 +89,7 @@ class MetadataSyncService {
   /// Checks if the device is connected to a cellular/mobile network without Wi-Fi or Ethernet.
   Future<bool> isCellularConnection() async {
     try {
-      final results = await Connectivity().checkConnectivity();
+      final results = await _ref.read(connectivityProvider.future);
       return results.contains(ConnectivityResult.mobile) &&
           !results.contains(ConnectivityResult.wifi) &&
           !results.contains(ConnectivityResult.ethernet);

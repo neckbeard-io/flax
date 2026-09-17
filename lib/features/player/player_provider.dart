@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' as mpv;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
@@ -378,7 +379,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<List<ConnectivityResult>> _getConnectivity() async {
     try {
-      return await Connectivity().checkConnectivity();
+      return await _ref.read(connectivityProvider.future);
     } catch (_) {
       return [ConnectivityResult.wifi];
     }

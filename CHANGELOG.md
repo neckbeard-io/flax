@@ -40,6 +40,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- Detect primary network adapter automatically so car Wi-Fi doesn't block cellular internet.
 - App opens immediately without network gating and engages auto-offline on Android Auto.
 - Offline scrobble sync skips missing deleted tracks on server without stalling queue.
 - macOS self-updater attaches to a private mount to prevent volume listing permission errors.

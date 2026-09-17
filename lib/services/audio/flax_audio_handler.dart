@@ -853,7 +853,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       if (parentMediaId.startsWith('albums_section_')) {
         final section = parentMediaId.substring(15);
-        return _getAlbumSection(section, library, client);
+        return await _getAlbumSection(section, library, client);
       }
 
       if (parentMediaId.startsWith('albums_letter_')) {

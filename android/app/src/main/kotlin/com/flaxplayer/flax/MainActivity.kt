@@ -7,6 +7,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -35,7 +39,11 @@ class MainActivity : AudioServiceActivity() {
     private val SYNC_CHANNEL = "com.flax/background_sync"
     private val CAR_CHANNEL = "com.flax/car_connection"
     private val CAR_EVENTS = "com.flax/car_connection_events"
+    private val NETWORK_CHANNEL = "com.flax/network_status"
+    private val NETWORK_EVENTS = "com.flax/network_status_events"
 
+    private var networkEventSink: EventChannel.EventSink? = null
+    private var defaultNetworkCallback: ConnectivityManager.NetworkCallback? = null
     private var carConnection: CarConnection? = null
     private var carEventSink: EventChannel.EventSink? = null
     private var installerEventSink: EventChannel.EventSink? = null
@@ -357,5 +365,174 @@ class MainActivity : AudioServiceActivity() {
                 }
             }
         )
+
+        // Primary network status channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NETWORK_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getPrimaryNetworkInfo" -> {
+                    result.success(getPrimaryNetworkInfo())
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, NETWORK_EVENTS).setStreamHandler(
+            object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                    networkEventSink = events
+                    val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                    if (cm != null && defaultNetworkCallback == null) {
+                        val callback = object : ConnectivityManager.NetworkCallback() {
+                            override fun onAvailable(network: Network) {
+                                runOnUiThread {
+                                    networkEventSink?.success(getPrimaryNetworkInfo())
+                                }
+                            }
+                            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+                                runOnUiThread {
+                                    networkEventSink?.success(getPrimaryNetworkInfo())
+                                }
+                            }
+                            override fun onLost(network: Network) {
+                                runOnUiThread {
+                                    networkEventSink?.success(getPrimaryNetworkInfo())
+                                }
+                            }
+                        }
+                        defaultNetworkCallback = callback
+                        try {
+                            cm.registerDefaultNetworkCallback(callback)
+                        } catch (_: Exception) {}
+                    }
+                    events?.success(getPrimaryNetworkInfo())
+                }
+
+                override fun onCancel(arguments: Any?) {
+                    networkEventSink = null
+                    val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                    if (cm != null && defaultNetworkCallback != null) {
+                        try {
+                            cm.unregisterNetworkCallback(defaultNetworkCallback!!)
+                        } catch (_: Exception) {}
+                        defaultNetworkCallback = null
+                    }
+                }
+            }
+        )
+    }
+
+    @Suppress("DEPRECATION")
+    private fun getPrimaryNetworkInfo(): Map<String, Any?> {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return mapOf(
+                "primaryTransport" to "none",
+                "isWifiPrimary" to false,
+                "isCellularPrimary" to false,
+                "isEthernetPrimary" to false,
+                "isWifiConnected" to false,
+                "isWifiValidated" to false
+            )
+
+        val activeNetwork = cm.activeNetwork
+        val activeCaps = activeNetwork?.let { cm.getNetworkCapabilities(it) }
+
+        val allNetworks = cm.allNetworks
+        var anyWifiConnected = false
+        var anyWifiValidated = false
+        var anyCellularConnected = false
+        var anyCellularValidated = false
+
+        for (network in allNetworks) {
+            val caps = cm.getNetworkCapabilities(network) ?: continue
+            val isValidated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE)) {
+                anyWifiConnected = true
+                if (isValidated) {
+                    anyWifiValidated = true
+                }
+            }
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                anyCellularConnected = true
+                if (isValidated) {
+                    anyCellularValidated = true
+                }
+            }
+        }
+
+        var primaryTransport = "none"
+        var isWifiPrimary = false
+        var isCellularPrimary = false
+        var isEthernetPrimary = false
+
+        if (activeCaps != null && activeCaps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+            val isEthernet = activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            val isWifi = activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                         activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI_AWARE)
+            val isCellular = activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+            val isVpn = activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+            val isValidated = activeCaps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+
+            if (isEthernet) {
+                primaryTransport = "ethernet"
+                isEthernetPrimary = true
+            } else if (isCellular) {
+                primaryTransport = "cellular"
+                isCellularPrimary = true
+            } else if (isWifi) {
+                // If Wi-Fi is NOT validated (e.g. car head unit / AA projection link),
+                // but Cellular IS validated, the real default internet transport is Cellular.
+                if (!isValidated && anyCellularValidated) {
+                    primaryTransport = "cellular"
+                    isCellularPrimary = true
+                } else {
+                    primaryTransport = "wifi"
+                    isWifiPrimary = isValidated || !anyCellularConnected
+                }
+            } else if (isVpn) {
+                if (anyWifiValidated) {
+                    primaryTransport = "wifi"
+                    isWifiPrimary = true
+                } else if (anyCellularValidated || anyCellularConnected) {
+                    primaryTransport = "cellular"
+                    isCellularPrimary = true
+                } else {
+                    primaryTransport = "vpn"
+                }
+            } else {
+                primaryTransport = "other"
+            }
+        } else {
+            if (anyCellularValidated) {
+                primaryTransport = "cellular"
+                isCellularPrimary = true
+            } else if (anyWifiValidated) {
+                primaryTransport = "wifi"
+                isWifiPrimary = true
+            } else if (anyWifiConnected && !anyCellularConnected) {
+                primaryTransport = "wifi"
+                isWifiPrimary = true
+            }
+        }
+
+        return mapOf(
+            "primaryTransport" to primaryTransport,
+            "isWifiPrimary" to isWifiPrimary,
+            "isCellularPrimary" to isCellularPrimary,
+            "isEthernetPrimary" to isEthernetPrimary,
+            "isWifiConnected" to anyWifiConnected,
+            "isWifiValidated" to anyWifiValidated
+        )
+    }
+
+    override fun onDestroy() {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        if (cm != null && defaultNetworkCallback != null) {
+            try {
+                cm.unregisterNetworkCallback(defaultNetworkCallback!!)
+            } catch (_: Exception) {}
+            defaultNetworkCallback = null
+        }
+        super.onDestroy()
     }
 }

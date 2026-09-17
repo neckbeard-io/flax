@@ -207,20 +207,12 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       currentSsid = await getCurrentSsid();
     }
 
-    final isCarSsid =
-        currentSsid != null &&
-        (currentSsid.toUpperCase().startsWith('DIRECT-') ||
-            currentSsid.toLowerCase().contains('androidauto'));
-    if (isCarSsid) {
-      _ref.read(isCarConnectedProvider.notifier).setCarConnected(true);
-    }
-
     final isCarConnected = _ref.read(isCarConnectedProvider);
-    if (isCarSsid || (isCarConnected && !hasEthernet)) {
+    if (isCarConnected && !hasEthernet) {
       AppLogger.d(
         'NetworkTarget',
         () =>
-            'Connected to car / Android Auto Wi-Fi ($currentSsid). Skipping local endpoint probing.',
+            'Connected to vehicle / Android Auto ($currentSsid). Skipping local endpoint probing.',
       );
       state = state.copyWith(
         activeTarget: EndpointTargetType.external,
