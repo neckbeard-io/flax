@@ -118,4 +118,6 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("androidx.car.app:app:1.4.0")
+    implementation("androidx.media:media:1.7.0")
 }
+

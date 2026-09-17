@@ -59,6 +59,9 @@ class CarConnectionService {
         (event) {
           if (event is bool) {
             notifier.setCarConnected(event);
+            if (event) {
+              activateMediaSession();
+            }
           }
         },
         onError: (err) {
@@ -73,6 +76,15 @@ class CarConnectionService {
         'CarConnection',
         () => 'Car connection event stream listen error: $e',
       );
+    }
+  }
+
+  Future<void> activateMediaSession() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod('activateMediaSession');
+    } catch (e) {
+      AppLogger.d('CarConnection', () => 'activateMediaSession error: $e');
     }
   }
 

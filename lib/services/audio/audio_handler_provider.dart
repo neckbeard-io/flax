@@ -31,8 +31,8 @@ class AudioServiceInitializer {
           androidNotificationChannelName: 'Flax Audio Playback',
           androidNotificationChannelDescription:
               'Playback controls and notification for Flax Music Player',
-          androidNotificationOngoing: true,
-          androidStopForegroundOnPause: true,
+          androidNotificationOngoing: false,
+          androidStopForegroundOnPause: false,
           androidShowNotificationBadge: true,
           androidNotificationIcon: 'mipmap/ic_launcher',
           androidBrowsableRootExtras: {

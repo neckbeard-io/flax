@@ -82,6 +82,9 @@ class MainActivity : AudioServiceActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        FlaxMediaSessionHelper.wrapServiceListener(applicationContext)
+        FlaxMediaSessionHelper.activateMediaSession(applicationContext)
+
         // Package installer event channel
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, INSTALLER_EVENTS).setStreamHandler(
             object : EventChannel.StreamHandler {
@@ -333,6 +336,9 @@ class MainActivity : AudioServiceActivity() {
                 carConnection = conn
                 conn.type.observe(this) { type ->
                     val isConnected = (type == CarConnection.CONNECTION_TYPE_PROJECTION || type == CarConnection.CONNECTION_TYPE_NATIVE)
+                    if (isConnected) {
+                        FlaxMediaSessionHelper.activateMediaSession(applicationContext)
+                    }
                     runOnUiThread {
                         carEventSink?.success(isConnected)
                     }
@@ -346,6 +352,10 @@ class MainActivity : AudioServiceActivity() {
                     val type = carConnection?.type?.value ?: CarConnection.CONNECTION_TYPE_NOT_CONNECTED
                     val isConnected = (type == CarConnection.CONNECTION_TYPE_PROJECTION || type == CarConnection.CONNECTION_TYPE_NATIVE)
                     result.success(isConnected)
+                }
+                "activateMediaSession" -> {
+                    val success = FlaxMediaSessionHelper.activateMediaSession(applicationContext)
+                    result.success(success)
                 }
                 else -> result.notImplemented()
             }
@@ -523,6 +533,17 @@ class MainActivity : AudioServiceActivity() {
             "isWifiConnected" to anyWifiConnected,
             "isWifiValidated" to anyWifiValidated
         )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        FlaxMediaSessionHelper.activateMediaSession(applicationContext)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        FlaxMediaSessionHelper.activateMediaSession(applicationContext)
     }
 
     override fun onDestroy() {

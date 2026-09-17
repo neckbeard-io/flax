@@ -600,6 +600,55 @@ void main() {
         ),
         isTrue,
       );
+      expect(
+        handler.playbackState.value.systemActions.contains(MediaAction.prepare),
+        isTrue,
+      );
+      expect(
+        handler.playbackState.value.systemActions.contains(
+          MediaAction.playFromMediaId,
+        ),
+        isTrue,
+      );
+      expect(
+        handler.playbackState.value.systemActions.contains(
+          MediaAction.skipToQueueItem,
+        ),
+        isTrue,
+      );
     });
+
+    test(
+      'prepare() activates fallback media and sets state to ready',
+      () async {
+        expect(handler.mediaItem.value, isNull);
+
+        await handler.prepare();
+
+        expect(handler.mediaItem.value, isNotNull);
+        expect(handler.mediaItem.value!.id, equals('song_song_1'));
+        expect(
+          handler.playbackState.value.processingState,
+          equals(AudioProcessingState.ready),
+        );
+        expect(handler.playbackState.value.playing, isFalse);
+      },
+    );
+
+    test(
+      'prepareFromMediaId() loads song and sets state to ready without playing',
+      () async {
+        await handler.prepareFromMediaId('song_song_1');
+
+        expect(handler.mediaItem.value, isNotNull);
+        expect(handler.mediaItem.value!.id, equals('song_song_1'));
+        expect(handler.mediaItem.value!.title, equals('Get Lucky'));
+        expect(
+          handler.playbackState.value.processingState,
+          equals(AudioProcessingState.ready),
+        );
+        expect(handler.playbackState.value.playing, isFalse);
+      },
+    );
   });
 }

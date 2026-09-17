@@ -76,6 +76,81 @@ class FlaxAudioHandler extends BaseAudioHandler {
         buffering: false,
       ),
     );
+    unawaited(
+      _container.read(carConnectionServiceProvider).activateMediaSession(),
+    );
+  }
+
+  Future<void> _prepareFallbackMedia() async {
+    final library = _library;
+    final client = _client;
+    if (library == null || client == null) return;
+
+    try {
+      if (_isOffline) {
+        final downloadedSongs = await library.getDownloadedSongs();
+        if (downloadedSongs.isNotEmpty) {
+          final first = downloadedSongs.first;
+          final artUrl = first.coverArtId != null
+              ? client.getCoverArtUri(first.coverArtId!, size: 600).toString()
+              : null;
+          final item = songToMediaItem(
+            first,
+            coverArtUrl: artUrl,
+            forNowPlaying: true,
+          );
+          mediaItem.add(item);
+          queue.add(
+            downloadedSongs
+                .map((s) => songToMediaItem(s, coverArtUrl: artUrl))
+                .toList(),
+          );
+          playbackState.add(
+            _buildPlaybackState(
+              isPlaying: false,
+              hasSong: true,
+              position: Duration.zero,
+              buffering: false,
+            ),
+          );
+          return;
+        }
+      }
+
+      final newestAlbums = await library
+          .watchAlbumList(const AlbumListQuery(AlbumListType.newest))
+          .first;
+      if (newestAlbums.isNotEmpty) {
+        final songs = await library
+            .watchAlbumSongs(newestAlbums.first.id)
+            .first;
+        if (songs.isNotEmpty) {
+          final first = songs.first;
+          final artUrl = first.coverArtId != null
+              ? client.getCoverArtUri(first.coverArtId!, size: 600).toString()
+              : null;
+          final item = songToMediaItem(
+            first,
+            coverArtUrl: artUrl,
+            forNowPlaying: true,
+          );
+          mediaItem.add(item);
+          queue.add(
+            songs.map((s) => songToMediaItem(s, coverArtUrl: artUrl)).toList(),
+          );
+          playbackState.add(
+            _buildPlaybackState(
+              isPlaying: false,
+              hasSong: true,
+              position: Duration.zero,
+              buffering: false,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      AppLogger.w('AudioHandler', 'Failed to prepare fallback media: $e');
+    }
   }
 
   LibraryRepository? get _library => _container.read(libraryRepositoryProvider);
@@ -174,11 +249,22 @@ class FlaxAudioHandler extends BaseAudioHandler {
         ...customControls,
       ],
       systemActions: const {
+        MediaAction.play,
+        MediaAction.pause,
+        MediaAction.stop,
+        MediaAction.skipToNext,
+        MediaAction.skipToPrevious,
+        MediaAction.skipToQueueItem,
         MediaAction.seek,
         MediaAction.seekForward,
         MediaAction.seekBackward,
         MediaAction.setShuffleMode,
         MediaAction.setRepeatMode,
+        MediaAction.playFromMediaId,
+        MediaAction.playFromSearch,
+        MediaAction.prepare,
+        MediaAction.prepareFromMediaId,
+        MediaAction.prepareFromSearch,
         MediaAction.custom,
       },
       androidCompactActionIndices: const [0, 1, 2],
@@ -210,6 +296,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
   ]) async {
     AppLogger.d('AudioHandler', 'getChildren parentMediaId: $parentMediaId');
     _container.read(isCarConnectedProvider.notifier).setCarConnected(true);
+    unawaited(
+      _container.read(carConnectionServiceProvider).activateMediaSession(),
+    );
+
+    if (mediaItem.value == null) {
+      unawaited(_prepareFallbackMedia());
+    }
+
     final library = _library;
     final client = _client;
 
@@ -1313,6 +1407,9 @@ class FlaxAudioHandler extends BaseAudioHandler {
     Map<String, dynamic>? extras,
   ]) async {
     AppLogger.i('AudioHandler', 'playFromMediaId: $mediaId');
+    unawaited(
+      _container.read(carConnectionServiceProvider).activateMediaSession(),
+    );
     final library = _library;
     final client = _client;
     if (library == null) return;
@@ -1334,6 +1431,24 @@ class FlaxAudioHandler extends BaseAudioHandler {
         final songId = mediaId.substring(5);
         final song = await library.watchSong(songId).first;
         if (song != null) {
+          final artUrl = client != null && song.coverArtId != null
+              ? client.getCoverArtUri(song.coverArtId!, size: 600).toString()
+              : null;
+          final item = songToMediaItem(
+            song,
+            coverArtUrl: artUrl,
+            forNowPlaying: true,
+          );
+          mediaItem.add(item);
+          playbackState.add(
+            _buildPlaybackState(
+              isPlaying: true,
+              hasSong: true,
+              position: Duration.zero,
+              buffering: true,
+            ),
+          );
+
           if (song.albumId != null) {
             final albumSongs = _isOffline
                 ? await library.watchDownloadedAlbumSongs(song.albumId!).first
@@ -1521,8 +1636,129 @@ class FlaxAudioHandler extends BaseAudioHandler {
   }
 
   @override
+  Future<void> prepare() async {
+    AppLogger.i('AudioHandler', 'prepare called from platform');
+    unawaited(
+      _container.read(carConnectionServiceProvider).activateMediaSession(),
+    );
+    if (mediaItem.value == null) {
+      await _prepareFallbackMedia();
+    }
+  }
+
+  @override
+  Future<void> prepareFromMediaId(
+    String mediaId, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    AppLogger.i('AudioHandler', 'prepareFromMediaId: $mediaId');
+    unawaited(
+      _container.read(carConnectionServiceProvider).activateMediaSession(),
+    );
+    final library = _library;
+    final client = _client;
+    if (library == null) return;
+
+    try {
+      if (mediaId.startsWith('song_')) {
+        final songId = mediaId.substring(5);
+        final song = await library.watchSong(songId).first;
+        if (song != null) {
+          final artUrl = client != null && song.coverArtId != null
+              ? client.getCoverArtUri(song.coverArtId!, size: 600).toString()
+              : null;
+          mediaItem.add(
+            songToMediaItem(song, coverArtUrl: artUrl, forNowPlaying: true),
+          );
+          playbackState.add(
+            _buildPlaybackState(
+              isPlaying: false,
+              hasSong: true,
+              position: Duration.zero,
+              buffering: false,
+            ),
+          );
+        }
+      } else if (mediaId.startsWith('album_')) {
+        final albumId = mediaId.substring(6);
+        final songs = _isOffline
+            ? await library.watchDownloadedAlbumSongs(albumId).first
+            : await library.watchAlbumSongs(albumId).first;
+        if (songs.isNotEmpty) {
+          final first = songs.first;
+          final artUrl = client != null && first.coverArtId != null
+              ? client.getCoverArtUri(first.coverArtId!, size: 600).toString()
+              : null;
+          mediaItem.add(
+            songToMediaItem(first, coverArtUrl: artUrl, forNowPlaying: true),
+          );
+          queue.add(
+            songs.map((s) => songToMediaItem(s, coverArtUrl: artUrl)).toList(),
+          );
+          playbackState.add(
+            _buildPlaybackState(
+              isPlaying: false,
+              hasSong: true,
+              position: Duration.zero,
+              buffering: false,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      AppLogger.w('AudioHandler', 'prepareFromMediaId failed: $e');
+    }
+  }
+
+  @override
+  Future<void> prepareFromSearch(
+    String query, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    AppLogger.i('AudioHandler', 'prepareFromSearch: $query');
+    unawaited(
+      _container.read(carConnectionServiceProvider).activateMediaSession(),
+    );
+  }
+
+  @override
+  Future<void> prepareFromUri(Uri uri, [Map<String, dynamic>? extras]) async {
+    AppLogger.i('AudioHandler', 'prepareFromUri: $uri');
+    unawaited(
+      _container.read(carConnectionServiceProvider).activateMediaSession(),
+    );
+  }
+
+  @override
   Future<void> play() async {
     await _activateAudioSession();
+    unawaited(
+      _container.read(carConnectionServiceProvider).activateMediaSession(),
+    );
+    final state = _container.read(playerProvider);
+    if (state.currentSong == null || state.queue.isEmpty) {
+      final library = _library;
+      if (library != null) {
+        if (_isOffline) {
+          final downloaded = await library.getDownloadedSongs();
+          if (downloaded.isNotEmpty) {
+            await _player.playTracks(downloaded, initialIndex: 0);
+            return;
+          }
+        } else {
+          final albums = await library
+              .watchAlbumList(const AlbumListQuery(AlbumListType.newest))
+              .first;
+          if (albums.isNotEmpty) {
+            final songs = await library.watchAlbumSongs(albums.first.id).first;
+            if (songs.isNotEmpty) {
+              await _player.playTracks(songs, initialIndex: 0);
+              return;
+            }
+          }
+        }
+      }
+    }
     await _player.play();
   }
 

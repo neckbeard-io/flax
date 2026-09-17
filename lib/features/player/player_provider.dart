@@ -1169,9 +1169,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       queue: songs,
       queueIndex: idx,
       currentSong: songs[idx],
+      isPlaying: true,
     );
     await _openQueue(songs, idx, play: true);
-    _updateNowPlayingForSong(songs[idx]);
+    _updateNowPlayingForSong(songs[idx], isPlaying: true);
     _applyVolumeGain();
     _debounceSaveQueue();
     _audioHandler?.updateFromPlayerState(state);
@@ -1190,12 +1191,15 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   static const _prefsKeyMuted = 'flax_muted';
 
   Future<void> _restorePlayQueue() async {
+    // Restore from local cache first for instantaneous startup availability.
+    // This immediately populates the currentSong, queue, and position (within milliseconds)
+    // so MediaSession, Android Auto, and Now Playing are ready without waiting for network I/O.
+    final restoredLocally = await _restoreFromLocal();
     final syncQueue = _ref.read(syncQueueWithServerProvider);
-    // If server sync is disabled, restore exclusively from local cache
-    final restored = syncQueue
-        ? (await _restoreFromServer() || await _restoreFromLocal())
-        : await _restoreFromLocal();
-    if (!restored) {
+    if (syncQueue) {
+      // In background, sync with server queue if enabled
+      unawaited(_restoreFromServer());
+    } else if (!restoredLocally) {
       AppLogger.i('Player', 'No play queue to restore');
     }
   }

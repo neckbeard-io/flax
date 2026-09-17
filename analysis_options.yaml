@@ -12,6 +12,11 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - 'tool/**'
+    - build/**
+    - android/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 
 linter:
