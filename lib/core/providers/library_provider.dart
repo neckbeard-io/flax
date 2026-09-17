@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
@@ -34,6 +35,9 @@ final libraryRepositoryProvider = Provider<LibraryRepository?>((ref) {
     ref.watch(libraryDaoProvider),
     client,
     server.id,
+    onNetworkError: (reason) {
+      ref.read(serverReachabilityProvider.notifier).markUnreachable(reason);
+    },
   );
 });
 

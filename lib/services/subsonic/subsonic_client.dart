@@ -85,11 +85,24 @@ class SubsonicClient implements MusicBackend {
 
     AppLogger.d('Subsonic', () => 'GET $endpoint: ${extra ?? const {}}');
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '$baseUrl/rest/$endpoint',
-      queryParameters: params,
-      options: options,
-    );
+    final effectiveTimeout =
+        options?.receiveTimeout ??
+        options?.connectTimeout ??
+        const Duration(seconds: 15);
+    final response = await _dio
+        .get<Map<String, dynamic>>(
+          '$baseUrl/rest/$endpoint',
+          queryParameters: params,
+          options: options,
+        )
+        .timeout(
+          effectiveTimeout,
+          onTimeout: () => throw DioException(
+            requestOptions: RequestOptions(path: '$baseUrl/rest/$endpoint'),
+            type: DioExceptionType.connectionTimeout,
+            error: 'Connection timed out',
+          ),
+        );
 
     final body = response.data!;
     final subResponse = body['subsonic-response'] as Map<String, dynamic>;
@@ -118,15 +131,21 @@ class SubsonicClient implements MusicBackend {
   }
 
   Future<String?> tryPing({Duration? timeout}) async {
+    final effectiveTimeout = timeout ?? const Duration(seconds: 3);
     try {
-      final options = timeout != null
-          ? Options(
-              connectTimeout: timeout,
-              sendTimeout: timeout,
-              receiveTimeout: timeout,
-            )
-          : null;
-      await _get('ping', null, options);
+      final options = Options(
+        connectTimeout: effectiveTimeout,
+        sendTimeout: effectiveTimeout,
+        receiveTimeout: effectiveTimeout,
+      );
+      await _get('ping', null, options).timeout(
+        effectiveTimeout,
+        onTimeout: () => throw DioException(
+          requestOptions: RequestOptions(path: '$baseUrl/rest/ping'),
+          type: DioExceptionType.connectionTimeout,
+          error: 'Connection timed out (${effectiveTimeout.inSeconds}s)',
+        ),
+      );
       return null;
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||

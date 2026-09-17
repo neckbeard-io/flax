@@ -7,6 +7,7 @@ import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/services/database/tables/orderings.dart';
+import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
 const _kOfflineManualPrefKey = 'flax_offline_manual_override';
@@ -188,12 +189,16 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
   ServerReachabilityNotifier(this._ref) : super(const ServerReachability()) {
     _ref.listen<SubsonicClient?>(subsonicClientProvider, (prev, next) {
       if (next != null) {
-        _checkStoredMigrationAlert(next.server.id);
-        probeServer(silent: true);
+        try {
+          _checkStoredMigrationAlert(next.server.id);
+        } catch (_) {}
+        if (prev != null && prev != next) {
+          probeServer(silent: true);
+        }
       } else {
         state = const ServerReachability();
       }
-    }, fireImmediately: true);
+    });
 
     _ref.listen<AsyncValue<List<ConnectivityResult>>>(
       connectivityStreamProvider,
@@ -226,7 +231,12 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
   }
 
   Future<void> _checkServerMigration(SubsonicClient client) async {
-    final serverId = client.server.id;
+    String serverId;
+    try {
+      serverId = client.server.id;
+    } catch (_) {
+      return;
+    }
     final dao = _ref.read(libraryDaoProvider);
 
     try {
@@ -318,7 +328,12 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
     state = state.copyWith(isProbing: true);
     String? error;
     try {
-      error = await client.tryPing(timeout: timeout);
+      error = await client
+          .tryPing(timeout: timeout)
+          .timeout(
+            timeout,
+            onTimeout: () => 'Connection timed out (${timeout.inSeconds}s)',
+          );
     } catch (e) {
       error = e.toString();
     }
@@ -338,9 +353,10 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
 
     if (!isReachable && wasReachable && !silent) {
       // Trigger toaster notification
+      final errDisplay = error;
       _ref
           .read(offlineToastMessageProvider.notifier)
-          .show('Server unreachable (3s timeout). Switched to Offline mode.');
+          .show('Server unreachable ($errDisplay). Switched to Offline mode.');
     }
 
     return isReachable;
@@ -398,6 +414,13 @@ final isOfflineModeProvider = Provider<bool>((ref) {
   final manual = ref.watch(offlineManualOverrideProvider);
   if (manual) return true;
 
+  // Auto-offline when using Android Auto or connected to vehicle
+  final autoOfflineOnCar = ref.watch(offlineOnAndroidAutoSettingProvider);
+  final isCarConnected = ref.watch(isCarConnectedProvider);
+  if (autoOfflineOnCar && isCarConnected) {
+    return true;
+  }
+
   final connectivity =
       ref.watch(connectivityStreamProvider).valueOrNull ??
       ref.watch(connectivityProvider).valueOrNull;
@@ -437,6 +460,13 @@ final isOfflineModeProvider = Provider<bool>((ref) {
 final offlineReasonProvider = Provider<OfflineReason>((ref) {
   final manual = ref.watch(offlineManualOverrideProvider);
   if (manual) return OfflineReason.manual;
+
+  // Auto-offline when using Android Auto or connected to vehicle
+  final autoOfflineOnCar = ref.watch(offlineOnAndroidAutoSettingProvider);
+  final isCarConnected = ref.watch(isCarConnectedProvider);
+  if (autoOfflineOnCar && isCarConnected) {
+    return OfflineReason.androidAuto;
+  }
 
   final connectivity =
       ref.watch(connectivityStreamProvider).valueOrNull ??

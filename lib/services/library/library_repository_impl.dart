@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
@@ -18,12 +22,28 @@ class LibraryRepositoryImpl implements LibraryRepository {
     this._backend,
     this._serverId, {
     DateTime Function()? clock,
+    this.onNetworkError,
   }) : _clock = clock ?? DateTime.now;
 
   final LibraryDao _dao;
   final MusicBackend _backend;
   final String _serverId;
   final DateTime Function() _clock;
+  final void Function(String reason)? onNetworkError;
+
+  void _reportIfNetworkError(Object error) {
+    if (error is DioException) {
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        onNetworkError?.call('Connection timed out');
+      } else if (error.type == DioExceptionType.connectionError) {
+        onNetworkError?.call('Cannot reach server');
+      }
+    } else if (error is SocketException || error is TimeoutException) {
+      onNetworkError?.call('Network unreachable');
+    }
+  }
 
   /// Refreshes in flight, so N subscribers to one stream cause one fetch rather
   /// than N. Without this, opening a screen with several widgets watching the
@@ -75,15 +95,21 @@ class LibraryRepositoryImpl implements LibraryRepository {
   /// reshuffling under someone who is browsing it, without a cached ordering
   /// that would freeze it forever.
   Stream<List<Album>> _watchUncachedList(AlbumListQuery query) async* {
-    final albums = await _backend.getAlbumList(
-      query.type,
-      count: 500,
-      genre: query.genre,
-      fromYear: query.fromYear,
-      toYear: query.toYear,
-    );
-    await _dao.upsertAlbums(albums, _clock());
-    yield* _dao.watchAlbumsByIds(_serverId, albums.map((a) => a.id).toList());
+    try {
+      final albums = await _backend.getAlbumList(
+        query.type,
+        count: 500,
+        genre: query.genre,
+        fromYear: query.fromYear,
+        toYear: query.toYear,
+      );
+      await _dao.upsertAlbums(albums, _clock());
+      yield* _dao.watchAlbumsByIds(_serverId, albums.map((a) => a.id).toList());
+    } catch (e) {
+      AppLogger.w('Library', '_watchUncachedList failed: $e');
+      _reportIfNetworkError(e);
+      yield* _dao.watchAlbumList(_serverId, query);
+    }
   }
 
   @override
@@ -117,6 +143,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         }
       } catch (e) {
         AppLogger.w('Library', 'refreshArtists failed: $e');
+        _reportIfNetworkError(e);
       }
     });
   }
@@ -144,6 +171,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         await _dao.upsertAlbums(albums, now);
       } catch (e) {
         AppLogger.w('Library', 'refreshArtist($artistId) failed: $e');
+        _reportIfNetworkError(e);
       }
     });
   }
@@ -210,6 +238,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         }
       } catch (e) {
         AppLogger.w('Library', 'refreshAlbumList(${query.type}) failed: $e');
+        _reportIfNetworkError(e);
       }
     });
   }
@@ -229,6 +258,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         await _dao.upsertSongs(songs, now);
       } catch (e) {
         AppLogger.w('Library', 'refreshAlbum($albumId) failed: $e');
+        _reportIfNetworkError(e);
       }
     });
   }
@@ -267,6 +297,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         await _dao.upsertSongs(result.songs, now);
       } catch (e) {
         AppLogger.w('Library', 'cacheSearch("$query") failed: $e');
+        _reportIfNetworkError(e);
       }
     });
   }
@@ -309,41 +340,46 @@ class LibraryRepositoryImpl implements LibraryRepository {
   @override
   Future<void> syncAnnotations({bool force = false}) {
     return _once('annotations', () async {
-      // Push first. Reconciling before retrying would compare the server's older
-      // answer against local intent that has not reached it yet, and dirty rows
-      // are skipped by the reconcile — so the retry would be pointless until the
-      // next pass.
-      await _retryPendingWrites();
+      try {
+        // Push first. Reconciling before retrying would compare the server's older
+        // answer against local intent that has not reached it yet, and dirty rows
+        // are skipped by the reconcile — so the retry would be pointless until the
+        // next pass.
+        await _retryPendingWrites();
 
-      if (!force) {
-        final last = await _dao.syncValue(
+        if (!force) {
+          final last = await _dao.syncValue(
+            _serverId,
+            SyncKeys.lastStarredSyncAt,
+          );
+          final at = last == null ? null : DateTime.tryParse(last);
+          if (!SyncPolicy.isStale(at, SyncPolicy.starred, _clock())) return;
+        }
+
+        final starred = await _backend.getStarred();
+        final now = _clock();
+        // Upsert first so favorites on entities never seen before have rows to
+        // land on, then reconcile the flags across everything.
+        await _dao.upsertArtists(starred.artists, now);
+        await _dao.upsertAlbums(starred.albums, now);
+        await _dao.upsertSongs(starred.songs, now);
+        await _dao.reconcileFavorites(
+          _serverId,
+          artistIds: starred.artists.map((a) => a.id).toSet(),
+          albumIds: starred.albums.map((a) => a.id).toSet(),
+          songIds: starred.songs.map((s) => s.id).toSet(),
+          now: now,
+        );
+        await _dao.putSyncValue(
           _serverId,
           SyncKeys.lastStarredSyncAt,
+          now.toIso8601String(),
+          now,
         );
-        final at = last == null ? null : DateTime.tryParse(last);
-        if (!SyncPolicy.isStale(at, SyncPolicy.starred, _clock())) return;
+      } catch (e) {
+        AppLogger.w('Library', 'syncAnnotations failed: $e');
+        _reportIfNetworkError(e);
       }
-
-      final starred = await _backend.getStarred();
-      final now = _clock();
-      // Upsert first so favorites on entities never seen before have rows to
-      // land on, then reconcile the flags across everything.
-      await _dao.upsertArtists(starred.artists, now);
-      await _dao.upsertAlbums(starred.albums, now);
-      await _dao.upsertSongs(starred.songs, now);
-      await _dao.reconcileFavorites(
-        _serverId,
-        artistIds: starred.artists.map((a) => a.id).toSet(),
-        albumIds: starred.albums.map((a) => a.id).toSet(),
-        songIds: starred.songs.map((s) => s.id).toSet(),
-        now: now,
-      );
-      await _dao.putSyncValue(
-        _serverId,
-        SyncKeys.lastStarredSyncAt,
-        now.toIso8601String(),
-        now,
-      );
     });
   }
 
@@ -395,7 +431,8 @@ class LibraryRepositoryImpl implements LibraryRepository {
         now: _clock(),
         dirty: false,
       );
-    } catch (_) {
+    } catch (e) {
+      _reportIfNetworkError(e);
       // The row keeps the user's intent and stays dirty for retry. Reverting
       // under them would be worse than being briefly out of step.
     }
@@ -407,7 +444,8 @@ class LibraryRepositoryImpl implements LibraryRepository {
     try {
       await _backend.setRating(ref.id, rating);
       await _dao.setRating(_serverId, ref, rating: rating, dirty: false);
-    } catch (_) {
+    } catch (e) {
+      _reportIfNetworkError(e);
       // As above.
     }
   }
@@ -423,7 +461,8 @@ class LibraryRepositoryImpl implements LibraryRepository {
         songCount: (raw['count'] as num?)?.toInt(),
         scanning: raw['scanning'] == true,
       );
-    } catch (_) {
+    } catch (e) {
+      _reportIfNetworkError(e);
       // A server with no usable getScanStatus falls through to the TTL path
       // rather than being treated as permanently fresh.
       return null;

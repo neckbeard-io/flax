@@ -253,6 +253,7 @@ class _OfflineStatusInnerBanner extends ConsumerWidget {
 
     final text = switch (reason) {
       OfflineReason.cellular => 'Offline (Cellular streaming disabled)',
+      OfflineReason.androidAuto => 'Offline (Android Auto connected)',
       OfflineReason.serverUnreachable => 'Offline (Server unreachable)',
       OfflineReason.noNetwork => 'Offline (No network connection)',
       _ => 'Offline Mode active',

@@ -14,6 +14,7 @@ import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
+import 'package:flax/services/platform/car_connection_service.dart';
 
 enum EndpointTargetType { external, local }
 
@@ -206,6 +207,31 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       currentSsid = await getCurrentSsid();
     }
 
+    final isCarSsid =
+        currentSsid != null &&
+        (currentSsid.toUpperCase().startsWith('DIRECT-') ||
+            currentSsid.toLowerCase().contains('androidauto'));
+    if (isCarSsid) {
+      _ref.read(isCarConnectedProvider.notifier).setCarConnected(true);
+    }
+
+    final isCarConnected = _ref.read(isCarConnectedProvider);
+    if (isCarSsid || (isCarConnected && !hasEthernet)) {
+      AppLogger.d(
+        'NetworkTarget',
+        () =>
+            'Connected to car / Android Auto Wi-Fi ($currentSsid). Skipping local endpoint probing.',
+      );
+      state = state.copyWith(
+        activeTarget: EndpointTargetType.external,
+        effectiveBaseUrl: server.baseUrl,
+        isLocalConfigured: true,
+        currentSsid: currentSsid,
+        clearStatusMessage: true,
+      );
+      return;
+    }
+
     // Check if current SSID matches configured target SSIDs
     bool ssidMatches = false;
     bool ssidUnknown = false;
@@ -370,7 +396,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
         '$cleanBase/rest/ping',
       ).replace(queryParameters: queryParams);
 
-      final res = await dio.getUri(uri);
+      final res = await dio.getUri(uri).timeout(timeout);
       return res.statusCode != null &&
           ((res.statusCode! >= 200 && res.statusCode! < 400) ||
               res.statusCode == 401);

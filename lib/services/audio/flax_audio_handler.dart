@@ -12,6 +12,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
 /// Android Auto & background media session handler for Flax.
@@ -48,7 +49,8 @@ class FlaxAudioHandler extends BaseAudioHandler {
     final autoOfflineSetting = _container.read(
       offlineOnAndroidAutoSettingProvider,
     );
-    return autoOfflineSetting;
+    final isCar = _container.read(isCarConnectedProvider);
+    return autoOfflineSetting && isCar;
   }
 
   // Root category node identifiers for Android Auto
@@ -207,6 +209,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
     Map<String, dynamic>? options,
   ]) async {
     AppLogger.d('AudioHandler', 'getChildren parentMediaId: $parentMediaId');
+    _container.read(isCarConnectedProvider.notifier).setCarConnected(true);
     final library = _library;
     final client = _client;
 

@@ -6,6 +6,7 @@ import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
 class _FakeSubsonicClient extends Fake implements SubsonicClient {
@@ -166,10 +167,45 @@ void main() {
         );
         expect(
           container.read(offlineToastMessageProvider),
-          contains(
-            'Server unreachable (3s timeout). Switched to Offline mode.',
-          ),
+          contains('Server unreachable'),
         );
+        expect(
+          container.read(offlineToastMessageProvider),
+          contains('Switched to Offline mode.'),
+        );
+      },
+    );
+
+    test(
+      'auto-offline engages when Android Auto is connected and setting enabled',
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+
+        expect(container.read(isOfflineModeProvider), isFalse);
+
+        // Enable Android Auto setting
+        await container
+            .read(offlineOnAndroidAutoSettingProvider.notifier)
+            .set(true);
+
+        // Still false because car is not connected
+        expect(container.read(isOfflineModeProvider), isFalse);
+
+        // Car connects
+        container.read(isCarConnectedProvider.notifier).setCarConnected(true);
+
+        expect(container.read(isOfflineModeProvider), isTrue);
+        expect(
+          container.read(offlineReasonProvider),
+          OfflineReason.androidAuto,
+        );
+
+        // Car disconnects
+        container.read(isCarConnectedProvider.notifier).setCarConnected(false);
+
+        expect(container.read(isOfflineModeProvider), isFalse);
+        expect(container.read(offlineReasonProvider), OfflineReason.none);
       },
     );
 

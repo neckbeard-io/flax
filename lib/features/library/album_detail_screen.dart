@@ -32,14 +32,7 @@ final albumDetailProvider = StreamProvider.family<Album, String>((
   if (repo == null) throw Exception('No server');
 
   if (!isOffline) {
-    final cached = await repo.watchAlbum(id).first;
-    if (cached == null) {
-      try {
-        await repo.refreshAlbum(id);
-      } catch (_) {}
-    } else {
-      repo.refreshAlbum(id).catchError((_) {});
-    }
+    repo.refreshAlbum(id).catchError((_) {});
   }
 
   // A null here means the album is genuinely gone from the cache, which for this
@@ -69,24 +62,23 @@ final albumSongsProvider = StreamProvider.family<List<Song>, String>((
   // Track listings only arrive with getAlbum, so unlike the album row itself
   // an empty or partial list here means "not fully fetched yet".
   final cached = await repo.watchAlbumSongs(albumId).first;
-  final album = await repo.watchAlbum(albumId).first;
-  final isIncomplete =
-      album != null && album.songCount > 0 && cached.length < album.songCount;
-
-  if (cached.isEmpty || isIncomplete) {
-    try {
-      await repo.refreshAlbum(albumId);
-    } catch (_) {
-      final downloaded = await repo.watchDownloadedAlbumSongs(albumId).first;
-      if (downloaded.isNotEmpty) {
-        yield* repo.watchDownloadedAlbumSongs(albumId);
-        return;
-      }
-    }
-  } else {
+  if (cached.isNotEmpty) {
+    yield cached;
     repo.refreshAlbum(albumId).catchError((_) {});
+    yield* repo.watchAlbumSongs(albumId);
+    return;
   }
 
+  final downloaded = await repo.watchDownloadedAlbumSongs(albumId).first;
+  if (downloaded.isNotEmpty) {
+    yield downloaded;
+    repo.refreshAlbum(albumId).catchError((_) {});
+    yield* repo.watchAlbumSongs(albumId);
+    return;
+  }
+
+  yield const [];
+  repo.refreshAlbum(albumId).catchError((_) {});
   yield* repo.watchAlbumSongs(albumId);
 });
 

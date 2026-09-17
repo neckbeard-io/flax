@@ -32,14 +32,7 @@ final artistDetailProvider = StreamProvider.family<Artist, String>((
   if (repo == null) throw Exception('No server');
 
   if (!isOffline) {
-    final cached = await repo.watchArtist(id).first;
-    if (cached == null) {
-      try {
-        await repo.refreshArtist(id);
-      } catch (_) {}
-    } else {
-      repo.refreshArtist(id).catchError((_) {});
-    }
+    repo.refreshArtist(id).catchError((_) {});
   }
 
   yield* repo.watchArtist(id).map((artist) {
@@ -71,20 +64,23 @@ final artistAlbumsProvider = StreamProvider.family<List<Album>, String>((
   }
 
   final cached = await repo.watchArtistAlbums(artistId).first;
-  if (cached.isEmpty) {
-    try {
-      await repo.refreshArtist(artistId);
-    } catch (_) {
-      final downloaded = await repo.watchDownloadedArtistAlbums(artistId).first;
-      if (downloaded.isNotEmpty) {
-        yield* repo.watchDownloadedArtistAlbums(artistId);
-        return;
-      }
-    }
-  } else {
+  if (cached.isNotEmpty) {
+    yield cached;
     repo.refreshArtist(artistId).catchError((_) {});
+    yield* repo.watchArtistAlbums(artistId);
+    return;
   }
 
+  final downloaded = await repo.watchDownloadedArtistAlbums(artistId).first;
+  if (downloaded.isNotEmpty) {
+    yield downloaded;
+    repo.refreshArtist(artistId).catchError((_) {});
+    yield* repo.watchArtistAlbums(artistId);
+    return;
+  }
+
+  yield const [];
+  repo.refreshArtist(artistId).catchError((_) {});
   yield* repo.watchArtistAlbums(artistId);
 });
 

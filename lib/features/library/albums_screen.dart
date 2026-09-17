@@ -46,23 +46,23 @@ final albumsProvider = StreamProvider.family<List<Album>, AlbumFilter>((
   }
 
   final cached = await repo.watchAlbumList(query).first;
-  if (cached.isEmpty) {
-    // Nothing cached for this tab yet, so stay loading rather than showing the
-    // tab's empty message — "No albums" for a library that has plenty reads as
-    // a failure.
-    try {
-      await repo.refreshAlbumList(query);
-    } catch (_) {
-      final downloaded = await repo.watchDownloadedAlbums(query: query).first;
-      if (downloaded.isNotEmpty) {
-        yield* repo.watchDownloadedAlbums(query: query);
-        return;
-      }
-    }
-  } else {
+  if (cached.isNotEmpty) {
+    yield cached;
     repo.refreshAlbumList(query).catchError((_) {});
+    yield* repo.watchAlbumList(query);
+    return;
   }
 
+  final downloaded = await repo.watchDownloadedAlbums(query: query).first;
+  if (downloaded.isNotEmpty) {
+    yield downloaded;
+    repo.refreshAlbumList(query).catchError((_) {});
+    yield* repo.watchAlbumList(query);
+    return;
+  }
+
+  yield const [];
+  repo.refreshAlbumList(query).catchError((_) {});
   yield* repo.watchAlbumList(query);
 });
 

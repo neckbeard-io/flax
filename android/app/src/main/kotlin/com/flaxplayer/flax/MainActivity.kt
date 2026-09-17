@@ -10,6 +10,7 @@ import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.car.app.connection.CarConnection
 import com.flaxplayer.flax.download.DownloadTask
 import com.flaxplayer.flax.download.FlaxDownloadManager
 import com.flaxplayer.flax.sync.FlaxSyncManager
@@ -32,7 +33,11 @@ class MainActivity : AudioServiceActivity() {
     private val DOWNLOADER_CHANNEL = "com.flax/native_downloader"
     private val DOWNLOADER_EVENTS = "com.flax/native_downloader_events"
     private val SYNC_CHANNEL = "com.flax/background_sync"
+    private val CAR_CHANNEL = "com.flax/car_connection"
+    private val CAR_EVENTS = "com.flax/car_connection_events"
 
+    private var carConnection: CarConnection? = null
+    private var carEventSink: EventChannel.EventSink? = null
     private var installerEventSink: EventChannel.EventSink? = null
     private var apkDownloadCall: okhttp3.Call? = null
     private val installerClient by lazy {
@@ -312,5 +317,45 @@ class MainActivity : AudioServiceActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        // Car connection channel
+        if (carConnection == null) {
+            try {
+                val conn = CarConnection(this)
+                carConnection = conn
+                conn.type.observe(this) { type ->
+                    val isConnected = (type == CarConnection.CONNECTION_TYPE_PROJECTION || type == CarConnection.CONNECTION_TYPE_NATIVE)
+                    runOnUiThread {
+                        carEventSink?.success(isConnected)
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CAR_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isCarConnected" -> {
+                    val type = carConnection?.type?.value ?: CarConnection.CONNECTION_TYPE_NOT_CONNECTED
+                    val isConnected = (type == CarConnection.CONNECTION_TYPE_PROJECTION || type == CarConnection.CONNECTION_TYPE_NATIVE)
+                    result.success(isConnected)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, CAR_EVENTS).setStreamHandler(
+            object : EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                    carEventSink = events
+                    val currentType = carConnection?.type?.value ?: CarConnection.CONNECTION_TYPE_NOT_CONNECTED
+                    val isConnected = (currentType == CarConnection.CONNECTION_TYPE_PROJECTION || currentType == CarConnection.CONNECTION_TYPE_NATIVE)
+                    events?.success(isConnected)
+                }
+
+                override fun onCancel(arguments: Any?) {
+                    carEventSink = null
+                }
+            }
+        )
     }
 }

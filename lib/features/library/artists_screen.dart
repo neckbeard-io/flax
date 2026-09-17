@@ -30,25 +30,23 @@ final artistsProvider = StreamProvider<List<Artist>>((ref) async* {
   }
 
   final cached = await repo.watchArtists().first;
-  final fullListFetched = await repo.artistsFetchedAt();
-  if (cached.isEmpty || fullListFetched == null) {
-    // Nothing or only individual cached artists present yet, so stay in the loading
-    // state until the full artist list fetch lands.
-    try {
-      await repo.refreshArtists();
-    } catch (_) {
-      final downloaded = await repo.watchDownloadedArtists().first;
-      if (downloaded.isNotEmpty) {
-        yield* repo.watchDownloadedArtists();
-        return;
-      }
-    }
-  } else {
-    // Paint immediately and revalidate behind it. The refresh is deduplicated
-    // and usually suppressed outright by the scan beacon.
+  if (cached.isNotEmpty) {
+    yield cached;
     repo.refreshArtists().catchError((_) {});
+    yield* repo.watchArtists();
+    return;
   }
 
+  final downloaded = await repo.watchDownloadedArtists().first;
+  if (downloaded.isNotEmpty) {
+    yield downloaded;
+    repo.refreshArtists().catchError((_) {});
+    yield* repo.watchArtists();
+    return;
+  }
+
+  yield const [];
+  repo.refreshArtists().catchError((_) {});
   yield* repo.watchArtists();
 });
 
