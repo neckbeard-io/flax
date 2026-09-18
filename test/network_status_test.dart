@@ -81,25 +81,44 @@ void main() {
       expect(status.toConnectivityList(), [ConnectivityResult.none]);
     });
 
-    test('fromConnectivityList handles desktop fallbacks', () {
-      final wifiStatus = NetworkStatus.fromConnectivityList([
-        ConnectivityResult.wifi,
-      ]);
-      expect(wifiStatus.primaryTransport, ConnectivityResult.wifi);
-      expect(wifiStatus.isWifiPrimary, isTrue);
+    test(
+      'fromConnectivityList handles desktop fallbacks including vpn and other',
+      () {
+        final wifiStatus = NetworkStatus.fromConnectivityList([
+          ConnectivityResult.wifi,
+        ]);
+        expect(wifiStatus.primaryTransport, ConnectivityResult.wifi);
+        expect(wifiStatus.isWifiPrimary, isTrue);
 
-      final mobileStatus = NetworkStatus.fromConnectivityList([
-        ConnectivityResult.mobile,
-      ]);
-      expect(mobileStatus.primaryTransport, ConnectivityResult.mobile);
-      expect(mobileStatus.isCellularPrimary, isTrue);
+        final mobileStatus = NetworkStatus.fromConnectivityList([
+          ConnectivityResult.mobile,
+        ]);
+        expect(mobileStatus.primaryTransport, ConnectivityResult.mobile);
+        expect(mobileStatus.isCellularPrimary, isTrue);
 
-      final noneStatus = NetworkStatus.fromConnectivityList([
-        ConnectivityResult.none,
-      ]);
-      expect(noneStatus.primaryTransport, ConnectivityResult.none);
-      expect(noneStatus.toConnectivityList(), [ConnectivityResult.none]);
-    });
+        final vpnStatus = NetworkStatus.fromConnectivityList([
+          ConnectivityResult.vpn,
+        ]);
+        expect(vpnStatus.primaryTransport, ConnectivityResult.vpn);
+        expect(vpnStatus.isEthernetPrimary, isTrue);
+        expect(vpnStatus.isCellularPrimary, isFalse);
+        expect(vpnStatus.toConnectivityList(), [ConnectivityResult.vpn]);
+
+        final otherStatus = NetworkStatus.fromConnectivityList([
+          ConnectivityResult.other,
+        ]);
+        expect(otherStatus.primaryTransport, ConnectivityResult.other);
+        expect(otherStatus.isEthernetPrimary, isTrue);
+        expect(otherStatus.isCellularPrimary, isFalse);
+        expect(otherStatus.toConnectivityList(), [ConnectivityResult.other]);
+
+        final noneStatus = NetworkStatus.fromConnectivityList([
+          ConnectivityResult.none,
+        ]);
+        expect(noneStatus.primaryTransport, ConnectivityResult.none);
+        expect(noneStatus.toConnectivityList(), [ConnectivityResult.none]);
+      },
+    );
   });
 
   group('Primary network adapter offline integration', () {

@@ -309,8 +309,15 @@ class SettingsScreen extends ConsumerWidget {
                   : 'Disabled · Showing full server library',
             ),
             value: ref.watch(offlineManualOverrideProvider),
-            onChanged: (v) =>
-                ref.read(offlineManualOverrideProvider.notifier).set(v),
+            onChanged: (v) async {
+              await ref.read(offlineManualOverrideProvider.notifier).set(v);
+              if (!v) {
+                ref.read(serverReachabilityProvider.notifier).markReachable();
+                await ref
+                    .read(serverReachabilityProvider.notifier)
+                    .probeServer();
+              }
+            },
           ),
           SwitchListTile(
             title: const Text('Auto-offline on Android Auto'),

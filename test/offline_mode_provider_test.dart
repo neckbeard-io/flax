@@ -219,5 +219,54 @@ void main() {
       container.read(offlineToastMessageProvider.notifier).dismiss();
       expect(container.read(offlineToastMessageProvider), isNull);
     });
+
+    test(
+      'markReachable clears serverUnreachable state and re-enables online mode',
+      () {
+        const server = Server(
+          id: 'srv-1',
+          name: 'Test Server',
+          url: 'http://localhost:4533',
+          username: 'admin',
+          tokenHash: 'secret',
+          salt: 'salt123',
+        );
+        final container = ProviderContainer(
+          overrides: [activeServerProvider.overrideWithValue(server)],
+        );
+        addTearDown(container.dispose);
+
+        container
+            .read(serverReachabilityProvider.notifier)
+            .markUnreachable('Test failure');
+        expect(container.read(isOfflineModeProvider), isTrue);
+        expect(
+          container.read(offlineReasonProvider),
+          OfflineReason.serverUnreachable,
+        );
+
+        container.read(serverReachabilityProvider.notifier).markReachable();
+        expect(container.read(isOfflineModeProvider), isFalse);
+        expect(container.read(offlineReasonProvider), OfflineReason.none);
+      },
+    );
+
+    test('VPN and other connections keep app online', () async {
+      final container = ProviderContainer(
+        overrides: [
+          connectivityStreamProvider.overrideWith(
+            (ref) => Stream.value([ConnectivityResult.other]),
+          ),
+          connectivityProvider.overrideWith(
+            (ref) => Future.value([ConnectivityResult.other]),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(connectivityStreamProvider.future);
+
+      expect(container.read(isOfflineModeProvider), isFalse);
+      expect(container.read(offlineReasonProvider), OfflineReason.none);
+    });
   });
 }

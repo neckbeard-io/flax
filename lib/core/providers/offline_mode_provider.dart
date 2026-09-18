@@ -185,6 +185,7 @@ final serverReachabilityProvider =
 
 class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
   final Ref _ref;
+  Timer? _retryTimer;
 
   ServerReachabilityNotifier(this._ref) : super(const ServerReachability()) {
     _ref.listen<SubsonicClient?>(subsonicClientProvider, (prev, next) {
@@ -314,14 +315,16 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
     }
   }
 
-  /// Probes the server with a hard 3-second timeout.
+  /// Probes the server with a configurable timeout (default 10s).
   Future<bool> probeServer({
-    Duration timeout = const Duration(seconds: 3),
+    Duration timeout = const Duration(seconds: 10),
     bool silent = false,
   }) async {
     final client = _ref.read(subsonicClientProvider);
     if (client == null) {
       state = const ServerReachability();
+      _retryTimer?.cancel();
+      _retryTimer = null;
       return true;
     }
 
@@ -348,7 +351,11 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
     );
 
     if (isReachable) {
+      _retryTimer?.cancel();
+      _retryTimer = null;
       _checkServerMigration(client);
+    } else {
+      _startRetryTimer();
     }
 
     if (!isReachable && wasReachable && !silent) {
@@ -363,17 +370,38 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
   }
 
   void markReachable() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
     state = state.copyWith(isReachable: true, lastError: null);
   }
 
   void markUnreachable(String reason) {
     final wasReachable = state.isReachable;
     state = state.copyWith(isReachable: false, lastError: reason);
+    _startRetryTimer();
     if (wasReachable) {
       _ref
           .read(offlineToastMessageProvider.notifier)
           .show('Server unreachable ($reason). Switched to Offline mode.');
     }
+  }
+
+  void _startRetryTimer() {
+    _retryTimer?.cancel();
+    _retryTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!state.isReachable && !state.isProbing) {
+        probeServer(silent: true);
+      } else if (state.isReachable) {
+        _retryTimer?.cancel();
+        _retryTimer = null;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _retryTimer?.cancel();
+    super.dispose();
   }
 }
 
@@ -435,10 +463,13 @@ final isOfflineModeProvider = Provider<bool>((ref) {
 
   final onCellularSetting = ref.watch(offlineOnCellularSettingProvider);
   if (onCellularSetting && connectivity != null) {
+    final isMobile = connectivity.contains(ConnectivityResult.mobile);
     final hasWifiOrEthernet =
         connectivity.contains(ConnectivityResult.wifi) ||
-        connectivity.contains(ConnectivityResult.ethernet);
-    if (!hasWifiOrEthernet) {
+        connectivity.contains(ConnectivityResult.ethernet) ||
+        connectivity.contains(ConnectivityResult.vpn) ||
+        connectivity.contains(ConnectivityResult.other);
+    if (isMobile && !hasWifiOrEthernet) {
       return true;
     }
   }
@@ -482,10 +513,13 @@ final offlineReasonProvider = Provider<OfflineReason>((ref) {
 
   final onCellularSetting = ref.watch(offlineOnCellularSettingProvider);
   if (onCellularSetting && connectivity != null) {
+    final isMobile = connectivity.contains(ConnectivityResult.mobile);
     final hasWifiOrEthernet =
         connectivity.contains(ConnectivityResult.wifi) ||
-        connectivity.contains(ConnectivityResult.ethernet);
-    if (!hasWifiOrEthernet) {
+        connectivity.contains(ConnectivityResult.ethernet) ||
+        connectivity.contains(ConnectivityResult.vpn) ||
+        connectivity.contains(ConnectivityResult.other);
+    if (isMobile && !hasWifiOrEthernet) {
       return OfflineReason.cellular;
     }
   }

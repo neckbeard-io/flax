@@ -47,6 +47,9 @@ class NetworkStatus {
       case 'vpn':
         primary = ConnectivityResult.vpn;
         break;
+      case 'other':
+        primary = ConnectivityResult.other;
+        break;
       case 'bluetooth':
         primary = ConnectivityResult.bluetooth;
         break;
@@ -55,8 +58,8 @@ class NetworkStatus {
         primary = isWifiPrimary
             ? ConnectivityResult.wifi
             : (isCellularPrimary
-                ? ConnectivityResult.mobile
-                : ConnectivityResult.none);
+                  ? ConnectivityResult.mobile
+                  : ConnectivityResult.none);
         break;
     }
 
@@ -94,11 +97,23 @@ class NetworkStatus {
     if (results.contains(ConnectivityResult.vpn)) {
       return const NetworkStatus(
         primaryTransport: ConnectivityResult.vpn,
+        isEthernetPrimary: true,
       );
     }
-    return const NetworkStatus(
-      primaryTransport: ConnectivityResult.none,
+    if (results.contains(ConnectivityResult.other)) {
+      return const NetworkStatus(
+        primaryTransport: ConnectivityResult.other,
+        isEthernetPrimary: true,
+      );
+    }
+    final anyValid = results.firstWhere(
+      (c) => c != ConnectivityResult.none && c != ConnectivityResult.bluetooth,
+      orElse: () => ConnectivityResult.none,
     );
+    if (anyValid != ConnectivityResult.none) {
+      return NetworkStatus(primaryTransport: anyValid, isEthernetPrimary: true);
+    }
+    return const NetworkStatus(primaryTransport: ConnectivityResult.none);
   }
 
   /// Converts this status to a standard [List<ConnectivityResult>] where the
@@ -116,6 +131,10 @@ class NetworkStatus {
       return const [ConnectivityResult.wifi];
     }
     if (isEthernetPrimary) {
+      if (primaryTransport == ConnectivityResult.vpn ||
+          primaryTransport == ConnectivityResult.other) {
+        return [primaryTransport];
+      }
       return const [ConnectivityResult.ethernet];
     }
     return [primaryTransport];
@@ -195,6 +214,15 @@ class NetworkStatusService {
     } else {
       _setupFallbackStream();
     }
+
+    // Seed initial network status so statusStream is populated immediately on all platforms
+    getNetworkStatus()
+        .then((status) {
+          if (!_controller.isClosed) {
+            _controller.add(status);
+          }
+        })
+        .catchError((_) {});
   }
 
   void _setupFallbackStream() {

@@ -61,8 +61,9 @@ class OfflineModeToggle extends ConsumerWidget {
               offlineManualOverrideProvider.notifier,
             );
             if (isOffline) {
-              // If offline, turn off manual override and probe server
+              // If offline, turn off manual override, mark reachable, and probe server
               await manualNotifier.set(false);
+              ref.read(serverReachabilityProvider.notifier).markReachable();
               await ref.read(serverReachabilityProvider.notifier).probeServer();
             } else {
               // Turn on manual override
@@ -284,22 +285,18 @@ class _OfflineStatusInnerBanner extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (reason == OfflineReason.manual)
-            TextButton(
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              onPressed: () async {
-                await ref
-                    .read(offlineManualOverrideProvider.notifier)
-                    .set(false);
-                await ref
-                    .read(serverReachabilityProvider.notifier)
-                    .probeServer();
-              },
-              child: const Text('Go Online'),
+          TextButton(
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
             ),
+            onPressed: () async {
+              await ref.read(offlineManualOverrideProvider.notifier).set(false);
+              ref.read(serverReachabilityProvider.notifier).markReachable();
+              await ref.read(serverReachabilityProvider.notifier).probeServer();
+            },
+            child: Text(reason == OfflineReason.manual ? 'Go Online' : 'Retry'),
+          ),
         ],
       ),
     );

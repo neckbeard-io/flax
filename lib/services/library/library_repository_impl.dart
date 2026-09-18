@@ -23,6 +23,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     this._serverId, {
     DateTime Function()? clock,
     this.onNetworkError,
+    this.onNetworkSuccess,
   }) : _clock = clock ?? DateTime.now;
 
   final LibraryDao _dao;
@@ -30,6 +31,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
   final String _serverId;
   final DateTime Function() _clock;
   final void Function(String reason)? onNetworkError;
+  final void Function()? onNetworkSuccess;
 
   void _reportIfNetworkError(Object error) {
     if (error is DioException) {
@@ -103,6 +105,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         fromYear: query.fromYear,
         toYear: query.toYear,
       );
+      onNetworkSuccess?.call();
       await _dao.upsertAlbums(albums, _clock());
       yield* _dao.watchAlbumsByIds(_serverId, albums.map((a) => a.id).toList());
     } catch (e) {
@@ -135,6 +138,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
           if (!await _shouldFetch(SyncPolicy.stableList, fetchedAt)) return;
         }
         final artists = await _backend.getArtists();
+        onNetworkSuccess?.call();
         final now = _clock();
         if (artists.isNotEmpty) {
           await _dao.upsertArtists(artists, now, isFullList: true);
@@ -166,6 +170,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         // name search whose results were filtered by matching artist name.
         final artist = await _backend.getArtist(artistId);
         final albums = await _backend.getArtistAlbums(artistId);
+        onNetworkSuccess?.call();
         final now = _clock();
         await _dao.upsertArtists([artist], now);
         await _dao.upsertAlbums(albums, now);
@@ -223,6 +228,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
           fromYear: query.fromYear,
           toYear: query.toYear,
         );
+        onNetworkSuccess?.call();
 
         final now = _clock();
         await _dao.upsertAlbums(albums, now);
@@ -253,6 +259,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         }
         final album = await _backend.getAlbum(albumId);
         final songs = await _backend.getAlbumSongs(albumId);
+        onNetworkSuccess?.call();
         final now = _clock();
         await _dao.upsertAlbums([album], now);
         await _dao.upsertSongs(songs, now);
@@ -291,6 +298,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
           albumCount: albumCount,
           songCount: songCount,
         );
+        onNetworkSuccess?.call();
         final now = _clock();
         await _dao.upsertArtists(result.artists, now);
         await _dao.upsertAlbums(result.albums, now);
@@ -357,6 +365,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         }
 
         final starred = await _backend.getStarred();
+        onNetworkSuccess?.call();
         final now = _clock();
         // Upsert first so favorites on entities never seen before have rows to
         // land on, then reconcile the flags across everything.
@@ -424,6 +433,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
       } else {
         await _backend.unstar(id: id, albumId: albumId, artistId: artistId);
       }
+      onNetworkSuccess?.call();
       await _dao.setFavorite(
         _serverId,
         ref,
@@ -443,6 +453,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     await _dao.setRating(_serverId, ref, rating: rating, dirty: true);
     try {
       await _backend.setRating(ref.id, rating);
+      onNetworkSuccess?.call();
       await _dao.setRating(_serverId, ref, rating: rating, dirty: false);
     } catch (e) {
       _reportIfNetworkError(e);
@@ -456,6 +467,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
     try {
       final raw = await _backend.getScanStatus();
       if (raw == null) return null;
+      onNetworkSuccess?.call();
       return ScanBeacon(
         lastScan: raw['lastScan'] as String?,
         songCount: (raw['count'] as num?)?.toInt(),
