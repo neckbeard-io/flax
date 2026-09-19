@@ -10,7 +10,9 @@ class WindowsInstaller {
     try {
       final testFile = File(p.join(dirPath, '.flax_update_perm_test'));
       testFile.writeAsStringSync('test');
-      testFile.deleteSync();
+      try {
+        testFile.deleteSync();
+      } catch (_) {}
       return true;
     } catch (_) {
       return false;
