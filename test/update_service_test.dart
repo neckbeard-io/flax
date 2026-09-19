@@ -504,12 +504,12 @@ void main() {
         expect(script, contains(r"-ArgumentList '/VERYSILENT /CURRENTUSER'"));
         expect(script, contains(r'-Wait -PassThru'));
 
-        // Verifies it checks if running and relaunches Flax
+        // Verifies it checks if running and relaunches Flax with working directory
         expect(script, contains(r"Get-Process -Name 'flax'"));
         expect(
           script,
           contains(
-            r"Start-Process -FilePath 'C:\Users\tester\AppData\Local\Programs\flax\flax.exe'",
+            r"Start-Process -FilePath 'C:\Users\tester\AppData\Local\Programs\flax\flax.exe' -WorkingDirectory $targetDir",
           ),
         );
 
@@ -518,6 +518,27 @@ void main() {
         expect(
           script,
           contains(r"Remove-Item -Path 'C:\Temp\update_12345.ps1'"),
+        );
+      },
+    );
+
+    test(
+      'buildUpdateScript adds RunAs verb when elevated update is required',
+      () {
+        final script = WindowsInstaller.buildUpdateScript(
+          currentPid: 12345,
+          setupExePath: r'C:\Temp\flax_setup.exe',
+          installerArgs: ['/VERYSILENT', '/ALLUSERS'],
+          targetExePath: r'C:\Program Files\flax\flax.exe',
+          scriptPath: r'C:\Temp\update_12345.ps1',
+          isElevated: true,
+        );
+
+        expect(
+          script,
+          contains(
+            r"Start-Process -FilePath 'C:\Temp\flax_setup.exe' -ArgumentList '/VERYSILENT /ALLUSERS' -Verb RunAs -Wait -PassThru",
+          ),
         );
       },
     );

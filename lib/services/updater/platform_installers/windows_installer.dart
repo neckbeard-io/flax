@@ -48,11 +48,13 @@ class WindowsInstaller {
     required List<String> installerArgs,
     required String targetExePath,
     required String scriptPath,
+    bool isElevated = false,
   }) {
     final escapedSetup = escapePowerShellString(setupExePath);
     final escapedArgs = escapePowerShellString(installerArgs.join(' '));
     final escapedTarget = escapePowerShellString(targetExePath);
     final escapedScript = escapePowerShellString(scriptPath);
+    final verbParam = isElevated ? '-Verb RunAs ' : '';
 
     return '''
 # 1. Wait for current running Flax process to completely terminate
@@ -63,13 +65,14 @@ if (\$proc) {
 Start-Sleep -Milliseconds 500
 
 # 2. Run the Inno Setup installer silently
-\$setup = Start-Process -FilePath '$escapedSetup' -ArgumentList '$escapedArgs' -Wait -PassThru
+\$setup = Start-Process -FilePath '$escapedSetup' -ArgumentList '$escapedArgs' $verbParam-Wait -PassThru
 
 # 3. Relaunch Flax upon successful installation
 if (\$setup.ExitCode -eq 0 -or \$setup.ExitCode -eq \$null) {
     Start-Sleep -Milliseconds 500
     if (-not (Get-Process -Name 'flax' -ErrorAction SilentlyContinue)) {
-        Start-Process -FilePath '$escapedTarget'
+        \$targetDir = Split-Path -Parent '$escapedTarget'
+        Start-Process -FilePath '$escapedTarget' -WorkingDirectory \$targetDir
     }
 }
 
@@ -127,6 +130,7 @@ Remove-Item -Path '$escapedScript' -Force -ErrorAction SilentlyContinue
         installerArgs: innoArgs,
         targetExePath: targetExe,
         scriptPath: scriptFile.path,
+        isElevated: !userWritable,
       );
       await scriptFile.writeAsString(scriptContent);
 
