@@ -30,6 +30,7 @@ import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/update_service.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -209,16 +210,6 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           const _LyricsSettingsSection(),
-          ListTile(
-            title: const Text('Keyboard Shortcuts'),
-            subtitle: Text(
-              ref.watch(hotKeyServiceProvider).enabled
-                  ? 'Global hotkeys active · Background playback control'
-                  : 'Global hotkeys disabled · In-app shortcuts only',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/settings/hotkeys'),
-          ),
           const Divider(),
 
           // ── Audio & Playback ──
@@ -271,6 +262,26 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/equalizer'),
           ),
+          if (isDesktopPlatform)
+            Consumer(
+              builder: (context, ref, _) {
+                final hotKeyState = ref.watch(hotKeyServiceProvider);
+                final assignedCount = hotKeyState.bindings.values
+                    .where((k) => k != null)
+                    .length;
+                final subtitle = !hotKeyState.enabled
+                    ? 'Global hotkeys disabled · In-app shortcuts only'
+                    : assignedCount > 0
+                    ? '$assignedCount active · Background playback control'
+                    : 'Configure desktop global hotkeys and view shortcuts';
+                return ListTile(
+                  title: const Text('Keyboard Shortcuts'),
+                  subtitle: Text(subtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/settings/hotkeys'),
+                );
+              },
+            ),
           const Divider(),
 
           // ── Network & Streaming ──

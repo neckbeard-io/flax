@@ -145,5 +145,5 @@ String _formatKey(PhysicalKeyboardKey key, {required bool mac}) {
   if (debug.startsWith('Digit ')) {
     return debug.substring(6);
   }
-  return debug;
+  return debug.isEmpty ? 'Key' : debug;
 }

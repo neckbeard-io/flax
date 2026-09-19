@@ -17,10 +17,19 @@ enum GlobalKeyAction {
 /// [isEditing] is whether a text field has focus, in which case every key is
 /// just a character the user is typing — the one rule that matters most here,
 /// since both shortcuts are printable characters.
-GlobalKeyAction globalKeyAction(KeyEvent event, {required bool isEditing}) {
+///
+/// [hasModifiers] indicates whether modifier keys (Cmd, Ctrl, Alt) are pressed,
+/// which means combinations like Cmd+Space or Ctrl+Alt+Space are hotkeys or OS
+/// shortcuts, not bare playback toggles.
+GlobalKeyAction globalKeyAction(
+  KeyEvent event, {
+  required bool isEditing,
+  bool hasModifiers = false,
+}) {
   // Key *down* only. Acting on both edges toggles playback twice per press.
   if (event is! KeyDownEvent) return GlobalKeyAction.none;
   if (isEditing) return GlobalKeyAction.none;
+  if (hasModifiers) return GlobalKeyAction.none;
 
   return switch (event.logicalKey) {
     LogicalKeyboardKey.slash => GlobalKeyAction.focusSearch,

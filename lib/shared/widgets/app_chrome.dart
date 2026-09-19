@@ -14,6 +14,7 @@ import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/updater/update_button.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/services/hotkeys/hotkey_service.dart';
 import 'package:flax/services/updater/mobile_update_coordinator.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
@@ -132,7 +133,19 @@ class _AppChromeState extends ConsumerState<AppChrome>
 
   bool _onKey(KeyEvent event) {
     if (!mounted) return false;
-    return switch (globalKeyAction(event, isEditing: _isEditing())) {
+    // Don't intercept global keys (e.g. Space or '/') when the user is recording a hotkey.
+    if (ref.read(isRecordingHotKeyProvider)) return false;
+
+    final hasModifiers =
+        HardwareKeyboard.instance.isAltPressed ||
+        HardwareKeyboard.instance.isControlPressed ||
+        HardwareKeyboard.instance.isMetaPressed;
+
+    return switch (globalKeyAction(
+      event,
+      isEditing: _isEditing(),
+      hasModifiers: hasModifiers,
+    )) {
       GlobalKeyAction.focusSearch => _focusSearch(),
       GlobalKeyAction.togglePlayback => _togglePlayback(),
       GlobalKeyAction.none => false,

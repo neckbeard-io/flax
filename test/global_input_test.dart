@@ -53,6 +53,25 @@ void main() {
       );
     });
 
+    test('keys with modifiers are ignored by global playback/search', () {
+      expect(
+        globalKeyAction(
+          _down(LogicalKeyboardKey.space),
+          isEditing: false,
+          hasModifiers: true,
+        ),
+        GlobalKeyAction.none,
+      );
+      expect(
+        globalKeyAction(
+          _down(LogicalKeyboardKey.slash),
+          isEditing: false,
+          hasModifiers: true,
+        ),
+        GlobalKeyAction.none,
+      );
+    });
+
     test('other keys are left alone', () {
       for (final key in [
         LogicalKeyboardKey.keyA,

@@ -200,9 +200,17 @@ class HotKeyNotifier extends StateNotifier<HotKeyState> {
     newErrors.remove(action);
 
     if (state.enabled && newHotKey != null) {
+      final safeHotKey = newHotKey.modifiers == null
+          ? HotKey(
+              identifier: newHotKey.identifier,
+              key: newHotKey.key,
+              modifiers: const <HotKeyModifier>[],
+              scope: newHotKey.scope,
+            )
+          : newHotKey;
       try {
         await _client.register(
-          newHotKey,
+          safeHotKey,
           keyDownHandler: (_) => _handleAction(action),
         );
         newErrors[action] = null;
@@ -213,6 +221,34 @@ class HotKeyNotifier extends StateNotifier<HotKeyState> {
 
     state = state.copyWith(bindings: newBindings, errors: newErrors);
     await _saveBindings();
+  }
+
+  Future<void> clearAll() async {
+    await _client.unregisterAll();
+
+    final bindings = <HotKeyAction, HotKey?>{};
+    for (final action in HotKeyAction.values) {
+      bindings[action] = null;
+    }
+
+    state = state.copyWith(bindings: bindings, errors: const {});
+    await _saveBindings();
+  }
+
+  Future<void> applySuggestedDefaults({bool? isMacOS}) async {
+    await _client.unregisterAll();
+
+    final bindings = <HotKeyAction, HotKey?>{};
+    for (final action in HotKeyAction.values) {
+      bindings[action] = action.suggestedHotKey(isMacOS: isMacOS);
+    }
+
+    state = state.copyWith(bindings: bindings, errors: const {});
+    await _saveBindings();
+
+    if (state.enabled) {
+      await _registerAll();
+    }
   }
 
   Future<void> resetToDefaults() async {
@@ -281,3 +317,7 @@ final hotKeyServiceProvider =
     StateNotifierProvider<HotKeyNotifier, HotKeyState>((ref) {
       return HotKeyNotifier(ref: ref);
     });
+
+/// Set to true while the user is in the recording hotkey dialog,
+/// preventing global AppChrome shortcuts from capturing keys like Space or '/'.
+final isRecordingHotKeyProvider = StateProvider<bool>((ref) => false);

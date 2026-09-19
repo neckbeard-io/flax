@@ -40,6 +40,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- Keyboard shortcuts screen layout, recording dialog conflicts, and hidden mobile menu.
 - Desktop VPN and virtual network adapters no longer trigger false offline mode.
 - Android Auto left sidebar rail, Coolwalk dashboard card, and Now Playing playback.
 - Detect primary network adapter automatically so car Wi-Fi doesn't block cellular internet.

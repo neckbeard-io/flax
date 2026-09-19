@@ -211,5 +211,54 @@ void main() {
       expect(notifier.state.bindings[HotKeyAction.playPause], isNull);
       expect(notifier.state.bindings.values.every((v) => v == null), isTrue);
     });
+
+    test(
+      'applySuggestedDefaults assigns all suggested shortcuts and registers them',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final notifier = HotKeyNotifier(
+          client: mockClient,
+          isDesktop: true,
+          prefs: prefs,
+        );
+
+        await notifier.init();
+        await notifier.applySuggestedDefaults(isMacOS: true);
+
+        expect(notifier.state.bindings.values.every((v) => v != null), isTrue);
+        expect(
+          mockClient.registered.length,
+          equals(HotKeyAction.values.length),
+        );
+
+        // Test clearAll
+        await notifier.clearAll();
+        expect(notifier.state.bindings.values.every((v) => v == null), isTrue);
+        expect(mockClient.registered.isEmpty, isTrue);
+      },
+    );
+
+    test(
+      'updateBinding safely handles hotkey with null modifiers list',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final notifier = HotKeyNotifier(
+          client: mockClient,
+          isDesktop: true,
+          prefs: prefs,
+        );
+
+        await notifier.init();
+        final nullModHotKey = HotKey(
+          identifier: 'test_null_mod',
+          key: PhysicalKeyboardKey.f8,
+          modifiers: null,
+        );
+
+        await notifier.updateBinding(HotKeyAction.playPause, nullModHotKey);
+        expect(notifier.state.errors[HotKeyAction.playPause], isNull);
+        expect(mockClient.registered.first.modifiers, isNotNull);
+      },
+    );
   });
 }
