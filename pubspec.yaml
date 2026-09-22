@@ -66,6 +66,7 @@ dependencies:
   hotkey_manager: ^0.2.3
   audio_service: ^0.18.19
   audio_session: ^0.2.4
+  rxdart: ^0.28.0
   network_info_plus: ^8.2.1
 
 dev_dependencies:

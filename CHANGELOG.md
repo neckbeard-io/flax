@@ -40,6 +40,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- Android Auto startup spinner and phone launch screen freeze when sharing background engine.
 - Windows taskbar pinning and grouping preserved across self-updates using explicit AppUserModelID.
 - Keyboard shortcuts screen layout, recording dialog conflicts, and hidden mobile menu.
 - Desktop VPN and virtual network adapters no longer trigger false offline mode.

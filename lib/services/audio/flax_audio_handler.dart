@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:collection/collection.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/library_provider.dart';
@@ -79,6 +80,30 @@ class FlaxAudioHandler extends BaseAudioHandler {
     unawaited(
       _container.read(carConnectionServiceProvider).activateMediaSession(),
     );
+
+    // Keep Android Auto browse tree updated when offline mode or car state changes
+    _container.listen<bool>(isOfflineModeProvider, (prev, next) {
+      if (prev != next) {
+        notifyChildrenChanged(AudioService.browsableRootId);
+        notifyChildrenChanged(kRootId);
+        notifyChildrenChanged(kRecentNode);
+        notifyChildrenChanged(kArtistsNode);
+        notifyChildrenChanged(kAlbumsNode);
+        notifyChildrenChanged(kPlaylistsNode);
+        notifyChildrenChanged(kFavoritesNode);
+      }
+    });
+    _container.listen<bool>(isCarConnectedProvider, (prev, next) {
+      if (prev != next) {
+        notifyChildrenChanged(AudioService.browsableRootId);
+        notifyChildrenChanged(kRootId);
+        notifyChildrenChanged(kRecentNode);
+        notifyChildrenChanged(kArtistsNode);
+        notifyChildrenChanged(kAlbumsNode);
+        notifyChildrenChanged(kPlaylistsNode);
+        notifyChildrenChanged(kFavoritesNode);
+      }
+    });
   }
 
   Future<void> _prepareFallbackMedia() async {
@@ -289,6 +314,24 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
   // ── Android Auto MediaBrowserService Hierarchy ─────────────────────────────
 
+  final Map<String, BehaviorSubject<Map<String, dynamic>>> _childrenSubjects =
+      {};
+
+  @override
+  ValueStream<Map<String, dynamic>> subscribeToChildren(String parentMediaId) {
+    return _childrenSubjects.putIfAbsent(
+      parentMediaId,
+      () => BehaviorSubject<Map<String, dynamic>>(),
+    );
+  }
+
+  void notifyChildrenChanged(String parentMediaId) {
+    final subject = _childrenSubjects[parentMediaId];
+    if (subject != null) {
+      subject.add(<String, dynamic>{});
+    }
+  }
+
   @override
   Future<List<MediaItem>> getChildren(
     String parentMediaId, [
@@ -304,6 +347,13 @@ class FlaxAudioHandler extends BaseAudioHandler {
       unawaited(_prepareFallbackMedia());
     }
 
+    if (parentMediaId == AudioService.browsableRootId ||
+        parentMediaId == kRootId ||
+        parentMediaId == '/' ||
+        parentMediaId.isEmpty) {
+      return _getRootCategories();
+    }
+
     final library = _library;
     final client = _client;
 
@@ -312,13 +362,6 @@ class FlaxAudioHandler extends BaseAudioHandler {
     }
 
     try {
-      if (parentMediaId == AudioService.browsableRootId ||
-          parentMediaId == kRootId ||
-          parentMediaId == '/' ||
-          parentMediaId.isEmpty) {
-        return _getRootCategories();
-      }
-
       switch (parentMediaId) {
         case kRecentNode:
           if (_isOffline) {
@@ -337,36 +380,23 @@ class FlaxAudioHandler extends BaseAudioHandler {
                 .toList();
           }
 
-          var albums = await library
+          final albums = await library
               .watchAlbumList(const AlbumListQuery(AlbumListType.newest))
               .first;
           if (albums.isEmpty) {
-            try {
-              await library.refreshAlbumList(
-                const AlbumListQuery(AlbumListType.newest),
-              );
-              albums = await library
-                  .watchAlbumList(const AlbumListQuery(AlbumListType.newest))
-                  .first;
-            } catch (e) {
-              AppLogger.w(
-                'AudioHandler',
-                'refreshAlbumList(newest) failed: $e',
-              );
-            }
-          }
-          if (albums.isEmpty) {
-            try {
-              albums = await client.getAlbumList(
-                AlbumListType.newest,
-                count: 30,
-              );
-            } catch (e) {
-              AppLogger.e(
-                'AudioHandler',
-                'client.getAlbumList(newest) failed: $e',
-              );
-            }
+            unawaited(() async {
+              try {
+                await library.refreshAlbumList(
+                  const AlbumListQuery(AlbumListType.newest),
+                );
+                notifyChildrenChanged(kRecentNode);
+              } catch (e) {
+                AppLogger.w(
+                  'AudioHandler',
+                  'refreshAlbumList(newest) background failed: $e',
+                );
+              }
+            }());
           }
           return albums
               .take(30)
@@ -470,38 +500,23 @@ class FlaxAudioHandler extends BaseAudioHandler {
             return items;
           }
 
-          try {
-            await library.syncAnnotations(force: true);
-          } catch (e) {
-            AppLogger.w('AudioHandler', 'syncAnnotations failed: $e');
-          }
-
-          var artists = await library.watchArtists().first;
+          final artists = await library.watchArtists().first;
           if (artists.isEmpty) {
-            try {
-              await library.refreshArtists();
-              artists = await library.watchArtists().first;
-            } catch (e) {
-              AppLogger.w('AudioHandler', 'refreshArtists failed: $e');
-            }
-          }
-          if (artists.isEmpty) {
-            try {
-              artists = await client.getArtists();
-            } catch (e) {
-              AppLogger.e('AudioHandler', 'client.getArtists failed: $e');
-            }
-          }
-
-          var starredArtists = artists.where((a) => a.starred).toList();
-          if (starredArtists.isEmpty) {
-            try {
-              final res = await client.getStarred();
-              if (res.artists.isNotEmpty) {
-                starredArtists = res.artists;
+            unawaited(() async {
+              try {
+                await library.syncAnnotations();
+                await library.refreshArtists();
+                notifyChildrenChanged(kArtistsNode);
+              } catch (e) {
+                AppLogger.w(
+                  'AudioHandler',
+                  'refreshArtists background failed: $e',
+                );
               }
-            } catch (_) {}
+            }());
           }
+
+          final starredArtists = artists.where((a) => a.starred).toList();
 
           if (artists.length <= 60) {
             AppLogger.i(
@@ -600,20 +615,9 @@ class FlaxAudioHandler extends BaseAudioHandler {
         case kAlbumsNode:
           Future<Uri?> getLeadArt(AlbumListType type, {Uri? fallback}) async {
             final query = AlbumListQuery(type);
-            var list = _isOffline
+            final list = _isOffline
                 ? await library.watchDownloadedAlbums(query: query).first
                 : await library.watchAlbumList(query).first;
-            if (!_isOffline && list.isEmpty && query.isCacheable) {
-              try {
-                await library.refreshAlbumList(query);
-                list = await library.watchAlbumList(query).first;
-              } catch (_) {}
-            }
-            if (!_isOffline && list.isEmpty) {
-              try {
-                list = await client.getAlbumList(type, count: 10);
-              } catch (_) {}
-            }
             for (final a in list) {
               if (a.coverArtId != null) {
                 return client.getCoverArtUri(a.coverArtId!, size: 400);
@@ -778,11 +782,18 @@ class FlaxAudioHandler extends BaseAudioHandler {
             ];
           }
 
-          final playlists = await client.getPlaylists();
-          return playlists
-              .take(50)
-              .map((p) => playlistToMediaItem(p, client))
-              .toList();
+          try {
+            final playlists = await client.getPlaylists().timeout(
+              const Duration(seconds: 3),
+            );
+            return playlists
+                .take(50)
+                .map((p) => playlistToMediaItem(p, client))
+                .toList();
+          } catch (e) {
+            AppLogger.w('AudioHandler', 'client.getPlaylists failed: $e');
+            return const [];
+          }
 
         case kFavoritesNode:
           if (_isOffline) {
@@ -801,39 +812,24 @@ class FlaxAudioHandler extends BaseAudioHandler {
                 .toList();
           }
 
-          try {
-            await library.syncAnnotations(force: true);
-          } catch (_) {}
-          var starredAlbums = await library
+          final starredAlbums = await library
               .watchAlbumList(const AlbumListQuery(AlbumListType.starred))
               .first;
           if (starredAlbums.isEmpty) {
-            try {
-              await library.refreshAlbumList(
-                const AlbumListQuery(AlbumListType.starred),
-              );
-              starredAlbums = await library
-                  .watchAlbumList(const AlbumListQuery(AlbumListType.starred))
-                  .first;
-            } catch (e) {
-              AppLogger.w(
-                'AudioHandler',
-                'refreshAlbumList(starred) failed: $e',
-              );
-            }
-          }
-          if (starredAlbums.isEmpty) {
-            try {
-              starredAlbums = await client.getAlbumList(
-                AlbumListType.starred,
-                count: 30,
-              );
-            } catch (e) {
-              AppLogger.e(
-                'AudioHandler',
-                'client.getAlbumList(starred) failed: $e',
-              );
-            }
+            unawaited(() async {
+              try {
+                await library.syncAnnotations();
+                await library.refreshAlbumList(
+                  const AlbumListQuery(AlbumListType.starred),
+                );
+                notifyChildrenChanged(kFavoritesNode);
+              } catch (e) {
+                AppLogger.w(
+                  'AudioHandler',
+                  'refreshAlbumList(starred) background failed: $e',
+                );
+              }
+            }());
           }
           return starredAlbums
               .take(50)
@@ -869,28 +865,15 @@ class FlaxAudioHandler extends BaseAudioHandler {
           return starred.map((a) => artistToMediaItem(a, client)).toList();
         }
 
-        try {
-          await library.syncAnnotations(force: true);
-        } catch (_) {}
-        var artists = await library.watchArtists().first;
-        if (artists.isEmpty) {
-          try {
-            artists = await client.getArtists();
-          } catch (_) {}
-        }
-        var starred = artists.where((a) => a.starred).take(80).toList();
+        final artists = await library.watchArtists().first;
+        final starred = artists.where((a) => a.starred).take(80).toList();
         if (starred.isEmpty) {
-          try {
-            final res = await client.getStarred();
-            if (res.artists.isNotEmpty) {
-              starred = res.artists.take(80).toList();
-            }
-          } catch (e) {
-            AppLogger.e(
-              'AudioHandler',
-              'client.getStarred fallback failed: $e',
-            );
-          }
+          unawaited(() async {
+            try {
+              await library.syncAnnotations();
+              notifyChildrenChanged('artists_starred');
+            } catch (_) {}
+          }());
         }
         AppLogger.i(
           'AudioHandler',
@@ -921,12 +904,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
           return matching.map((a) => artistToMediaItem(a, client)).toList();
         }
 
-        var artists = await library.watchArtists().first;
-        if (artists.isEmpty) {
-          try {
-            artists = await client.getArtists();
-          } catch (_) {}
-        }
+        final artists = await library.watchArtists().first;
         final matching = artists
             .where((a) {
               final name = (a.sortName ?? a.name).trim();
@@ -974,19 +952,11 @@ class FlaxAudioHandler extends BaseAudioHandler {
           return matching.map((a) => albumToMediaItem(a, client)).toList();
         }
 
-        var albums = await library
+        final albums = await library
             .watchAlbumList(
               const AlbumListQuery(AlbumListType.alphabeticalByName),
             )
             .first;
-        if (albums.isEmpty) {
-          try {
-            albums = await client.getAlbumList(
-              AlbumListType.alphabeticalByName,
-              count: 100,
-            );
-          } catch (_) {}
-        }
         final matching = albums
             .where((a) {
               final name = a.name.trim();
@@ -1016,18 +986,19 @@ class FlaxAudioHandler extends BaseAudioHandler {
           return albums.map((a) => albumToMediaItem(a, client)).toList();
         }
 
-        try {
-          await library.refreshArtist(artistId);
-        } catch (e) {
-          AppLogger.w('AudioHandler', 'refreshArtist failed: $e');
-        }
-        var albums = await library.watchArtistAlbums(artistId).first;
+        final albums = await library.watchArtistAlbums(artistId).first;
         if (albums.isEmpty) {
-          try {
-            albums = await client.getArtistAlbums(artistId);
-          } catch (e) {
-            AppLogger.e('AudioHandler', 'client.getArtistAlbums failed: $e');
-          }
+          unawaited(() async {
+            try {
+              await library.refreshArtist(artistId);
+              notifyChildrenChanged(parentMediaId);
+            } catch (e) {
+              AppLogger.w(
+                'AudioHandler',
+                'refreshArtist background failed: $e',
+              );
+            }
+          }());
         }
         AppLogger.i(
           'AudioHandler',
@@ -1058,18 +1029,16 @@ class FlaxAudioHandler extends BaseAudioHandler {
               .toList();
         }
 
-        try {
-          await library.refreshAlbum(albumId);
-        } catch (e) {
-          AppLogger.w('AudioHandler', 'refreshAlbum failed: $e');
-        }
-        var songs = await library.watchAlbumSongs(albumId).first;
+        final songs = await library.watchAlbumSongs(albumId).first;
         if (songs.isEmpty) {
-          try {
-            songs = await client.getAlbumSongs(albumId);
-          } catch (e) {
-            AppLogger.e('AudioHandler', 'client.getAlbumSongs failed: $e');
-          }
+          unawaited(() async {
+            try {
+              await library.refreshAlbum(albumId);
+              notifyChildrenChanged(parentMediaId);
+            } catch (e) {
+              AppLogger.w('AudioHandler', 'refreshAlbum background failed: $e');
+            }
+          }());
         }
         AppLogger.i(
           'AudioHandler',
@@ -1105,17 +1074,29 @@ class FlaxAudioHandler extends BaseAudioHandler {
               .toList();
         }
 
-        final songs = await client.getPlaylistSongs(playlistId);
-        return songs
-            .map(
-              (s) => songToMediaItem(
-                s,
-                coverArtUrl: s.coverArtId != null
-                    ? client.getCoverArtUri(s.coverArtId!, size: 300).toString()
-                    : null,
-              ),
-            )
-            .toList();
+        try {
+          final songs = await client
+              .getPlaylistSongs(playlistId)
+              .timeout(const Duration(seconds: 3));
+          return songs
+              .map(
+                (s) => songToMediaItem(
+                  s,
+                  coverArtUrl: s.coverArtId != null
+                      ? client
+                            .getCoverArtUri(s.coverArtId!, size: 300)
+                            .toString()
+                      : null,
+                ),
+              )
+              .toList();
+        } catch (e) {
+          AppLogger.w(
+            'AudioHandler',
+            'client.getPlaylistSongs failed or timed out: $e',
+          );
+          return const [];
+        }
       }
     } catch (e, st) {
       AppLogger.e(
@@ -1237,30 +1218,24 @@ class FlaxAudioHandler extends BaseAudioHandler {
       return albums.take(50).map((a) => albumToMediaItem(a, client)).toList();
     }
 
-    if (section == 'favorites') {
-      try {
-        await library.syncAnnotations(force: true);
-      } catch (_) {}
-    }
-
     final query = AlbumListQuery(listType);
-    var albums = await library.watchAlbumList(query).first;
+    final albums = await library.watchAlbumList(query).first;
 
     if (albums.isEmpty && query.isCacheable) {
-      try {
-        await library.refreshAlbumList(query);
-        albums = await library.watchAlbumList(query).first;
-      } catch (e) {
-        AppLogger.w('AudioHandler', 'refreshAlbumList($section) failed: $e');
-      }
-    }
-
-    if (albums.isEmpty) {
-      try {
-        albums = await client.getAlbumList(listType, count: 50);
-      } catch (e) {
-        AppLogger.e('AudioHandler', 'client.getAlbumList($section) failed: $e');
-      }
+      unawaited(() async {
+        try {
+          if (section == 'favorites') {
+            await library.syncAnnotations();
+          }
+          await library.refreshAlbumList(query);
+          notifyChildrenChanged('albums_section_$section');
+        } catch (e) {
+          AppLogger.w(
+            'AudioHandler',
+            'refreshAlbumList($section) background failed: $e',
+          );
+        }
+      }());
     }
 
     if (section == 'all' && albums.length > 60) {
@@ -1420,6 +1395,13 @@ class FlaxAudioHandler extends BaseAudioHandler {
         await _container
             .read(offlineManualOverrideProvider.notifier)
             .set(!current);
+        notifyChildrenChanged(AudioService.browsableRootId);
+        notifyChildrenChanged(kRootId);
+        notifyChildrenChanged(kRecentNode);
+        notifyChildrenChanged(kArtistsNode);
+        notifyChildrenChanged(kAlbumsNode);
+        notifyChildrenChanged(kPlaylistsNode);
+        notifyChildrenChanged(kFavoritesNode);
         AppLogger.i(
           'AudioHandler',
           'Toggled offline mode from Android Auto. Now: ${!current}',

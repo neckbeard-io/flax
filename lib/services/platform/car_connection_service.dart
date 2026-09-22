@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/logging/app_logger.dart';
 
@@ -41,6 +42,12 @@ class CarConnectionService {
 
   Future<void> _init() async {
     if (!Platform.isAndroid) return;
+
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'requestWarmUpFrame') {
+        WidgetsBinding.instance.scheduleWarmUpFrame();
+      }
+    });
 
     try {
       final initial = await _channel.invokeMethod<bool>('isCarConnected');

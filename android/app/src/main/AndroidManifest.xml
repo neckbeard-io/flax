@@ -24,7 +24,7 @@
     <uses-feature android:name="android.hardware.screen.landscape" android:required="false"/>
     <application
         android:label="flax"
-        android:name="${applicationName}"
+        android:name=".FlaxApplication"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
         <meta-data

@@ -8,11 +8,36 @@ import 'package:flax/core/providers/locale_provider.dart';
 import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/shared/widgets/app_chrome.dart';
 
-class FlaxApp extends ConsumerWidget {
+class FlaxApp extends ConsumerStatefulWidget {
   const FlaxApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FlaxApp> createState() => _FlaxAppState();
+}
+
+class _FlaxAppState extends ConsumerState<FlaxApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.scheduleWarmUpFrame();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      WidgetsBinding.instance.scheduleWarmUpFrame();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final themeModeSetting = ref.watch(themeModeProvider);
     final amoled = ref.watch(amoledProvider);

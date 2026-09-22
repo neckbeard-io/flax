@@ -650,5 +650,43 @@ void main() {
         expect(handler.playbackState.value.playing, isFalse);
       },
     );
+
+    test(
+      'subscribeToChildren emits when notifyChildrenChanged is called',
+      () async {
+        final stream = handler.subscribeToChildren(
+          FlaxAudioHandler.kRecentNode,
+        );
+        expect(stream, isNotNull);
+
+        var eventCount = 0;
+        final sub = stream.listen((_) {
+          eventCount++;
+        });
+
+        handler.notifyChildrenChanged(FlaxAudioHandler.kRecentNode);
+        await pumpEventQueue();
+
+        expect(eventCount, greaterThanOrEqualTo(1));
+        await sub.cancel();
+      },
+    );
+
+    test('returns root categories even if client or library is null', () async {
+      final emptyContainer = ProviderContainer(
+        overrides: [
+          libraryRepositoryProvider.overrideWithValue(null),
+          subsonicClientProvider.overrideWithValue(null),
+        ],
+      );
+      addTearDown(emptyContainer.dispose);
+
+      final uninitializedHandler = FlaxAudioHandler(emptyContainer);
+      final root = await uninitializedHandler.getChildren(
+        AudioService.browsableRootId,
+      );
+      expect(root.length, equals(6));
+      expect(root.first.id, equals(FlaxAudioHandler.kRecentNode));
+    });
   });
 }
