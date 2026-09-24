@@ -515,15 +515,37 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       return;
     }
 
-    final medias = [
-      for (final song in songs)
-        mpv.Media(_streamUri(song, transcode).toString()),
-    ];
-    _mpvQueueIds = [for (final song in songs) song.id];
     final currentSong = songs.isNotEmpty && index < songs.length
         ? songs[index]
         : null;
     final isCached = _isSongCached(currentSong);
+
+    final medias = <mpv.Media>[];
+    for (final song in songs) {
+      try {
+        final uri = _streamUri(song, transcode);
+        medias.add(mpv.Media(uri.toString()));
+      } catch (e) {
+        if (song.id == currentSong?.id && play) {
+          rethrow;
+        }
+      }
+    }
+
+    if (medias.isEmpty) {
+      if (mounted) {
+        state = state.copyWith(
+          queue: songs,
+          queueIndex: index,
+          currentSong: currentSong,
+          isPlaying: false,
+          isPlayingCached: isCached,
+        );
+      }
+      return;
+    }
+
+    _mpvQueueIds = [for (final song in songs) song.id];
 
     if (mounted) {
       state = state.copyWith(
@@ -533,7 +555,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         isPlayingCached: isCached,
       );
     }
-    await _player.openAll(medias, play: play, index: index);
+    final targetIndex = index.clamp(0, medias.length - 1);
+    await _player.openAll(medias, play: play, index: targetIndex);
     if (play) {
       await _activateAudioSession();
       await _player.play();
@@ -1303,16 +1326,27 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       duration: Duration(seconds: song.duration),
     );
 
-    // Open the queue paused at the saved position. The whole queue rather than
-    // the one track, so pressing play resumes into a playlist mpv can already
-    // prefetch from.
-    try {
-      await _openQueue(songs, idx, play: false);
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      await _player.seek(position);
-    } catch (e) {
-      // Offline — can't open stream, but state is set so UI shows the queue
-      AppLogger.w('Player', 'Could not open stream (offline?): $e');
+    // Open the queue paused at the saved position if the track is cached locally,
+    // or if the server is verified reachable. If the track is not cached and the app
+    // is offline or server unreachable, do NOT pass remote stream URLs to mpv on launch.
+    final isCached = _isSongCached(song);
+    final isOffline = _ref.read(isOfflineModeProvider);
+    final reachability = _ref.read(serverReachabilityProvider);
+
+    if (isCached || (!isOffline && reachability.isReachable)) {
+      try {
+        await _openQueue(songs, idx, play: false);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        await _player.seek(position);
+      } catch (e) {
+        // Offline — can't open stream, but state is set so UI shows the queue
+        AppLogger.w('Player', 'Could not open stream (offline?): $e');
+      }
+    } else {
+      AppLogger.i(
+        'Player',
+        'Restored track "${song.title}" is not cached and app is offline/unreachable. Skipping remote stream pre-load.',
+      );
     }
 
     _lastSavedPositionSec = position.inSeconds;

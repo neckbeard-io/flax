@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/core/tasks/task_registry.dart';
 import 'package:flax/features/player/player_provider.dart';
@@ -68,14 +70,22 @@ class _AppChromeState extends ConsumerState<AppChrome>
       if (mounted) {
         WhatsNewCoordinator.checkAndShowIfNeeded(context, ref);
         MobileUpdateCoordinator.checkAndPrompt(context, ref);
-        ref.read(serverReachabilityProvider.notifier).probeServer(silent: true);
+        final isOffline = ref.read(isOfflineModeProvider);
+        if (!isOffline) {
+          ref
+              .read(serverReachabilityProvider.notifier)
+              .probeServer(silent: true);
+        }
         ref.read(audioCacheServiceProvider).resumePendingDownloads();
       }
     });
   }
 
+  Timer? _wakeDebounceTimer;
+
   @override
   void dispose() {
+    _wakeDebounceTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onKey);
     super.dispose();
@@ -93,33 +103,35 @@ class _AppChromeState extends ConsumerState<AppChrome>
       MobileUpdateCoordinator.checkAndPrompt(context, ref);
     }
 
-    // Probe server reachability
-    ref.read(serverReachabilityProvider.notifier).probeServer(silent: true);
+    final policy = ref.read(platformOfflinePolicyProvider);
 
-    final isOffline = ref.read(isOfflineModeProvider);
-    if (isOffline) return;
+    void runForegroundTasks() {
+      if (!mounted) return;
+      ref.read(serverReachabilityProvider.notifier).probeServer(silent: true);
 
-    ref.read(audioCacheServiceProvider).resumePendingDownloads();
+      final isOffline = ref.read(isOfflineModeProvider);
+      if (isOffline) return;
 
-    final repo = ref.read(libraryRepositoryProvider);
-    if (repo == null) return;
+      ref.read(audioCacheServiceProvider).resumePendingDownloads();
 
-    // All three are fire-and-forget. A failure is a no-op: the repository treats
-    // an unanswered beacon as "assume changed" and falls back to its TTLs, so a
-    // dropped check costs nothing.
+      final repo = ref.read(libraryRepositoryProvider);
+      if (repo == null) return;
 
-    // Library content. One 285-byte call, and nothing at all if unchanged.
-    repo.syncIfChanged();
+      repo.syncIfChanged();
+      repo.syncAnnotations();
+      repo.collectGarbage();
+    }
 
-    // Annotations, which the beacon cannot see — a heart added in the web UI or
-    // a play on another device. Rate-limited inside the repository, because
-    // getStarred2 is the expensive call here.
-    repo.syncAnnotations();
-
-    // Sweep entities the server has stopped mentioning. Nothing favorited,
-    // rated, or still in a cached list is touched, so this is safe to run
-    // unattended.
-    repo.collectGarbage();
+    // On desktop platforms (macOS/Windows), sleeping laptop/desktop lid-open
+    // causes immediate lifecycle resume while Wi-Fi / DHCP is still reassociating.
+    // Delay foreground probing and syncing by wakeProbeDelay so we do not trigger
+    // false unreachable states.
+    if (policy.wakeProbeDelay > Duration.zero) {
+      _wakeDebounceTimer?.cancel();
+      _wakeDebounceTimer = Timer(policy.wakeProbeDelay, runForegroundTasks);
+    } else {
+      runForegroundTasks();
+    }
   }
 
   /// Whether a text field currently has focus, in which case "/" is a character

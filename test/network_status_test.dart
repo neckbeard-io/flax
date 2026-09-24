@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/services/platform/network_status_service.dart';
 
 void main() {
@@ -137,6 +138,9 @@ void main() {
 
         final container = ProviderContainer(
           overrides: [
+            platformOfflinePolicyProvider.overrideWithValue(
+              const AndroidOfflinePolicy(),
+            ),
             connectivityStreamProvider.overrideWith(
               (ref) => Stream.value(carStatus.toConnectivityList()),
             ),

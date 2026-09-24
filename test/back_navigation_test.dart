@@ -39,10 +39,8 @@ class _FakeServerReachabilityNotifier extends StateNotifier<ServerReachability>
     : super(ServerReachability(isReachable: isReachable));
 
   @override
-  Future<bool> probeServer({
-    bool silent = false,
-    Duration timeout = const Duration(seconds: 3),
-  }) async => state.isReachable;
+  Future<bool> probeServer({bool silent = false, Duration? timeout}) async =>
+      state.isReachable;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

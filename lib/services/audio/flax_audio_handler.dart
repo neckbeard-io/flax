@@ -52,7 +52,16 @@ class FlaxAudioHandler extends BaseAudioHandler {
       offlineOnAndroidAutoSettingProvider,
     );
     final isCar = _container.read(isCarConnectedProvider);
-    return autoOfflineSetting && isCar;
+    if (autoOfflineSetting && isCar) return true;
+
+    // In vehicle / Android Auto context, if server reachability is not confirmed reachable,
+    // operate offline so browse tree queries and playback never stall or attempt to stream missing files.
+    if (isCar) {
+      final reachability = _container.read(serverReachabilityProvider);
+      if (!reachability.isReachable) return true;
+    }
+
+    return false;
   }
 
   // Root category node identifiers for Android Auto

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/services/database/tables/orderings.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
@@ -13,6 +14,13 @@ import 'package:flax/services/subsonic/subsonic_client.dart';
 const _kOfflineManualPrefKey = 'flax_offline_manual_override';
 const _kOfflineOnCellularPrefKey = 'flax_offline_on_cellular';
 const _kOfflineOnAndroidAutoPrefKey = 'flax_offline_on_android_auto';
+const kLastServerReachablePrefKey = 'flax_last_server_reachable';
+const kLastIsOfflinePrefKey = 'flax_last_is_offline';
+const kLastIsCellularPrefKey = 'flax_last_is_cellular';
+
+/// Persisted last known transport state for instant frame-1 mobile evaluation.
+final lastKnownCellularProvider = StateProvider<bool>((ref) => false);
+final lastKnownOfflineProvider = StateProvider<bool>((ref) => false);
 
 /// Reason why the app is currently in offline mode.
 enum OfflineReason {
@@ -152,12 +160,14 @@ class ServerReachability {
   final bool isProbing;
   final String? lastError;
   final DateTime? lastChecked;
+  final int consecutiveFailures;
 
   const ServerReachability({
     this.isReachable = true,
     this.isProbing = false,
     this.lastError,
     this.lastChecked,
+    this.consecutiveFailures = 0,
   });
 
   ServerReachability copyWith({
@@ -165,17 +175,19 @@ class ServerReachability {
     bool? isProbing,
     String? lastError,
     DateTime? lastChecked,
+    int? consecutiveFailures,
   }) {
     return ServerReachability(
       isReachable: isReachable ?? this.isReachable,
       isProbing: isProbing ?? this.isProbing,
       lastError: lastError ?? this.lastError,
       lastChecked: lastChecked ?? this.lastChecked,
+      consecutiveFailures: consecutiveFailures ?? this.consecutiveFailures,
     );
   }
 }
 
-/// Probes the server with a 3-second hard timeout and falls back to offline mode.
+/// Probes the server and updates reachability state based on platform-specific policies.
 final serverReachabilityProvider =
     StateNotifierProvider<ServerReachabilityNotifier, ServerReachability>((
       ref,
@@ -186,8 +198,12 @@ final serverReachabilityProvider =
 class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
   final Ref _ref;
   Timer? _retryTimer;
+  int _retryAttempt = 0;
 
-  ServerReachabilityNotifier(this._ref) : super(const ServerReachability()) {
+  ServerReachabilityNotifier(
+    this._ref, {
+    ServerReachability? initialReachability,
+  }) : super(initialReachability ?? const ServerReachability()) {
     _ref.listen<SubsonicClient?>(subsonicClientProvider, (prev, next) {
       if (next != null) {
         try {
@@ -315,11 +331,18 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
     }
   }
 
-  /// Probes the server with a configurable timeout (default 10s).
-  Future<bool> probeServer({
-    Duration timeout = const Duration(seconds: 10),
-    bool silent = false,
-  }) async {
+  void _persistReachability(bool isReachable) {
+    final policy = _ref.read(platformOfflinePolicyProvider);
+    if (!policy.persistReachabilityState) return;
+    SharedPreferences.getInstance()
+        .then((prefs) {
+          prefs.setBool(kLastServerReachablePrefKey, isReachable);
+        })
+        .catchError((_) {});
+  }
+
+  /// Probes the server with a platform-appropriate timeout.
+  Future<bool> probeServer({Duration? timeout, bool silent = false}) async {
     final client = _ref.read(subsonicClientProvider);
     if (client == null) {
       state = const ServerReachability();
@@ -328,58 +351,97 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
       return true;
     }
 
+    final policy = _ref.read(platformOfflinePolicyProvider);
+    final effectiveTimeout =
+        timeout ??
+        (policy.supportsCellular
+            ? const Duration(milliseconds: 3500)
+            : const Duration(seconds: 8));
+
     state = state.copyWith(isProbing: true);
     String? error;
     try {
       error = await client
-          .tryPing(timeout: timeout)
+          .tryPing(timeout: effectiveTimeout)
           .timeout(
-            timeout,
-            onTimeout: () => 'Connection timed out (${timeout.inSeconds}s)',
+            effectiveTimeout,
+            onTimeout: () =>
+                'Connection timed out (${effectiveTimeout.inSeconds}s)',
           );
     } catch (e) {
       error = e.toString();
     }
-    final isReachable = error == null;
-
+    final isPingSuccess = error == null;
     final wasReachable = state.isReachable;
+    final failures = isPingSuccess ? 0 : state.consecutiveFailures + 1;
+
+    // Platform-specific reachability determination:
+    // On desktop (macOS/Windows), a single failed probe (e.g. waking from sleep)
+    // must not eagerly flip reachability if it hasn't met the failure threshold.
+    final bool newReachable;
+    if (isPingSuccess) {
+      newReachable = true;
+    } else if (failures >= policy.reachabilityFailureThreshold) {
+      newReachable = false;
+    } else {
+      newReachable = wasReachable;
+    }
+
     state = ServerReachability(
-      isReachable: isReachable,
+      isReachable: newReachable,
       isProbing: false,
       lastError: error,
       lastChecked: DateTime.now(),
+      consecutiveFailures: failures,
     );
 
-    if (isReachable) {
+    _persistReachability(newReachable);
+
+    if (newReachable) {
       _retryTimer?.cancel();
       _retryTimer = null;
+      _retryAttempt = 0;
       _checkServerMigration(client);
     } else {
       _startRetryTimer();
     }
 
-    if (!isReachable && wasReachable && !silent) {
-      // Trigger toaster notification
+    if (!newReachable &&
+        wasReachable &&
+        !silent &&
+        policy.autoOfflineOnReachabilityFailure) {
       final errDisplay = error;
       _ref
           .read(offlineToastMessageProvider.notifier)
           .show('Server unreachable ($errDisplay). Switched to Offline mode.');
     }
 
-    return isReachable;
+    return newReachable;
   }
 
   void markReachable() {
     _retryTimer?.cancel();
     _retryTimer = null;
-    state = state.copyWith(isReachable: true, lastError: null);
+    _retryAttempt = 0;
+    state = state.copyWith(
+      isReachable: true,
+      lastError: null,
+      consecutiveFailures: 0,
+    );
+    _persistReachability(true);
   }
 
   void markUnreachable(String reason) {
     final wasReachable = state.isReachable;
-    state = state.copyWith(isReachable: false, lastError: reason);
+    state = state.copyWith(
+      isReachable: false,
+      lastError: reason,
+      consecutiveFailures: state.consecutiveFailures + 1,
+    );
+    _persistReachability(false);
     _startRetryTimer();
-    if (wasReachable) {
+    final policy = _ref.read(platformOfflinePolicyProvider);
+    if (wasReachable && policy.autoOfflineOnReachabilityFailure) {
       _ref
           .read(offlineToastMessageProvider.notifier)
           .show('Server unreachable ($reason). Switched to Offline mode.');
@@ -388,12 +450,25 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
 
   void _startRetryTimer() {
     _retryTimer?.cancel();
-    _retryTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _retryAttempt = 0;
+    _scheduleNextRetry();
+  }
+
+  void _scheduleNextRetry() {
+    _retryTimer?.cancel();
+    if (state.isReachable) return;
+
+    // Fast backoff for quick recovery: 4s -> 8s -> 15s -> 30s
+    const delays = [4, 8, 15, 30];
+    final delaySec = _retryAttempt < delays.length ? delays[_retryAttempt] : 30;
+    _retryAttempt++;
+
+    _retryTimer = Timer(Duration(seconds: delaySec), () async {
       if (!state.isReachable && !state.isProbing) {
-        probeServer(silent: true);
-      } else if (state.isReachable) {
-        _retryTimer?.cancel();
-        _retryTimer = null;
+        final reachable = await probeServer(silent: true);
+        if (!reachable) {
+          _scheduleNextRetry();
+        }
       }
     });
   }
@@ -437,53 +512,106 @@ class OfflineToastNotifier extends StateNotifier<String?> {
   }
 }
 
+void _persistOfflineState(bool isOffline, PlatformOfflinePolicy policy) {
+  if (!policy.persistReachabilityState) return;
+  SharedPreferences.getInstance()
+      .then((prefs) {
+        prefs.setBool(kLastIsOfflinePrefKey, isOffline);
+      })
+      .catchError((_) {});
+}
+
+void _persistCellularState(bool isCellular, PlatformOfflinePolicy policy) {
+  if (!policy.persistReachabilityState) return;
+  SharedPreferences.getInstance()
+      .then((prefs) {
+        prefs.setBool(kLastIsCellularPrefKey, isCellular);
+      })
+      .catchError((_) {});
+}
+
 /// Whether the app is currently operating in offline mode.
 final isOfflineModeProvider = Provider<bool>((ref) {
+  final policy = ref.watch(platformOfflinePolicyProvider);
   final manual = ref.watch(offlineManualOverrideProvider);
-  if (manual) return true;
-
-  // Auto-offline when using Android Auto or connected to vehicle
-  final autoOfflineOnCar = ref.watch(offlineOnAndroidAutoSettingProvider);
-  final isCarConnected = ref.watch(isCarConnectedProvider);
-  if (autoOfflineOnCar && isCarConnected) {
+  if (manual) {
+    _persistOfflineState(true, policy);
     return true;
   }
 
-  final connectivity =
-      ref.watch(connectivityStreamProvider).valueOrNull ??
-      ref.watch(connectivityProvider).valueOrNull;
-  if (connectivity != null) {
-    final hasConnection = connectivity.any(
-      (c) => c != ConnectivityResult.none && c != ConnectivityResult.bluetooth,
-    );
-    if (!hasConnection) {
+  // 1. Auto-offline when using Android Auto or connected to vehicle (supported platforms)
+  if (policy.supportsCarConnection) {
+    final autoOfflineOnCar = ref.watch(offlineOnAndroidAutoSettingProvider);
+    final isCarConnected = ref.watch(isCarConnectedProvider);
+    if (autoOfflineOnCar && isCarConnected) {
+      _persistOfflineState(true, policy);
       return true;
     }
   }
 
-  final onCellularSetting = ref.watch(offlineOnCellularSettingProvider);
-  if (onCellularSetting && connectivity != null) {
-    final isMobile = connectivity.contains(ConnectivityResult.mobile);
-    final hasWifiOrEthernet =
-        connectivity.contains(ConnectivityResult.wifi) ||
-        connectivity.contains(ConnectivityResult.ethernet) ||
-        connectivity.contains(ConnectivityResult.vpn) ||
-        connectivity.contains(ConnectivityResult.other);
-    if (isMobile && !hasWifiOrEthernet) {
-      return true;
+  // 2. Physical network connectivity
+  if (policy.autoOfflineOnNoNetwork) {
+    final connectivity =
+        ref.watch(connectivityStreamProvider).valueOrNull ??
+        ref.watch(connectivityProvider).valueOrNull;
+    if (connectivity != null) {
+      final hasConnection = connectivity.any(
+        (c) =>
+            c != ConnectivityResult.none && c != ConnectivityResult.bluetooth,
+      );
+      if (!hasConnection) {
+        _persistOfflineState(true, policy);
+        return true;
+      }
+    }
+  }
+
+  // 3. Cellular auto-offline setting (supported platforms)
+  if (policy.supportsCellular) {
+    final onCellularSetting = ref.watch(offlineOnCellularSettingProvider);
+    if (onCellularSetting) {
+      final connectivity =
+          ref.watch(connectivityStreamProvider).valueOrNull ??
+          ref.watch(connectivityProvider).valueOrNull;
+      if (connectivity != null) {
+        final isMobile = connectivity.contains(ConnectivityResult.mobile);
+        final hasWifiOrEthernet =
+            connectivity.contains(ConnectivityResult.wifi) ||
+            connectivity.contains(ConnectivityResult.ethernet) ||
+            connectivity.contains(ConnectivityResult.vpn) ||
+            connectivity.contains(ConnectivityResult.other);
+        final isCellularOnly = isMobile && !hasWifiOrEthernet;
+        _persistCellularState(isCellularOnly, policy);
+        if (isCellularOnly) {
+          _persistOfflineState(true, policy);
+          return true;
+        }
+      } else {
+        // Startup frame 1 fallback: check persisted last-known cellular state
+        final lastWasCellular = ref.watch(lastKnownCellularProvider);
+        if (lastWasCellular) {
+          _persistOfflineState(true, policy);
+          return true;
+        }
+      }
     }
   }
 
   final server = ref.watch(activeServerProvider);
   if (server == null) {
+    _persistOfflineState(false, policy);
     return false;
   }
 
   final reachability = ref.watch(serverReachabilityProvider);
   if (!reachability.isReachable) {
-    return true;
+    if (policy.autoOfflineOnReachabilityFailure) {
+      _persistOfflineState(true, policy);
+      return true;
+    }
   }
 
+  _persistOfflineState(false, policy);
   return false;
 });
 
@@ -492,35 +620,56 @@ final offlineReasonProvider = Provider<OfflineReason>((ref) {
   final manual = ref.watch(offlineManualOverrideProvider);
   if (manual) return OfflineReason.manual;
 
-  // Auto-offline when using Android Auto or connected to vehicle
-  final autoOfflineOnCar = ref.watch(offlineOnAndroidAutoSettingProvider);
-  final isCarConnected = ref.watch(isCarConnectedProvider);
-  if (autoOfflineOnCar && isCarConnected) {
-    return OfflineReason.androidAuto;
-  }
+  final policy = ref.watch(platformOfflinePolicyProvider);
 
-  final connectivity =
-      ref.watch(connectivityStreamProvider).valueOrNull ??
-      ref.watch(connectivityProvider).valueOrNull;
-  if (connectivity != null) {
-    final hasConnection = connectivity.any(
-      (c) => c != ConnectivityResult.none && c != ConnectivityResult.bluetooth,
-    );
-    if (!hasConnection) {
-      return OfflineReason.noNetwork;
+  // 1. Auto-offline on car connection
+  if (policy.supportsCarConnection) {
+    final autoOfflineOnCar = ref.watch(offlineOnAndroidAutoSettingProvider);
+    final isCarConnected = ref.watch(isCarConnectedProvider);
+    if (autoOfflineOnCar && isCarConnected) {
+      return OfflineReason.androidAuto;
     }
   }
 
-  final onCellularSetting = ref.watch(offlineOnCellularSettingProvider);
-  if (onCellularSetting && connectivity != null) {
-    final isMobile = connectivity.contains(ConnectivityResult.mobile);
-    final hasWifiOrEthernet =
-        connectivity.contains(ConnectivityResult.wifi) ||
-        connectivity.contains(ConnectivityResult.ethernet) ||
-        connectivity.contains(ConnectivityResult.vpn) ||
-        connectivity.contains(ConnectivityResult.other);
-    if (isMobile && !hasWifiOrEthernet) {
-      return OfflineReason.cellular;
+  // 2. Physical network connectivity
+  if (policy.autoOfflineOnNoNetwork) {
+    final connectivity =
+        ref.watch(connectivityStreamProvider).valueOrNull ??
+        ref.watch(connectivityProvider).valueOrNull;
+    if (connectivity != null) {
+      final hasConnection = connectivity.any(
+        (c) =>
+            c != ConnectivityResult.none && c != ConnectivityResult.bluetooth,
+      );
+      if (!hasConnection) {
+        return OfflineReason.noNetwork;
+      }
+    }
+  }
+
+  // 3. Cellular auto-offline setting
+  if (policy.supportsCellular) {
+    final onCellularSetting = ref.watch(offlineOnCellularSettingProvider);
+    if (onCellularSetting) {
+      final connectivity =
+          ref.watch(connectivityStreamProvider).valueOrNull ??
+          ref.watch(connectivityProvider).valueOrNull;
+      if (connectivity != null) {
+        final isMobile = connectivity.contains(ConnectivityResult.mobile);
+        final hasWifiOrEthernet =
+            connectivity.contains(ConnectivityResult.wifi) ||
+            connectivity.contains(ConnectivityResult.ethernet) ||
+            connectivity.contains(ConnectivityResult.vpn) ||
+            connectivity.contains(ConnectivityResult.other);
+        if (isMobile && !hasWifiOrEthernet) {
+          return OfflineReason.cellular;
+        }
+      } else {
+        final lastWasCellular = ref.watch(lastKnownCellularProvider);
+        if (lastWasCellular) {
+          return OfflineReason.cellular;
+        }
+      }
     }
   }
 
@@ -531,7 +680,9 @@ final offlineReasonProvider = Provider<OfflineReason>((ref) {
 
   final reachability = ref.watch(serverReachabilityProvider);
   if (!reachability.isReachable) {
-    return OfflineReason.serverUnreachable;
+    if (policy.autoOfflineOnReachabilityFailure) {
+      return OfflineReason.serverUnreachable;
+    }
   }
 
   return OfflineReason.none;

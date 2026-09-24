@@ -12,6 +12,7 @@ import 'package:flax/app/router.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/locale_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/features/player/player_provider.dart';
@@ -100,6 +101,9 @@ Future<void> main() async {
   bool initialOfflineManual = false;
   bool initialOfflineOnCellular = false;
   bool initialOfflineOnAndroidAuto = false;
+  bool initialLastCellular = false;
+  bool initialLastOffline = false;
+  bool? initialLastReachable;
   try {
     final prefs = await SharedPreferences.getInstance();
     savedRoute = prefs.getString(lastRouteStorageKey);
@@ -110,6 +114,9 @@ Future<void> main() async {
     initialOfflineOnAndroidAuto = OfflineOnAndroidAutoNotifier.loadFromPrefs(
       prefs,
     );
+    initialLastCellular = prefs.getBool(kLastIsCellularPrefKey) ?? false;
+    initialLastOffline = prefs.getBool(kLastIsOfflinePrefKey) ?? false;
+    initialLastReachable = prefs.getBool(kLastServerReachablePrefKey);
   } catch (_) {
     savedRoute = null;
     initialServers = [];
@@ -117,6 +124,9 @@ Future<void> main() async {
     initialOfflineManual = false;
     initialOfflineOnCellular = false;
     initialOfflineOnAndroidAuto = false;
+    initialLastCellular = false;
+    initialLastOffline = false;
+    initialLastReachable = null;
   }
 
   if (WindowStateService.isSupported) {
@@ -179,6 +189,18 @@ Future<void> main() async {
           initialValue: initialOfflineOnAndroidAuto,
         ),
       ),
+      lastKnownCellularProvider.overrideWith((ref) => initialLastCellular),
+      lastKnownOfflineProvider.overrideWith((ref) => initialLastOffline),
+      if (initialLastReachable != null &&
+          PlatformOfflinePolicy.current().persistReachabilityState)
+        serverReachabilityProvider.overrideWith(
+          (ref) => ServerReachabilityNotifier(
+            ref,
+            initialReachability: ServerReachability(
+              isReachable: initialLastReachable!,
+            ),
+          ),
+        ),
     ],
   );
 
