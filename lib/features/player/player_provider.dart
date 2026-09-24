@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
@@ -406,11 +407,32 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (song.localPath != null && File(song.localPath!).existsSync()) {
       return song.localPath;
     }
-    return AudioCacheService.findCachedSongPathSync(
+    final resolved = AudioCacheService.findCachedSongPathSync(
       song.serverId,
       song.id,
       song.suffix,
     );
+    if (resolved != null && resolved != song.localPath) {
+      _ref
+          .read(libraryDaoProvider)
+          .updateSongDownload(
+            song.serverId,
+            song.id,
+            localPath: resolved,
+            state: DownloadState.complete,
+          );
+    } else if (resolved == null &&
+        song.downloadState == DownloadState.complete) {
+      _ref
+          .read(libraryDaoProvider)
+          .updateSongDownload(
+            song.serverId,
+            song.id,
+            localPath: null,
+            state: DownloadState.none,
+          );
+    }
+    return resolved;
   }
 
   bool _isSongCached(Song? song) {
@@ -422,6 +444,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     final cachedPath = _findCachedSongPath(song);
     if (cachedPath != null) {
       return Uri.file(cachedPath);
+    }
+    final isOffline = _ref.read(isOfflineModeProvider);
+    if (isOffline) {
+      throw Exception('Song "${song.title}" is not available offline');
     }
     final client = _ref.read(subsonicClientProvider);
     if (client == null) {

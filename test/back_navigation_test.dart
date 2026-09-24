@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flax/app/router.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/shared/widgets/app_chrome.dart';
@@ -32,6 +33,21 @@ class _FakeServers extends ServerListNotifier {
   }
 }
 
+class _FakeServerReachabilityNotifier extends StateNotifier<ServerReachability>
+    implements ServerReachabilityNotifier {
+  _FakeServerReachabilityNotifier([bool isReachable = true])
+    : super(ServerReachability(isReachable: isReachable));
+
+  @override
+  Future<bool> probeServer({
+    bool silent = false,
+    Duration timeout = const Duration(seconds: 3),
+  }) async => state.isReachable;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 Future<void> _settle(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(seconds: 2));
@@ -43,7 +59,12 @@ Future<GoRouter> _pumpApp(WidgetTester tester) async {
   addTearDown(tester.view.reset);
 
   final container = ProviderContainer(
-    overrides: [serverListProvider.overrideWith((ref) => _FakeServers())],
+    overrides: [
+      serverListProvider.overrideWith((ref) => _FakeServers()),
+      serverReachabilityProvider.overrideWith(
+        (ref) => _FakeServerReachabilityNotifier(),
+      ),
+    ],
   );
   addTearDown(container.dispose);
 

@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_action_favorite_filled,@drawable/ic_action_favorite_border,@drawable/ic_action_shuffle_on,@drawable/ic_action_shuffle_off,@drawable/ic_music_note,@drawable/ic_favorite_heart,@drawable/ic_album_collection,@drawable/ic_artist_avatar,@drawable/ic_offline_mode,@drawable/ic_star_rating,@drawable/ic_download_notification" />

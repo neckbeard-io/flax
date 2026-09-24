@@ -25,3 +25,11 @@
 # Play Core deferred components
 -dontwarn com.google.android.play.core.**
 
+# Keep R.drawable identifiers for dynamic lookup via getIdentifier (AudioService / MediaSession)
+-keepclassmembers class **.R$* {
+    public static <fields>;
+}
+-keep class **.R$* {
+    <fields>;
+}
+

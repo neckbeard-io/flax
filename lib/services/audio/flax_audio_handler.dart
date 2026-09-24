@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
@@ -295,7 +296,11 @@ class FlaxAudioHandler extends BaseAudioHandler {
       androidCompactActionIndices: const [0, 1, 2],
       processingState: buffering
           ? AudioProcessingState.buffering
-          : (hasSong ? AudioProcessingState.ready : AudioProcessingState.idle),
+          : (hasSong
+                ? AudioProcessingState.ready
+                : (Platform.isAndroid
+                      ? AudioProcessingState.ready
+                      : AudioProcessingState.idle)),
       playing: isPlaying,
       updatePosition: position,
       bufferedPosition: position,
@@ -613,40 +618,6 @@ class FlaxAudioHandler extends BaseAudioHandler {
           return items;
 
         case kAlbumsNode:
-          Future<Uri?> getLeadArt(AlbumListType type, {Uri? fallback}) async {
-            final query = AlbumListQuery(type);
-            final list = _isOffline
-                ? await library.watchDownloadedAlbums(query: query).first
-                : await library.watchAlbumList(query).first;
-            for (final a in list) {
-              if (a.coverArtId != null) {
-                return client.getCoverArtUri(a.coverArtId!, size: 400);
-              }
-            }
-            return fallback;
-          }
-
-          final leadArts = await Future.wait([
-            getLeadArt(
-              AlbumListType.alphabeticalByName,
-              fallback: _icAlbumCollection,
-            ),
-            getLeadArt(AlbumListType.newest, fallback: _icMusicNote),
-            getLeadArt(AlbumListType.recent, fallback: _icMusicNote),
-            getLeadArt(AlbumListType.random, fallback: _icAlbumCollection),
-            getLeadArt(AlbumListType.frequent, fallback: _icMusicNote),
-            getLeadArt(AlbumListType.starred, fallback: _icFavoriteHeart),
-            getLeadArt(AlbumListType.highest, fallback: _icStarRating),
-          ]);
-
-          final allArt = leadArts[0] ?? _icAlbumCollection;
-          final recentArt = leadArts[1] ?? _icMusicNote;
-          final recentlyPlayedArt = leadArts[2] ?? recentArt;
-          final randomArt = leadArts[3] ?? _icAlbumCollection;
-          final mostPlayedArt = leadArts[4] ?? _icMusicNote;
-          final starredArt = leadArts[5] ?? _icFavoriteHeart;
-          final topRatedArt = leadArts[6] ?? _icStarRating;
-
           final downloadedAlbums = await library.watchDownloadedAlbums().first;
           Uri? downloadedArt;
           for (final a in downloadedAlbums) {
@@ -656,6 +627,21 @@ class FlaxAudioHandler extends BaseAudioHandler {
             }
           }
           downloadedArt ??= _icMusicNote;
+
+          final allArt =
+              downloadedAlbums.isNotEmpty &&
+                  downloadedAlbums.first.coverArtId != null
+              ? client.getCoverArtUri(
+                  downloadedAlbums.first.coverArtId!,
+                  size: 400,
+                )
+              : _icAlbumCollection;
+          final recentArt = _isOffline ? downloadedArt : _icMusicNote;
+          final recentlyPlayedArt = recentArt;
+          final randomArt = allArt;
+          final mostPlayedArt = recentArt;
+          final starredArt = _icFavoriteHeart;
+          final topRatedArt = _icStarRating;
 
           return [
             MediaItem(

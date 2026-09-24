@@ -1,5 +1,6 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/app/theme/flax_theme.dart';
@@ -20,7 +21,9 @@ class _FlaxAppState extends ConsumerState<FlaxApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.scheduleWarmUpFrame();
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      WidgetsBinding.instance.scheduleWarmUpFrame();
+    }
   }
 
   @override
@@ -31,7 +34,8 @@ class _FlaxAppState extends ConsumerState<FlaxApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed &&
+        WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
       WidgetsBinding.instance.scheduleWarmUpFrame();
     }
   }

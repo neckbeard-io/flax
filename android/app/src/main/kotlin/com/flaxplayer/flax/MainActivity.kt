@@ -38,6 +38,12 @@ class MainActivity : AudioServiceActivity(), FlaxEngineHelper.PermissionHandler 
         super.onCreate(savedInstanceState)
         FlaxEngineHelper.permissionHandler = this
 
+        if (flutterEngine?.renderer?.isDisplayingFlutterUi == true) {
+            setTheme(R.style.NormalTheme)
+            window.setBackgroundDrawableResource(android.R.color.transparent)
+            FlaxEngineHelper.requestWarmUpFrame()
+        }
+
         // Fallback: If onFlutterUiDisplayed has not fired within 500ms (e.g. cached engine attaching),
         // ensure theme switches so user is not stuck on splash screen.
         window.decorView.postDelayed({

@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import androidx.media.MediaBrowserServiceCompat
 import com.ryanheise.audioservice.AudioService
@@ -36,6 +37,25 @@ object FlaxMediaSessionHelper {
             if (!mediaSession.isActive) {
                 mediaSession.isActive = true
                 Log.i(TAG, "MediaSessionCompat explicitly set active (isActive = true)")
+            }
+
+            // Ensure playbackState is non-NONE so Android Auto Coolwalk card and rail show up
+            val currentPlaybackState = mediaSession.controller.playbackState
+            if (currentPlaybackState == null || currentPlaybackState.state == PlaybackStateCompat.STATE_NONE) {
+                val stateBuilder = PlaybackStateCompat.Builder()
+                    .setState(PlaybackStateCompat.STATE_PAUSED, 0L, 1.0f)
+                    .setActions(
+                        PlaybackStateCompat.ACTION_PLAY or
+                        PlaybackStateCompat.ACTION_PAUSE or
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                        PlaybackStateCompat.ACTION_STOP or
+                        PlaybackStateCompat.ACTION_SEEK_TO or
+                        PlaybackStateCompat.ACTION_PREPARE
+                    )
+                mediaSession.setPlaybackState(stateBuilder.build())
+                Log.i(TAG, "MediaSessionCompat initialized with STATE_PAUSED (was NONE/null)")
             }
 
             // Ensure session activity PendingIntent is attached

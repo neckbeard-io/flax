@@ -280,6 +280,99 @@ class AudioCacheService {
     } catch (_) {}
   }
 
+  /// Reconciles database records against physical files on disk.
+  /// Prunes ghost downloads whose audio files are missing, repairs paths
+  /// to existing cached files, and discovers completed files on disk.
+  Future<void> reconcileLocalDownloads() async {
+    try {
+      final dao = _ref.read(libraryDaoProvider);
+      final servers = _ref.read(serverListProvider);
+      final serverIds = servers.map((s) => s.id).toSet();
+      final activeServer = _ref.read(activeServerProvider);
+      if (activeServer != null) {
+        serverIds.add(activeServer.id);
+      }
+
+      for (final serverId in serverIds) {
+        final downloadedSongs = await dao.getDownloadedSongs(serverId);
+        for (final song in downloadedSongs) {
+          final currentPath = song.localPath;
+          if (currentPath != null &&
+              File(currentPath).existsSync() &&
+              File(currentPath).lengthSync() > 0) {
+            continue;
+          }
+
+          // Check if it exists in offline or rolling cache under current base path
+          final resolved = findCachedSongPathSync(
+            song.serverId,
+            song.id,
+            song.suffix,
+          );
+          if (resolved != null &&
+              File(resolved).existsSync() &&
+              File(resolved).lengthSync() > 0) {
+            await dao.updateSongDownload(
+              song.serverId,
+              song.id,
+              localPath: resolved,
+              state: DownloadState.complete,
+            );
+          } else {
+            // File does not exist anywhere on disk - reset ghost download
+            AppLogger.i(
+              'AudioCache',
+              'Reconciling ghost download: song ${song.id} (${song.title}) missing on disk, resetting state to none',
+            );
+            await dao.updateSongDownload(
+              song.serverId,
+              song.id,
+              localPath: null,
+              state: DownloadState.none,
+            );
+          }
+        }
+
+        // Also check if any files physically exist in music/offline/<serverId>/
+        // that are not marked complete in DB
+        try {
+          final offlineDir = await _getMusicDir(serverId, isPinned: true);
+          if (offlineDir.existsSync()) {
+            for (final entity in offlineDir.listSync()) {
+              if (entity is File &&
+                  !entity.path.endsWith('.tmp') &&
+                  entity.lengthSync() > 0) {
+                final songId = p.basenameWithoutExtension(entity.path);
+                final song = await dao.watchSong(serverId, songId).first;
+                if (song != null &&
+                    (song.downloadState != DownloadState.complete ||
+                        song.localPath != entity.path)) {
+                  AppLogger.i(
+                    'AudioCache',
+                    'Reconciling physical file: linking song $songId (${song.title}) to ${entity.path}',
+                  );
+                  await dao.updateSongDownload(
+                    serverId,
+                    songId,
+                    localPath: entity.path,
+                    state: DownloadState.complete,
+                  );
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
+    } catch (e, st) {
+      AppLogger.w(
+        'AudioCache',
+        'reconcileLocalDownloads failed: $e',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
   AudioCacheService(this._ref, {Dio? dio}) : _dio = dio ?? _createDefaultDio();
 
   static Dio _createDefaultDio() {

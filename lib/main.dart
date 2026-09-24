@@ -187,6 +187,11 @@ Future<void> main() async {
     UncontrolledProviderScope(container: container, child: const FlaxApp()),
   );
 
+  // Reconcile local downloads in background to prune ghost downloads and heal paths
+  unawaited(
+    container.read(audioCacheServiceProvider).reconcileLocalDownloads(),
+  );
+
   // Initialize audio service asynchronously after runApp so the UI renders immediately.
   // This guarantees the app opens instantly on Android even if audio service initialization is delayed.
   unawaited(
