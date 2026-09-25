@@ -344,13 +344,13 @@ void main() {
     });
   });
 
-  group('the scan beacon', () {
-    Map<String, dynamic> status({
-      String lastScan = '2026-08-07T23:55:56Z',
-      int count = 48605,
-      bool scanning = false,
-    }) => {'lastScan': lastScan, 'count': count, 'scanning': scanning};
+  Map<String, dynamic> status({
+    String lastScan = '2026-08-07T23:55:56Z',
+    int count = 48605,
+    bool scanning = false,
+  }) => {'lastScan': lastScan, 'count': count, 'scanning': scanning};
 
+  group('the scan beacon', () {
     test('an unchanged beacon suppresses the refresh entirely', () async {
       backend.scanStatus = status();
       backend.artists = [artist('a1')];
@@ -531,6 +531,51 @@ void main() {
       await r.refreshAlbumList(query);
       expect(backend.getAlbumListCalls, 2);
     });
+
+    test(
+      'volatile album list (newest) refetches after volatile TTL even when beacon is present and unchanged',
+      () async {
+        backend.scanStatus = status();
+        backend.albums = [album('al1')];
+        final r = repo();
+        const query = AlbumListQuery(AlbumListType.newest);
+
+        await r.refreshAlbumList(query);
+        expect(backend.getAlbumListCalls, 1);
+        await r.refreshAlbumList(query);
+        expect(backend.getAlbumListCalls, 1);
+
+        now = now.add(SyncPolicy.volatileList + const Duration(minutes: 1));
+        await r.refreshAlbumList(query);
+        expect(backend.getAlbumListCalls, 2);
+      },
+    );
+
+    test(
+      'an album list fetched before the server scan is refetched even if stored beacon was already updated',
+      () async {
+        backend.scanStatus = status(lastScan: '2026-08-15T09:00:00Z');
+        backend.artists = [artist('a1')];
+        backend.albums = [album('al1')];
+        final r = repo();
+        const query = AlbumListQuery(AlbumListType.newest);
+
+        // Fetch newest before scan
+        await r.refreshAlbumList(query);
+        expect(backend.getAlbumListCalls, 1);
+
+        // Server performs scan
+        backend.scanStatus = status(lastScan: '2026-08-16T09:00:00Z');
+
+        // Another caller (e.g. refreshArtists) sees the beacon moved and updates storedBeacon
+        await r.refreshArtists();
+        expect(backend.getArtistsCalls, 1);
+
+        // Even though storedBeacon now matches the server scan, newest was fetched before that scan!
+        await r.refreshAlbumList(query);
+        expect(backend.getAlbumListCalls, 2);
+      },
+    );
 
     test('random always goes to the network and stores no ordering', () async {
       backend.albums = [album('al1')];

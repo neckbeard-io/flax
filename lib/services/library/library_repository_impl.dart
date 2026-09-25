@@ -499,17 +499,24 @@ class LibraryRepositoryImpl implements LibraryRepository {
     );
   }
 
-  /// Ask the beacon what it knows.
-  Future<BeaconVerdict> _beaconVerdict() async {
-    final beacon = await _readBeacon();
-    if (beacon == null) return BeaconVerdict.unknown;
-    if (beacon.scanning) return BeaconVerdict.scanning;
-    final stored = await _storedBeacon();
-    if (!beacon.changedSince(stored)) return BeaconVerdict.unchanged;
-    // Record it here so a caller that refreshes on the strength of this does not
-    // ask again and see the same move twice.
-    await _writeBeacon(beacon);
-    return BeaconVerdict.changed;
+  void _recrawlCachedLists() {
+    _dao
+        .cachedAlbumLists(_serverId)
+        .then((lists) async {
+          for (final (listType, filterKey) in lists) {
+            final type = AlbumListType.values.firstWhere(
+              (t) => t.name == listType,
+              orElse: () => AlbumListType.newest,
+            );
+            await refreshAlbumList(
+              AlbumListQuery.fromFilterKey(type, filterKey),
+              force: true,
+            );
+          }
+        })
+        .catchError((e) {
+          AppLogger.w('Library', '_recrawlCachedLists failed: $e');
+        });
   }
 
   /// Whether to go to the network at all.
@@ -518,27 +525,44 @@ class LibraryRepositoryImpl implements LibraryRepository {
   /// With a stable library that means almost every check costs 285 bytes and
   /// does nothing, which is the entire point.
   Future<bool> _shouldFetch(Duration ttl, DateTime? fetchedAt) async {
-    // Always ask, even on a cold cache, because asking is what records the
-    // token. Returning early without it leaves nothing for the next check to
-    // compare against, and every subsequent call then reads as "changed".
-    final verdict = await _beaconVerdict();
+    final beacon = await _readBeacon();
+    if (beacon == null) {
+      return SyncPolicy.isStale(fetchedAt, ttl, _clock());
+    }
 
-    // Mid-scan, wait. A half-indexed library cached is worse than an empty
-    // screen, and this gets retried.
-    if (verdict == BeaconVerdict.scanning) return false;
+    if (beacon.scanning) return false;
 
-    // Nothing cached: fetch whatever the beacon says. An unchanged token cannot
-    // fill an empty cache, and the token outlives the rows recorded alongside
-    // it — so a table emptied by garbage collection or a migration would
-    // otherwise never refill, leaving the screen permanently blank.
+    // Check if the server beacon has moved since we last recorded it.
+    final stored = await _storedBeacon();
+    final beaconChanged = beacon.changedSince(stored);
+    if (beaconChanged) {
+      await _writeBeacon(beacon);
+      _recrawlCachedLists();
+    }
+
+    // Nothing cached: fetch whatever the beacon says.
     if (fetchedAt == null) return true;
 
-    return switch (verdict) {
-      BeaconVerdict.unchanged => false,
-      BeaconVerdict.changed => true,
-      BeaconVerdict.scanning => false,
-      BeaconVerdict.unknown => SyncPolicy.isStale(fetchedAt, ttl, _clock()),
-    };
+    // Server scan beacon moved since our last check.
+    if (beaconChanged) return true;
+
+    // If this item was fetched before the server's last scan, it was fetched
+    // before new music was indexed on the server.
+    if (beacon.lastScan != null) {
+      final lastScanDate = DateTime.tryParse(beacon.lastScan!);
+      if (lastScanDate != null && fetchedAt.isBefore(lastScanDate)) {
+        return true;
+      }
+    }
+
+    // Volatile lists (newest, recent, frequent) reorder as the library grows,
+    // on track scrobbles, or continuous imports. Always obey their TTL.
+    if (SyncPolicy.isVolatile(ttl) &&
+        SyncPolicy.isStale(fetchedAt, ttl, _clock())) {
+      return true;
+    }
+
+    return false;
   }
 
   Future<void> _once(String key, Future<void> Function() work) {

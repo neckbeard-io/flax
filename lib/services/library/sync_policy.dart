@@ -46,6 +46,10 @@ abstract final class SyncPolicy {
     _ => stableList,
   };
 
+  /// True when the given ordering is volatile (e.g. newest, recent, frequent)
+  /// and subject to regular updates regardless of library scans.
+  static bool isVolatile(Duration ttl) => ttl <= volatileList;
+
   /// True when [fetchedAt] is old enough that [ttl] has expired.
   ///
   /// A null [fetchedAt] means nothing has ever been fetched, which is stale by

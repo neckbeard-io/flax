@@ -17,6 +17,7 @@ import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/updater/update_button.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/hotkeys/hotkey_service.dart';
+import 'package:flax/services/library/sync_policy.dart';
 import 'package:flax/services/updater/mobile_update_coordinator.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/whats_new_provider.dart';
@@ -75,17 +76,34 @@ class _AppChromeState extends ConsumerState<AppChrome>
           ref
               .read(serverReachabilityProvider.notifier)
               .probeServer(silent: true);
+          final repo = ref.read(libraryRepositoryProvider);
+          if (repo != null) {
+            repo.syncIfChanged();
+            repo.syncAnnotations();
+          }
         }
         ref.read(audioCacheServiceProvider).resumePendingDownloads();
       }
     });
+
+    // Periodically poll the server's scan beacon (285 bytes) so desktop and
+    // long-running clients automatically discover newly scanned library additions.
+    _syncTimer = Timer.periodic(SyncPolicy.beaconCheck, (_) {
+      if (!mounted) return;
+      final isOffline = ref.read(isOfflineModeProvider);
+      if (isOffline) return;
+      final repo = ref.read(libraryRepositoryProvider);
+      repo?.syncIfChanged();
+    });
   }
 
   Timer? _wakeDebounceTimer;
+  Timer? _syncTimer;
 
   @override
   void dispose() {
     _wakeDebounceTimer?.cancel();
+    _syncTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onKey);
     super.dispose();

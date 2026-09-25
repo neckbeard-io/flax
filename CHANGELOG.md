@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Albums screen now includes a manual refresh button and pull-to-refresh.
 - Check for updates tile retains a recheck button when an update is available.
 - Orphaned cache cleanup tool and server reset option in Metadata & Storage settings.
 - Automatic detection and startup warning banner for Navidrome 0.64.0 item ID migrations.
@@ -41,6 +42,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- Album orderings now refresh on server scans, volatile TTL expiry, and tab re-taps.
 - Windows self-updater in-place file replacement and automatic restart.
 - Platform-tailored offline handling prevents false offlining on desktop laptops after sleep/resume.
 - Player startup hang when restoring queue in offline mode without network connectivity.

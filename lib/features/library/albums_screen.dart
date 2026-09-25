@@ -102,6 +102,20 @@ class AlbumsScreen extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (!isOffline) ...[
+                    HoverIcon(
+                      icon: Icons.refresh,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      tooltip: 'Refresh albums',
+                      onTap: () {
+                        final query = AlbumListQuery(filter.listType);
+                        ref
+                            .read(libraryRepositoryProvider)
+                            ?.refreshAlbumList(query, force: true);
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   if (!isDesktopPlatform) ...[
                     const MobileActiveDownloadsPill(),
                     const SizedBox(width: 8),
@@ -113,8 +127,17 @@ class AlbumsScreen extends ConsumerWidget {
             const OfflineStatusBanner(),
             AlbumFilterTabs(
               selected: filter,
-              onSelected: (f) =>
-                  ref.read(albumFilterProvider.notifier).state = f,
+              onSelected: (f) {
+                if (f == filter) {
+                  // Re-tapping the active tab forces a fresh fetch from the server.
+                  final query = AlbumListQuery(f.listType);
+                  ref
+                      .read(libraryRepositoryProvider)
+                      ?.refreshAlbumList(query, force: true);
+                } else {
+                  ref.read(albumFilterProvider.notifier).state = f;
+                }
+              },
             ),
             Expanded(
               child: albumsAsync.when(
@@ -129,7 +152,15 @@ class AlbumsScreen extends ConsumerWidget {
                           ),
                         ),
                       )
-                    : AlbumGrid(albums: albums),
+                    : RefreshIndicator(
+                        onRefresh: () async {
+                          final query = AlbumListQuery(filter.listType);
+                          await ref
+                              .read(libraryRepositoryProvider)
+                              ?.refreshAlbumList(query, force: true);
+                        },
+                        child: AlbumGrid(albums: albums),
+                      ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Error: $e')),
               ),
