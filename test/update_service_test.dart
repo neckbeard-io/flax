@@ -435,7 +435,10 @@ void main() {
         expect(args, contains('/SP-'));
         expect(args, contains('/SUPPRESSMSGBOXES'));
         expect(args, contains('/NORESTART'));
+        expect(args, contains('/CLOSEAPPLICATIONS'));
+        expect(args, contains('/RESTARTAPPLICATIONS'));
         expect(args, contains('/CURRENTUSER'));
+        expect(args, contains('/LOG'));
         expect(args, isNot(contains('/ALLUSERS')));
         expect(
           args,
@@ -451,10 +454,12 @@ void main() {
           installDir: r'C:\Program Files\flax',
           silent: true,
           isUserWritable: false,
+          logFilePath: r'C:\Temp\install.log',
         );
 
         expect(args, isNot(contains('/CURRENTUSER')));
         expect(args, contains('/ALLUSERS'));
+        expect(args, contains(r'/LOG="C:\Temp\install.log"'));
         expect(args, contains(r'/DIR="C:\Program Files\flax"'));
       },
     );
@@ -469,6 +474,21 @@ void main() {
       expect(args, contains(r'/DIR="C:\Users\tester\flax"'));
     });
 
+    test(
+      'formatPowerShellArgumentList escapes double quotes with backticks',
+      () {
+        final formatted = WindowsInstaller.formatPowerShellArgumentList([
+          '/VERYSILENT',
+          r'/DIR="C:\Program Files\flax"',
+        ]);
+
+        expect(
+          formatted,
+          equals(r'/VERYSILENT /DIR=`"C:\Program Files\flax`"'),
+        );
+      },
+    );
+
     test('escapePowerShellString escapes single quotes properly', () {
       expect(
         WindowsInstaller.escapePowerShellString(r"C:\Users\O'Connor\flax"),
@@ -481,35 +501,47 @@ void main() {
     });
 
     test(
-      'buildUpdateScript contains process wait, execution, relaunch, and cleanup',
+      'buildUpdateScript contains process wait, execution, relaunch with working directory, and logging',
       () {
         final script = WindowsInstaller.buildUpdateScript(
           currentPid: 12345,
           setupExePath: r'C:\Temp\flax_setup.exe',
-          installerArgs: ['/VERYSILENT', '/CURRENTUSER'],
+          installerArgs: [
+            '/VERYSILENT',
+            '/CURRENTUSER',
+            r'/DIR="C:\Program Files\flax"',
+          ],
           targetExePath:
               r'C:\Users\tester\AppData\Local\Programs\flax\flax.exe',
           scriptPath: r'C:\Temp\update_12345.ps1',
         );
 
+        // Verifies logging is initialized
+        expect(script, contains(r'$logPath = "$env:TEMP\flax_updater.log"'));
+        expect(script, contains('Log "Updater script started for PID 12345."'));
+
         // Verifies it waits for the current process to exit
         expect(script, contains(r'$proc = Get-Process -Id 12345'));
         expect(script, contains(r'$proc.WaitForExit(10000)'));
 
-        // Verifies it launches Inno Setup silently
+        // Verifies it launches Inno Setup with preserved backtick-escaped quotes
         expect(
           script,
           contains(r"Start-Process -FilePath 'C:\Temp\flax_setup.exe'"),
         );
-        expect(script, contains(r"-ArgumentList '/VERYSILENT /CURRENTUSER'"));
-        expect(script, contains(r'-Wait -PassThru'));
-
-        // Verifies it checks if running and relaunches Flax
-        expect(script, contains(r"Get-Process -Name 'flax'"));
         expect(
           script,
           contains(
-            r"Start-Process -FilePath 'C:\Users\tester\AppData\Local\Programs\flax\flax.exe'",
+            r"""-ArgumentList '/VERYSILENT /CURRENTUSER /DIR=`"C:\Program Files\flax`"'""",
+          ),
+        );
+        expect(script, contains(r'-Wait -PassThru'));
+
+        // Verifies relaunch with WorkingDirectory set
+        expect(
+          script,
+          contains(
+            r'''Start-Process -FilePath 'C:\Users\tester\AppData\Local\Programs\flax\flax.exe' -WorkingDirectory "$targetDir"''',
           ),
         );
 
@@ -521,6 +553,24 @@ void main() {
         );
       },
     );
+
+    test('buildUpdateScript adds RunAs verb when elevated is true', () {
+      final script = WindowsInstaller.buildUpdateScript(
+        currentPid: 12345,
+        setupExePath: r'C:\Temp\flax_setup.exe',
+        installerArgs: ['/VERYSILENT', '/ALLUSERS'],
+        targetExePath: r'C:\Program Files\flax\flax.exe',
+        scriptPath: r'C:\Temp\update_12345.ps1',
+        isElevated: true,
+      );
+
+      expect(
+        script,
+        contains(
+          r"-ArgumentList '/VERYSILENT /ALLUSERS' -Verb RunAs -Wait -PassThru",
+        ),
+      );
+    });
 
     test(
       'canWriteWithoutElevation checks write permissions on directory',

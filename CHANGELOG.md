@@ -40,6 +40,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- Windows self-updater in-place file replacement and automatic restart.
 - Platform-tailored offline handling prevents false offlining on desktop laptops after sleep/resume.
 - Player startup hang when restoring queue in offline mode without network connectivity.
 - Android Auto startup spin, missing Coolwalk card, and rail icon in release builds.

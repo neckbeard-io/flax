@@ -8,6 +8,18 @@
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
+  // Ensure the current working directory is the executable's directory so that
+  // relative asset paths (like L"data") and bundled DLLs resolve correctly
+  // regardless of how the process was launched (e.g. updater scripts or shortcuts).
+  wchar_t exe_path_buf[MAX_PATH];
+  if (::GetModuleFileNameW(nullptr, exe_path_buf, MAX_PATH) > 0) {
+    wchar_t *last_slash = wcsrchr(exe_path_buf, L'\\');
+    if (last_slash != nullptr) {
+      *last_slash = L'\0';
+      ::SetCurrentDirectoryW(exe_path_buf);
+    }
+  }
+
   // Set explicit AppUserModelID before any window is created or UI displayed.
   // This ensures the Windows Taskbar correctly associates this running process
   // with pinned shortcuts across updates, relaunches, and secondary processes.

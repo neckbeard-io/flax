@@ -24,11 +24,26 @@ class WindowsInstaller {
     return str.replaceAll("'", "''");
   }
 
+  /// Formats installer arguments into a single PowerShell argument list string.
+  /// Double quotes around paths are escaped with backticks (`) so that
+  /// PowerShell's Start-Process preserves them when invoking Win32 CreateProcess.
+  static String formatPowerShellArgumentList(List<String> args) {
+    return args
+        .map((arg) {
+          if (arg.contains('"')) {
+            return arg.replaceAll('"', '`"');
+          }
+          return arg;
+        })
+        .join(' ');
+  }
+
   /// Builds the argument list for the Inno Setup installer executable.
   static List<String> buildInstallerArgs({
     required String installDir,
     bool silent = true,
     bool isUserWritable = true,
+    String? logFilePath,
   }) {
     return [
       if (silent) ...[
@@ -36,7 +51,10 @@ class WindowsInstaller {
         '/SP-',
         '/SUPPRESSMSGBOXES',
         '/NORESTART',
+        '/CLOSEAPPLICATIONS',
+        '/RESTARTAPPLICATIONS',
         if (isUserWritable) '/CURRENTUSER' else '/ALLUSERS',
+        if (logFilePath != null) '/LOG="$logFilePath"' else '/LOG',
       ],
       '/DIR="$installDir"',
     ];
@@ -50,35 +68,65 @@ class WindowsInstaller {
     required List<String> installerArgs,
     required String targetExePath,
     required String scriptPath,
+    bool isElevated = false,
   }) {
     final escapedSetup = escapePowerShellString(setupExePath);
-    final escapedArgs = escapePowerShellString(installerArgs.join(' '));
+    final formattedArgs = formatPowerShellArgumentList(installerArgs);
+    final escapedArgs = escapePowerShellString(formattedArgs);
     final escapedTarget = escapePowerShellString(targetExePath);
     final escapedScript = escapePowerShellString(scriptPath);
+    final verbParam = isElevated ? '-Verb RunAs ' : '';
 
     return '''
+\$logPath = "\$env:TEMP\\flax_updater.log"
+function Log(\$msg) {
+    \$ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    Add-Content -Path \$logPath -Value "[\$ts] \$msg" -ErrorAction SilentlyContinue
+}
+
+Log "Updater script started for PID $currentPid."
+
 # 1. Wait for current running Flax process to completely terminate
 \$proc = Get-Process -Id $currentPid -ErrorAction SilentlyContinue
 if (\$proc) {
+    Log "Waiting up to 10s for PID $currentPid to exit..."
     \$proc.WaitForExit(10000)
 }
 Start-Sleep -Milliseconds 500
 
 # 2. Run the Inno Setup installer silently
-\$setup = Start-Process -FilePath '$escapedSetup' -ArgumentList '$escapedArgs' -Wait -PassThru
-
-# 3. Relaunch Flax upon successful installation
-if (\$setup.ExitCode -eq 0 -or \$setup.ExitCode -eq \$null) {
-    Start-Sleep -Milliseconds 500
-    if (-not (Get-Process -Name 'flax' -ErrorAction SilentlyContinue)) {
-        Start-Process -FilePath '$escapedTarget'
-    }
+Log "Launching installer '\$escapedSetup' with args: '\$escapedArgs' (elevated: $isElevated)"
+try {
+    \$setup = Start-Process -FilePath '$escapedSetup' -ArgumentList '$escapedArgs' $verbParam-Wait -PassThru
+    Log "Installer exited with code: \$(\$setup.ExitCode)"
+} catch {
+    Log "Installer failed to start: \$_"
+    \$setup = \$null
 }
 
-# 4. Clean up downloaded installer and updater script
-Start-Sleep -Seconds 2
-Remove-Item -Path '$escapedSetup' -Force -ErrorAction SilentlyContinue
-Remove-Item -Path '$escapedScript' -Force -ErrorAction SilentlyContinue
+# 3. Relaunch Flax upon successful installation
+if (\$setup -and (\$setup.ExitCode -eq 0 -or \$setup.ExitCode -eq \$null)) {
+    Log "Installation successful. Relaunching Flax at '\$escapedTarget'..."
+    Start-Sleep -Milliseconds 500
+    \$targetDir = Split-Path -Parent '$escapedTarget'
+    try {
+        Start-Process -FilePath '$escapedTarget' -WorkingDirectory "\$targetDir"
+        Log "Flax relaunched successfully."
+    } catch {
+        Log "Failed to relaunch Flax: \$_"
+    }
+} else {
+    Log "Installation failed or non-zero exit code. Skipping relaunch."
+}
+
+# 4. Clean up downloaded installer and updater script if successful
+if (\$setup -and (\$setup.ExitCode -eq 0 -or \$setup.ExitCode -eq \$null)) {
+    Start-Sleep -Seconds 2
+    Remove-Item -Path '$escapedSetup' -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path '$escapedScript' -Force -ErrorAction SilentlyContinue
+} else {
+    Log "Retaining installer and script for inspection."
+}
 ''';
   }
 
@@ -129,6 +177,7 @@ Remove-Item -Path '$escapedScript' -Force -ErrorAction SilentlyContinue
         installerArgs: innoArgs,
         targetExePath: targetExe,
         scriptPath: scriptFile.path,
+        isElevated: !userWritable,
       );
       await scriptFile.writeAsString(scriptContent);
 
