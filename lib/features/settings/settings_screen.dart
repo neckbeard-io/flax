@@ -391,6 +391,7 @@ class _AboutTile extends ConsumerWidget {
     final updateState = ref.watch(updateNotifierProvider);
     final updateNotifier = ref.read(updateNotifierProvider.notifier);
     final showWhatsNew = ref.watch(showWhatsNewPreferenceProvider);
+    final isCompact = MediaQuery.sizeOf(context).width < 500;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -497,14 +498,35 @@ class _AboutTile extends ConsumerWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : updateState.isUpdateAvailable
-              ? FilledButton(
-                  onPressed: () {
-                    showDialog<void>(
-                      context: context,
-                      builder: (_) => const UpdateDialog(),
-                    );
-                  },
-                  child: const Text('Update'),
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isCompact)
+                      IconButton.outlined(
+                        tooltip: 'Check for updates',
+                        onPressed: () {
+                          updateNotifier.checkForUpdates();
+                        },
+                        icon: const Icon(Icons.refresh),
+                      )
+                    else
+                      OutlinedButton(
+                        onPressed: () {
+                          updateNotifier.checkForUpdates();
+                        },
+                        child: const Text('Check Now'),
+                      ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () {
+                        showDialog<void>(
+                          context: context,
+                          builder: (_) => const UpdateDialog(),
+                        );
+                      },
+                      child: const Text('Update'),
+                    ),
+                  ],
                 )
               : OutlinedButton(
                   onPressed: () {

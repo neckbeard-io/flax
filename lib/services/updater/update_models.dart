@@ -201,6 +201,7 @@ class UpdateState {
     int? downloadedBytes,
     int? totalBytes,
     String? localFilePath,
+    bool clearLocalFilePath = false,
     String? errorMessage,
     DateTime? lastCheckedAt,
   }) {
@@ -214,7 +215,9 @@ class UpdateState {
       downloadProgress: downloadProgress ?? this.downloadProgress,
       downloadedBytes: downloadedBytes ?? this.downloadedBytes,
       totalBytes: totalBytes ?? this.totalBytes,
-      localFilePath: localFilePath ?? this.localFilePath,
+      localFilePath: clearLocalFilePath
+          ? null
+          : (localFilePath ?? this.localFilePath),
       errorMessage: errorMessage ?? this.errorMessage,
       lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
     );

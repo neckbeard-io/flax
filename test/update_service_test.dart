@@ -588,4 +588,36 @@ void main() {
       },
     );
   });
+
+  group('UpdateState copyWith', () {
+    test('clears localFilePath when clearLocalFilePath is true', () {
+      const state = UpdateState(
+        stage: UpdateStage.readyToInstall,
+        localFilePath: '/tmp/old_flax.exe',
+        downloadProgress: 1.0,
+      );
+
+      final updated = state.copyWith(
+        stage: UpdateStage.available,
+        clearLocalFilePath: true,
+        downloadProgress: 0.0,
+      );
+
+      expect(updated.localFilePath, isNull);
+      expect(updated.downloadProgress, 0.0);
+      expect(updated.stage, UpdateStage.available);
+    });
+
+    test('preserves localFilePath when clearLocalFilePath is false', () {
+      const state = UpdateState(
+        stage: UpdateStage.readyToInstall,
+        localFilePath: '/tmp/old_flax.exe',
+      );
+
+      final updated = state.copyWith(stage: UpdateStage.installing);
+
+      expect(updated.localFilePath, '/tmp/old_flax.exe');
+      expect(updated.stage, UpdateStage.installing);
+    });
+  });
 }

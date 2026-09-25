@@ -103,6 +103,9 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
           return;
         }
 
+        final isNewVersion =
+            state.latestRelease != null &&
+            state.latestRelease!.version != latest.version;
         final asset = _service.findMatchingAsset(latest, state.installMethod);
 
         state = state.copyWith(
@@ -110,6 +113,9 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
           latestRelease: latest,
           matchingAsset: asset,
           lastCheckedAt: now,
+          clearLocalFilePath: isNewVersion,
+          downloadProgress: isNewVersion ? 0.0 : state.downloadProgress,
+          downloadedBytes: isNewVersion ? 0 : state.downloadedBytes,
         );
       } else {
         state = state.copyWith(

@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Check for updates tile retains a recheck button when an update is available.
 - Orphaned cache cleanup tool and server reset option in Metadata & Storage settings.
 - Automatic detection and startup warning banner for Navidrome 0.64.0 item ID migrations.
 - Option to isolate playback queue locally, preventing server queues from overwriting device state.
