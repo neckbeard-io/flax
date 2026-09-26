@@ -42,6 +42,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Fixed
+- Blank grey screen lockout after Android Auto sessions caused by background route persistence.
 - Album orderings now refresh on server scans, volatile TTL expiry, and tab re-taps.
 - Windows self-updater in-place file replacement and automatic restart.
 - Platform-tailored offline handling prevents false offlining on desktop laptops after sleep/resume.

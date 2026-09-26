@@ -117,4 +117,53 @@ void main() {
       '/add-server',
     );
   });
+
+  test('saved route of / falls back to /albums to prevent blank screen', () {
+    expect(initialLocationFor(hasServer: true, savedRoute: '/'), '/albums');
+  });
+
+  test('saved route of unknown path falls back to /albums', () {
+    expect(
+      initialLocationFor(hasServer: true, savedRoute: '/nonexistent/path'),
+      '/albums',
+    );
+    expect(
+      initialLocationFor(hasServer: true, savedRoute: 'garbage-route'),
+      '/albums',
+    );
+  });
+
+  group('isValidRoute', () {
+    test('rejects empty, slash, and setup routes', () {
+      expect(isValidRoute(''), isFalse);
+      expect(isValidRoute('/'), isFalse);
+      expect(isValidRoute('//'), isFalse);
+    });
+
+    test('accepts valid top-level and sub-routes', () {
+      expect(isValidRoute('/albums'), isTrue);
+      expect(isValidRoute('/albums/alb-123'), isTrue);
+      expect(isValidRoute('/artists'), isTrue);
+      expect(isValidRoute('/artists/art-456'), isTrue);
+      expect(isValidRoute('/now-playing'), isTrue);
+      expect(isValidRoute('/downloads'), isTrue);
+      expect(isValidRoute('/search'), isTrue);
+      expect(isValidRoute('/search?q=miles'), isTrue);
+      expect(isValidRoute('/settings'), isTrue);
+      expect(isValidRoute('/settings/audio'), isTrue);
+      expect(isValidRoute('/settings/equalizer'), isTrue);
+      expect(isValidRoute('/settings/equalizer/autoeq'), isTrue);
+      expect(isValidRoute('/settings/transcoding'), isTrue);
+      expect(isValidRoute('/settings/metadata-cache'), isTrue);
+      expect(isValidRoute('/settings/server-connection?id=srv-1'), isTrue);
+      expect(isValidRoute('/settings/hotkeys'), isTrue);
+    });
+
+    test('rejects incomplete parameterized routes and unknown routes', () {
+      expect(isValidRoute('/artists/'), isFalse);
+      expect(isValidRoute('/albums/'), isFalse);
+      expect(isValidRoute('/unknown'), isFalse);
+      expect(isValidRoute('/settings/unknown'), isFalse);
+    });
+  });
 }

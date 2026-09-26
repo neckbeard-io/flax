@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/features/auth/add_server_screen.dart';
 import 'package:flax/features/library/albums_screen.dart';
@@ -38,6 +39,47 @@ const lastRouteStorageKey = 'flax_last_route';
 /// Provider holding the last persisted route read at startup.
 final savedRouteProvider = StateProvider<String?>((ref) => null);
 
+/// Validates whether a location string corresponds to a known valid route in the app.
+///
+/// Prevents blank screens and navigation traps caused by invalid or empty routes (e.g. '/'),
+/// which can be delivered by background services or stale preferences.
+bool isValidRoute(String location) {
+  if (location.isEmpty || location == '/') return false;
+  final uri = Uri.tryParse(location);
+  if (uri == null) return false;
+  final path = uri.path;
+
+  const validExactRoutes = {
+    '/add-server',
+    '/now-playing',
+    '/artists',
+    '/albums',
+    '/songs',
+    '/downloads',
+    '/search',
+    '/settings',
+    '/settings/audio',
+    '/settings/equalizer',
+    '/settings/equalizer/autoeq',
+    '/settings/autoeq',
+    '/settings/transcoding',
+    '/settings/metadata-cache',
+    '/settings/server-connection',
+    '/settings/hotkeys',
+  };
+
+  if (validExactRoutes.contains(path)) return true;
+
+  if (path.startsWith('/artists/') && path.length > '/artists/'.length) {
+    return true;
+  }
+  if (path.startsWith('/albums/') && path.length > '/albums/'.length) {
+    return true;
+  }
+
+  return false;
+}
+
 /// Where the app opens.
 ///
 /// Pulled out as a plain function so the rule can be tested without standing up
@@ -56,20 +98,24 @@ String initialLocationFor({
 }) {
   if (!hasServer) return '/add-server';
   final wantsSetup = debugRoute.startsWith('/add-server');
-  if (allowDebugRoute && debugRoute.isNotEmpty && !wantsSetup) {
+  if (allowDebugRoute &&
+      debugRoute.isNotEmpty &&
+      !wantsSetup &&
+      isValidRoute(debugRoute)) {
     return debugRoute;
   }
   if (savedRoute != null &&
       savedRoute.isNotEmpty &&
+      isValidRoute(savedRoute) &&
       !savedRoute.startsWith('/add-server')) {
     return savedRoute;
   }
-  // Albums is the default fallback if no route was saved.
+  // Albums is the default fallback if no route was saved or if savedRoute is invalid.
   return '/albums';
 }
 
 void _persistRoute(String location) {
-  if (location.isEmpty || location.startsWith('/add-server')) return;
+  if (!isValidRoute(location) || location.startsWith('/add-server')) return;
   SharedPreferences.getInstance()
       .then((prefs) {
         prefs.setString(lastRouteStorageKey, location);
@@ -95,14 +141,29 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: start,
+    errorBuilder: (context, state) {
+      AppLogger.w(
+        'Router',
+        'Unmatched route "${state.uri}", falling back to /albums',
+      );
+      return const ShellScaffold(child: AlbumsScreen());
+    },
     redirect: (context, state) {
+      if (!hasServer) {
+        return '/add-server';
+      }
       final location = state.uri.toString();
-      if (location.isNotEmpty && !location.startsWith('/add-server')) {
+      final path = state.uri.path;
+      if (path == '/' || path.isEmpty || !isValidRoute(location)) {
+        return '/albums';
+      }
+      if (!location.startsWith('/add-server')) {
         _persistRoute(location);
       }
       return null;
     },
     routes: [
+      GoRoute(path: '/', redirect: (context, state) => '/albums'),
       GoRoute(
         path: '/add-server',
         builder: (context, state) => const AddServerScreen(),

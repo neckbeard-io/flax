@@ -107,6 +107,10 @@ Future<void> main() async {
   try {
     final prefs = await SharedPreferences.getInstance();
     savedRoute = prefs.getString(lastRouteStorageKey);
+    if (savedRoute != null && !isValidRoute(savedRoute)) {
+      savedRoute = null;
+      unawaited(prefs.remove(lastRouteStorageKey));
+    }
     initialServers = ServerListNotifier.loadServersFromPrefs(prefs);
     initialLocale = LocaleNotifier.loadLocaleFromPrefs(prefs);
     initialOfflineManual = OfflineManualNotifier.loadFromPrefs(prefs);

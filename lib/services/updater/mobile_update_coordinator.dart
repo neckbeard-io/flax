@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/router.dart';
 import '../../features/updater/update_dialog.dart';
 import '../../shared/widgets/layout_metrics.dart';
 import 'update_provider.dart';
@@ -56,9 +57,10 @@ class MobileUpdateCoordinator {
 
     isShowingDialog = true;
     try {
-      if (context.mounted) {
+      final dialogContext = rootNavigatorKey.currentContext ?? context;
+      if (dialogContext.mounted) {
         await showDialog<void>(
-          context: context,
+          context: dialogContext,
           builder: (_) => const UpdateDialog(),
         );
       }

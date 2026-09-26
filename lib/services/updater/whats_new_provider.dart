@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/router.dart';
 import '../../features/updater/whats_new_dialog.dart';
 
 final showWhatsNewPreferenceProvider =
@@ -52,9 +53,10 @@ class WhatsNewCoordinator {
     // If this is an upgrade to a newer version
     if (lastSeen != null && lastSeen != currentVersion) {
       await prefs.setString(_prefLastSeenVersionKey, currentVersion);
-      if (context.mounted) {
+      final dialogContext = rootNavigatorKey.currentContext ?? context;
+      if (dialogContext.mounted) {
         await showDialog<void>(
-          context: context,
+          context: dialogContext,
           builder: (ctx) => WhatsNewDialog(version: currentVersion),
         );
       }
