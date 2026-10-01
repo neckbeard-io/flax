@@ -422,7 +422,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
             state: DownloadState.complete,
           );
     } else if (resolved == null &&
-        song.downloadState == DownloadState.complete) {
+        song.downloadState == DownloadState.complete &&
+        AudioCacheService.canTrustMissingFiles) {
       _ref
           .read(libraryDaoProvider)
           .updateSongDownload(

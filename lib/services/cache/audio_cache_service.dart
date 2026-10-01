@@ -212,6 +212,14 @@ class AudioCacheService {
   @visibleForTesting
   static set cachedBasePath(String? path) => _cachedBasePath = path;
 
+  /// Whether a download that cannot be found really is gone.
+  ///
+  /// False until the cache location has been resolved. Startup no longer waits
+  /// on that indefinitely (see bootstrap), and until it resolves every lookup
+  /// comes back empty — resetting downloads on that evidence would wipe the
+  /// offline library because the app started before its storage answered.
+  static bool get canTrustMissingFiles => _cachedBasePath != null;
+
   /// Initializes the local audio cache base directory path.
   static Future<void> initialize({
     void Function(String missingPath)? onMissingVolume,
@@ -284,6 +292,13 @@ class AudioCacheService {
   /// Prunes ghost downloads whose audio files are missing, repairs paths
   /// to existing cached files, and discovers completed files on disk.
   Future<void> reconcileLocalDownloads() async {
+    if (!canTrustMissingFiles) {
+      AppLogger.w(
+        'AudioCache',
+        'Skipping download reconciliation: cache location not available',
+      );
+      return;
+    }
     try {
       final dao = _ref.read(libraryDaoProvider);
       final servers = _ref.read(serverListProvider);

@@ -1,0 +1,176 @@
+import 'dart:async';
+
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:flax/app/router.dart';
+import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/providers/locale_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
+import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/domain/models/server.dart';
+import 'package:flax/services/cache/audio_cache_service.dart';
+
+/// How long any one startup step may hold up the first frame.
+///
+/// Healthy, these steps take milliseconds. The bound exists for the step that
+/// never answers at all, which used to leave the app on its splash screen until
+/// it was killed: on Android, main() runs in an engine FlaxApplication starts on
+/// every process start — Android Auto, a media button and background sync
+/// included — so a call that needs an Activity, made before there is one, never
+/// gets a reply. A slow launch beats one that never finishes.
+const kStartupStepTimeout = Duration(seconds: 4);
+
+/// Runs one step of startup, logs how long it took, and stops waiting for it
+/// after [timeout].
+///
+/// The step itself is not cancelled — Dart cannot cancel a future — so it may
+/// still finish later; only the first frame stops waiting for it. Errors are
+/// logged rather than thrown, because no single step is worth not starting for.
+Future<void> startupStep(
+  String name,
+  Future<void> Function() body, {
+  Duration timeout = kStartupStepTimeout,
+}) async {
+  final watch = Stopwatch()..start();
+  try {
+    await body().timeout(timeout);
+    AppLogger.i('Startup', '$name ready in ${watch.elapsedMilliseconds}ms');
+  } on TimeoutException {
+    AppLogger.w(
+      'Startup',
+      '$name did not answer within ${timeout.inMilliseconds}ms; '
+          'starting without it',
+    );
+  } catch (e, st) {
+    AppLogger.w('Startup', '$name failed', error: e, stackTrace: st);
+  }
+}
+
+/// Everything that has to be read before the first frame, and nothing else.
+///
+/// Every await goes through [startupStep], so none of them can keep the app from
+/// starting. Do not add anything that waits on an Activity (SystemChrome and the
+/// rest of the `flutter/platform` channel): Android drops those calls unanswered
+/// when the process was started without one. Phone orientation is locked
+/// natively in MainActivity for exactly that reason.
+Future<StartupState> bootstrap({
+  Future<void> Function() initAudioCache = AudioCacheService.initialize,
+  Future<SharedPreferences> Function() loadPrefs =
+      SharedPreferences.getInstance,
+  Duration timeout = kStartupStepTimeout,
+}) async {
+  SharedPreferences? prefs;
+  await Future.wait([
+    startupStep('audio cache location', initAudioCache, timeout: timeout),
+    startupStep('preferences', () async {
+      prefs = await loadPrefs();
+    }, timeout: timeout),
+  ]);
+
+  final loaded = prefs;
+  if (loaded == null) return const StartupState();
+  try {
+    return StartupState.fromPrefs(loaded);
+  } catch (e, st) {
+    AppLogger.w(
+      'Startup',
+      'Could not read saved state; using defaults',
+      error: e,
+      stackTrace: st,
+    );
+    return const StartupState();
+  }
+}
+
+/// The saved state the first frame is built from.
+class StartupState {
+  const StartupState({
+    this.prefsLoaded = false,
+    this.savedRoute,
+    this.servers = const [],
+    this.locale,
+    this.offlineManual = false,
+    this.offlineOnCellular = false,
+    this.offlineOnAndroidAuto = false,
+    this.lastCellular = false,
+    this.lastOffline = false,
+    this.lastReachable,
+  });
+
+  factory StartupState.fromPrefs(SharedPreferences prefs) {
+    var savedRoute = prefs.getString(lastRouteStorageKey);
+    if (savedRoute != null && !isValidRoute(savedRoute)) {
+      savedRoute = null;
+      unawaited(prefs.remove(lastRouteStorageKey));
+    }
+    return StartupState(
+      prefsLoaded: true,
+      savedRoute: savedRoute,
+      servers: ServerListNotifier.loadServersFromPrefs(prefs),
+      locale: LocaleNotifier.loadLocaleFromPrefs(prefs),
+      offlineManual: OfflineManualNotifier.loadFromPrefs(prefs),
+      offlineOnCellular: OfflineOnCellularNotifier.loadFromPrefs(prefs),
+      offlineOnAndroidAuto: OfflineOnAndroidAutoNotifier.loadFromPrefs(prefs),
+      lastCellular: prefs.getBool(kLastIsCellularPrefKey) ?? false,
+      lastOffline: prefs.getBool(kLastIsOfflinePrefKey) ?? false,
+      lastReachable: prefs.getBool(kLastServerReachablePrefKey),
+    );
+  }
+
+  /// False when preferences could not be read in time.
+  final bool prefsLoaded;
+  final String? savedRoute;
+  final List<Server> servers;
+  final Locale? locale;
+  final bool offlineManual;
+  final bool offlineOnCellular;
+  final bool offlineOnAndroidAuto;
+  final bool lastCellular;
+  final bool lastOffline;
+  final bool? lastReachable;
+
+  /// Provider overrides that hand this state to the first frame.
+  ///
+  /// Empty when preferences were not read. Each notifier then loads its own
+  /// value once preferences answer, rather than being pinned to a default — an
+  /// empty server list pinned here would open server setup as though the saved
+  /// server had been forgotten.
+  List<Override> get overrides {
+    if (!prefsLoaded) return const [];
+    return [
+      if (savedRoute != null)
+        savedRouteProvider.overrideWith((ref) => savedRoute),
+      if (servers.isNotEmpty)
+        serverListProvider.overrideWith(
+          (ref) => ServerListNotifier(initialServers: servers),
+        ),
+      if (locale != null)
+        localeProvider.overrideWith((ref) => LocaleNotifier(locale)),
+      offlineManualOverrideProvider.overrideWith(
+        (ref) => OfflineManualNotifier(initialValue: offlineManual),
+      ),
+      offlineOnCellularSettingProvider.overrideWith(
+        (ref) => OfflineOnCellularNotifier(initialValue: offlineOnCellular),
+      ),
+      offlineOnAndroidAutoSettingProvider.overrideWith(
+        (ref) =>
+            OfflineOnAndroidAutoNotifier(initialValue: offlineOnAndroidAuto),
+      ),
+      lastKnownCellularProvider.overrideWith((ref) => lastCellular),
+      lastKnownOfflineProvider.overrideWith((ref) => lastOffline),
+      if (lastReachable != null &&
+          PlatformOfflinePolicy.current().persistReachabilityState)
+        serverReachabilityProvider.overrideWith(
+          (ref) => ServerReachabilityNotifier(
+            ref,
+            initialReachability: ServerReachability(
+              isReachable: lastReachable!,
+            ),
+          ),
+        ),
+    ];
+  }
+}

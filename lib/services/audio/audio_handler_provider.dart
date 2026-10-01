@@ -44,6 +44,7 @@ class AudioServiceInitializer {
           },
         ),
       );
+      AppLogger.i('AudioService', 'AudioService ready');
       return handler;
     } catch (e, st) {
       AppLogger.e(
