@@ -32,6 +32,9 @@ final connectivityStreamProvider = StreamProvider<List<ConnectivityResult>>((
 });
 
 /// Current connectivity state based on the primary network adapter.
+///
+/// Resolves once and keeps that answer. For a decision made now, use
+/// [readCurrentConnectivity] rather than awaiting this provider's future.
 final connectivityProvider = FutureProvider<List<ConnectivityResult>>((
   ref,
 ) async {
@@ -39,3 +42,13 @@ final connectivityProvider = FutureProvider<List<ConnectivityResult>>((
   final status = await service.getNetworkStatus();
   return status.toConnectivityList();
 });
+
+/// The connectivity as it is right now, for one-off decisions.
+///
+/// Awaiting [connectivityProvider]'s future returned whatever the network was
+/// when the app launched, for the whole session: start on cellular in the car
+/// and get home, and the local server address was never picked; start at home
+/// and drive away, and every request kept going to the LAN. Refreshing asks the
+/// platform again each time.
+Future<List<ConnectivityResult>> readCurrentConnectivity(Ref ref) =>
+    ref.refresh(connectivityProvider.future);

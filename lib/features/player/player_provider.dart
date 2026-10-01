@@ -380,7 +380,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<List<ConnectivityResult>> _getConnectivity() async {
     try {
-      return await _ref.read(connectivityProvider.future);
+      return await readCurrentConnectivity(_ref);
     } catch (_) {
       return [ConnectivityResult.wifi];
     }
