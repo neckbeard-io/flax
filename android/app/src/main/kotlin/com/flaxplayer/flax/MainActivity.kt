@@ -40,22 +40,6 @@ class MainActivity : AudioServiceActivity(), FlaxEngineHelper.PermissionHandler 
         applyOrientationPolicy(resources.configuration)
         super.onCreate(savedInstanceState)
         FlaxEngineHelper.permissionHandler = this
-
-        if (flutterEngine?.renderer?.isDisplayingFlutterUi == true) {
-            setTheme(R.style.NormalTheme)
-            window.setBackgroundDrawableResource(android.R.color.transparent)
-            FlaxEngineHelper.requestWarmUpFrame()
-        }
-
-        // Fallback: If onFlutterUiDisplayed has not fired within 500ms (e.g. cached engine attaching),
-        // ensure theme switches so user is not stuck on splash screen.
-        window.decorView.postDelayed({
-            if (!isFinishing && !isDestroyed) {
-                setTheme(R.style.NormalTheme)
-                window.setBackgroundDrawableResource(android.R.color.transparent)
-                FlaxEngineHelper.requestWarmUpFrame()
-            }
-        }, 500)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -101,18 +85,6 @@ class MainActivity : AudioServiceActivity(), FlaxEngineHelper.PermissionHandler 
     override fun onResume() {
         super.onResume()
         FlaxMediaSessionHelper.activateMediaSession(applicationContext)
-        FlaxEngineHelper.requestWarmUpFrame()
-
-        // If the Flutter UI is already displayed, ensure the launch theme is dismissed immediately
-        if (flutterEngine?.renderer?.isDisplayingFlutterUi == true) {
-            onFlutterUiDisplayed()
-        }
-    }
-
-    override fun onFlutterUiDisplayed() {
-        super.onFlutterUiDisplayed()
-        setTheme(R.style.NormalTheme)
-        window.setBackgroundDrawableResource(android.R.color.transparent)
     }
 
     override fun onNewIntent(intent: Intent) {

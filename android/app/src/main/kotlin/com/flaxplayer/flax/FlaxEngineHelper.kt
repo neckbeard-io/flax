@@ -66,17 +66,6 @@ object FlaxEngineHelper {
         fun requestLocationPermission()
     }
 
-    fun requestWarmUpFrame() {
-        mainHandler.post {
-            configuredEngine?.let { engine ->
-                try {
-                    MethodChannel(engine.dartExecutor.binaryMessenger, CAR_CHANNEL)
-                        .invokeMethod("requestWarmUpFrame", null)
-                } catch (_: Exception) {}
-            }
-        }
-    }
-
     fun configure(flutterEngine: FlutterEngine, context: Context) {
         if (configuredEngine == flutterEngine) {
             return
