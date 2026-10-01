@@ -45,6 +45,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Endless splash screen after Android Auto, a media button, or background sync started flax.
 - Android Auto no longer loses car and network detection after flax is closed.
 - Local server address and streaming quality now follow network changes after launch.
+- Downloads no longer reset when the SD card, USB drive, or network share is missing.
+- Startup no longer stalls when the audio cache folder is on an unreachable network share.
 - Blank grey screen lockout after Android Auto sessions caused by background route persistence.
 - Album orderings now refresh on server scans, volatile TTL expiry, and tab re-taps.
 - Windows self-updater in-place file replacement and automatic restart.

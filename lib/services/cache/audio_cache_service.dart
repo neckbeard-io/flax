@@ -208,25 +208,40 @@ class AudioCacheService {
 
   static String? _cachedBasePath;
 
+  /// The configured cache location, when it was missing at resolution and the
+  /// cache fell back to internal storage.
+  static String? _missingVolumePath;
+
   /// Visible for testing to clear or override the cached base path.
   @visibleForTesting
-  static set cachedBasePath(String? path) => _cachedBasePath = path;
+  static set cachedBasePath(String? path) {
+    _cachedBasePath = path;
+    _missingVolumePath = null;
+  }
 
   /// Whether a download that cannot be found really is gone.
   ///
-  /// False until the cache location has been resolved. Startup no longer waits
-  /// on that indefinitely (see bootstrap), and until it resolves every lookup
-  /// comes back empty — resetting downloads on that evidence would wipe the
-  /// offline library because the app started before its storage answered.
-  static bool get canTrustMissingFiles => _cachedBasePath != null;
+  /// False until the cache location has been resolved — startup no longer
+  /// waits on that indefinitely (see bootstrap) — and false while the
+  /// configured location (an SD card, USB drive or network share) is missing.
+  /// Either way lookups come back empty because the files are somewhere the app
+  /// cannot see right now, and resetting downloads on that evidence wiped the
+  /// offline library whenever a card was briefly unmounted.
+  static bool get canTrustMissingFiles =>
+      _cachedBasePath != null && _missingVolumePath == null;
 
   /// Initializes the local audio cache base directory path.
   static Future<void> initialize({
     void Function(String missingPath)? onMissingVolume,
   }) async {
+    String? missing;
     _cachedBasePath = await StorageManager.resolveActiveCacheBasePath(
-      onMissingVolume: onMissingVolume,
+      onMissingVolume: (path) {
+        missing = path;
+        onMissingVolume?.call(path);
+      },
     );
+    _missingVolumePath = missing;
     final dir = Directory(_cachedBasePath!);
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
@@ -293,9 +308,18 @@ class AudioCacheService {
   /// to existing cached files, and discovers completed files on disk.
   Future<void> reconcileLocalDownloads() async {
     if (!canTrustMissingFiles) {
+      // Reconciliation runs once, right after launch, which also makes it the
+      // place a location found missing during startup gets reported — the
+      // static initialize() that found it has no way to raise the warning.
+      final missing = _missingVolumePath;
+      if (missing != null) {
+        _ref.read(missingStorageWarningProvider.notifier).state = missing;
+      }
       AppLogger.w(
         'AudioCache',
-        'Skipping download reconciliation: cache location not available',
+        missing != null
+            ? 'Skipping download reconciliation: storage at $missing is missing'
+            : 'Skipping download reconciliation: cache location not resolved',
       );
       return;
     }
@@ -417,11 +441,14 @@ class AudioCacheService {
       }
       return dir;
     }
+    String? missing;
     _cachedBasePath = await StorageManager.resolveActiveCacheBasePath(
       onMissingVolume: (path) {
+        missing = path;
         _ref.read(missingStorageWarningProvider.notifier).state = path;
       },
     );
+    _missingVolumePath = missing;
     final dir = Directory(_cachedBasePath!);
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
@@ -1763,6 +1790,7 @@ class AudioCacheService {
     }
 
     _cachedBasePath = newBasePath;
+    _missingVolumePath = null;
     await _ref
         .read(audioCacheConfigProvider.notifier)
         .setStorageLocation(targetVolume.id, newBasePath);

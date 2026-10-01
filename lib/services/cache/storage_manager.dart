@@ -2,6 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -246,19 +247,30 @@ class StorageManager {
   }
 
   /// Determines the active base path for the audio cache.
+  /// How long a configured cache location gets to answer before it is treated
+  /// as missing.
+  ///
+  /// A network share that has dropped off can hold a filesystem call for a
+  /// long time — indefinitely on a hard NFS mount. This check used to be a
+  /// synchronous existsSync(), which held the UI isolate before the first frame
+  /// for as long as the share took. Asynchronous calls run on the I/O pool, so
+  /// the wait can be abandoned even when the call itself cannot.
+  static const volumeCheckTimeout = Duration(seconds: 3);
+
   static Future<String> resolveActiveCacheBasePath({
     void Function(String missingPath)? onMissingVolume,
+    @visibleForTesting Future<bool> Function(Directory dir)? isUsable,
+    @visibleForTesting Duration timeout = volumeCheckTimeout,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final customPath = prefs.getString(prefStoragePathKey);
       if (customPath != null && customPath.isNotEmpty) {
-        final dir = Directory(customPath);
-        if (dir.existsSync() || (await _canCreateDir(dir))) {
-          return customPath;
-        } else {
-          onMissingVolume?.call(customPath);
-        }
+        final available = await (isUsable ?? _isUsable)(
+          Directory(customPath),
+        ).timeout(timeout, onTimeout: () => false);
+        if (available) return customPath;
+        onMissingVolume?.call(customPath);
       }
     } catch (_) {}
 
@@ -266,6 +278,9 @@ class StorageManager {
     final appDir = await getApplicationSupportDirectory();
     return p.join(appDir.path, 'audio_cache');
   }
+
+  static Future<bool> _isUsable(Directory dir) async =>
+      await dir.exists() || await _canCreateDir(dir);
 
   static Future<bool> _canCreateDir(Directory dir) async {
     try {
