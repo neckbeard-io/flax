@@ -222,6 +222,56 @@ void main() {
     });
 
     test(
+      'sees the network change after launch, not the one it started on',
+      () async {
+        // connectivityProvider resolves once; reading its future kept answering
+        // with the launch network for the whole session.
+        var network = [ConnectivityResult.mobile];
+        final server = Server(
+          id: 'srv-3',
+          name: 'Home Server',
+          url: 'https://music.remote.com',
+          username: 'user',
+          tokenHash: 'token',
+          salt: 'salt',
+          isActive: true,
+          localNetworkConfig: const LocalNetworkConfig(
+            enabled: true,
+            targetSsids: ['Home_Mesh'],
+            localHost: '192.168.1.100',
+          ),
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            connectivityProvider.overrideWith((ref) async => network),
+            networkInfoProvider.overrideWithValue(
+              MockNetworkInfo(wifiName: 'CoffeeShop_WiFi'),
+            ),
+            serverListProvider.overrideWith(
+              (ref) => ServerListNotifier(initialServers: [server]),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final resolver = container.read(networkTargetResolverProvider.notifier);
+        await resolver.evaluate(force: true);
+        expect(
+          container.read(networkTargetResolverProvider).currentSsid,
+          isNull,
+        );
+
+        network = [ConnectivityResult.wifi];
+        await resolver.evaluate(force: true);
+        expect(
+          container.read(networkTargetResolverProvider).currentSsid,
+          'CoffeeShop_WiFi',
+        );
+      },
+    );
+
+    test(
       'attempts local target probe instead of rejecting when SSID is null/unknown on Wi-Fi',
       () async {
         final server = Server(

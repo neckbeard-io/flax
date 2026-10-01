@@ -89,7 +89,7 @@ class MetadataSyncService {
   /// Checks if the device is connected to a cellular/mobile network without Wi-Fi or Ethernet.
   Future<bool> isCellularConnection() async {
     try {
-      final results = await _ref.read(connectivityProvider.future);
+      final results = await readCurrentConnectivity(_ref);
       return results.contains(ConnectivityResult.mobile) &&
           !results.contains(ConnectivityResult.wifi) &&
           !results.contains(ConnectivityResult.ethernet);

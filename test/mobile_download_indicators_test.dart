@@ -403,14 +403,20 @@ void main() {
             container: container,
             child: MaterialApp(
               builder: (context, child) => AppChrome(child: child!),
+              // Centered: on Windows and Linux AppChrome lays a window-drag
+              // strip across the top left, and a button sitting there never
+              // receives the tap — which is how this passed on macOS and
+              // failed in CI.
               home: Scaffold(
-                body: Builder(
-                  builder: (context) => ElevatedButton(
-                    onPressed: () => showCachingSnackBar(
-                      context,
-                      message: 'Caching album in progress...',
+                body: Center(
+                  child: Builder(
+                    builder: (context) => ElevatedButton(
+                      onPressed: () => showCachingSnackBar(
+                        context,
+                        message: 'Caching album in progress...',
+                      ),
+                      child: const Text('Trigger Caching'),
                     ),
-                    child: const Text('Trigger Caching'),
                   ),
                 ),
               ),

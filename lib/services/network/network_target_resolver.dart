@@ -181,7 +181,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
     // Determine current connectivity
     List<ConnectivityResult> connectivity;
     try {
-      connectivity = await _ref.read(connectivityProvider.future);
+      connectivity = await readCurrentConnectivity(_ref);
     } catch (_) {
       connectivity = [ConnectivityResult.none];
     }
