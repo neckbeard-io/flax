@@ -1,7 +1,10 @@
 package com.flaxplayer.flax
 
 import android.app.Application
+import android.content.ComponentName
+import android.support.v4.media.MediaBrowserCompat
 import androidx.annotation.Keep
+import com.ryanheise.audioservice.AudioService
 import com.ryanheise.audioservice.AudioServicePlugin
 
 class FlaxApplication : Application() {
@@ -23,6 +26,20 @@ class FlaxApplication : Application() {
         )
     }
 
+    /**
+     * A connection to our own AudioService, held for the life of the process.
+     *
+     * audio_service destroys its Flutter engine whenever the service is
+     * destroyed with no Activity attached: open flax, back out without playing,
+     * and the service unbinds and takes the engine with it. The next Android
+     * Auto connection then starts a fresh engine that nothing configures — no
+     * car or primary-network channels — and audio_service forwards Android
+     * Auto's first browse to a Dart side that has not registered for it yet.
+     * Holding a binding keeps the service, and the one configured engine, alive
+     * until the process itself goes.
+     */
+    private var audioServiceBinding: MediaBrowserCompat? = null
+
     override fun onCreate() {
         super.onCreate()
         try {
@@ -31,6 +48,20 @@ class FlaxApplication : Application() {
             FlaxMediaSessionHelper.wrapServiceListener(this)
         } catch (e: Exception) {
             android.util.Log.e("FlaxApplication", "Failed to initialize FlaxApplication engine: ${e.message}", e)
+        }
+        holdAudioServiceBinding()
+    }
+
+    private fun holdAudioServiceBinding() {
+        try {
+            audioServiceBinding = MediaBrowserCompat(
+                this,
+                ComponentName(this, AudioService::class.java),
+                object : MediaBrowserCompat.ConnectionCallback() {},
+                null,
+            ).also { it.connect() }
+        } catch (e: Exception) {
+            android.util.Log.e("FlaxApplication", "Failed to bind AudioService: ${e.message}", e)
         }
     }
 }
