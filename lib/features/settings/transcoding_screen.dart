@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/server.dart';
@@ -93,15 +94,17 @@ class TranscodingScreen extends ConsumerWidget {
             onChanged: (v) =>
                 ref.read(offlineOnCellularSettingProvider.notifier).set(v),
           ),
-          SwitchListTile(
-            title: const Text('Auto-offline on Android Auto'),
-            subtitle: const Text(
-              'Automatically switch to offline mode and filter to downloaded music when connected to Android Auto',
+          // Android Auto exists only on phones; desktops never connect to a car.
+          if (ref.watch(platformOfflinePolicyProvider).supportsCarConnection)
+            SwitchListTile(
+              title: const Text('Auto-offline on Android Auto'),
+              subtitle: const Text(
+                'Automatically switch to offline mode and filter to downloaded music when connected to Android Auto',
+              ),
+              value: offlineOnAndroidAuto,
+              onChanged: (v) =>
+                  ref.read(offlineOnAndroidAutoSettingProvider.notifier).set(v),
             ),
-            value: offlineOnAndroidAuto,
-            onChanged: (v) =>
-                ref.read(offlineOnAndroidAutoSettingProvider.notifier).set(v),
-          ),
           const Divider(),
 
           _SectionTitle(title: 'Transcode Format'),
