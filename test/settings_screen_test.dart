@@ -8,6 +8,7 @@ import 'package:flax/features/settings/settings_screen.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -214,6 +215,45 @@ void main() {
         expect(notifier.checkCalls, 1);
       },
     );
+  });
+  group('Android Auto offline option', () {
+    Future<void> pumpSettings(
+      WidgetTester tester,
+      PlatformOfflinePolicy policy,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final container = ProviderContainer(
+        overrides: [platformOfflinePolicyProvider.overrideWithValue(policy)],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: SettingsScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Offline Mode'),
+        500,
+        scrollable: find.byType(Scrollable),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is not offered on desktop', (tester) async {
+      await pumpSettings(tester, const MacOsOfflinePolicy());
+      expect(find.text('Auto-offline on Android Auto'), findsNothing);
+    });
+
+    testWidgets('is offered on Android', (tester) async {
+      await pumpSettings(tester, const AndroidOfflinePolicy());
+      expect(find.text('Auto-offline on Android Auto'), findsOneWidget);
+    });
   });
 }
 

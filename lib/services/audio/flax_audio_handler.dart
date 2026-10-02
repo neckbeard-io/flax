@@ -16,6 +16,7 @@ import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
+import 'package:flax/shared/widgets/cover_art_cache.dart';
 
 /// Android Auto & background media session handler for Flax.
 ///
@@ -66,7 +67,9 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
   // Root category node identifiers for Android Auto
   static const String kRootId = 'flax_root';
-  static const String kRecentNode = 'recent';
+  // Not 'recent': audio_service's resumption root already has that id, so
+  // Android Auto asking what to resume was handed this tab's albums.
+  static const String kRecentNode = 'recently_added';
   static const String kArtistsNode = 'artists';
   static const String kAlbumsNode = 'albums';
   static const String kPlaylistsNode = 'playlists';
@@ -91,29 +94,118 @@ class FlaxAudioHandler extends BaseAudioHandler {
       _container.read(carConnectionServiceProvider).activateMediaSession(),
     );
 
-    // Keep Android Auto browse tree updated when offline mode or car state changes
-    _container.listen<bool>(isOfflineModeProvider, (prev, next) {
-      if (prev != next) {
-        notifyChildrenChanged(AudioService.browsableRootId);
-        notifyChildrenChanged(kRootId);
-        notifyChildrenChanged(kRecentNode);
-        notifyChildrenChanged(kArtistsNode);
-        notifyChildrenChanged(kAlbumsNode);
-        notifyChildrenChanged(kPlaylistsNode);
-        notifyChildrenChanged(kFavoritesNode);
+    // Keep the Android Auto browse tree in step with the mode it shows. Every
+    // refresh makes Android Auto reload each page, so it happens only when the
+    // effective offline mode actually changes — not whenever one of its inputs
+    // does — and changes landing together are folded into one.
+    _browseOffline = _isOffline;
+    _container.listen<bool>(isOfflineModeProvider, (_, _) => _onModeInput());
+    _container.listen<bool>(isCarConnectedProvider, (_, _) => _onModeInput());
+    _container.listen<bool>(
+      serverReachabilityProvider.select((r) => r.isReachable),
+      (_, _) => _onModeInput(),
+    );
+  }
+
+  late bool _browseOffline;
+  Timer? _browseRefresh;
+
+  void _onModeInput() {
+    _browseRefresh?.cancel();
+    _browseRefresh = Timer(const Duration(milliseconds: 300), () {
+      final bool offline;
+      try {
+        offline = _isOffline;
+      } catch (_) {
+        // The container went away while the refresh was pending.
+        return;
       }
+      if (offline == _browseOffline) return;
+      _browseOffline = offline;
+      AppLogger.i(
+        'AudioHandler',
+        'Browse tree now ${offline ? 'offline' : 'online'}',
+      );
+      notifyChildrenChanged(AudioService.browsableRootId);
+      notifyChildrenChanged(kRootId);
+      notifyChildrenChanged(kRecentNode);
+      notifyChildrenChanged(kArtistsNode);
+      notifyChildrenChanged(kAlbumsNode);
+      notifyChildrenChanged(kPlaylistsNode);
+      notifyChildrenChanged(kFavoritesNode);
     });
-    _container.listen<bool>(isCarConnectedProvider, (prev, next) {
-      if (prev != next) {
-        notifyChildrenChanged(AudioService.browsableRootId);
-        notifyChildrenChanged(kRootId);
-        notifyChildrenChanged(kRecentNode);
-        notifyChildrenChanged(kArtistsNode);
-        notifyChildrenChanged(kAlbumsNode);
-        notifyChildrenChanged(kPlaylistsNode);
-        notifyChildrenChanged(kFavoritesNode);
-      }
-    });
+  }
+
+  /// Size requested for Now Playing art; a step in [coverSizeSteps], so a
+  /// stored cover is found under the same name.
+  static const _nowPlayingArtSize = 768;
+
+  /// Art for the media session's Now Playing item: the cover on disk when
+  /// there is one, the server otherwise, and nothing while offline.
+  ///
+  /// Android Auto draws this as the background of its Now Playing panel. It
+  /// used to always be a server URL with a fresh salt, so it was never cached:
+  /// with signal the panel sat black until the download finished, without it
+  /// the panel stayed black — even for a downloaded album whose cover was on
+  /// disk.
+  String? _nowPlayingArt(Song song) {
+    final id = song.coverArtId;
+    if (id == null) return null;
+    final local = CoverArtCache.knownPath(id, size: _nowPlayingArtSize);
+    if (local != null) return Uri.file(local).toString();
+    if (_isOffline) return null;
+    return _client?.getCoverArtUri(id, size: _nowPlayingArtSize).toString();
+  }
+
+  /// Swaps the Now Playing art for the cover on disk once it has been found.
+  Future<void> _useStoredNowPlayingArt(MediaItem item, Song song) async {
+    final id = song.coverArtId;
+    if (id == null || item.artUri?.scheme == 'file') {
+      _logNowPlayingArt(song, item.artUri);
+      return;
+    }
+    File? file;
+    try {
+      file = await CoverArtCache.findCached(
+        _container.read(artCacheProvider),
+        id,
+        preferredSize: _nowPlayingArtSize,
+      );
+    } catch (e) {
+      // A cover lookup failing is no reason for anything else to.
+      AppLogger.w('AudioHandler', 'Cover lookup failed for $id: $e');
+    }
+    final current = mediaItem.value;
+    if (file == null || current == null || current.id != item.id) {
+      _logNowPlayingArt(song, item.artUri);
+      return;
+    }
+    final upgraded = current.copyWith(artUri: Uri.file(file.path));
+    mediaItem.add(upgraded);
+    _logNowPlayingArt(song, upgraded.artUri);
+  }
+
+  void _logNowPlayingArt(Song song, Uri? art) {
+    final source = art == null
+        ? 'none'
+        : (art.scheme == 'file' ? 'disk' : 'server');
+    AppLogger.i('AudioHandler', 'Now Playing art for ${song.id}: $source');
+  }
+
+  /// Waits for the player's saved-queue restore, if the player exists yet.
+  Future<void> _waitForPlayerRestore() async {
+    if (!_container.exists(playerProvider)) return;
+    await _player.waitForRestore();
+  }
+
+  /// What Android Auto and the system media controls offer to resume: the
+  /// track the queue is on. They ask through audio_service's resumption root.
+  Future<List<MediaItem>> _resumptionItems() async {
+    await _waitForPlayerRestore();
+    if (!_container.exists(playerProvider)) return const [];
+    final song = _container.read(playerProvider).currentSong;
+    if (song == null) return const [];
+    return [songToMediaItem(song, coverArtUrl: _nowPlayingArt(song))];
   }
 
   Future<void> _prepareFallbackMedia() async {
@@ -121,20 +213,30 @@ class FlaxAudioHandler extends BaseAudioHandler {
     final client = _client;
     if (library == null || client == null) return;
 
+    // The saved queue is what should show; this fallback is for when there is
+    // none. Running it before the restore finished put a different track on
+    // the car's Now Playing panel first.
+    await _waitForPlayerRestore();
+    if (mediaItem.value != null) return;
+    if (_container.exists(playerProvider) &&
+        _container.read(playerProvider).currentSong != null) {
+      updateFromPlayerState(_container.read(playerProvider));
+      return;
+    }
+
     try {
       if (_isOffline) {
         final downloadedSongs = await library.getDownloadedSongs();
         if (downloadedSongs.isNotEmpty) {
           final first = downloadedSongs.first;
-          final artUrl = first.coverArtId != null
-              ? client.getCoverArtUri(first.coverArtId!, size: 600).toString()
-              : null;
+          final artUrl = _nowPlayingArt(first);
           final item = songToMediaItem(
             first,
             coverArtUrl: artUrl,
             forNowPlaying: true,
           );
           mediaItem.add(item);
+          unawaited(_useStoredNowPlayingArt(item, first));
           queue.add(
             downloadedSongs
                 .map((s) => songToMediaItem(s, coverArtUrl: artUrl))
@@ -198,18 +300,22 @@ class FlaxAudioHandler extends BaseAudioHandler {
     final client = _client;
 
     if (song != null) {
-      final artUrl = client != null && song.coverArtId != null
-          ? client.getCoverArtUri(song.coverArtId!, size: 600).toString()
-          : null;
-
       final item = songToMediaItem(
         song,
-        coverArtUrl: artUrl,
+        coverArtUrl: _nowPlayingArt(song),
         forNowPlaying: true,
       );
       if (mediaItem.value?.id != item.id ||
           mediaItem.value?.rating != item.rating) {
-        mediaItem.add(item);
+        // Keep art already upgraded to the stored cover for this track.
+        final keepArt =
+            mediaItem.value?.id == item.id &&
+            mediaItem.value?.artUri?.scheme == 'file';
+        final next = keepArt
+            ? item.copyWith(artUri: mediaItem.value!.artUri)
+            : item;
+        mediaItem.add(next);
+        if (!keepArt) unawaited(_useStoredNowPlayingArt(next, song));
       }
     } else {
       if (mediaItem.value != null) {
@@ -351,7 +457,12 @@ class FlaxAudioHandler extends BaseAudioHandler {
     String parentMediaId, [
     Map<String, dynamic>? options,
   ]) async {
-    AppLogger.d('AudioHandler', 'getChildren parentMediaId: $parentMediaId');
+    AppLogger.i('AudioHandler', 'Browse request: $parentMediaId');
+    if (parentMediaId == AudioService.recentRootId) {
+      final items = await _resumptionItems();
+      AppLogger.i('AudioHandler', 'Resumption: ${items.length} item(s)');
+      return items;
+    }
     _container.read(isCarConnectedProvider.notifier).setCarConnected(true);
     unawaited(
       _container.read(carConnectionServiceProvider).activateMediaSession(),
@@ -1406,10 +1517,20 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       if (mediaId.startsWith('song_')) {
         final songId = mediaId.substring(5);
+        // Asked for the track the queue is already on — what a resumption
+        // item leads to — so resume it where it was rather than starting it
+        // over as a new queue.
+        await _player.waitForRestore();
+        if (_container.read(playerProvider).currentSong?.id == songId) {
+          await play();
+          return;
+        }
         final song = await library.watchSong(songId).first;
         if (song != null) {
           final artUrl = client != null && song.coverArtId != null
-              ? client.getCoverArtUri(song.coverArtId!, size: 600).toString()
+              ? client
+                    .getCoverArtUri(song.coverArtId!, size: _nowPlayingArtSize)
+                    .toString()
               : null;
           final item = songToMediaItem(
             song,
@@ -1708,10 +1829,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> play() async {
+    AppLogger.i('AudioHandler', 'Play requested from the media session');
     await _activateAudioSession();
     unawaited(
       _container.read(carConnectionServiceProvider).activateMediaSession(),
     );
+    // Android Auto resumes on reconnect, often before the saved queue is back.
+    // Deciding there is nothing to resume then started other music instead.
+    await _player.waitForRestore();
     final state = _container.read(playerProvider);
     if (state.currentSong == null || state.queue.isEmpty) {
       final library = _library;

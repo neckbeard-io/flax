@@ -22,6 +22,7 @@ import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
+import 'package:flax/shared/widgets/cover_art_cache.dart';
 
 /// Result of an orphaned cache file cleanup pass.
 class OrphanCleanupResult {
@@ -715,8 +716,7 @@ class AudioCacheService {
 
       // 2. Track / Album Cover Art
       if (song.coverArtId != null) {
-        final coverUri = client.getCoverArtUri(song.coverArtId!);
-        ArtCache.instance.downloadFile(coverUri.toString()).ignore();
+        _storeCoverForOffline(client, song.coverArtId!).ignore();
       }
 
       // 3. Album Metadata & Sleeve
@@ -729,8 +729,7 @@ class AudioCacheService {
           if (album != null) {
             if (album.coverArtId != null &&
                 album.coverArtId != song.coverArtId) {
-              final albumCoverUri = client.getCoverArtUri(album.coverArtId!);
-              ArtCache.instance.downloadFile(albumCoverUri.toString()).ignore();
+              _storeCoverForOffline(client, album.coverArtId!).ignore();
             }
             if (album.artistId != null &&
                 (song.artistId == null || song.artistId!.isEmpty)) {
@@ -757,6 +756,32 @@ class AudioCacheService {
         ).ignore();
       }
     } catch (_) {}
+  }
+
+  /// Stores a cover for offline use under its stable name.
+  ///
+  /// These used to be fetched with `downloadFile(url)`, which files them under
+  /// the request URL — and that URL carried a fresh salt every time, so no
+  /// screen could ever find what a download had stored.
+  ///
+  /// The size is the configured metadata quality, or medium when cover caching
+  /// is switched off: a download asks for the item offline, art included.
+  Future<void> _storeCoverForOffline(
+    SubsonicClient client,
+    String coverArtId, {
+    bool artist = false,
+  }) {
+    final config = _ref.read(activeServerProvider)?.metadataCacheConfig;
+    final quality = artist ? config?.artistArtQuality : config?.albumArtQuality;
+    final size = quality == null || quality == MetadataQuality.disabled
+        ? MetadataQuality.medium.requestSize
+        : quality.requestSize;
+    return CoverArtCache.storeForOffline(
+      _ref.read(artCacheProvider),
+      coverArtId: coverArtId,
+      size: size,
+      url: client.getCoverArtUri(coverArtId, size: size),
+    );
   }
 
   Future<void> _cacheLyrics(
@@ -805,8 +830,11 @@ class AudioCacheService {
       }
       final artist = await dao.watchArtist(serverId, artistId).first;
       if (artist != null && artist.coverArtId != null) {
-        final artistArtUri = client.getCoverArtUri(artist.coverArtId!);
-        ArtCache.instance.downloadFile(artistArtUri.toString()).ignore();
+        _storeCoverForOffline(
+          client,
+          artist.coverArtId!,
+          artist: true,
+        ).ignore();
       }
 
       final info = await client.getArtistInfoParsed(artistId);

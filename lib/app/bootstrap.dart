@@ -12,6 +12,7 @@ import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/services/platform/car_connection_service.dart';
 
 /// How long any one startup step may hold up the first frame.
 ///
@@ -60,20 +61,31 @@ Future<StartupState> bootstrap({
   Future<void> Function() initAudioCache = AudioCacheService.initialize,
   Future<SharedPreferences> Function() loadPrefs =
       SharedPreferences.getInstance,
+  Future<bool> Function() queryCarConnected =
+      CarConnectionService.queryCarConnected,
   Duration timeout = kStartupStepTimeout,
 }) async {
   SharedPreferences? prefs;
+  var carConnected = false;
   await Future.wait([
     startupStep('audio cache location', initAudioCache, timeout: timeout),
     startupStep('preferences', () async {
       prefs = await loadPrefs();
     }, timeout: timeout),
+    // Read before anything decides whether the app is offline. With the
+    // Android Auto offline setting on, that decision hangs on this answer;
+    // without it the first moments of every car start ran as if online and
+    // went to the server before the real state flipped them offline.
+    startupStep('car connection', () async {
+      carConnected = await queryCarConnected();
+      AppLogger.i('Startup', 'Car connected: $carConnected');
+    }, timeout: timeout),
   ]);
 
   final loaded = prefs;
-  if (loaded == null) return const StartupState();
+  if (loaded == null) return StartupState(carConnected: carConnected);
   try {
-    return StartupState.fromPrefs(loaded);
+    return StartupState.fromPrefs(loaded, carConnected: carConnected);
   } catch (e, st) {
     AppLogger.w(
       'Startup',
@@ -81,7 +93,7 @@ Future<StartupState> bootstrap({
       error: e,
       stackTrace: st,
     );
-    return const StartupState();
+    return StartupState(carConnected: carConnected);
   }
 }
 
@@ -98,9 +110,13 @@ class StartupState {
     this.lastCellular = false,
     this.lastOffline = false,
     this.lastReachable,
+    this.carConnected = false,
   });
 
-  factory StartupState.fromPrefs(SharedPreferences prefs) {
+  factory StartupState.fromPrefs(
+    SharedPreferences prefs, {
+    bool carConnected = false,
+  }) {
     var savedRoute = prefs.getString(lastRouteStorageKey);
     if (savedRoute != null && !isValidRoute(savedRoute)) {
       savedRoute = null;
@@ -117,6 +133,7 @@ class StartupState {
       lastCellular: prefs.getBool(kLastIsCellularPrefKey) ?? false,
       lastOffline: prefs.getBool(kLastIsOfflinePrefKey) ?? false,
       lastReachable: prefs.getBool(kLastServerReachablePrefKey),
+      carConnected: carConnected,
     );
   }
 
@@ -132,15 +149,27 @@ class StartupState {
   final bool lastOffline;
   final bool? lastReachable;
 
+  /// Whether a car was connected when the app started.
+  final bool carConnected;
+
   /// Provider overrides that hand this state to the first frame.
   ///
-  /// Empty when preferences were not read. Each notifier then loads its own
-  /// value once preferences answer, rather than being pinned to a default — an
-  /// empty server list pinned here would open server setup as though the saved
-  /// server had been forgotten.
+  /// Saved state is left out when preferences were not read. Each notifier then
+  /// loads its own value once preferences answer, rather than being pinned to a
+  /// default — an empty server list pinned here would open server setup as
+  /// though the saved server had been forgotten.
   List<Override> get overrides {
-    if (!prefsLoaded) return const [];
+    final car = [
+      if (carConnected)
+        carConnectionServiceProvider.overrideWith((ref) {
+          final service = CarConnectionService(initiallyConnected: true);
+          ref.onDispose(service.dispose);
+          return service;
+        }),
+    ];
+    if (!prefsLoaded) return car;
     return [
+      ...car,
       if (savedRoute != null)
         savedRouteProvider.overrideWith((ref) => savedRoute),
       if (servers.isNotEmpty)

@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Flax logo on Android Auto's Now Playing card.
 - Albums screen now includes a manual refresh button and pull-to-refresh.
 - Check for updates tile retains a recheck button when an update is available.
 - Orphaned cache cleanup tool and server reset option in Metadata & Storage settings.
@@ -41,7 +42,17 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - AutoEQ database download shows determinate progress bar with live byte transfer metrics.
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
+### Changed
+- Android Auto offline option no longer appears on desktop.
+- Playback notification shows the flax logo instead of a solid icon.
+
 ### Fixed
+- Downloaded album art now shows offline on every screen and in Android Auto.
+- Android Auto Now Playing no longer sits black while artwork loads.
+- Audio no longer hiccups when Android Auto resumes playback on reconnect.
+- Android Auto offline mode no longer contacts the server at startup.
+- Offline mode no longer sends scrobbles, queue saves or server checks.
+- Resuming starts at the saved position without playing the track's opening first.
 - Endless splash screen after Android Auto, a media button, or background sync started flax.
 - Android Auto no longer loses car and network detection after flax is closed.
 - Local server address and streaming quality now follow network changes after launch.

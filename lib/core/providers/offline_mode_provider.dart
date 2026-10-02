@@ -154,6 +154,39 @@ class OfflineOnAndroidAutoNotifier extends StateNotifier<bool> {
   }
 }
 
+/// Offline because the user chose it — the manual toggle, Android Auto with
+/// the auto-offline setting, or a cellular-only connection with the cellular
+/// setting — rather than because the server could not be reached.
+///
+/// While this holds nothing should talk to the server: not to fetch, not to
+/// save, and not to check whether it is back. Detected offline is different;
+/// a reachability probe is how that ends.
+///
+/// Deliberately independent of [serverReachabilityProvider], which watches
+/// this one.
+final forcedOfflineProvider = Provider<bool>((ref) {
+  if (ref.watch(offlineManualOverrideProvider)) return true;
+  final policy = ref.watch(platformOfflinePolicyProvider);
+  if (policy.supportsCarConnection &&
+      ref.watch(offlineOnAndroidAutoSettingProvider) &&
+      ref.watch(isCarConnectedProvider)) {
+    return true;
+  }
+  if (policy.supportsCellular && ref.watch(offlineOnCellularSettingProvider)) {
+    final connectivity =
+        ref.watch(connectivityStreamProvider).valueOrNull ??
+        ref.watch(connectivityProvider).valueOrNull;
+    if (connectivity == null) return ref.watch(lastKnownCellularProvider);
+    final hasWifiOrWired =
+        connectivity.contains(ConnectivityResult.wifi) ||
+        connectivity.contains(ConnectivityResult.ethernet) ||
+        connectivity.contains(ConnectivityResult.vpn) ||
+        connectivity.contains(ConnectivityResult.other);
+    return connectivity.contains(ConnectivityResult.mobile) && !hasWifiOrWired;
+  }
+  return false;
+});
+
 /// State of server reachability.
 class ServerReachability {
   final bool isReachable;
@@ -214,6 +247,17 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
         }
       } else {
         state = const ServerReachability();
+      }
+    });
+
+    // Forced offline pauses every check; lifting it is the moment to look
+    // again, since nothing has been asked of the server in the meantime.
+    _ref.listen<bool>(forcedOfflineProvider, (prev, next) {
+      if (next) {
+        _retryTimer?.cancel();
+        _retryTimer = null;
+      } else if (prev == true) {
+        probeServer(silent: true);
       }
     });
 
@@ -351,6 +395,14 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
       return true;
     }
 
+    if (_ref.read(forcedOfflineProvider)) {
+      AppLogger.d(
+        'Reachability',
+        () => 'Probe skipped: offline is forced, the server is not asked',
+      );
+      return state.isReachable;
+    }
+
     final policy = _ref.read(platformOfflinePolicyProvider);
     final effectiveTimeout =
         timeout ??
@@ -456,7 +508,7 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
 
   void _scheduleNextRetry() {
     _retryTimer?.cancel();
-    if (state.isReachable) return;
+    if (state.isReachable || _ref.read(forcedOfflineProvider)) return;
 
     // Fast backoff for quick recovery: 4s -> 8s -> 15s -> 30s
     const delays = [4, 8, 15, 30];

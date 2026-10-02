@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/network/network_target_resolver.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
@@ -25,7 +27,17 @@ final subsonicClientProvider = Provider<SubsonicClient?>((ref) {
   final server = ref.watch(activeServerProvider);
   if (server == null) return null;
   final effectiveUrl = ref.watch(effectiveBaseUrlProvider);
-  return SubsonicClient(server: server, customBaseUrl: effectiveUrl);
+  return SubsonicClient(
+    server: server,
+    customBaseUrl: effectiveUrl,
+    // Nothing should reach the server while offline is forced; this is how a
+    // path that still does shows up in the diagnostics export.
+    onRequest: (endpoint) {
+      if (ref.read(forcedOfflineProvider)) {
+        AppLogger.w('Offline', 'Server request while offline: $endpoint');
+      }
+    },
+  );
 });
 
 class ServerListNotifier extends StateNotifier<List<Server>> {

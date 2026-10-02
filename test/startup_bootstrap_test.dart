@@ -11,7 +11,9 @@ import 'package:flax/app/bootstrap.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/domain/models/server.dart';
+import 'package:flax/services/platform/car_connection_service.dart';
 
 /// What has to happen before the first frame, and that none of it can stop the
 /// app from starting.
@@ -125,6 +127,43 @@ void main() {
     final state = await bootstrap(initAudioCache: noCache);
 
     expect(state.savedRoute, isNull);
+  });
+
+  test('a connected car is known from the very first read', () async {
+    // With Android Auto's offline setting on, being offline hangs on this.
+    // Unknown at first, the start of every car session ran as if online and
+    // went to the server before the real answer flipped it.
+    SharedPreferences.setMockInitialValues({
+      'flax_offline_on_android_auto': true,
+    });
+
+    final state = await bootstrap(
+      initAudioCache: noCache,
+      queryCarConnected: () async => true,
+    );
+    final container = ProviderContainer(
+      overrides: [
+        ...state.overrides,
+        platformOfflinePolicyProvider.overrideWithValue(
+          const AndroidOfflinePolicy(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(isCarConnectedProvider), isTrue);
+    expect(container.read(forcedOfflineProvider), isTrue);
+  });
+
+  test('a car query that never answers is given up on', () async {
+    final state = await bootstrap(
+      initAudioCache: noCache,
+      queryCarConnected: () => Completer<bool>().future,
+      timeout: quick,
+    ).timeout(const Duration(seconds: 2));
+
+    expect(state.carConnected, isFalse);
+    expect(state.prefsLoaded, isTrue);
   });
 
   test('nothing before runApp talks to SystemChrome', () {

@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/providers/locale_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/l10n/app_localizations.dart';
@@ -330,15 +331,17 @@ class SettingsScreen extends ConsumerWidget {
               }
             },
           ),
-          SwitchListTile(
-            title: const Text('Auto-offline on Android Auto'),
-            subtitle: const Text(
-              'Automatically filter to downloaded music when connected to Android Auto',
+          // Android Auto exists only on phones; desktops never connect to a car.
+          if (ref.watch(platformOfflinePolicyProvider).supportsCarConnection)
+            SwitchListTile(
+              title: const Text('Auto-offline on Android Auto'),
+              subtitle: const Text(
+                'Automatically filter to downloaded music when connected to Android Auto',
+              ),
+              value: ref.watch(offlineOnAndroidAutoSettingProvider),
+              onChanged: (v) =>
+                  ref.read(offlineOnAndroidAutoSettingProvider.notifier).set(v),
             ),
-            value: ref.watch(offlineOnAndroidAutoSettingProvider),
-            onChanged: (v) =>
-                ref.read(offlineOnAndroidAutoSettingProvider.notifier).set(v),
-          ),
           Consumer(
             builder: (context, ref, _) {
               final audioConfig = ref.watch(audioCacheConfigProvider);

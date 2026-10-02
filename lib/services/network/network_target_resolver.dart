@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
@@ -207,12 +208,13 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       currentSsid = await getCurrentSsid();
     }
 
+    // Offline by choice: probing the LAN address is a server request too.
     final isCarConnected = _ref.read(isCarConnectedProvider);
-    if (isCarConnected && !hasEthernet) {
+    if (_ref.read(forcedOfflineProvider) || (isCarConnected && !hasEthernet)) {
       AppLogger.d(
         'NetworkTarget',
         () =>
-            'Connected to vehicle / Android Auto ($currentSsid). Skipping local endpoint probing.',
+            'Offline by choice or connected to a vehicle ($currentSsid). Skipping local endpoint probing.',
       );
       state = state.copyWith(
         activeTarget: EndpointTargetType.external,

@@ -16,13 +16,21 @@ class SubsonicClient implements MusicBackend {
   final String? customBaseUrl;
   final Dio _dio;
 
+  /// Called with the endpoint name before every API request. The app uses it to
+  /// log requests made while offline is forced, which should never happen.
+  final void Function(String endpoint)? onRequest;
+
   static const String _apiVersion = '1.16.1';
   static const String _clientName = 'flax';
 
-  SubsonicClient({required this.server, this.customBaseUrl, Dio? dio})
-    : _dio =
-          dio ??
-          _createDefaultDio(server: server, customBaseUrl: customBaseUrl);
+  SubsonicClient({
+    required this.server,
+    this.customBaseUrl,
+    Dio? dio,
+    this.onRequest,
+  }) : _dio =
+           dio ??
+           _createDefaultDio(server: server, customBaseUrl: customBaseUrl);
 
   String get baseUrl {
     final base = customBaseUrl ?? server.baseUrl;
@@ -53,8 +61,8 @@ class SubsonicClient implements MusicBackend {
 
   // ── Auth helpers ──────────────────────────────────────────────────────
 
-  Map<String, String> _authParams() {
-    final salt = _generateSalt();
+  Map<String, String> _authParams({String? salt}) {
+    salt ??= _generateSalt();
     // Subsonic token auth: t = md5(password + salt), s = salt
     // server.tokenHash stores the raw password for token generation
     final token = md5
@@ -70,6 +78,20 @@ class SubsonicClient implements MusicBackend {
     };
   }
 
+  /// A salt fixed per server, for URLs that are also cache keys.
+  ///
+  /// Every API request gets a fresh salt, which is right for them. Cover art
+  /// URLs are different: the media session, Android Auto and the platform image
+  /// caches all key on the URL, and a fresh salt made every cover URL unique —
+  /// so none of those caches could ever hit, and the car fetched every cover
+  /// from the server again, offline included. Reusing a salt reveals nothing
+  /// new: the token in the URL is already as good as the password for this
+  /// server.
+  String get _stableSalt => md5
+      .convert(utf8.encode('flax-cover:${server.id}'))
+      .toString()
+      .substring(0, 16);
+
   String _generateSalt() {
     final rand = Random.secure();
     return List.generate(16, (_) => rand.nextInt(36).toRadixString(36)).join();
@@ -83,6 +105,7 @@ class SubsonicClient implements MusicBackend {
     final params = <String, dynamic>{..._authParams()};
     if (extra != null) params.addAll(extra);
 
+    onRequest?.call(endpoint);
     AppLogger.d('Subsonic', () => 'GET $endpoint: ${extra ?? const {}}');
 
     final effectiveTimeout =
@@ -374,7 +397,12 @@ class SubsonicClient implements MusicBackend {
 
   @override
   Uri getCoverArtUri(String id, {int? size}) {
-    final params = <String, String>{..._authParams(), 'id': id};
+    // Stable across calls so the URL can serve as a cache key — see
+    // [_stableSalt].
+    final params = <String, String>{
+      ..._authParams(salt: _stableSalt),
+      'id': id,
+    };
     if (size != null) params['size'] = size.toString();
 
     return Uri.parse(

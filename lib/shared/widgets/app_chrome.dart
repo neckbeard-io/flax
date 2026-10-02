@@ -69,8 +69,6 @@ class _AppChromeState extends ConsumerState<AppChrome>
     HardwareKeyboard.instance.addHandler(_onKey);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        WhatsNewCoordinator.checkAndShowIfNeeded(context, ref);
-        MobileUpdateCoordinator.checkAndPrompt(context, ref);
         final isOffline = ref.read(isOfflineModeProvider);
         if (!isOffline) {
           ref
@@ -99,6 +97,7 @@ class _AppChromeState extends ConsumerState<AppChrome>
 
   Timer? _wakeDebounceTimer;
   Timer? _syncTimer;
+  bool _promptsChecked = false;
 
   @override
   void dispose() {
@@ -303,6 +302,23 @@ class _AppChromeState extends ConsumerState<AppChrome>
 
     final top = MediaQuery.of(context).padding.top;
 
+    // No window yet: Android Auto, a media button or background sync started
+    // the app and nothing is on screen. The routed screens are not built until
+    // there is somewhere to show them — building them at zero size ran their
+    // library queries and refreshes, competing with Android Auto for the first
+    // seconds of a car start. The router keeps its place either way.
+    final hasScreen = !MediaQuery.sizeOf(context).isEmpty;
+    if (hasScreen && !_promptsChecked) {
+      _promptsChecked = true;
+      // Dialogs need the navigator that only exists once there is a screen;
+      // asked any earlier they failed and were marked as seen regardless.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        WhatsNewCoordinator.checkAndShowIfNeeded(context, ref);
+        MobileUpdateCoordinator.checkAndPrompt(context, ref);
+      });
+    }
+
     return Stack(
       children: [
         // Pointer-driven navigation, wrapped around the routed screen only —
@@ -318,7 +334,7 @@ class _AppChromeState extends ConsumerState<AppChrome>
           },
           child: NotificationListener<ScrollNotification>(
             onNotification: _onScroll,
-            child: widget.child,
+            child: hasScreen ? widget.child : const SizedBox.shrink(),
           ),
         ),
         // The chrome gets an Overlay of its own. MaterialApp.builder runs

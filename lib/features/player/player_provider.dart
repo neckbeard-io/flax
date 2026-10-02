@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:collection/collection.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -159,6 +160,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// Output gain last pushed to mpv, so an unchanged value is not rewritten.
   double? _lastAppliedGainDb;
 
+  /// The EQ curve, playback settings and output settings last pushed to mpv,
+  /// so values re-announced unchanged are not rewritten mid-track.
+  String? _lastAppliedEq;
+  String? _lastAppliedPlayback;
+  String? _lastAppliedOutput;
+
   /// Song ids currently loaded into mpv's playlist, in order. Gapless needs the
   /// queue to live in mpv rather than being fed one file at a time, and this is
   /// how we know whether what mpv holds still matches [PlayerState.queue].
@@ -177,8 +184,21 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _initPlaybackSettings();
     _initAudioOutputSettings();
     _restoreVolume();
-    _restorePlayQueue();
+    _restored = _restorePlayQueue().catchError((Object e) {
+      AppLogger.w('Player', 'Queue restore failed: $e');
+    });
   }
+
+  late final Future<void> _restored;
+
+  /// Waits, briefly, for the saved queue to be put back.
+  ///
+  /// A play request — Android Auto resuming on reconnect, a media button — can
+  /// arrive while the restore is still running. Acting on it then either
+  /// started something else, because there was nothing to resume yet, or had
+  /// the restore reload the queue under the track that had just started.
+  Future<void> waitForRestore() =>
+      _restored.timeout(const Duration(seconds: 2), onTimeout: () {});
 
   /// Starts the track-boundary instrumentation, when asked for.
   ///
@@ -491,7 +511,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// idempotent, and it makes "start playing" hold even when the player was
   /// parked somewhere unusual beforehand — the end-of-queue case being the one
   /// that actually bit. Cheap insurance against a load that lands paused.
-  Future<void> _openQueue(
+  /// Returns whether anything was handed to mpv.
+  Future<bool> _openQueue(
     List<Song> songs,
     int index, {
     required bool play,
@@ -501,7 +522,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     try {
       transcode = _resolveTranscode(connectivity);
     } on StreamingDisabledException catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       state = state.copyWith(
         queue: songs,
         queueIndex: index,
@@ -513,7 +534,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         playbackError: e.message,
       );
       AppLogger.w('Player', 'Streaming disabled: ${e.message}');
-      return;
+      return false;
     }
 
     final currentSong = songs.isNotEmpty && index < songs.length
@@ -543,7 +564,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
           isPlayingCached: isCached,
         );
       }
-      return;
+      return false;
     }
 
     _mpvQueueIds = [for (final song in songs) song.id];
@@ -570,6 +591,42 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
             .read(audioCacheServiceProvider)
             .cacheSong(currentSong, isPinned: false);
       }
+    }
+    return true;
+  }
+
+  /// Loads [songs] at [index], positioned at [position], then plays if [play].
+  ///
+  /// The order is what a resume sounds like. A seek sent while mpv is still
+  /// opening the file is dropped, so this used to be "play, wait 300 ms, seek"
+  /// — audibly starting the track from the top before jumping to where it was
+  /// left. Loading paused, seeking once mpv reports the file loaded, and only
+  /// then unpausing makes the saved position the first thing heard.
+  Future<void> _openAt(
+    List<Song> songs,
+    int index,
+    Duration position, {
+    required bool play,
+  }) async {
+    // mpv's start-file sets buffering and file-loaded clears it, so the first
+    // "not buffering" after the load is issued means the file is open. That
+    // holds even when the same track is reopened, where the duration does not
+    // change and so cannot be waited on.
+    final loaded = position > Duration.zero
+        ? _player.stream.buffering
+              .firstWhere((buffering) => !buffering)
+              .timeout(const Duration(seconds: 3), onTimeout: () => false)
+              .catchError((Object _) => false)
+        : null;
+    final opened = await _openQueue(songs, index, play: false);
+    if (!opened) return;
+    if (loaded != null) {
+      await loaded;
+      await _player.seek(position);
+    }
+    if (play) {
+      await _activateAudioSession();
+      await _player.play();
     }
   }
 
@@ -752,8 +809,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     final client = _ref.read(subsonicClientProvider);
     final at = listenedAt ?? DateTime.now();
 
+    // Offline, the server is not tried at all: a now-playing notice is
+    // dropped and a completed play goes straight to the local queue below.
+    final offline = _ref.read(isOfflineModeProvider);
     bool succeeded = false;
-    if (client != null) {
+    if (client != null && !offline) {
       try {
         await client
             .scrobble(id, submission: submission, time: submission ? at : null)
@@ -899,6 +959,13 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
             'gainsDb=${gainsDb.map((g) => g.toStringAsFixed(1)).join(",")}',
       );
 
+      // Rewriting the filter chain rebuilds it, which is audible while a track
+      // plays. Settings load just after launch and re-announce values that have
+      // not changed, so an identical curve is not written again.
+      final signature = '${engine.name}|$active|${gainsDb.join(",")}';
+      if (signature == _lastAppliedEq) return;
+      _lastAppliedEq = signature;
+
       // A fresh AudioEffects each time, so the engine that is not selected is
       // left disabled rather than lingering in the chain alongside the one that
       // is — both applying the same curve would double it.
@@ -982,6 +1049,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// handover rather than a network round trip. It is only useful because the
   /// whole queue lives in mpv's playlist — see [_openQueue].
   Future<void> _applyPlaybackSettings(PlaybackSettings settings) async {
+    // Unchanged settings re-announced as preferences load are not re-applied;
+    // see [_lastAppliedEq] for why rewriting mpv mid-track matters.
+    final signature = jsonEncode(settings.toJson());
+    if (signature == _lastAppliedPlayback) return;
+    _lastAppliedPlayback = signature;
     try {
       await _player.setGapless(
         // `weak` rather than `yes`: strict gapless demands identical format,
@@ -1024,6 +1096,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   Future<void> _applyAudioOutputSettings(AudioOutputSettings settings) async {
+    // Device, sample rate, format and exclusive mode each reopen the audio
+    // output — a gap in whatever is playing — so an unchanged set is skipped.
+    final signature = jsonEncode(settings.toJson());
+    if (signature == _lastAppliedOutput) return;
+    _lastAppliedOutput = signature;
     try {
       if (Platform.isLinux) {
         if (settings.engine.aoValue.isNotEmpty) {
@@ -1255,12 +1332,36 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   Future<bool> _restoreFromServer() async {
+    if (_ref.read(isOfflineModeProvider)) {
+      AppLogger.i('Player', 'Offline: not asking the server for the queue');
+      return false;
+    }
+    final queueBefore = state.queue;
+    final indexBefore = state.queueIndex;
     try {
       final client = _ref.read(subsonicClientProvider);
       if (client == null) return false;
 
       final pq = await client.getPlayQueue();
       if (pq == null || pq.songs.isEmpty) return false;
+
+      // The server queue only fills in for the local one; it never replaces a
+      // queue that has been touched since, and never interrupts playback. It
+      // used to, which reloaded mpv under a track that had just started.
+      if (!identical(state.queue, queueBefore) || state.isPlaying) {
+        AppLogger.i(
+          'Player',
+          'Server queue arrived after playback or a queue change; keeping ours',
+        );
+        return false;
+      }
+      final sameQueue =
+          pq.currentIndex == indexBefore &&
+          const ListEquality<String>().equals(
+            [for (final s in pq.songs) s.id],
+            [for (final s in queueBefore) s.id],
+          );
+      if (sameQueue) return true;
 
       await _applyRestoredQueue(pq.songs, pq.currentIndex, pq.positionMs);
       // Also save locally so offline restore works next time
@@ -1278,6 +1379,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   Future<bool> _restoreFromLocal() async {
+    final queueBefore = state.queue;
     try {
       final prefs = await SharedPreferences.getInstance();
       final queueJson = prefs.getString(_prefsKeyQueue);
@@ -1298,6 +1400,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         if (found >= 0) idx = found;
       }
 
+      if (!identical(state.queue, queueBefore)) {
+        AppLogger.i('Player', 'Queue set before the restore finished; kept');
+        return false;
+      }
       await _applyRestoredQueue(songs, idx, positionMs);
       AppLogger.i(
         'Player',
@@ -1336,9 +1442,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
     if (isCached || (!isOffline && reachability.isReachable)) {
       try {
-        await _openQueue(songs, idx, play: false);
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        await _player.seek(position);
+        await _openAt(songs, idx, position, play: false);
       } catch (e) {
         // Offline — can't open stream, but state is set so UI shows the queue
         AppLogger.w('Player', 'Could not open stream (offline?): $e');
@@ -1367,9 +1471,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // Always save locally
     _saveLocal(state.queue, song.id, state.position.inMilliseconds);
 
-    // Only save to server if server queue sync is enabled
+    // Only save to server if server queue sync is enabled, and never while
+    // offline — the local copy above is what the next launch restores.
     final syncQueue = _ref.read(syncQueueWithServerProvider);
-    if (!syncQueue) return;
+    if (!syncQueue || _ref.read(isOfflineModeProvider)) return;
 
     // Try to save to server
     try {
@@ -1403,15 +1508,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   Future<void> play() async {
+    await waitForRestore();
     if (mounted) {
       state = state.copyWith(clearPlaybackError: true);
     }
     if (state.queue.isNotEmpty && !_mpvQueueInSync) {
-      await _openQueue(state.queue, state.queueIndex, play: true);
-      if (state.position > Duration.zero) {
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        await _player.seek(state.position);
-      }
+      await _openAt(state.queue, state.queueIndex, state.position, play: true);
     } else {
       await _activateAudioSession();
       await _player.play();

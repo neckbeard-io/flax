@@ -9,12 +9,14 @@ import 'package:window_manager/window_manager.dart';
 import 'package:flax/app/app.dart';
 import 'package:flax/app/bootstrap.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/audio/audio_handler_provider.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/platform/background_sync_service.dart';
 import 'package:flax/services/platform/window_state.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
+import 'package:flax/shared/widgets/cover_art_cache.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,19 +76,9 @@ Future<void> main() async {
 
   final container = ProviderContainer(overrides: startup.overrides);
 
-  // Mount UI immediately so the initial frame renders without delay.
-  runApp(
-    UncontrolledProviderScope(container: container, child: const FlaxApp()),
-  );
-  AppLogger.i('Startup', 'UI mounted');
-
-  // Reconcile local downloads in background to prune ghost downloads and heal paths
-  unawaited(
-    container.read(audioCacheServiceProvider).reconcileLocalDownloads(),
-  );
-
-  // Initialize audio service asynchronously after runApp so the UI renders immediately.
-  // This guarantees the app opens instantly on Android even if audio service initialization is delayed.
+  // Media service first, then the UI. When Android Auto starts the app there
+  // is no screen to show, and its browse requests wait on this; starting it
+  // before mounting means it is not queued behind building the first frame.
   unawaited(
     AudioServiceInitializer.initialize(container)
         .then((audioHandler) {
@@ -104,6 +96,32 @@ Future<void> main() async {
             stackTrace: st,
           );
         }),
+  );
+
+  AppLogger.i(
+    'Startup',
+    'Offline at start: ${container.read(offlineReasonProvider).name}',
+  );
+
+  // Mount UI immediately so the initial frame renders without delay.
+  runApp(
+    UncontrolledProviderScope(container: container, child: const FlaxApp()),
+  );
+  AppLogger.i('Startup', 'UI mounted');
+
+  // Reconcile local downloads in background to prune ghost downloads and heal paths
+  unawaited(
+    container.read(audioCacheServiceProvider).reconcileLocalDownloads(),
+  );
+
+  // Once, well after launch: covers earlier downloads filed under their
+  // request URL become findable offline. Delayed so it never competes with
+  // startup or an Android Auto connection for disk.
+  unawaited(
+    Future<void>.delayed(
+      const Duration(seconds: 20),
+      CoverArtCache.rekeyLegacyEntriesOnce,
+    ),
   );
 
   // Ensure periodic background sync is scheduled on Android if enabled

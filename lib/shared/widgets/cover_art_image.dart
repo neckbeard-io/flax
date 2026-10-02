@@ -1,11 +1,13 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
-import 'package:flax/shared/widgets/art_cache.dart';
+import 'package:flax/shared/widgets/cover_art_cache.dart';
 import 'package:flax/shared/widgets/settle_gate.dart';
 
 /// Cover art for an album, artist, or track.
@@ -38,18 +40,12 @@ class CoverArtImage extends ConsumerWidget {
   /// want [BoxFit.contain] to avoid cropping into a face.
   final BoxFit fit;
 
-  /// Server-side thumbnails are requested in steps rather than at the exact
-  /// measured size, so that a few pixels of layout difference — a resized
-  /// window, a slightly different grid — reuses a cached image instead of
-  /// fetching a near-identical one.
-  static const _steps = <int>[64, 128, 256, 384, 512, 768, 1024, 1536, 2048];
-
-  /// Rounds up to the next step. Above the largest step the size parameter is
+  /// Rounds up to the next step in [coverSizeSteps]. Above the largest step the size parameter is
   /// dropped entirely, which makes Subsonic return the original file — the right
   /// answer for a full-window hero image.
   static int? _requestSize(double logical, double devicePixelRatio) {
     final physical = (logical * devicePixelRatio).ceil();
-    for (final step in _steps) {
+    for (final step in coverSizeSteps) {
       if (physical <= step) return step;
     }
     return null;
@@ -61,6 +57,8 @@ class CoverArtImage extends ConsumerWidget {
     if (coverArtId == null || client == null) {
       return _placeholder(context);
     }
+    final cache = ref.watch(artCacheProvider);
+    final offline = ref.watch(isOfflineModeProvider);
 
     final dpr = MediaQuery.devicePixelRatioOf(context);
 
@@ -78,8 +76,24 @@ class CoverArtImage extends ConsumerWidget {
             : candidates.reduce((a, b) => math.max(a, b));
 
         final requestSize = _requestSize(logical, dpr);
+
+        // Offline, the network is never asked: whatever size of this cover
+        // was stored — by a download, a metadata sync, or an earlier look —
+        // is used and scaled. Asking only for the exact size is why
+        // downloaded art used to show on one screen and not the next.
+        if (offline) {
+          return _clip(
+            _LocalCover(
+              coverArtId: coverArtId!,
+              requestSize: requestSize,
+              fit: fit,
+              placeholder: _placeholder(context),
+            ),
+          );
+        }
+
         final uri = client.getCoverArtUri(coverArtId!, size: requestSize);
-        final cacheKey = 'cover-$coverArtId-${requestSize ?? "orig"}';
+        final cacheKey = coverCacheKey(coverArtId!, requestSize);
 
         // Nothing for the gate to protect: show it now. Without this, scrolling
         // back over art you were just looking at stutters, which is a worse
@@ -101,7 +115,7 @@ class CoverArtImage extends ConsumerWidget {
         final image = CachedNetworkImage(
           imageUrl: uri.toString(),
           // Not the default 200-object cache — see [ArtCache].
-          cacheManager: ArtCache.instance,
+          cacheManager: cache,
           // Keyed by the requested step, so the same art at different sizes is
           // cached separately rather than one size winning.
           cacheKey: cacheKey,
@@ -114,7 +128,14 @@ class CoverArtImage extends ConsumerWidget {
           placeholder: (context, url) => _placeholder(context),
           errorWidget: (context, url, error) {
             AppLogger.w('CoverArt', 'CoverArt error for $coverArtId: $error');
-            return _placeholder(context);
+            // The server could not supply this size; another stored size of
+            // the same cover still beats a placeholder.
+            return _LocalCover(
+              coverArtId: coverArtId!,
+              requestSize: requestSize,
+              fit: fit,
+              placeholder: _placeholder(context),
+            );
           },
         );
 
@@ -125,13 +146,15 @@ class CoverArtImage extends ConsumerWidget {
         return SettleGate(
           bypass: decoded,
           placeholder: _placeholder(context),
-          child: borderRadius == null
-              ? image
-              : ClipRRect(borderRadius: borderRadius!, child: image),
+          child: _clip(image),
         );
       },
     );
   }
+
+  Widget _clip(Widget child) => borderRadius == null
+      ? child
+      : ClipRRect(borderRadius: borderRadius!, child: child);
 
   Widget _placeholder(BuildContext context) {
     final theme = Theme.of(context);
@@ -149,4 +172,79 @@ class CoverArtImage extends ConsumerWidget {
     if (borderRadius == null) return box;
     return ClipRRect(borderRadius: borderRadius!, child: box);
   }
+}
+
+/// A cover read from the local cache only — any stored size, scaled to fit.
+class _LocalCover extends ConsumerStatefulWidget {
+  const _LocalCover({
+    required this.coverArtId,
+    required this.requestSize,
+    required this.fit,
+    required this.placeholder,
+  });
+
+  final String coverArtId;
+  final int? requestSize;
+  final BoxFit fit;
+  final Widget placeholder;
+
+  @override
+  ConsumerState<_LocalCover> createState() => _LocalCoverState();
+}
+
+class _LocalCoverState extends ConsumerState<_LocalCover> {
+  late Future<File?> _file;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void didUpdateWidget(_LocalCover oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.coverArtId != widget.coverArtId ||
+        oldWidget.requestSize != widget.requestSize) {
+      _resolve();
+    }
+  }
+
+  void _resolve() {
+    _file = CoverArtCache.findCached(
+      ref.read(artCacheProvider),
+      widget.coverArtId,
+      preferredSize: widget.requestSize,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final known = CoverArtCache.knownPath(
+      widget.coverArtId,
+      size: widget.requestSize,
+    );
+    if (known != null) return _image(File(known));
+    return FutureBuilder<File?>(
+      future: _file,
+      builder: (context, snapshot) {
+        final file = snapshot.data;
+        return file == null ? widget.placeholder : _image(file);
+      },
+    );
+  }
+
+  Widget _image(File file) => Image.file(
+    file,
+    fit: widget.fit,
+    // Decode at the size it is drawn, not the size it was stored: an original
+    // stands in for a thumbnail without costing its full bitmap in memory.
+    cacheWidth: widget.requestSize,
+    gaplessPlayback: true,
+    errorBuilder: (context, error, stackTrace) {
+      // Evicted since it was found; stop pointing at it.
+      CoverArtCache.forget(widget.coverArtId);
+      return widget.placeholder;
+    },
+  );
 }
