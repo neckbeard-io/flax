@@ -177,6 +177,24 @@ Auto spinning.
   `main.dart` or `bootstrap.dart`. To reproduce a headless start, see
   [docs/VERIFYING.md](docs/VERIFYING.md#android-starts-without-an-activity).
 
+### Android Auto: the large view and the small card
+
+On a widescreen head unit Android Auto splits the screen, and flax can be in
+either part. They are built from different things, so say which one you mean:
+
+- **The large view — left, about two-thirds of the screen.** Flax's full app:
+  the browse tree, or the full-screen Now Playing with the cover as its
+  background. Built from the media browser tree and the media session's
+  metadata and art.
+- **The small card — right, about a third.** The compact Now Playing card shown
+  while another app, usually navigation, has the large view: cover, title,
+  controls, and flax's logo, which comes from the
+  `androidx.car.app.TintableAttributionIcon` meta-data.
+
+Use "large view (left)" and "small card (right)" in code comments, changelog
+lines and conversation. "Panel" or a bare "Now Playing" does not say which,
+and the two are fixed in different places.
+
 ### The window title strip is reserved
 
 `AppChrome` draws over the top of every route on desktop (see
