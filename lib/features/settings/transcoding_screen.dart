@@ -85,15 +85,17 @@ class TranscodingScreen extends ConsumerWidget {
               },
             ),
           ),
-          SwitchListTile(
-            title: const Text('Offline when not on Wi-Fi'),
-            subtitle: const Text(
-              'Automatically switch to offline mode when using cellular data or disconnected',
+          // Desktops have no cellular connection, so the setting did nothing.
+          if (ref.watch(platformOfflinePolicyProvider).supportsCellular)
+            SwitchListTile(
+              title: const Text('Offline when not on Wi-Fi'),
+              subtitle: const Text(
+                'Automatically switch to offline mode when using cellular data or disconnected',
+              ),
+              value: offlineOnCellular,
+              onChanged: (v) =>
+                  ref.read(offlineOnCellularSettingProvider.notifier).set(v),
             ),
-            value: offlineOnCellular,
-            onChanged: (v) =>
-                ref.read(offlineOnCellularSettingProvider.notifier).set(v),
-          ),
           // Android Auto exists only on phones; desktops never connect to a car.
           if (ref.watch(platformOfflinePolicyProvider).supportsCarConnection)
             SwitchListTile(

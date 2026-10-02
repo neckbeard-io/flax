@@ -9,6 +9,7 @@ import 'package:flax/features/settings/settings_screen.dart';
 import 'package:flax/features/settings/transcoding_screen.dart';
 import 'package:flax/shared/widgets/in_window_toaster.dart';
 import 'package:flax/shared/widgets/offline_mode_toggle.dart';
+import 'package:flax/core/providers/platform_offline_policy.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -136,13 +137,49 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [activeServerProvider.overrideWithValue(server)],
+            overrides: [
+              activeServerProvider.overrideWithValue(server),
+              platformOfflinePolicyProvider.overrideWithValue(
+                const AndroidOfflinePolicy(),
+              ),
+            ],
             child: const MaterialApp(home: TranscodingScreen()),
           ),
         );
         await tester.pumpAndSettle();
 
         expect(find.text('Offline when not on Wi-Fi'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Transcoding screen leaves phone-only offline options off desktop',
+      (tester) async {
+        const server = Server(
+          id: 'srv-1',
+          name: 'Test Server',
+          url: 'http://localhost:4533',
+          username: 'admin',
+          tokenHash: 'secret',
+          salt: 'salt123',
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              activeServerProvider.overrideWithValue(server),
+              platformOfflinePolicyProvider.overrideWithValue(
+                const MacOsOfflinePolicy(),
+              ),
+            ],
+            child: const MaterialApp(home: TranscodingScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // No cellular connection and no car on a desktop; both did nothing there.
+        expect(find.text('Offline when not on Wi-Fi'), findsNothing);
+        expect(find.text('Auto-offline on Android Auto'), findsNothing);
       },
     );
   });
