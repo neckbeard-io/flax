@@ -20,7 +20,6 @@ import 'package:flax/services/hotkeys/hotkey_service.dart';
 import 'package:flax/services/library/sync_policy.dart';
 import 'package:flax/services/updater/mobile_update_coordinator.dart';
 import 'package:flax/services/updater/update_provider.dart';
-import 'package:flax/services/updater/whats_new_provider.dart';
 import 'package:flax/shared/input/back_swipe.dart';
 import 'package:flax/shared/input/global_keys.dart';
 import 'package:flax/shared/widgets/desktop_sidebar.dart';
@@ -314,7 +313,6 @@ class _AppChromeState extends ConsumerState<AppChrome>
       // asked any earlier they failed and were marked as seen regardless.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        WhatsNewCoordinator.checkAndShowIfNeeded(context, ref);
         MobileUpdateCoordinator.checkAndPrompt(context, ref);
       });
     }

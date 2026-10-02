@@ -29,7 +29,6 @@ import 'package:flax/services/network/network_target_resolver.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/update_service.dart';
-import 'package:flax/services/updater/whats_new_provider.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 
@@ -393,7 +392,6 @@ class _AboutTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final updateState = ref.watch(updateNotifierProvider);
     final updateNotifier = ref.read(updateNotifierProvider.notifier);
-    final showWhatsNew = ref.watch(showWhatsNewPreferenceProvider);
     final isCompact = MediaQuery.sizeOf(context).width < 500;
 
     return Column(
@@ -453,15 +451,6 @@ class _AboutTile extends ConsumerWidget {
               ),
             );
           },
-        ),
-        SwitchListTile(
-          title: const Text("Show What's New after updates"),
-          subtitle: const Text(
-            'Displays a summary of improvements after upgrading',
-          ),
-          value: showWhatsNew,
-          onChanged: (v) =>
-              ref.read(showWhatsNewPreferenceProvider.notifier).setEnabled(v),
         ),
         ListTile(
           title: const Text('Update Channel'),

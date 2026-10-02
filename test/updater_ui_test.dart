@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flax/features/updater/update_button.dart';
-import 'package:flax/features/updater/whats_new_dialog.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
 
@@ -87,21 +86,6 @@ void main() {
 
     expect(find.text('Update Available'), findsOneWidget);
     expect(find.text('v0.5.1 → v0.5.2'), findsOneWidget);
-  });
-
-  testWidgets('WhatsNewDialog renders version and highlights', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(home: WhatsNewDialog(version: '0.4.6')),
-      ),
-    );
-
-    expect(find.text("What's New in v0.4.6"), findsOneWidget);
-    expect(
-      find.text("Don't show What's New after future updates"),
-      findsOneWidget,
-    );
-    expect(find.text('Got it'), findsOneWidget);
   });
 
   testWidgets('UpdateDialog indicates dev pre-release status', (tester) async {
