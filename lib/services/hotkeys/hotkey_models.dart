@@ -125,25 +125,91 @@ String formatHotKey(HotKey hotKey, {bool? isMacOS}) {
   return mac ? parts.join(' ') : parts.join(' + ');
 }
 
+/// The label for one key.
+///
+/// Never derived from [PhysicalKeyboardKey.debugName]: Flutter strips key
+/// names from release builds, so every letter used to show as "Key" there —
+/// Ctrl + Alt + A read "Ctrl + Alt + Key" — while debug builds looked right.
+/// Letters, digits and function keys are read off the key's USB HID code;
+/// everything else comes from [_namedKeys].
 String _formatKey(PhysicalKeyboardKey key, {required bool mac}) {
-  if (key == PhysicalKeyboardKey.space) return 'Space';
-  if (key == PhysicalKeyboardKey.arrowRight) return mac ? '→' : 'Right';
-  if (key == PhysicalKeyboardKey.arrowLeft) return mac ? '←' : 'Left';
-  if (key == PhysicalKeyboardKey.arrowUp) return mac ? '↑' : 'Up';
-  if (key == PhysicalKeyboardKey.arrowDown) return mac ? '↓' : 'Down';
-  if (key == PhysicalKeyboardKey.escape) return 'Esc';
-  if (key == PhysicalKeyboardKey.enter) return mac ? '⏎' : 'Enter';
-  if (key == PhysicalKeyboardKey.tab) return 'Tab';
-  if (key == PhysicalKeyboardKey.backspace) return mac ? '⌫' : 'Backspace';
-  if (key == PhysicalKeyboardKey.delete) return 'Del';
+  final named = (mac ? _macSymbols[key] : null) ?? _namedKeys[key];
+  if (named != null) return named;
 
-  // Handle keyA .. keyZ
-  final debug = key.debugName ?? '';
-  if (debug.startsWith('Key ')) {
-    return debug.substring(4).toUpperCase();
+  final usage = key.usbHidUsage;
+  int offset(PhysicalKeyboardKey first) => usage - first.usbHidUsage;
+  bool within(PhysicalKeyboardKey first, PhysicalKeyboardKey last) =>
+      usage >= first.usbHidUsage && usage <= last.usbHidUsage;
+
+  if (within(PhysicalKeyboardKey.keyA, PhysicalKeyboardKey.keyZ)) {
+    return String.fromCharCode(0x41 + offset(PhysicalKeyboardKey.keyA));
   }
-  if (debug.startsWith('Digit ')) {
-    return debug.substring(6);
+  if (within(PhysicalKeyboardKey.digit1, PhysicalKeyboardKey.digit9)) {
+    return '${1 + offset(PhysicalKeyboardKey.digit1)}';
   }
-  return debug.isEmpty ? 'Key' : debug;
+  if (within(PhysicalKeyboardKey.f1, PhysicalKeyboardKey.f12)) {
+    return 'F${1 + offset(PhysicalKeyboardKey.f1)}';
+  }
+  if (within(PhysicalKeyboardKey.f13, PhysicalKeyboardKey.f24)) {
+    return 'F${13 + offset(PhysicalKeyboardKey.f13)}';
+  }
+  if (within(PhysicalKeyboardKey.numpad1, PhysicalKeyboardKey.numpad9)) {
+    return 'Num ${1 + offset(PhysicalKeyboardKey.numpad1)}';
+  }
+  // Still something to recognize it by, rather than a bare "Key".
+  return 'Key 0x${usage.toRadixString(16)}';
 }
+
+/// macOS writes these keys as symbols.
+final Map<PhysicalKeyboardKey, String> _macSymbols = {
+  PhysicalKeyboardKey.arrowRight: '→',
+  PhysicalKeyboardKey.arrowLeft: '←',
+  PhysicalKeyboardKey.arrowUp: '↑',
+  PhysicalKeyboardKey.arrowDown: '↓',
+  PhysicalKeyboardKey.enter: '⏎',
+  PhysicalKeyboardKey.backspace: '⌫',
+};
+
+final Map<PhysicalKeyboardKey, String> _namedKeys = {
+  PhysicalKeyboardKey.space: 'Space',
+  PhysicalKeyboardKey.arrowRight: 'Right',
+  PhysicalKeyboardKey.arrowLeft: 'Left',
+  PhysicalKeyboardKey.arrowUp: 'Up',
+  PhysicalKeyboardKey.arrowDown: 'Down',
+  PhysicalKeyboardKey.escape: 'Esc',
+  PhysicalKeyboardKey.enter: 'Enter',
+  PhysicalKeyboardKey.tab: 'Tab',
+  PhysicalKeyboardKey.backspace: 'Backspace',
+  PhysicalKeyboardKey.delete: 'Del',
+  PhysicalKeyboardKey.insert: 'Insert',
+  PhysicalKeyboardKey.home: 'Home',
+  PhysicalKeyboardKey.end: 'End',
+  PhysicalKeyboardKey.pageUp: 'Page Up',
+  PhysicalKeyboardKey.pageDown: 'Page Down',
+  PhysicalKeyboardKey.digit0: '0',
+  PhysicalKeyboardKey.numpad0: 'Num 0',
+  PhysicalKeyboardKey.minus: '-',
+  PhysicalKeyboardKey.equal: '=',
+  PhysicalKeyboardKey.bracketLeft: '[',
+  PhysicalKeyboardKey.bracketRight: ']',
+  PhysicalKeyboardKey.backslash: r'\',
+  PhysicalKeyboardKey.semicolon: ';',
+  PhysicalKeyboardKey.quote: "'",
+  PhysicalKeyboardKey.backquote: '`',
+  PhysicalKeyboardKey.comma: ',',
+  PhysicalKeyboardKey.period: '.',
+  PhysicalKeyboardKey.slash: '/',
+  PhysicalKeyboardKey.numpadAdd: 'Num +',
+  PhysicalKeyboardKey.numpadSubtract: 'Num -',
+  PhysicalKeyboardKey.numpadMultiply: 'Num *',
+  PhysicalKeyboardKey.numpadDivide: 'Num /',
+  PhysicalKeyboardKey.numpadDecimal: 'Num .',
+  PhysicalKeyboardKey.numpadEnter: 'Num Enter',
+  PhysicalKeyboardKey.mediaPlayPause: 'Play/Pause',
+  PhysicalKeyboardKey.mediaTrackNext: 'Next Track',
+  PhysicalKeyboardKey.mediaTrackPrevious: 'Previous Track',
+  PhysicalKeyboardKey.mediaStop: 'Stop',
+  PhysicalKeyboardKey.audioVolumeUp: 'Volume Up',
+  PhysicalKeyboardKey.audioVolumeDown: 'Volume Down',
+  PhysicalKeyboardKey.audioVolumeMute: 'Mute',
+};

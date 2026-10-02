@@ -67,6 +67,43 @@ void main() {
       );
     });
 
+    test('names the actual key, as in Ctrl + Alt + A', () {
+      // Release builds strip key names, which is what the label used to come
+      // from: every letter read "Key" there. Tests run in debug, where the
+      // names exist, so these pin the labels the formatter builds itself.
+      String label(PhysicalKeyboardKey key, {bool mac = false}) => formatHotKey(
+        HotKey(
+          key: key,
+          modifiers: [HotKeyModifier.control, HotKeyModifier.alt],
+        ),
+        isMacOS: mac,
+      );
+
+      expect(label(PhysicalKeyboardKey.keyA), 'Ctrl + Alt + A');
+      expect(label(PhysicalKeyboardKey.keyZ), 'Ctrl + Alt + Z');
+      expect(label(PhysicalKeyboardKey.keyA, mac: true), '⌃ ⌥ A');
+      expect(label(PhysicalKeyboardKey.digit5), 'Ctrl + Alt + 5');
+      expect(label(PhysicalKeyboardKey.digit0), 'Ctrl + Alt + 0');
+      expect(label(PhysicalKeyboardKey.f5), 'Ctrl + Alt + F5');
+      expect(label(PhysicalKeyboardKey.f13), 'Ctrl + Alt + F13');
+      expect(label(PhysicalKeyboardKey.numpad7), 'Ctrl + Alt + Num 7');
+      expect(label(PhysicalKeyboardKey.minus), 'Ctrl + Alt + -');
+      expect(label(PhysicalKeyboardKey.pageUp), 'Ctrl + Alt + Page Up');
+      expect(
+        label(PhysicalKeyboardKey.mediaPlayPause),
+        'Ctrl + Alt + Play/Pause',
+      );
+    });
+
+    test('an unlisted key is still identifiable, never a bare "Key"', () {
+      final text = formatHotKey(
+        HotKey(key: PhysicalKeyboardKey.capsLock),
+        isMacOS: false,
+      );
+      expect(text, isNot('Key'));
+      expect(text, startsWith('Key 0x'));
+    });
+
     test('defaults are unassigned/null for all HotKeyActions', () {
       for (final action in HotKeyAction.values) {
         expect(action.defaultHotKey(), isNull);
