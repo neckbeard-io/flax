@@ -38,13 +38,15 @@ class ArtCache {
 
   static const key = 'flaxArtCache';
 
-  static final CacheManager instance = CacheManager(
-    Config(
-      key,
-      stalePeriod: const Duration(days: 365 * 100),
-      maxNrOfCacheObjects: 1000000000,
-    ),
+  /// Held so the store behind [instance] can be listed — see
+  /// `CoverArtCache.rekeyLegacyEntries`.
+  static final Config config = Config(
+    key,
+    stalePeriod: const Duration(days: 365 * 100),
+    maxNrOfCacheObjects: 1000000000,
   );
+
+  static final CacheManager instance = CacheManager(config);
 
   /// Widens Flutter's *decoded* image cache, which is a different cache from the
   /// one above and the reason scrolling back to art you just looked at could

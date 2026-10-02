@@ -20,6 +20,7 @@ import 'package:flax/services/database/tables/orderings.dart';
 import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
+import 'package:flax/shared/widgets/cover_art_cache.dart';
 
 class MetadataCacheSummary {
   final int albumArtCached;
@@ -147,7 +148,7 @@ class MetadataSyncService {
           );
           final files = await Future.wait(
             chunk.map((a) {
-              final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+              final key = coverCacheKey(a.coverArtId!, reqSize);
               return _artCache.getFileFromCache(key);
             }),
           );
@@ -185,7 +186,7 @@ class MetadataSyncService {
           );
           final files = await Future.wait(
             chunk.map((a) {
-              final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+              final key = coverCacheKey(a.coverArtId!, reqSize);
               return _artCache.getFileFromCache(key);
             }),
           );
@@ -447,7 +448,7 @@ class MetadataSyncService {
           );
           final files = await Future.wait(
             chunk.map((a) {
-              final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+              final key = coverCacheKey(a.coverArtId!, reqSize);
               return _artCache.getFileFromCache(key);
             }),
           );
@@ -478,7 +479,7 @@ class MetadataSyncService {
           );
           final files = await Future.wait(
             chunk.map((a) {
-              final key = 'cover-${a.coverArtId}-${reqSize ?? "orig"}';
+              final key = coverCacheKey(a.coverArtId!, reqSize);
               return _artCache.getFileFromCache(key);
             }),
           );
@@ -558,7 +559,7 @@ class MetadataSyncService {
             continue;
           }
 
-          final cacheKey = 'cover-$coverId-${reqSize ?? "orig"}';
+          final cacheKey = coverCacheKey(coverId, reqSize);
           final uri = client.getCoverArtUri(coverId, size: reqSize);
           final destPath = p.join(tempArtDir.path, '$cacheKey.jpg');
 
@@ -769,7 +770,7 @@ class _AlbumArtWorkItem extends _SyncWorkItem {
   ) async {
     final coverId = album.coverArtId!;
     final reqSize = quality.requestSize;
-    final cacheKey = 'cover-$coverId-${reqSize ?? "orig"}';
+    final cacheKey = coverCacheKey(coverId, reqSize);
 
     // Check if already in cache
     final cached = await cacheManager.getFileFromCache(cacheKey);
@@ -802,7 +803,7 @@ class _ArtistArtWorkItem extends _SyncWorkItem {
   ) async {
     final coverId = artist.coverArtId!;
     final reqSize = quality.requestSize;
-    final cacheKey = 'cover-$coverId-${reqSize ?? "orig"}';
+    final cacheKey = coverCacheKey(coverId, reqSize);
 
     // Check if already in cache
     final cached = await cacheManager.getFileFromCache(cacheKey);

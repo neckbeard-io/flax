@@ -96,6 +96,20 @@ User-facing strings and identifiers are US English: *color*, *center*,
 *favorite*. Internationalization is planned but not current — it is tracked as
 its own issue, so do not seed the codebase with mixed spellings in the meantime.
 
+### Downloaded means fully available offline
+
+Downloading a track, album or artist caches its whole metadata chain — album
+and artist records, biography, lyrics and cover art — so nothing about a
+downloaded item needs the server. Two rules keep that true:
+
+- **Covers are stored and found by name, never by request URL.** Use
+  `coverCacheKey(id, size)` from `lib/shared/widgets/cover_art_cache.dart`.
+  A request URL carries a fresh auth salt, so art filed under one can never be
+  looked up again — which is how downloaded covers once went missing offline.
+- **Every reader resolves art through `CoverArtCache.findCached`** — screens,
+  Android Auto, the notification. It falls back to any stored size of the cover
+  before the server, and nothing asks the server for art while offline.
+
 ### Hover / mouseover conventions
 
 Interactive elements use the primitives in
