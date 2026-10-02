@@ -1,7 +1,10 @@
 import 'package:audio_service/audio_service.dart';
+import 'package:file/file.dart';
+import 'package:file/local.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -10,7 +13,11 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/audio/flax_audio_handler.dart';
+import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
+import 'package:flax/shared/widgets/cover_art_cache.dart';
+
+import 'helpers/fake_cover_store.dart';
 
 class MockLibraryRepository extends Mock implements LibraryRepository {
   @override
@@ -311,13 +318,24 @@ void main() {
   late MockLibraryRepository mockRepo;
   late MockSubsonicClient mockClient;
   late FlaxAudioHandler handler;
+  late Directory coverDir;
+  late FakeCoverStore covers;
 
   setUp(() {
+    // Providers that load their own preferences would otherwise fail on a
+    // missing plugin, surfacing as an async error in whichever test runs next.
+    SharedPreferences.setMockInitialValues({});
     mockRepo = MockLibraryRepository();
     mockClient = MockSubsonicClient();
+    coverDir = const LocalFileSystem().systemTempDirectory.createTempSync(
+      'flax_handler_covers_',
+    );
+    covers = FakeCoverStore(coverDir);
+    CoverArtCache.resetForTest();
 
     container = ProviderContainer(
       overrides: [
+        artCacheProvider.overrideWithValue(covers),
         libraryRepositoryProvider.overrideWithValue(mockRepo),
         subsonicClientProvider.overrideWithValue(mockClient),
         activeServerProvider.overrideWithValue(
@@ -338,6 +356,7 @@ void main() {
 
   tearDown(() {
     container.dispose();
+    coverDir.deleteSync(recursive: true);
   });
 
   group('FlaxAudioHandler Android Auto Browse Tree', () {
@@ -688,5 +707,85 @@ void main() {
       expect(root.length, equals(6));
       expect(root.first.id, equals(FlaxAudioHandler.kRecentNode));
     });
+  });
+
+  group('Android Auto art, resumption and refreshes', () {
+    const song = Song(
+      id: 'song_art',
+      serverId: 'srv_1',
+      title: 'Veridis Quo',
+      artistName: 'Daft Punk',
+      coverArtId: 'art_9',
+      duration: 345,
+    );
+
+    test('Now Playing art comes from the cover on disk', () async {
+      // A download stored this cover at the configured quality. The car's Now
+      // Playing panel used to be given a fresh server URL instead, so it sat
+      // black until a download finished — or for good, offline.
+      final stored = covers.add(coverCacheKey('art_9', 512));
+
+      handler.updateFromPlayerState(
+        const PlayerState(currentSong: song, queue: [song]),
+      );
+      await pumpEventQueue();
+
+      final art = handler.mediaItem.value!.artUri!;
+      expect(art.scheme, 'file');
+      expect(art.toFilePath(), stored.path);
+    });
+
+    test('offline with no stored cover, the server is not asked', () async {
+      final offline = ProviderContainer(
+        overrides: [
+          artCacheProvider.overrideWithValue(covers),
+          libraryRepositoryProvider.overrideWithValue(mockRepo),
+          subsonicClientProvider.overrideWithValue(mockClient),
+          offlineManualOverrideProvider.overrideWith(
+            (ref) => OfflineManualNotifier(initialValue: true),
+          ),
+        ],
+      );
+      addTearDown(offline.dispose);
+      final offlineHandler = FlaxAudioHandler(offline);
+
+      offlineHandler.updateFromPlayerState(
+        const PlayerState(currentSong: song, queue: [song]),
+      );
+      await pumpEventQueue();
+
+      expect(offlineHandler.mediaItem.value!.artUri, isNull);
+    });
+
+    test('the resumption root is not the Recently Added tab', () async {
+      // audio_service asks "what should be resumed" through a root named
+      // 'recent'. The tab used to share that id, so Android Auto was handed
+      // the newest albums instead of the track to resume.
+      expect(FlaxAudioHandler.kRecentNode, isNot(AudioService.recentRootId));
+      final items = await handler.getChildren(AudioService.recentRootId);
+      expect(items.where((i) => i.id.startsWith('album_')), isEmpty);
+    });
+
+    test(
+      'the browse tree refreshes only when the offline mode changes',
+      () async {
+        var refreshes = 0;
+        final sub = handler
+            .subscribeToChildren(AudioService.browsableRootId)
+            .listen((_) => refreshes++);
+        addTearDown(sub.cancel);
+        await pumpEventQueue();
+        final baseline = refreshes;
+
+        // A car connecting with auto-offline off changes nothing on screen.
+        container.read(isCarConnectedProvider.notifier).setCarConnected(true);
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        expect(refreshes, baseline);
+
+        await container.read(offlineManualOverrideProvider.notifier).set(true);
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        expect(refreshes, greaterThan(baseline));
+      },
+    );
   });
 }
