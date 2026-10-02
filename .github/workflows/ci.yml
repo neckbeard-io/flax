@@ -87,5 +87,15 @@ jobs:
 
       - run: flutter pub get
 
+      # The JSON report names every test and the error it hit, including an
+      # error that lands after its test finished — which the console reporter
+      # counts as a failure without saying where.
       - name: Run unit & widget tests
-        run: flutter test
+        run: flutter test --file-reporter json:test-results.json
+
+      - name: Keep per-test results when the suite fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.json

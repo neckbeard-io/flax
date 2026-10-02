@@ -43,10 +43,12 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
 
 ### Changed
+- 'Offline when not on Wi-Fi' no longer appears on desktop.
 - Android Auto offline option no longer appears on desktop.
 - Playback notification shows the flax logo instead of a solid icon.
 
 ### Fixed
+- Offline queues with undownloaded tracks no longer show the wrong song after a track change.
 - Downloaded album art now shows offline on every screen and in Android Auto.
 - Android Auto Now Playing no longer sits black while artwork loads.
 - Audio no longer hiccups when Android Auto resumes playback on reconnect.
