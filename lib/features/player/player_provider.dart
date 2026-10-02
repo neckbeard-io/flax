@@ -18,6 +18,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/gapless_probe.dart';
+import 'package:flax/features/player/mpv_queue_map.dart';
 import 'package:flax/features/settings/audio_output_settings.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/playback_settings.dart';
@@ -166,10 +167,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   String? _lastAppliedPlayback;
   String? _lastAppliedOutput;
 
-  /// Song ids currently loaded into mpv's playlist, in order. Gapless needs the
-  /// queue to live in mpv rather than being fed one file at a time, and this is
-  /// how we know whether what mpv holds still matches [PlayerState.queue].
-  List<String> _mpvQueueIds = const [];
+  /// Which queue entries are loaded into mpv's playlist, and in which slots.
+  /// Gapless needs the queue to live in mpv rather than being fed one file at a
+  /// time, and this is how we know whether what mpv holds still matches
+  /// [PlayerState.queue] — and which song an mpv index names, since songs that
+  /// cannot be played offline are left out of the playlist.
+  MpvQueueMap _mpvMap = MpvQueueMap.empty;
   GaplessProbe? _probe;
 
   PlayerNotifier(this._ref)
@@ -366,7 +369,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // Mid-queue, mpv advances by itself now that it holds the whole playlist,
     // and _onMpvPlaylistIndex picks that up. Calling next() here as well would
     // skip a track on every boundary. Only the end of the queue is ours.
-    if (_mpvQueueInSync && state.queueIndex < state.queue.length - 1) return;
+    if (_mpvQueueInSync &&
+        state.queueIndex < state.queue.length - 1 &&
+        !_mpvMap.isLastEntry(state.queueIndex)) {
+      return;
+    }
     if (state.queueIndex < state.queue.length - 1) {
       next();
     } else if (state.repeatMode == RepeatMode.all && state.queue.isNotEmpty) {
@@ -490,19 +497,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   // boundary was a Dart round trip and a fresh network open — a gap by
   // construction, whatever `--gapless-audio` was set to.
   //
-  // [PlayerState.queue] stays the source of truth for the UI; [_mpvQueueIds]
+  // [PlayerState.queue] stays the source of truth for the UI; [_mpvMap]
   // records what mpv was actually given, so the two can be checked against
   // each other before an index from mpv is believed.
 
   /// Whether mpv's playlist still holds exactly the queue we think it does.
-  bool get _mpvQueueInSync {
-    final queue = state.queue;
-    if (_mpvQueueIds.length != queue.length) return false;
-    for (var i = 0; i < queue.length; i++) {
-      if (_mpvQueueIds[i] != queue[i].id) return false;
-    }
-    return true;
-  }
+  bool get _mpvQueueInSync => _mpvMap.matches(state.queue);
 
   /// Loads [songs] into mpv as one playlist, starting at [index].
   ///
@@ -543,10 +543,13 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     final isCached = _isSongCached(currentSong);
 
     final medias = <mpv.Media>[];
-    for (final song in songs) {
+    final positions = <int>[];
+    for (var i = 0; i < songs.length; i++) {
+      final song = songs[i];
       try {
         final uri = _streamUri(song, transcode);
         medias.add(mpv.Media(uri.toString()));
+        positions.add(i);
       } catch (e) {
         if (song.id == currentSong?.id && play) {
           rethrow;
@@ -567,7 +570,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       return false;
     }
 
-    _mpvQueueIds = [for (final song in songs) song.id];
+    _mpvMap = MpvQueueMap.of(songs, positions);
 
     if (mounted) {
       state = state.copyWith(
@@ -577,7 +580,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         isPlayingCached: isCached,
       );
     }
-    final targetIndex = index.clamp(0, medias.length - 1);
+    // An mpv slot, not a queue index: songs that could not be handed to mpv
+    // leave gaps, so the two diverge after the first one.
+    final targetIndex = _mpvMap.startIndexFor(index);
     await _player.openAll(medias, play: play, index: targetIndex);
     if (play) {
       await _activateAudioSession();
@@ -644,11 +649,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// mpv moved to another entry by itself, which is what a gapless advance
   /// looks like from here — there is no call of ours to hang the state change
   /// off, so the playlist is the only thing that knows.
-  void _onMpvPlaylistIndex(int index) {
+  void _onMpvPlaylistIndex(int mpvIndex) {
     // An index is only meaningful while mpv holds the queue we think it does;
     // mid-reload the two disagree and the index would name the wrong song.
     if (!_mpvQueueInSync) return;
-    if (index < 0 || index >= state.queue.length) return;
+    final index = _mpvMap.queueIndexAt(mpvIndex);
+    if (index == null || index >= state.queue.length) return;
     if (index == state.queueIndex) return;
 
     final song = state.queue[index];
@@ -685,8 +691,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // A jump inside the playlist mpv already holds, rather than a fresh load:
     // reloading would throw away the prefetched next entry every time someone
     // pressed skip.
-    if (_mpvQueueInSync) {
-      await _player.jump(index);
+    final slot = _mpvQueueInSync ? _mpvMap.mpvIndexOf(index) : null;
+    if (slot != null) {
+      await _player.jump(slot);
       await _activateAudioSession();
       await _player.play();
     } else {
@@ -1264,27 +1271,34 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// is playing. Anything that goes wrong here only costs the mirror, which
   /// [_playIndex] rebuilds on the next skip.
   Future<void> _insertIntoMpvQueue(List<Song> songs, int at) async {
-    if (_mpvQueueIds.length + songs.length != state.queue.length) {
+    var map = _mpvMap.shiftedForInsert(at, songs.length);
+    if (!map.matches(state.queue)) {
       // Already out of step with mpv; leave it to be rebuilt wholesale.
-      _mpvQueueIds = const [];
+      _mpvMap = MpvQueueMap.empty;
       return;
     }
     try {
       final transcode = state.activeTranscode;
-      final ids = [..._mpvQueueIds];
       for (var i = 0; i < songs.length; i++) {
-        await _player.add(
-          mpv.Media(_streamUri(songs[i], transcode).toString()),
-        );
-        final from = ids.length;
-        final to = at + i;
-        ids.insert(to, songs[i].id);
+        final queueIndex = at + i;
+        final Uri uri;
+        try {
+          uri = _streamUri(songs[i], transcode);
+        } catch (_) {
+          // Not playable right now (not downloaded, offline): left out of
+          // mpv, like the gaps _openQueue leaves.
+          continue;
+        }
+        await _player.add(mpv.Media(uri.toString()));
+        final from = map.length;
+        final to = map.slotFor(queueIndex);
+        map = map.withEntry(queueIndex, songs[i].id);
         if (from != to) await _player.move(from, to);
       }
-      _mpvQueueIds = ids;
+      _mpvMap = map;
     } catch (e) {
       AppLogger.w('Player', 'Queue insert into mpv failed: $e');
-      _mpvQueueIds = const [];
+      _mpvMap = MpvQueueMap.empty;
     }
   }
 
@@ -1699,7 +1713,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// Deliberately does *not* call mpv's own shuffle any more. That call was
   /// harmless while mpv only ever held the one file it was playing, but mpv now
   /// holds the whole queue, and shuffling it server-side would reorder the
-  /// playlist out from under [_mpvQueueIds] — every index mpv reported after
+  /// playlist out from under [_mpvMap] — every index mpv reported after
   /// that would name the wrong song.
   ///
   /// Shuffle therefore still only sets a flag; ordering by it is unimplemented,
