@@ -341,11 +341,7 @@ object FlaxEngineHelper {
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CAR_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "isCarConnected" -> {
-                    val type = carConnection?.type?.value ?: CarConnection.CONNECTION_TYPE_NOT_CONNECTED
-                    val isConnected = (type == CarConnection.CONNECTION_TYPE_PROJECTION || type == CarConnection.CONNECTION_TYPE_NATIVE)
-                    result.success(isConnected)
-                }
+                "isCarConnected" -> answerCarConnected(result)
                 "activateMediaSession" -> {
                     val success = FlaxMediaSessionHelper.activateMediaSession(appContext)
                     result.success(success)
@@ -422,6 +418,44 @@ object FlaxEngineHelper {
                 }
             }
         )
+    }
+
+    private fun isConnectedType(type: Int?): Boolean =
+        type == CarConnection.CONNECTION_TYPE_PROJECTION || type == CarConnection.CONNECTION_TYPE_NATIVE
+
+    /**
+     * Answers with the real car connection state.
+     *
+     * CarConnection learns the state asynchronously, so right after the process
+     * starts its value is still null — and answering "not connected" then made
+     * the app decide it was online for the first moments of every Android Auto
+     * start, before the real answer flipped it offline. Startup asks this before
+     * building anything, so wait (briefly) for the first real value instead.
+     */
+    private fun answerCarConnected(result: MethodChannel.Result) {
+        val live = carConnection?.type
+        val current = live?.value
+        if (live == null || current != null) {
+            result.success(isConnectedType(current))
+            return
+        }
+        var answered = false
+        val firstValue = object : Observer<Int> {
+            override fun onChanged(value: Int) {
+                if (answered) return
+                answered = true
+                live.removeObserver(this)
+                result.success(isConnectedType(value))
+            }
+        }
+        live.observeForever(firstValue)
+        mainHandler.postDelayed({
+            if (!answered) {
+                answered = true
+                live.removeObserver(firstValue)
+                result.success(false)
+            }
+        }, 500)
     }
 
     @Suppress("DEPRECATION")

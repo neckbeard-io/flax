@@ -44,6 +44,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ### Fixed
 - Downloaded album art now shows offline on every screen and in Android Auto.
 - Android Auto Now Playing no longer sits black while artwork loads.
+- Android Auto offline mode no longer contacts the server at startup.
 - Endless splash screen after Android Auto, a media button, or background sync started flax.
 - Android Auto no longer loses car and network detection after flax is closed.
 - Local server address and streaming quality now follow network changes after launch.

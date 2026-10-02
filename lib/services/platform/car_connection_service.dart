@@ -18,7 +18,7 @@ final isCarConnectedProvider =
     });
 
 class CarConnectionNotifier extends StateNotifier<bool> {
-  CarConnectionNotifier() : super(false);
+  CarConnectionNotifier([super.initial = false]);
 
   void setCarConnected(bool connected) {
     if (state != connected) {
@@ -32,11 +32,25 @@ class CarConnectionService {
   static const _channel = MethodChannel('com.flax/car_connection');
   static const _eventChannel = EventChannel('com.flax/car_connection_events');
 
-  final CarConnectionNotifier notifier = CarConnectionNotifier();
+  final CarConnectionNotifier notifier;
   StreamSubscription? _subscription;
 
-  CarConnectionService() {
+  /// [initiallyConnected] is the state startup already read (see
+  /// [queryCarConnected]), so offline decisions made before the first event
+  /// arrives are made with the real answer rather than "not connected".
+  CarConnectionService({bool initiallyConnected = false})
+    : notifier = CarConnectionNotifier(initiallyConnected) {
     _init();
+  }
+
+  /// Asks the platform once whether a car is connected — Android Auto or an
+  /// Android Automotive head unit. False elsewhere.
+  ///
+  /// Safe to await before `runApp`: the channel is registered on every engine
+  /// by the app itself, so it answers whether or not an Activity is attached.
+  static Future<bool> queryCarConnected() async {
+    if (!Platform.isAndroid) return false;
+    return await _channel.invokeMethod<bool>('isCarConnected') ?? false;
   }
 
   Future<void> _init() async {
