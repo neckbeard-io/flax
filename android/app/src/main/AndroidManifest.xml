@@ -35,7 +35,13 @@
             android:resource="@xml/automotive_app_desc" />
         <meta-data
             android:name="com.google.android.gms.car.notification.SmallIcon"
-            android:resource="@drawable/ic_music_note" />
+            android:resource="@drawable/ic_flax_logo_mono" />
+        <!-- The logo Android Auto draws on its media card, the Now Playing card
+             beside navigation. Without it the card shows no app logo at all;
+             it must be monochrome, which the launcher icon is not. -->
+        <meta-data
+            android:name="androidx.car.app.TintableAttributionIcon"
+            android:resource="@drawable/ic_flax_logo_mono" />
         <service
             android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"

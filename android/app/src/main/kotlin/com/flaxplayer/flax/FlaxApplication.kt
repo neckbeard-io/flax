@@ -23,6 +23,7 @@ class FlaxApplication : Application() {
             R.drawable.ic_offline_mode,
             R.drawable.ic_star_rating,
             R.drawable.ic_download_notification,
+            R.drawable.ic_flax_logo_mono,
         )
     }
 

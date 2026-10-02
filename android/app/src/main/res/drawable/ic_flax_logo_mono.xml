@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome flax logo, drawn from assets/flax_logo.svg as one tintable
+     silhouette. Android Auto draws it on the media card (the androidx.car.app.
+     TintableAttributionIcon meta-data) and Android uses it as the playback
+     notification's small icon; both need a single-color shape, not the
+     full-color launcher icon. The stem is thicker than the original so it
+     survives at 24dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="400"
+    android:viewportHeight="400">
+    <group
+        android:translateX="-56"
+        android:translateY="-88">
+        <group
+            android:pivotX="256"
+            android:pivotY="240"
+            android:rotation="0">
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M214,165 A42,72 0 1,0 298,165 A42,72 0 1,0 214,165 Z" />
+        </group>
+        <group
+            android:pivotX="256"
+            android:pivotY="240"
+            android:rotation="72">
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M214,165 A42,72 0 1,0 298,165 A42,72 0 1,0 214,165 Z" />
+        </group>
+        <group
+            android:pivotX="256"
+            android:pivotY="240"
+            android:rotation="144">
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M214,165 A42,72 0 1,0 298,165 A42,72 0 1,0 214,165 Z" />
+        </group>
+        <group
+            android:pivotX="256"
+            android:pivotY="240"
+            android:rotation="216">
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M214,165 A42,72 0 1,0 298,165 A42,72 0 1,0 214,165 Z" />
+        </group>
+        <group
+            android:pivotX="256"
+            android:pivotY="240"
+            android:rotation="288">
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M214,165 A42,72 0 1,0 298,165 A42,72 0 1,0 214,165 Z" />
+        </group>
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M238,240 A18,18 0 1,0 274,240 A18,18 0 1,0 238,240 Z" />
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="24"
+            android:strokeLineCap="round"
+            android:pathData="M256,290 Q256,380 248,440 Q244,470 256,480" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M252,360 Q220,340 200,355 Q225,360 250,370 Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M254,400 Q285,375 305,388 Q280,390 258,405 Z" />
+    </group>
+</vector>

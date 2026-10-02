@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Flax logo on Android Auto's Now Playing card.
 - Albums screen now includes a manual refresh button and pull-to-refresh.
 - Check for updates tile retains a recheck button when an update is available.
 - Orphaned cache cleanup tool and server reset option in Metadata & Storage settings.
@@ -40,6 +41,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Password manager autofill support on server setup via AutofillGroup and semantic autofill hints.
 - AutoEQ database download shows determinate progress bar with live byte transfer metrics.
 - Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
+
+### Changed
+- Playback notification shows the flax logo instead of a solid icon.
 
 ### Fixed
 - Downloaded album art now shows offline on every screen and in Android Auto.

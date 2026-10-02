@@ -34,7 +34,9 @@ class AudioServiceInitializer {
           androidNotificationOngoing: false,
           androidStopForegroundOnPause: false,
           androidShowNotificationBadge: true,
-          androidNotificationIcon: 'mipmap/ic_launcher',
+          // Monochrome, as a notification small icon must be: the full-color
+          // launcher icon rendered as a solid blob in the status bar.
+          androidNotificationIcon: 'drawable/ic_flax_logo_mono',
           androidBrowsableRootExtras: {
             AndroidContentStyle.supportedKey: true,
             AndroidContentStyle.browsableHintKey:
