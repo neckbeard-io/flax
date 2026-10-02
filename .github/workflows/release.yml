@@ -524,26 +524,30 @@ jobs:
               ]
 
               unreleased_section = text.split('\n## ')[1] if '\n## ' in text else text
-              added_block = ''
-              fixed_block = ''
-              if '### Added' in unreleased_section:
-                  part = unreleased_section.split('### Added')[1]
-                  if '### Fixed' in part:
-                      added_block, fixed_block = part.split('### Fixed', 1)
-                  else:
-                      added_block = part
-              elif '### Fixed' in unreleased_section:
-                  fixed_block = unreleased_section.split('### Fixed')[1]
 
-              added_items = [l for l in added_lines if l in added_block]
-              fixed_items = [l for l in added_lines if l in fixed_block]
-              remaining = [l for l in added_lines if l not in added_items and l not in fixed_items]
+              # Group each new line under the ### heading it sits beneath in
+              # Unreleased, in the changelog's own order. This used to split
+              # on Added and Fixed only, so Changed lines were published as
+              # Added and Removed lines as Fixed.
+              sections = {}
+              current = None
+              for raw in unreleased_section.splitlines():
+                  if raw.startswith('### '):
+                      current = raw[4:].strip()
+                      sections.setdefault(current, [])
+                  elif current is not None and raw.strip().startswith('- '):
+                      sections[current].append(raw.strip())
 
-              output_sections = []
-              if added_items:
-                  output_sections.append('### Added\n' + '\n'.join(added_items))
-              if fixed_items:
-                  output_sections.append('### Fixed\n' + '\n'.join(fixed_items))
+              grouped = {heading: [] for heading in sections}
+              remaining = []
+              for line in added_lines:
+                  home = next((h for h, items in sections.items() if line in items), None)
+                  (grouped[home] if home else remaining).append(line)
+
+              output_sections = [
+                  f'### {heading}\n' + '\n'.join(items)
+                  for heading, items in grouped.items() if items
+              ]
               if remaining:
                   output_sections.append('### Other Changes\n' + '\n'.join(remaining))
 
