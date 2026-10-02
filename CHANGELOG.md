@@ -104,6 +104,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Android in-place updater prompts unknown source permissions seamlessly.
 - Eliminated Android startup crash in release builds by adding ProGuard keep rules for WorkManager and Room, and resolving device inspection errors.
 
+### Removed
+- Post-update What's New dialog; release notes already show before updating.
+
 ## v0.5.6 — 2026-08-29
 
 ### Added
