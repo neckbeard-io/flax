@@ -8,12 +8,21 @@ name: Release
 # 3. workflow_dispatch: Manual triggers for specific platforms or custom version tags.
 #
 # Rapid pushes automatically cancel in-progress runs on that branch to save runner resources.
+# Pushes that only touch documentation or workflow files publish nothing: a
+# release for them would prompt every tester to update to an identical build.
 
 on:
   push:
     branches:
       - main
       - dev
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '.gitignore'
+      - '.git-blame-ignore-revs'
+      - 'LICENSE'
   workflow_dispatch:
     inputs:
       version:

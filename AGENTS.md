@@ -69,6 +69,11 @@ Common types:
 
 Rules:
 - Subject line must be imperative and lowercase (e.g. `feat(player): add crossfade support`).
+- Commit with the git identity configured in the clone. Never override it
+  (`-c user.name=…`, `-c user.email=…`, `--author`), and add no
+  `Co-authored-by:` or AI attribution trailers. GitHub credits a
+  `<name>@users.noreply.github.com` address to whichever account owns `<name>`,
+  so an invented identity attributes commits to a stranger.
 
 ### Stars are ratings, hearts are favorites
 
@@ -139,12 +144,36 @@ AppChrome is `MaterialApp.router`'s *builder*, which sits above the
 `InheritedGoRouter` — `GoRouter.of(context)` finds nothing there. Read the
 router from `routerProvider` instead.
 
-### The top-right corner is reserved
+### Nothing before runApp may wait on an Activity
 
-Screens that put controls in the **top-right** must reserve
-`windowButtonsReservedWidth` (see `lib/shared/widgets/window_buttons.dart`).
-`AppChrome` draws the window controls over every route, and anything else in
-that corner ends up underneath them.
+On Android, `FlaxApplication` starts the Flutter engine on every process start,
+so `main()` often runs with no Activity: Android Auto connecting, a media
+button, background sync and the download service all start the process that
+way. With no Activity attached, Android silently drops `flutter/platform`
+calls (`SystemChrome`, `SystemNavigator`, haptics, clipboard) — the Future never
+completes, and a try/catch does nothing because nothing is thrown. Awaiting one
+before `runApp` left flax on its splash screen until it was killed, and Android
+Auto spinning.
+
+- Everything awaited before `runApp` goes through `bootstrap()` /
+  `startupStep()` in `lib/app/bootstrap.dart`, which bounds every step.
+- Activity-level concerns such as orientation belong in `MainActivity`, where
+  they also apply when an Activity attaches to an engine already running.
+- `test/startup_bootstrap_test.dart` fails if `SystemChrome` appears in
+  `main.dart` or `bootstrap.dart`. To reproduce a headless start, see
+  [docs/VERIFYING.md](docs/VERIFYING.md#android-starts-without-an-activity).
+
+### The window title strip is reserved
+
+`AppChrome` draws over the top of every route on desktop (see
+`lib/shared/widgets/window_buttons.dart`):
+
+- **Top right:** the window controls. Screens that put controls there must
+  reserve `windowButtonsReservedWidth`, or they end up underneath.
+- **Top left, Windows and Linux only:** a `windowDragStripHeight`-tall drag
+  strip across the rest of the top edge, which swallows taps. Keep tappable
+  controls out of it — including in widget tests that wrap `AppChrome`, which
+  otherwise pass on macOS and fail on the Linux CI runner.
 
 ### Every user-visible change gets a changelog line
 
@@ -186,7 +215,7 @@ starts a fresh `## Unreleased` above it. **That section becomes the GitHub
 release body verbatim** — the workflow extracts it and fails the run if it is
 missing — followed by the standing install instructions. So a line written badly
 here is the line testers read; there is no second pass where someone tidies it
-up. See the maintainer section below.
+up. Release mechanics are in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Settings & menu organization
 
@@ -194,7 +223,7 @@ Settings are organized by functional domain to prevent the root settings screen 
 
 #### Domain Breakdown
 1. **Servers & Connection**: Server profiles, connection state, switching active server.
-2. **Appearance & Interface**: Global UI theme (Light/Dark/System), AMOLED black, orientation lock, lyrics presentation and typography.
+2. **Appearance & Interface**: Global UI theme (Light/Dark/System), AMOLED black, lyrics presentation and typography.
 3. **Audio & Playback**: Audio rendering pipeline and listening behavior:
    - *Inline*: Scrobbling, auto-switch to Now Playing.
    - *Subpages*: Audio Output (DAC hardware, exclusive mode, sample rate), Equalizer (Parametric EQ, AutoEQ headphone database, presets).
@@ -244,8 +273,8 @@ a couple of minutes; expect it.
 
 ### Checks
 
-- **Local:** Run `dart format .` on touched files and run any new unit/widget test you added (e.g. `flutter test test/my_feature_test.dart`).
-- **CI:** `.github/workflows/ci.yml` automatically validates full repo formatting (`dart format --output=none --set-exit-if-changed .`), static analysis (`flutter analyze --fatal-infos`), and the entire test suite on every pull request and push to `main`. There is no need to run the full test suite twice locally.
+- **Local:** Run any new unit/widget test you added (e.g. `flutter test test/my_feature_test.dart`) and format touched files with the **pinned** SDK (below).
+- **CI:** `.github/workflows/ci.yml` validates full repo formatting (`dart format --output=none --set-exit-if-changed .`), static analysis (`flutter analyze --fatal-infos`), and the entire test suite on every pull request and push to `main` — not on pushes to `dev`, so the PR is the only place they run. There is no need to run the full test suite twice locally.
 
 The sweep itself is listed in `.git-blame-ignore-revs`, so blame points at
 whoever wrote a line rather than at the reformat. GitHub's blame view honors
@@ -257,10 +286,18 @@ git config blame.ignoreRevsFile .git-blame-ignore-revs
 
 Two things about that baseline:
 
-- **The formatter's output depends on the SDK version.** The check pins Dart
-  3.12.2, matching the Flutter version in `release.yml`. A newer local SDK can
-  restyle code CI considers clean, which looks like your change breaking an
-  untouched file.
+- **The formatter's output depends on the SDK version.** CI pins Dart 3.12.2
+  (Flutter 3.44.2, as in `ci.yml` and `release.yml`), and a newer local SDK
+  restyles code CI considers clean — which is how an untouched file once failed
+  CI. Format with the pinned SDK, not your local one:
+
+  ```bash
+  curl -sfLO https://storage.googleapis.com/dart-archive/channels/stable/release/3.12.2/sdk/dartsdk-macos-arm64-release.zip
+  unzip -qo dartsdk-macos-arm64-release.zip -d /tmp/dart-3.12.2
+  /tmp/dart-3.12.2/dart-sdk/bin/dart format --output=none --set-exit-if-changed .
+  ```
+
+  (`linux-x64` / `windows-x64` zips for other hosts.)
 - **A few numeric tables are deliberately exempt.** The band frequencies, band
   labels and foobar2000 preset table in the equalizer are grids — 18 values per
   row, in band order — and the formatter would give each number its own line.
@@ -304,214 +341,33 @@ Whenever modifying or adding user interfaces, enforce the following:
      });
      ```
 
-### Screenshots and synthetic input — macOS only
+### Looking at the real app
 
-Everything in this subsection depends on macOS APIs (`screencapture`, System
-Events, `CGEvent`). On Windows and Linux, fall back to widget tests and a manual
-look.
+Recipes live in [docs/VERIFYING.md](docs/VERIFYING.md):
 
-After relaunching, capture the actual window and look at it before reporting:
-
-```bash
-tool/screenshot.sh                    # -> /tmp/flax-shots/flax-<timestamp>.png
-tool/screenshot.sh /tmp/albums.png    # explicit path
-```
-
-Then read the PNG to confirm the change rendered. Screenshots are large; crop or
-downscale to the region you care about (`sips -Z 1100 shot.png --out small.png`)
-rather than reading a full 2900×1880 capture.
-
-The pointer and keyboard can be driven for real, so hover affordances do not
-have to be taken on trust from the code:
-
-```bash
-tool/pointer.sh -w move 865 891   # hover, window-relative points
-tool/pointer.sh -w click 606 23   # move, then left click
-tool/pointer.sh park              # pointer out of the way before a clean shot
-tool/screenshot.sh /tmp/hover.png
-```
-
-Events go to the HID event tap, where real hardware delivers them, so the
-Flutter window treats them exactly like physical input. Verified for pointer
-moves, left clicks, mouse button 4, and **keystrokes**. A keypress is five lines
-of the same Swift the script uses:
-
-```swift
-let src = CGEventSource(stateID: .hidSystemState)
-CGEvent(keyboardEventSource: src, virtualKey: 49, keyDown: true)?  // 49 = space
-  .post(tap: .cghidEventTap)
-```
-
-Trackpad swipes are the exception — synthesising those is not worth it; cover
-them with a widget test instead.
-
-Screenshot pixels are not points: divide by the backing scale (2 on a Retina
-Mac, i.e. image width ÷ window width in points) before passing coordinates.
-
-Park the pointer before capturing a resting state — leave it over a control and
-the "before" shot quietly contains a hover.
-
-#### One-time macOS permission setup (required for screenshots)
-
-`tool/screenshot.sh` reads the window rectangle via System Events and captures
-it with `screencapture`. The terminal/app running the agent needs **both**
-grants in System Settings → Privacy & Security:
-
-- **Accessibility** — to read the flax window position/size.
-- **Screen Recording** — for `screencapture` to produce real pixels. Without it,
-  capture fails with "could not create image from display". After toggling this
-  on, **fully quit and reopen the terminal app** — the grant only takes effect
-  for newly launched processes.
-
-Test the grant at any time with: `screencapture -x /tmp/t.png && echo ok`.
-
-A **sleeping display** looks exactly like a crash and isn't one: System Events
-reports zero windows, `screencapture` returns a black full-screen image, and
-`open` fails with `_LSOpenURLsWithCompletionHandler() ... error -600`. A debug
-build takes long enough that the screen can sleep mid-build. Hold it awake for
-the whole verification pass rather than diagnosing it again:
-
-```bash
-nohup caffeinate -d -u -t 900 >/dev/null 2>&1 &
-```
+- **macOS** — screenshots (`tool/screenshot.sh`), real pointer and keyboard
+  input (`tool/pointer.sh`), and the one-time Accessibility + Screen Recording
+  grants they need.
+- **Android** — reproducing a start without an Activity (the Android Auto
+  case), readiness signals in debug and release logs, seeding a server, and the
+  Automotive orientation check.
 
 ---
 
-## Release Channels & Branching Strategy
+## Branching and releases
 
-Flax employs a two-tier release and update channel system:
+- **Branch from `dev` and open the PR against `dev`.** Never merge feature
+  branches into `main`; `dev` reaches `main` through a promotion PR.
+- **Never push to `dev` directly.** A push to `dev` skips CI and immediately
+  publishes a pre-release to every Dev-channel tester; the PR is the only place
+  the checks run. PRs are squash-merged with `(#N)` in the subject.
+- **A merge into `dev` publishes `vX.Y.Z-dev.N`** to the Dev update channel,
+  with the changelog lines added since the previous tag as its notes. A merge
+  into `main` publishes the stable `vX.Y.Z`. Docs-only changes publish nothing.
+- **Never bump `version:` in `pubspec.yaml`**; every build path overrides it.
+- **Release APKs differ from debug ones.** `INTERNET` must stay declared in the
+  Android manifest (debug builds inject it), and an APK built without
+  `android/key.properties` cannot install over a test build.
 
-- **`main` (Stable Channel)**: Official, fully validated releases.
-  - Tag format: `vX.Y.Z` (e.g. `v0.5.6`).
-  - Published as standard GitHub Releases (without `--prerelease`).
-  - Served to users on the **Stable** channel (default).
-- **`dev` (Dev Channel)**: Active development and bleeding-edge pre-releases.
-  - Tag format: `vX.Y.Z-dev.N` (e.g. `v0.5.6-dev.1`, `v0.5.6-dev.2`).
-  - Published to GitHub with the `--prerelease` flag enabled.
-  - Served to users who opt into the **Dev** channel in Settings.
-
-### Self-Updater SemVer Precedence
-The self-updater respects SemVer 2.0 ordering:
-$$\text{v0.5.5} < \text{v0.5.6-dev.1} < \text{v0.5.6-dev.2} < \text{v0.5.6}$$
-
-- **Stable Channel Subscribers**: Only discover and download official releases, ignoring `-dev.*` builds.
-- **Dev Channel Subscribers**: Discover all pre-release builds and automatically get promoted to the final `vX.Y.Z` when it lands on `main`.
-
-### Branching & Pull Request Rules
-1. **Target `dev` for Features & Bugfixes**:
-   - All feature and bugfix branches must branch from `dev` (`git checkout -b feat/my-feature dev`) and open pull requests targeting `dev` (`feat/*` $\to$ `dev`).
-   - Never merge feature branches directly into `main`.
-2. **Changelog on `dev`**:
-   - Add concise user-facing changelog lines under `## Unreleased`. Automated dev pre-releases extract the exact tag-to-tag delta since the prior tag, ensuring each pre-release only highlights new changes while `## Unreleased` stages the cumulative notes for the final promotion PR.
-3. **Promoting `dev` to `main` (Stable Releases)**:
-   - When a batch of dev pre-releases is validated, open a promotion PR from `dev` to `main`.
-   - Close off the changelog in that PR: rename `## Unreleased` to `## vX.Y.Z — <YYYY-MM-DD>` and start a fresh `## Unreleased` above it.
-   - Merging `dev` into `main` automatically triggers CI to build and publish official release `vX.Y.Z` to the Stable channel.
-
----
-
-## Automated Merge Triggers & CI/CD Builds
-
-`.github/workflows/release.yml` automatically triggers on merges:
-
-- **Merges into `dev` (`feature/*` $\to$ `dev`)**:
-  - Automatically calculates the next pre-release version: `vX.Y.Z-dev.N`.
-  - Publishes a pre-release on GitHub tagged `vX.Y.Z-dev.N` with `--prerelease` enabled.
-  - Automatically served to testers subscribed to the **Dev** update channel in Settings.
-- **Merges into `main` (`dev` $\to$ `main`)**:
-  - Reads the closed release header from `CHANGELOG.md` (e.g. `## v0.5.7 — 2026-08-29`).
-  - Publishes the official GitHub release `vX.Y.Z` (`--prerelease=false`).
-  - Automatically served to all users on the default **Stable** update channel.
-
-### Concurrency & Rapid Pushes
-Branch runs use `concurrency: { group: release-${{ github.ref }}, cancel-in-progress: true }`. If multiple PRs merge in rapid succession, CI automatically cancels the older in-flight build on that branch to save runner minutes and builds the latest tip.
-
-### Manual Overrides (`workflow_dispatch`)
-Maintainers and agents can still manually dispatch builds with custom versions or platform toggles:
-
-```bash
-# Trigger a stable release from main
-gh workflow run release.yml -f version=0.5.7 -f channel=stable --ref main -f macos=true -f windows=true -f linux=true -f android=true
-
-# Trigger a dev pre-release from dev
-gh workflow run release.yml -f version=0.5.7-dev.2 -f channel=dev --ref dev -f macos=true -f windows=true -f linux=true -f android=true
-
-# Watch the run
-gh run watch $(gh run list --workflow=release.yml -L1 --json databaseId --jq '.[0].databaseId')
-```
-
-The `version` input is the whole version story — it becomes the build-name, the
-tag (`v<version>`), and the release title, and the workflow creates the tag
-itself. The total commit count (`git rev-list --count HEAD`) becomes the build-number
-across all platforms in both CI and local builds. **Never bump `version:` in
-`pubspec.yaml`**; it is overridden by `--build-name`/`--build-number` on every
-build path. Re-running the same version uploads assets to the existing release
-(`--clobber`) rather than failing.
-
-### The release body is the changelog. This is enforced, not a convention.
-
-Close off the changelog **before** starting the run, in its own commit on
-`main`: rename `## Unreleased` to `## v<version> — <YYYY-MM-DD>` and open a
-fresh `## Unreleased`. The workflow tags whatever `main` points at, so a
-changelog landed afterwards is not in the release it describes.
-
-`release.yml` then reads `CHANGELOG.md`, extracts the `## v<version>` section,
-and publishes it as the release body with a link to the README installation
-instructions.
-
-**If the section is missing or empty the run fails**, deliberately and before
-anything is published. Do not work around it by editing the workflow — write the
-changelog entry, which should have been written as part of the change anyway.
-
-This is enforced because it silently failed for a long time. Every release up to
-and including v0.2.3 shipped with the install instructions as its *entire* body:
-the workflow built a `notes.md` containing only those, passed it to
-`--notes-file`, and never read `CHANGELOG.md` at all. The entries existed; they
-just never reached anyone. Re-runs are covered too — an existing release has its
-body refreshed rather than keeping whatever it was created with.
-
-macOS builds can also be built locally via `tool/release.sh --mac` (~90s on Apple Silicon):
-
-```bash
-tool/release.sh --mac --version 0.4.1   # just the .dmg
-tool/release.sh --version 0.4.1         # macOS .dmg + Android .apk, into dist/
-gh release upload v0.4.1 dist/flax-0.4.1-macos-universal.dmg
-```
-
-**Always pass `--version` when cutting a release.** Without it the script takes
-the version from the latest **local** `v*` tag, and the workflow creates the tag
-on the runner — so a local build during a release names itself after the
-*previous* version and silently overwrites that .dmg in `dist/`. Nothing errors;
-you just get an artifact with the wrong version baked in. Either pass
-`--version`, or `git fetch --tags` after the workflow has created it.
-
-Windows cannot be cross-compiled from macOS, so it exists only on the runner —
-`tool/release.sh` deliberately has no Windows path.
-
-### Signing state, and what testers have to do about it
-
-None of the three are signed with a real certificate, so each OS pushes back on
-first launch. This is expected; don't debug it as breakage.
-
-- **macOS** — ad-hoc signed (`CODE_SIGN_IDENTITY = "-"`); the binary is
-  universal (x86_64 + arm64), so one .dmg serves Apple Silicon and Intel. On another Mac,
-  macOS 15+ reports the app as *damaged*. Fix is one command after installing:
-  `xattr -dr com.apple.quarantine /Applications/flax.app`. To upgrade to a
-  clean double-click install later: Apple Developer Program, a Developer ID
-  Application cert, enable Hardened Runtime, then `notarytool submit --wait`
-  and `stapler staple` the .dmg. Only the packaging step changes.
-- **Windows** — unsigned; SmartScreen warns, *More info* → *Run anyway*. The
-  standalone installer (`flax-<version>-windows-x64-setup.exe`) registers Flax in
-  the Start menu and handles all runtime dependencies automatically (or extract
-  the portable `.zip` whole).
-- **Android** — signed with a shared *test* keystore so builds upgrade in place.
-  `android/key.properties` and `android/flax-test.jks` are gitignored; CI
-  rebuilds them from the `FLAX_KEYSTORE_BASE64` and `FLAX_KEYSTORE_PASSWORD`
-  secrets. If `key.properties` is absent, Gradle silently falls back to the
-  per-machine debug keystore — those APKs cannot be installed over a real test
-  build. `tool/release.sh` refuses to build rather than ship one.
-
-Android needs `INTERNET` declared in
-`android/app/src/main/AndroidManifest.xml`. Debug builds get it injected
-automatically and release builds do not, so removing it breaks only release
-APKs — every server request fails while everything looks fine in development.
+Channels, promotion, manual dispatch, local builds and signing are in
+[docs/RELEASING.md](docs/RELEASING.md).
