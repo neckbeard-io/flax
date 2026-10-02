@@ -8,7 +8,10 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:flax/app/app.dart';
 import 'package:flax/app/bootstrap.dart';
+import 'package:flax/app/router.dart';
+import 'package:flax/app/screen_recovery.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/logging/crash_log.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/audio/audio_handler_provider.dart';
@@ -20,6 +23,7 @@ import 'package:flax/shared/widgets/cover_art_cache.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  unawaited(CrashLog.init());
 
   // Catch unhandled Flutter and platform errors to prevent silent startup crashes.
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -29,6 +33,7 @@ Future<void> main() async {
       error: details.exception,
       stackTrace: details.stack,
     );
+    CrashLog.record('FlutterError', details.exception, details.stack);
     FlutterError.presentError(details);
   };
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
@@ -38,8 +43,13 @@ Future<void> main() async {
       error: error,
       stackTrace: stack,
     );
+    CrashLog.record('Uncaught', error, stack);
     return true;
   };
+  // Debug builds keep the red error screen, which shows the whole error.
+  if (!kDebugMode) {
+    ErrorWidget.builder = (details) => RecoveryView(details);
+  }
 
   AppLogger.i('App', 'Flax starting on ${Platform.operatingSystem}');
 
@@ -75,6 +85,9 @@ Future<void> main() async {
   }
 
   final container = ProviderContainer(overrides: startup.overrides);
+  ScreenRecovery.install(
+    goHome: () => container.read(routerProvider).go('/albums'),
+  );
 
   // Media service first, then the UI. When Android Auto starts the app there
   // is no screen to show, and its browse requests wait on this; starting it

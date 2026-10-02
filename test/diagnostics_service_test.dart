@@ -146,6 +146,48 @@ Specification at http://opensubsonic.netlify.app/docs
   });
 
   group('DiagnosticsReport Markdown formatting', () {
+    test('saved errors are included, and stripped of credentials', () {
+      const report = DiagnosticsReport(
+        appVersion: 'v0.5.7',
+        buildNumber: '200',
+        updateChannel: 'Dev',
+        buildMode: 'Release',
+        osName: 'Android',
+        osVersion: '17',
+        architecture: 'android_arm64',
+        dartVersion: '3.12.2',
+        outputDevice: 'auto',
+        outputDescription: 'System Default',
+        outputEngine: 'AudioTrack',
+        exclusiveMode: false,
+        sampleRate: 'Auto',
+        bitDepth: 'Auto',
+        eqEnabled: false,
+        eqPreset: 'Flat',
+        eqPreamp: 0,
+        serverType: 'Navidrome',
+        serverVersion: '0.53.0',
+        subsonicApiVersion: '1.16.1',
+        openSubsonicSupported: true,
+        openSubsonicExtensions: [],
+        serverUrlSanitized: 'https://[REDACTED_SERVER]',
+        cacheLimit: '10 GB',
+        backgroundSyncStatus: 'Disabled',
+        savedErrors:
+            '=== 2026-10-02T12:40:00 FlutterError\n'
+            'Bad state: failed at https://music.example.com/rest/ping?u=me&t=abc&s=def',
+        activeServerUrl: 'https://music.example.com',
+        activeServerUsername: 'me',
+      );
+
+      final md = report.getSanitizedMarkdown();
+
+      expect(md, contains('### Saved Errors'));
+      expect(md, contains('Bad state: failed at'));
+      expect(md, isNot(contains('music.example.com')));
+      expect(md, isNot(contains('t=abc')));
+    });
+
     test('formats all sections cleanly with GitHub flavored markdown', () {
       const report = DiagnosticsReport(
         appVersion: 'v0.5.6',
