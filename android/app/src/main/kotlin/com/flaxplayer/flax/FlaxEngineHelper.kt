@@ -38,6 +38,7 @@ object FlaxEngineHelper {
     private const val CAR_EVENTS = "com.flax/car_connection_events"
     private const val NETWORK_CHANNEL = "com.flax/network_status"
     private const val NETWORK_EVENTS = "com.flax/network_status_events"
+    private const val APP_CHANNEL = "com.flax/app"
 
     private var networkEventSink: EventChannel.EventSink? = null
     private var defaultNetworkCallback: ConnectivityManager.NetworkCallback? = null
@@ -64,6 +65,28 @@ object FlaxEngineHelper {
     interface PermissionHandler {
         fun requestNotificationPermission()
         fun requestLocationPermission()
+    }
+
+    /**
+     * Relaunches flax in a fresh process, as a force stop and reopen would.
+     *
+     * The engine outlives every screen and is reused by the next one, so a UI
+     * that has failed in it cannot be fixed by closing and reopening flax. Only
+     * offered from the screen, so flax is in the foreground and may start its
+     * own activity.
+     */
+    private fun restartApp(context: Context, result: MethodChannel.Result) {
+        val component = context.packageManager
+            .getLaunchIntentForPackage(context.packageName)?.component
+        if (component == null) {
+            result.success(false)
+            return
+        }
+        result.success(true)
+        mainHandler.postDelayed({
+            context.startActivity(Intent.makeRestartActivityTask(component))
+            Runtime.getRuntime().exit(0)
+        }, 150)
     }
 
     fun configure(flutterEngine: FlutterEngine, context: Context) {
@@ -337,6 +360,13 @@ object FlaxEngineHelper {
                 carObserver = observer
                 conn.type.observeForever(observer)
             } catch (_: Exception) {}
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, APP_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "restart" -> restartApp(appContext, result)
+                else -> result.notImplemented()
+            }
         }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CAR_CHANNEL).setMethodCallHandler { call, result ->

@@ -11,6 +11,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ## Unreleased
 
 ### Added
+- Diagnostics export now includes errors saved from earlier sessions.
 - Flax logo on Android Auto's small Now Playing card (right side).
 - Albums screen now includes a manual refresh button and pull-to-refresh.
 - Check for updates tile retains a recheck button when an update is available.
@@ -48,6 +49,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Playback notification shows the flax logo instead of a solid icon.
 
 ### Fixed
+- A screen that fails to load shows the error and a restart button, not plain grey.
+- Reopening flax after a screen failed now recovers instead of staying grey until force-stopped.
 - Offline queues with undownloaded tracks no longer show the wrong song after a track change.
 - Downloaded album art now shows offline on every screen and in Android Auto.
 - Android Auto's large view (left side) no longer sits black while artwork loads.

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/logging/crash_log.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/core/tasks/task_registry.dart';
@@ -61,6 +62,9 @@ class DiagnosticsReport {
   final String backgroundSyncStatus;
 
   final List<String> recentLogs;
+
+  /// Errors kept on disk across restarts, newest last.
+  final String? savedErrors;
   final String? activeServerUrl;
   final String? activeServerUsername;
 
@@ -101,6 +105,7 @@ class DiagnosticsReport {
     this.activeTasks = const [],
     required this.backgroundSyncStatus,
     this.recentLogs = const [],
+    this.savedErrors,
     this.activeServerUrl,
     this.activeServerUsername,
   });
@@ -167,6 +172,14 @@ class DiagnosticsReport {
     );
     buffer.writeln('- **Background Sync**: $backgroundSyncStatus');
     buffer.writeln();
+
+    if (savedErrors != null) {
+      buffer.writeln('### Saved Errors');
+      buffer.writeln('```');
+      buffer.writeln(savedErrors!.trimRight());
+      buffer.writeln('```');
+      buffer.writeln();
+    }
 
     buffer.writeln('### Recent Application Logs');
     buffer.writeln('```');
@@ -322,6 +335,7 @@ class DiagnosticsService {
           .toList(),
       backgroundSyncStatus: backgroundSync,
       recentLogs: recentLogs,
+      savedErrors: CrashLog.readRecent(),
       activeServerUrl: server?.url,
       activeServerUsername: server?.username,
     );

@@ -107,9 +107,18 @@ screen. Readiness signals in `adb logcat`:
 - **Debug builds** log each stage — `[Startup] … ready`, `[Startup] UI mounted`,
   `[AudioService] AudioService ready`. The last one is what Android Auto waits
   for.
-- **Release builds** print no Dart logs. Look for the native
-  `FlaxMediaSession: MediaSessionCompat explicitly set active` line instead,
+- **Release builds** print only warnings and errors. For readiness, look for
+  the native `FlaxMediaSession: MediaSessionCompat explicitly set active` line,
   which only appears once Dart has initialized the media service.
+
+Errors are also saved to a file that survives a force stop, with the log lines
+that led up to each one, and adb can read it from a release build:
+
+```bash
+adb pull /sdcard/Android/data/com.flaxplayer.flax/files/logs/flax-errors.log
+```
+
+The same errors appear under "Saved Errors" in Settings' diagnostics export.
 
 A debug build can be given a server without going through setup, which also
 makes an unreachable one easy to simulate. Write the preferences while the app

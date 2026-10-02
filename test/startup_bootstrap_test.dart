@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/app/bootstrap.dart';
+import 'package:flax/app/screen_recovery.dart';
 import 'package:flax/app/router.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -127,6 +128,19 @@ void main() {
     final state = await bootstrap(initAudioCache: noCache);
 
     expect(state.savedRoute, isNull);
+  });
+
+  test('after a failed screen the saved route is not reopened', () async {
+    SharedPreferences.setMockInitialValues({
+      lastRouteStorageKey: '/now-playing',
+      kScreenBrokenPrefKey: true,
+    });
+
+    final state = await bootstrap(initAudioCache: noCache);
+
+    expect(state.savedRoute, isNull);
+    final again = await bootstrap(initAudioCache: noCache);
+    expect(again.savedRoute, '/now-playing');
   });
 
   test('a connected car is known from the very first read', () async {

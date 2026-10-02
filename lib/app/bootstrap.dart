@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/app/router.dart';
+import 'package:flax/app/screen_recovery.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/locale_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
@@ -121,6 +122,12 @@ class StartupState {
     if (savedRoute != null && !isValidRoute(savedRoute)) {
       savedRoute = null;
       unawaited(prefs.remove(lastRouteStorageKey));
+    }
+    // The last run ended on a screen that failed to build. Reopening it could
+    // fail the same way every time, so start from the library instead.
+    if (ScreenRecovery.takePreviousFailure(prefs)) {
+      AppLogger.w('Startup', 'Last run ended on a failed screen; opening home');
+      savedRoute = null;
     }
     return StartupState(
       prefsLoaded: true,

@@ -136,7 +136,9 @@ class AppLogger {
       _count++;
     }
 
-    if (outputToStdout) {
+    // Release builds still print warnings and errors: on Android that is the
+    // system log, the only record adb can read from a release build.
+    if (outputToStdout || (!kDebugMode && level.index >= LogLevel.warn.index)) {
       // Direct stdout output for terminal / CLI runs
       // ignore: avoid_print
       print(entry.format());
