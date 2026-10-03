@@ -561,6 +561,7 @@ class AudioCacheService {
       }
     }
 
+    if (!isPinned) autoCaching.add(song.id);
     try {
       // Mark as downloading
       await dao.updateSongDownload(
@@ -699,6 +700,7 @@ class AudioCacheService {
       }
       return null;
     } finally {
+      if (!isPinned) autoCaching.remove(song.id);
       _ref.read(songDownloadProgressProvider.notifier).removeSong(song.id);
     }
   }
@@ -1374,6 +1376,20 @@ class AudioCacheService {
 
   bool _isResuming = false;
 
+  /// Songs this process is caching while they stream. Only pinned downloads
+  /// are resumed; these are recorded as downloading too, so resuming has to
+  /// tell them apart.
+  @visibleForTesting
+  final Set<String> autoCaching = {};
+
+  /// Whether [song]'s row was left by an auto-cache: marked downloading with
+  /// its file in the rolling cache under [rollingDir], not the offline folder.
+  @visibleForTesting
+  static bool isAutoCacheRow(Song song, String rollingDir) =>
+      song.downloadState == DownloadState.downloading &&
+      song.localPath != null &&
+      p.isWithin(rollingDir, song.localPath!);
+
   /// Automatically resumes any pending or interrupted downloads from the database.
   Future<void> resumePendingDownloads() async {
     if (_isResuming) return;
@@ -1393,6 +1409,30 @@ class AudioCacheService {
       final uncompleted = activeSongs
           .where((s) => s.downloadState != DownloadState.complete)
           .toList();
+
+      // An auto-cache runs in-process and is never resumed. Resuming one
+      // pinned turned a track that had merely streamed into a download, both
+      // when the app returned to the foreground mid-cache and after a process
+      // died with one unfinished. One this process is still running is left
+      // alone; an abandoned one is cleared, and playing the track caches it
+      // again.
+      final rolling = (await _getMusicDir(server.id, isPinned: false)).path;
+      final autoCacheIds = <String>{};
+      for (final song in uncompleted) {
+        if (!isAutoCacheRow(song, rolling)) continue;
+        autoCacheIds.add(song.id);
+        if (autoCaching.contains(song.id)) continue;
+        await dao.updateSongDownload(
+          server.id,
+          song.id,
+          state: DownloadState.none,
+        );
+        final partial = File('${song.localPath}.tmp');
+        try {
+          if (partial.existsSync()) partial.deleteSync();
+        } catch (_) {}
+      }
+      uncompleted.removeWhere((s) => autoCacheIds.contains(s.id));
       if (uncompleted.isEmpty) return;
 
       AppLogger.i(
