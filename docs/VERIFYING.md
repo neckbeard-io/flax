@@ -138,3 +138,52 @@ Check car screens on an Android Automotive emulator too: phones lock to
 portrait (`dumpsys activity activities` shows
 `requestedOrientation=SCREEN_ORIENTATION_USER_PORTRAIT`), car screens must stay
 `UNSPECIFIED`.
+
+## Android Auto: a phone and the Desktop Head Unit
+
+Android Auto runs on the phone and draws onto the car's screen. The Desktop
+Head Unit (DHU) is that screen in a window on the Mac, so a real phone over USB
+stands in for the car. Use it for anything that only shows on the car screen —
+the [large view (left) and the small card (right)](../AGENTS.md#android-auto-the-large-view-and-the-small-card)
+— rather than a phone emulator.
+
+One-time setup:
+
+- **Mac:** Android Studio → SDK Manager → SDK Tools → *Android Auto Desktop
+  Head Unit Emulator*. It installs to `~/Library/Android/sdk/extras/google/auto/`.
+- **Phone:** open Android Auto's settings, tap *Version* about ten times to
+  unlock developer settings, then in the ⋮ menu → *Developer settings* turn on
+  *Unknown sources*, so a flax that did not come from Play is listed.
+
+Each session:
+
+1. Connect the phone over USB and check `adb devices` lists it.
+2. On the phone, Android Auto's ⋮ menu → *Start head unit server*.
+3. Run `tool/run_dhu.sh`. It force-stops and restarts flax, waits for its media
+   session, forwards port 5277 and opens the DHU in an ultrawide layout
+   (`ev6_ultrawide.ini`) that fits the large view and the small card side by
+   side. It addresses one phone by serial (`SERIAL=` at the top); change that
+   for another phone.
+4. For the small card, open navigation in the large view; flax's Now Playing
+   moves to the card on the right.
+
+The phone has to be running the build under test. A debug APK cannot install
+over a release one — the signing keys differ — without uninstalling flax, which
+wipes its cached library and downloads. To update in place, build release with
+the same key (`android/key.properties`) and a build number no lower than the
+installed one:
+
+```bash
+adb shell dumpsys package com.flaxplayer.flax | grep -E 'versionName|versionCode'
+flutter build apk --release --target-platform android-arm64 \
+  --build-name=<installed versionName> --build-number=<installed versionCode + 1>
+adb install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
+Some art problems show without a car: the system media controls in the phone's
+notification shade load Now Playing art the same way, from another process, and
+log what they refuse — `adb logcat | grep MediaDataLoader`.
+
+Android Automotive — the car's own OS, no phone involved — runs on an emulator
+instead: create one from the *Automotive* category in Android Studio's Device
+Manager and install flax on it like any other device.

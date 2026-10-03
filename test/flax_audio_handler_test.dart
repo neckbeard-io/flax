@@ -4,6 +4,7 @@ import 'package:file/local.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
@@ -13,6 +14,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/audio/flax_audio_handler.dart';
+import 'package:flax/services/audio/media_session_art.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/cover_art_cache.dart';
@@ -720,10 +722,10 @@ void main() {
     );
 
     test('Now Playing art comes from the cover on disk', () async {
-      // A download stored this cover at the configured quality. The car's Now
-      // Playing panel used to be given a fresh server URL instead, so it sat
-      // black until a download finished — or for good, offline.
-      final stored = covers.add(coverCacheKey('art_9', 512));
+      // This cover is already stored at full size. The car's Now Playing panel
+      // used to be given a fresh server URL instead, so it sat black until a
+      // download finished — or for good, offline.
+      final stored = covers.add(coverCacheKey('art_9', 768));
 
       handler.updateFromPlayerState(
         const PlayerState(currentSong: song, queue: [song]),
@@ -733,6 +735,115 @@ void main() {
       final art = handler.mediaItem.value!.artUri!;
       expect(art.scheme, 'file');
       expect(art.toFilePath(), stored.path);
+      expect(covers.downloaded, isEmpty);
+    });
+
+    test(
+      'on Android, the stored cover is shared through the provider',
+      () async {
+        // Android Auto opens this URI in its own process, where a file:// path
+        // into flax's storage is unreadable: the large view (left) showed the
+        // cover and the small card (right) stayed empty.
+        final stored = covers.add(coverCacheKey('art_9', 768));
+        final shared = Uri.parse(
+          'content://$mediaSessionArtAuthority/${p.basename(stored.path)}',
+        );
+
+        // Found on disk after the track starts.
+        final first = FlaxAudioHandler(container, android: true);
+        first.updateFromPlayerState(
+          const PlayerState(currentSong: song, queue: [song]),
+        );
+        await pumpEventQueue();
+        expect(first.mediaItem.value!.artUri, shared);
+
+        // Already known, so the track starts with it.
+        final second = FlaxAudioHandler(container, android: true);
+        second.updateFromPlayerState(
+          const PlayerState(currentSong: song, queue: [song]),
+        );
+        expect(second.mediaItem.value!.artUri, shared);
+      },
+    );
+
+    test(
+      'on Android, an unstored cover is stored, never sent as a URL',
+      () async {
+        // A server URL in the session carries the login token to every media
+        // controller, and the system logs it when it refuses to load it.
+        final android = FlaxAudioHandler(container, android: true);
+        android.updateFromPlayerState(
+          const PlayerState(currentSong: song, queue: [song]),
+        );
+        expect(android.mediaItem.value!.artUri, isNull);
+
+        await pumpEventQueue();
+
+        expect(covers.downloaded, [coverCacheKey('art_9', 768)]);
+        final art = android.mediaItem.value!.artUri!;
+        expect(art.scheme, 'content');
+        expect(
+          art.pathSegments.single,
+          p.basename(covers.files.values.single.path),
+        );
+      },
+    );
+
+    test('online, a thumbnail does not stand in for the full cover', () async {
+      // The mini player stored this thumbnail when the track started. Taking
+      // it as the Now Playing art drew it full-screen on the car's card.
+      covers.add(coverCacheKey('art_9', 128));
+      final android = FlaxAudioHandler(container, android: true);
+
+      android.updateFromPlayerState(
+        const PlayerState(currentSong: song, queue: [song]),
+      );
+      await pumpEventQueue();
+
+      expect(covers.downloaded, [coverCacheKey('art_9', 768)]);
+      expect(
+        android.mediaItem.value!.artUri!.pathSegments.single,
+        p.basename(covers.files[coverCacheKey('art_9', 768)]!.path),
+      );
+    });
+
+    test('offline, the album cover replaces a track thumbnail', () async {
+      // Offline nothing better can be fetched, but the library sync stored the
+      // album's cover at the configured quality.
+      const track = Song(
+        id: 'song_ayam',
+        serverId: 'srv_1',
+        title: 'The Brook',
+        albumId: 'alb_ayam',
+        coverArtId: 'mf-brook',
+      );
+      covers.add(coverCacheKey('mf-brook', 128));
+      final album = covers.add(coverCacheKey('al-ayam', 512));
+      final offline = ProviderContainer(
+        overrides: [
+          artCacheProvider.overrideWithValue(covers),
+          libraryRepositoryProvider.overrideWithValue(
+            _AlbumCoverRepo('al-ayam'),
+          ),
+          subsonicClientProvider.overrideWithValue(mockClient),
+          offlineManualOverrideProvider.overrideWith(
+            (ref) => OfflineManualNotifier(initialValue: true),
+          ),
+        ],
+      );
+      addTearDown(offline.dispose);
+      final android = FlaxAudioHandler(offline, android: true);
+
+      android.updateFromPlayerState(
+        const PlayerState(currentSong: track, queue: [track]),
+      );
+      await pumpEventQueue();
+
+      expect(covers.downloaded, isEmpty);
+      expect(
+        android.mediaItem.value!.artUri!.pathSegments.single,
+        p.basename(album.path),
+      );
     });
 
     test('offline with no stored cover, the server is not asked', () async {
@@ -788,4 +899,21 @@ void main() {
       },
     );
   });
+}
+
+/// A library whose albums all carry [coverArtId].
+class _AlbumCoverRepo extends MockLibraryRepository {
+  _AlbumCoverRepo(this.coverArtId);
+
+  final String coverArtId;
+
+  @override
+  Stream<Album?> watchAlbum(String? albumId) => Stream.value(
+    Album(
+      id: albumId ?? '',
+      serverId: 'srv_1',
+      name: 'Ayam',
+      coverArtId: coverArtId,
+    ),
+  );
 }
