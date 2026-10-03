@@ -17,6 +17,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
+import 'package:flax/features/player/auto_cache.dart';
 import 'package:flax/features/player/gapless_probe.dart';
 import 'package:flax/features/player/mpv_queue_map.dart';
 import 'package:flax/features/settings/audio_output_settings.dart';
@@ -190,7 +191,19 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _restored = _restorePlayQueue().catchError((Object e) {
       AppLogger.w('Player', 'Queue restore failed: $e');
     });
+    addListener(
+      (state) => _autoCache.update(state.currentSong, playing: state.isPlaying),
+      fireImmediately: false,
+    );
   }
+
+  /// Saves streamed tracks to the rolling cache once they actually play.
+  late final _autoCache = AutoCacheTrigger(
+    enabled: () => _ref.read(audioCacheConfigProvider).autoCacheStreamed,
+    isCached: _isSongCached,
+    cache: (song) =>
+        _ref.read(audioCacheServiceProvider).cacheSong(song, isPinned: false),
+  );
 
   late final Future<void> _restored;
 
@@ -589,14 +602,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await _player.play();
     }
 
-    if (currentSong != null && !isCached) {
-      final autoCache = _ref.read(audioCacheConfigProvider).autoCacheStreamed;
-      if (autoCache) {
-        _ref
-            .read(audioCacheServiceProvider)
-            .cacheSong(currentSong, isPinned: false);
-      }
-    }
     return true;
   }
 
@@ -671,10 +676,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // track mpv just moved to.
     _applyVolumeGain();
     _debounceSaveQueue();
-
-    if (!isCached && _ref.read(audioCacheConfigProvider).autoCacheStreamed) {
-      _ref.read(audioCacheServiceProvider).cacheSong(song, isPinned: false);
-    }
   }
 
   Future<void> _playIndex(int index) async {
@@ -702,10 +703,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _updateNowPlayingForSong(song);
     _applyVolumeGain();
     _debounceSaveQueue();
-
-    if (!isCached && _ref.read(audioCacheConfigProvider).autoCacheStreamed) {
-      _ref.read(audioCacheServiceProvider).cacheSong(song, isPinned: false);
-    }
   }
 
   Future<void> playSong(Song song, {List<Song>? queue, int? index}) async {
