@@ -436,7 +436,8 @@ void main() {
         expect(args, contains('/SUPPRESSMSGBOXES'));
         expect(args, contains('/NORESTART'));
         expect(args, contains('/CLOSEAPPLICATIONS'));
-        expect(args, contains('/RESTARTAPPLICATIONS'));
+        expect(args, contains('/NORESTARTAPPLICATIONS'));
+        expect(args, isNot(contains('/RESTARTAPPLICATIONS')));
         expect(args, contains('/CURRENTUSER'));
         expect(args, contains('/LOG'));
         expect(args, isNot(contains('/ALLUSERS')));
@@ -474,21 +475,6 @@ void main() {
       expect(args, contains(r'/DIR="C:\Users\tester\flax"'));
     });
 
-    test(
-      'formatPowerShellArgumentList escapes double quotes with backticks',
-      () {
-        final formatted = WindowsInstaller.formatPowerShellArgumentList([
-          '/VERYSILENT',
-          r'/DIR="C:\Program Files\flax"',
-        ]);
-
-        expect(
-          formatted,
-          equals(r'/VERYSILENT /DIR=`"C:\Program Files\flax`"'),
-        );
-      },
-    );
-
     test('escapePowerShellString escapes single quotes properly', () {
       expect(
         WindowsInstaller.escapePowerShellString(r"C:\Users\O'Connor\flax"),
@@ -524,35 +510,57 @@ void main() {
         expect(script, contains(r'$proc = Get-Process -Id 12345'));
         expect(script, contains(r'$proc.WaitForExit(10000)'));
 
-        // Verifies it launches Inno Setup with preserved backtick-escaped quotes
-        expect(
-          script,
-          contains(r"Start-Process -FilePath 'C:\Temp\flax_setup.exe'"),
-        );
+        // Verifies it launches Inno Setup and waits for it
+        expect(script, contains(r"$setupPath = 'C:\Temp\flax_setup.exe'"));
         expect(
           script,
           contains(
-            r"""-ArgumentList '/VERYSILENT /CURRENTUSER /DIR=`"C:\Program Files\flax`"'""",
+            r'Start-Process -FilePath $setupPath -ArgumentList $setupArgs -Wait -PassThru',
           ),
         );
-        expect(script, contains(r'-Wait -PassThru'));
 
         // Verifies relaunch with WorkingDirectory set
         expect(
           script,
           contains(
-            r'''Start-Process -FilePath 'C:\Users\tester\AppData\Local\Programs\flax\flax.exe' -WorkingDirectory "$targetDir"''',
+            r"$targetExe = 'C:\Users\tester\AppData\Local\Programs\flax\flax.exe'",
+          ),
+        );
+        expect(
+          script,
+          contains(
+            r'Start-Process -FilePath $targetExe -WorkingDirectory $targetDir',
           ),
         );
 
         // Verifies cleanup of installer and script
-        expect(script, contains(r"Remove-Item -Path 'C:\Temp\flax_setup.exe'"));
-        expect(
-          script,
-          contains(r"Remove-Item -Path 'C:\Temp\update_12345.ps1'"),
-        );
+        expect(script, contains(r"$scriptPath = 'C:\Temp\update_12345.ps1'"));
+        expect(script, contains(r'Remove-Item -LiteralPath $setupPath'));
+        expect(script, contains(r'Remove-Item -LiteralPath $scriptPath'));
       },
     );
+
+    test('buildUpdateScript hands Setup the install directory intact', () {
+      // A path with a space and an apostrophe exercises both quoting layers.
+      const installDir = r"C:\Users\O'Brien\My Apps\flax";
+      final script = WindowsInstaller.buildUpdateScript(
+        currentPid: 12345,
+        setupExePath: r'C:\Temp\flax_setup.exe',
+        installerArgs: WindowsInstaller.buildInstallerArgs(
+          installDir: installDir,
+        ),
+        targetExePath: '$installDir\\flax.exe',
+        scriptPath: r'C:\Temp\update_12345.ps1',
+      );
+
+      // Start-Process passes the string to Setup's command line verbatim.
+      final commandLine = _powerShellLiteral(script, 'setupArgs');
+      final setupArgs = _innoSetupArgs(commandLine);
+
+      expect(setupArgs, contains('/DIR=$installDir'));
+      expect(setupArgs, contains('/VERYSILENT'));
+      expect(_powerShellLiteral(script, 'targetExe'), '$installDir\\flax.exe');
+    });
 
     test('buildUpdateScript adds RunAs verb when elevated is true', () {
       final script = WindowsInstaller.buildUpdateScript(
@@ -564,12 +572,33 @@ void main() {
         isElevated: true,
       );
 
+      expect(script, contains(r"$setupArgs = '/VERYSILENT /ALLUSERS'"));
       expect(
         script,
-        contains(
-          r"-ArgumentList '/VERYSILENT /ALLUSERS' -Verb RunAs -Wait -PassThru",
-        ),
+        contains(r'-ArgumentList $setupArgs -Verb RunAs -Wait -PassThru'),
       );
+    });
+
+    test('installer launches flax only when a person runs it', () {
+      // A silent install comes from the updater, whose script relaunches flax
+      // after Setup exits. A [Run] entry that also fires silently opens a
+      // second copy.
+      final iss = File('packaging/windows/flax.iss').readAsStringSync();
+      final runSection = iss
+          .split('[Run]')
+          .last
+          .split(RegExp(r'^\[', multiLine: true))
+          .first;
+      final launches = runSection
+          .split('\n')
+          .where((line) => line.contains('{#AppExeName}'))
+          .toList();
+
+      expect(launches, isNotEmpty);
+      for (final line in launches) {
+        expect(line, contains('skipifsilent'));
+        expect(line, isNot(contains('WizardSilent')));
+      }
     });
 
     test(
@@ -620,4 +649,40 @@ void main() {
       expect(updated.stage, UpdateStage.installing);
     });
   });
+}
+
+/// Reads the single-quoted PowerShell literal assigned to `$variable` in
+/// [script]. Inside such a literal only a doubled single quote is special;
+/// a backtick or double quote is an ordinary character.
+String _powerShellLiteral(String script, String variable) {
+  final match = RegExp(
+    '^\\\$$variable = \'((?:[^\']|\'\')*)\'\$',
+    multiLine: true,
+  ).firstMatch(script);
+  expect(match, isNotNull, reason: '\$$variable is not assigned a literal');
+  return match!.group(1)!.replaceAll("''", "'");
+}
+
+/// Splits a command line the way Inno Setup reads its parameters: whitespace
+/// outside quotes ends an argument, and every double quote is dropped.
+List<String> _innoSetupArgs(String commandLine) {
+  final args = <String>[];
+  final current = StringBuffer();
+  var quoted = false;
+  var inArg = false;
+  for (final char in commandLine.split('')) {
+    if (char == '"') {
+      quoted = !quoted;
+      inArg = true;
+    } else if (!quoted && (char == ' ' || char == '\t')) {
+      if (inArg) args.add(current.toString());
+      current.clear();
+      inArg = false;
+    } else {
+      current.write(char);
+      inArg = true;
+    }
+  }
+  if (inArg) args.add(current.toString());
+  return args;
 }
