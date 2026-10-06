@@ -90,15 +90,42 @@ void main() {
     expect(store.files.keys, contains('cover-dl1-512'));
   });
 
-  test('storing again is skipped when any size is already there', () async {
+  test('storing is skipped when a copy at least that size is there', () async {
     store.add(coverCacheKey('dl2', 1024));
+    store.add(coverCacheKey('dl3', null));
+    for (final id in ['dl2', 'dl3']) {
+      await CoverArtCache.storeForOffline(
+        store,
+        coverArtId: id,
+        size: 512,
+        url: Uri.parse('https://music.example.com/rest/getCoverArt?id=$id'),
+      );
+    }
+    expect(store.downloaded, isEmpty);
+  });
+
+  test('a thumbnail does not stop the cover being stored at size', () async {
+    // The mini player stores a thumbnail the moment a track plays. Counting it
+    // left cached tracks with nothing bigger, drawn full-screen in the car.
+    store.add(coverCacheKey('thumb', 128));
     await CoverArtCache.storeForOffline(
       store,
-      coverArtId: 'dl2',
+      coverArtId: 'thumb',
       size: 512,
-      url: Uri.parse('https://music.example.com/rest/getCoverArt?id=dl2'),
+      url: Uri.parse('https://music.example.com/rest/getCoverArt?id=thumb'),
     );
-    expect(store.downloaded, isEmpty);
+    expect(store.downloaded, ['cover-thumb-512']);
+    expect(CoverArtCache.knownPath('thumb', size: 512), isNotNull);
+  });
+
+  test('the best copy found is remembered, not the last', () async {
+    final big = store.add(coverCacheKey('np2', 768));
+    final thumb = store.add(coverCacheKey('np2', 128));
+    await CoverArtCache.findCached(store, 'np2', preferredSize: 768);
+    await CoverArtCache.findCached(store, 'np2', preferredSize: 128);
+    expect(CoverArtCache.knownPath('np2', size: 768), big.path);
+    expect(CoverArtCache.knownPath('np2', size: 1536), big.path);
+    expect(CoverArtCache.knownPath('np2', size: 128), thumb.path);
   });
 
   test('covers filed under their request URL are re-filed by name', () async {

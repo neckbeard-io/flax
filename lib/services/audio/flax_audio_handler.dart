@@ -14,6 +14,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/services/audio/media_session_art.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/cover_art_cache.dart';
@@ -25,6 +26,7 @@ import 'package:flax/shared/widgets/cover_art_cache.dart';
 /// Offline) and integrates transport controls with [PlayerNotifier].
 class FlaxAudioHandler extends BaseAudioHandler {
   final ProviderContainer _container;
+  final bool _android;
 
   // Vector icon resources for Android Auto containers and fallbacks
   static final Uri _icMusicNote = Uri.parse(
@@ -76,7 +78,10 @@ class FlaxAudioHandler extends BaseAudioHandler {
   static const String kFavoritesNode = 'favorites';
   static const String kOfflineNode = 'offline';
 
-  FlaxAudioHandler(this._container) {
+  /// [android] decides how stored covers reach the media session (see
+  /// [mediaSessionArtUri]); tests set it, everything else takes the platform's.
+  FlaxAudioHandler(this._container, {bool? android})
+    : _android = android ?? Platform.isAndroid {
     _init();
   }
 
@@ -141,55 +146,118 @@ class FlaxAudioHandler extends BaseAudioHandler {
   static const _nowPlayingArtSize = 768;
 
   /// Art for the media session's Now Playing item: the cover on disk when
-  /// there is one, the server otherwise, and nothing while offline.
+  /// there is one, nothing while offline, and otherwise the server — except on
+  /// Android, which waits for [_useStoredNowPlayingArt] to store it.
   ///
-  /// Android Auto draws this as the background of its Now Playing panel. It
+  /// Android Auto draws this as the background of its large view (left). It
   /// used to always be a server URL with a fresh salt, so it was never cached:
-  /// with signal the panel sat black until the download finished, without it
-  /// the panel stayed black — even for a downloaded album whose cover was on
+  /// with signal the view sat black until the download finished, without it
+  /// the view stayed black — even for a downloaded album whose cover was on
   /// disk.
+  ///
+  /// On Android a server URL never goes out at all. Session metadata is open
+  /// to every media controller, and the system logs art URIs it will not load,
+  /// so it would hand out the request's login token; Android Auto's small card
+  /// (right) does not load one either.
   String? _nowPlayingArt(Song song) {
     final id = song.coverArtId;
     if (id == null) return null;
     final local = CoverArtCache.knownPath(id, size: _nowPlayingArtSize);
-    if (local != null) return Uri.file(local).toString();
-    if (_isOffline) return null;
+    if (local != null) {
+      return mediaSessionArtUri(local, android: _android).toString();
+    }
+    if (_isOffline || _android) return null;
     return _client?.getCoverArtUri(id, size: _nowPlayingArtSize).toString();
   }
 
-  /// Swaps the Now Playing art for the cover on disk once it has been found.
+  /// Settles the Now Playing art on the best stored cover, storing it at full
+  /// size first when online.
+  ///
+  /// The track's own cover may be stored only as a thumbnail — the mini player
+  /// stores one the moment a track plays — while the library sync stored the
+  /// album's cover at the configured quality. When the track's copy is smaller
+  /// than full size, the album's is used if it is larger, so the car does not
+  /// draw a thumbnail full-screen while better art is on disk.
   Future<void> _useStoredNowPlayingArt(MediaItem item, Song song) async {
     final id = song.coverArtId;
-    if (id == null || item.artUri?.scheme == 'file') {
+    if (id == null) {
       _logNowPlayingArt(song, item.artUri);
       return;
     }
-    File? file;
+    StoredCover? best;
+    var fromAlbum = false;
     try {
-      file = await CoverArtCache.findCached(
-        _container.read(artCacheProvider),
+      final cache = _container.read(artCacheProvider);
+      final client = _client;
+      if (!_isOffline && client != null) {
+        await CoverArtCache.storeForOffline(
+          cache,
+          coverArtId: id,
+          size: _nowPlayingArtSize,
+          url: client.getCoverArtUri(id, size: _nowPlayingArtSize),
+        );
+      }
+      best = await CoverArtCache.findStored(
+        cache,
         id,
         preferredSize: _nowPlayingArtSize,
       );
+      if (best == null ||
+          !CoverArtCache.isAtLeast(best.size, _nowPlayingArtSize)) {
+        final albumCover = await _albumCoverArtId(song);
+        if (albumCover != null && albumCover != id) {
+          final album = await CoverArtCache.findStored(
+            cache,
+            albumCover,
+            preferredSize: _nowPlayingArtSize,
+          );
+          if (album != null &&
+              (best == null || CoverArtCache.isLarger(album.size, best.size))) {
+            best = album;
+            fromAlbum = true;
+          }
+        }
+      }
     } catch (e) {
       // A cover lookup failing is no reason for anything else to.
       AppLogger.w('AudioHandler', 'Cover lookup failed for $id: $e');
     }
     final current = mediaItem.value;
-    if (file == null || current == null || current.id != item.id) {
+    if (best == null || current == null || current.id != item.id) {
       _logNowPlayingArt(song, item.artUri);
       return;
     }
-    final upgraded = current.copyWith(artUri: Uri.file(file.path));
-    mediaItem.add(upgraded);
-    _logNowPlayingArt(song, upgraded.artUri);
+    final art = mediaSessionArtUri(best.file.path, android: _android);
+    if (current.artUri != art) mediaItem.add(current.copyWith(artUri: art));
+    _logNowPlayingArt(
+      song,
+      art,
+      '${fromAlbum ? 'album' : 'track'} ${best.size ?? 'original'}',
+    );
   }
 
-  void _logNowPlayingArt(Song song, Uri? art) {
+  /// The cover id of [song]'s album, from the local library so it works
+  /// offline.
+  Future<String?> _albumCoverArtId(Song song) async {
+    final albumId = song.albumId;
+    final library = _library;
+    if (albumId == null || library == null) return null;
+    final album = await library
+        .watchAlbum(albumId)
+        .first
+        .timeout(const Duration(seconds: 2));
+    return album?.coverArtId;
+  }
+
+  void _logNowPlayingArt(Song song, Uri? art, [String? detail]) {
     final source = art == null
         ? 'none'
-        : (art.scheme == 'file' ? 'disk' : 'server');
-    AppLogger.i('AudioHandler', 'Now Playing art for ${song.id}: $source');
+        : (isStoredArt(art) ? 'disk' : 'server');
+    AppLogger.i(
+      'AudioHandler',
+      'Now Playing art for ${song.id}: $source'
+          '${detail == null ? '' : ' ($detail)'}',
+    );
   }
 
   /// Waits for the player's saved-queue restore, if the player exists yet.
@@ -310,7 +378,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
         // Keep art already upgraded to the stored cover for this track.
         final keepArt =
             mediaItem.value?.id == item.id &&
-            mediaItem.value?.artUri?.scheme == 'file';
+            isStoredArt(mediaItem.value?.artUri);
         final next = keepArt
             ? item.copyWith(artUri: mediaItem.value!.artUri)
             : item;

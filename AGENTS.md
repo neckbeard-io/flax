@@ -109,6 +109,10 @@ downloaded item needs the server. Two rules keep that true:
 - **Every reader resolves art through `CoverArtCache.findCached`** — screens,
   Android Auto, the notification. It falls back to any stored size of the cover
   before the server, and nothing asks the server for art while offline.
+- **A thumbnail is not a stored cover.** The mini player stores a 128px copy
+  the moment a track plays, so `storeForOffline` skips only when a copy at
+  least the requested size exists. When any size counted, cached tracks were
+  left with just the thumbnail, drawn full-screen in the car.
 
 ### Hover / mouseover conventions
 
@@ -194,6 +198,13 @@ either part. They are built from different things, so say which one you mean:
 Use "large view (left)" and "small card (right)" in code comments, changelog
 lines and conversation. "Panel" or a bare "Now Playing" does not say which,
 and the two are fixed in different places.
+
+Both show the cover, but not the same way. The small card opens the media
+session's art URI itself, in Android Auto's own process, so the art has to be a
+`content://` URI served by `FlaxArtProvider` (`mediaSessionArtUri`). A
+`file://` path into flax's storage cannot be opened there: the card stays empty
+while the large view still shows the cover. Never put a server URL in the
+session either — every media controller can read it, login token included.
 
 ### The window title strip is reserved
 
@@ -383,6 +394,11 @@ Recipes live in [docs/VERIFYING.md](docs/VERIFYING.md):
 - **Android** — reproducing a start without an Activity (the Android Auto
   case), readiness signals in debug and release logs, seeding a server, and the
   Automotive orientation check.
+- **Android Auto** — a real phone over USB driving the Desktop Head Unit
+  (`tool/run_dhu.sh`), which shows the large view and the small card;
+  updating the phone's flax without wiping it; Android Automotive on an
+  emulator. Anything only visible on the car screen is checked this way, not
+  on a phone emulator.
 
 ---
 

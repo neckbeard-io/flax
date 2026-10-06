@@ -70,6 +70,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+        <!-- Cover art for Android Auto and Android Automotive, which open the
+             Now Playing art URI in their own process. Exported, as they must
+             reach it; read-only and limited to the art cache. -->
+        <provider
+            android:name=".FlaxArtProvider"
+            android:authorities="${applicationId}.art"
+            android:exported="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

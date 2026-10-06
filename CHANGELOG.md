@@ -51,6 +51,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ### Fixed
 - A screen that fails to load shows the error and a restart button, not plain grey.
 - Reopening flax after a screen failed now recovers instead of staying grey until force-stopped.
+- Android Auto's small card (right side) shows the album cover again.
+- Cached tracks keep a full-size cover offline, not a blurry thumbnail.
 - Offline queues with undownloaded tracks no longer show the wrong song after a track change.
 - Downloaded album art now shows offline on every screen and in Android Auto.
 - Android Auto's large view (left side) no longer sits black while artwork loads.
