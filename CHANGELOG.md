@@ -49,6 +49,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Playback notification shows the flax logo instead of a solid icon.
 
 ### Fixed
+- Sync Queue with Server no longer downloads another device's current track.
+- Tracks cached while streaming no longer turn into downloads when flax reopens.
 - A screen that fails to load shows the error and a restart button, not plain grey.
 - Reopening flax after a screen failed now recovers instead of staying grey until force-stopped.
 - Android Auto's small card (right side) shows the album cover again.
