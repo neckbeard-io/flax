@@ -203,6 +203,7 @@ class UpdateState {
     String? localFilePath,
     bool clearLocalFilePath = false,
     String? errorMessage,
+    bool clearError = false,
     DateTime? lastCheckedAt,
   }) {
     return UpdateState(
@@ -218,7 +219,7 @@ class UpdateState {
       localFilePath: clearLocalFilePath
           ? null
           : (localFilePath ?? this.localFilePath),
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
     );
   }

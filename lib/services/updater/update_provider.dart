@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flax/core/logging/app_logger.dart';
+
 import 'update_models.dart';
 import 'update_service.dart';
 
@@ -67,9 +69,11 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
   Future<void> checkForUpdates({bool silent = false}) async {
     if (state.isChecking || state.isDownloading || state.isInstalling) return;
 
+    final stageBefore = state.stage;
+    final errorBefore = state.errorMessage;
     // Only switch stage to checking if not a silent background check or if no update is currently visible
     if (!silent || !state.isUpdateAvailable) {
-      state = state.copyWith(stage: UpdateStage.checking, errorMessage: null);
+      state = state.copyWith(stage: UpdateStage.checking, clearError: true);
     }
 
     try {
@@ -80,7 +84,11 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
       final now = DateTime.now();
 
       if (latest == null) {
-        state = state.copyWith(stage: UpdateStage.upToDate, lastCheckedAt: now);
+        state = state.copyWith(
+          stage: UpdateStage.upToDate,
+          lastCheckedAt: now,
+          clearError: true,
+        );
         return;
       }
 
@@ -99,6 +107,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
             stage: UpdateStage.idle,
             latestRelease: latest,
             lastCheckedAt: now,
+            clearError: true,
           );
           return;
         }
@@ -113,6 +122,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
           latestRelease: latest,
           matchingAsset: asset,
           lastCheckedAt: now,
+          clearError: true,
           clearLocalFilePath: isNewVersion,
           downloadProgress: isNewVersion ? 0.0 : state.downloadProgress,
           downloadedBytes: isNewVersion ? 0 : state.downloadedBytes,
@@ -122,12 +132,21 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
           stage: UpdateStage.upToDate,
           latestRelease: latest,
           lastCheckedAt: now,
+          clearError: true,
         );
       }
     } catch (e) {
+      AppLogger.w('Updater', 'Update check failed', error: e);
+      // A background check that fails, say while the machine wakes from
+      // sleep, leaves the screen as it was: an update already found stays
+      // offered, and nothing reports an error nobody asked about.
+      if (silent) {
+        state = state.copyWith(stage: stageBefore, errorMessage: errorBefore);
+        return;
+      }
       state = state.copyWith(
         stage: UpdateStage.error,
-        errorMessage: e.toString(),
+        errorMessage: UpdateService.describeFailure(e),
       );
     }
   }
@@ -149,6 +168,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
       downloadProgress: 0.0,
       downloadedBytes: 0,
       totalBytes: asset.sizeBytes,
+      clearError: true,
     );
 
     try {
@@ -187,7 +207,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
       } else {
         state = state.copyWith(
           stage: UpdateStage.error,
-          errorMessage: 'Download failed: $e',
+          errorMessage: 'Download failed: ${UpdateService.describeFailure(e)}',
         );
       }
     } finally {
@@ -210,7 +230,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
       return;
     }
 
-    state = state.copyWith(stage: UpdateStage.installing);
+    state = state.copyWith(stage: UpdateStage.installing, clearError: true);
 
     try {
       await _service.installUpdate(method: state.installMethod, filePath: path);
