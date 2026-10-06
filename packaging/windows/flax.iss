@@ -55,5 +55,6 @@ Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon; AppUserModelID: "{#AppUserModelID}"
 
 [Run]
+; Silent installs come from the in-app updater, whose script relaunches flax
+; once Setup exits. Launching it here too would open a second copy.
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runascurrentuser
-Filename: "{app}\{#AppExeName}"; Flags: nowait runascurrentuser; Check: WizardSilent

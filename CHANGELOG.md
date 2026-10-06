@@ -70,7 +70,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Startup no longer stalls when the audio cache folder is on an unreachable network share.
 - Blank grey screen lockout after Android Auto sessions caused by background route persistence.
 - Album orderings now refresh on server scans, volatile TTL expiry, and tab re-taps.
-- Windows self-updater in-place file replacement and automatic restart.
+- Windows self-update closed flax without installing; it now updates in place and reopens.
 - Platform-tailored offline handling prevents false offlining on desktop laptops after sleep/resume.
 - Player startup hang when restoring queue in offline mode without network connectivity.
 - Android Auto startup spin, missing Coolwalk card, and rail icon in release builds.

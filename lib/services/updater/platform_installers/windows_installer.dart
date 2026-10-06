@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 
@@ -24,20 +25,6 @@ class WindowsInstaller {
     return str.replaceAll("'", "''");
   }
 
-  /// Formats installer arguments into a single PowerShell argument list string.
-  /// Double quotes around paths are escaped with backticks (`) so that
-  /// PowerShell's Start-Process preserves them when invoking Win32 CreateProcess.
-  static String formatPowerShellArgumentList(List<String> args) {
-    return args
-        .map((arg) {
-          if (arg.contains('"')) {
-            return arg.replaceAll('"', '`"');
-          }
-          return arg;
-        })
-        .join(' ');
-  }
-
   /// Builds the argument list for the Inno Setup installer executable.
   static List<String> buildInstallerArgs({
     required String installDir,
@@ -52,7 +39,8 @@ class WindowsInstaller {
         '/SUPPRESSMSGBOXES',
         '/NORESTART',
         '/CLOSEAPPLICATIONS',
-        '/RESTARTAPPLICATIONS',
+        // The update script relaunches flax; Setup must not start a second copy.
+        '/NORESTARTAPPLICATIONS',
         if (isUserWritable) '/CURRENTUSER' else '/ALLUSERS',
         if (logFilePath != null) '/LOG="$logFilePath"' else '/LOG',
       ],
@@ -62,6 +50,11 @@ class WindowsInstaller {
 
   /// Generates a PowerShell script that coordinates process termination,
   /// silent Inno Setup installation, and automatic application relaunch.
+  ///
+  /// Every value is assigned once as a single-quoted PowerShell literal, in
+  /// which only a doubled single quote is special. A backtick there is an
+  /// ordinary character, so the argument string must carry its double quotes
+  /// bare: Start-Process hands it to Setup verbatim, and Setup strips them.
   static String buildUpdateScript({
     required int currentPid,
     required String setupExePath,
@@ -70,15 +63,16 @@ class WindowsInstaller {
     required String scriptPath,
     bool isElevated = false,
   }) {
-    final escapedSetup = escapePowerShellString(setupExePath);
-    final formattedArgs = formatPowerShellArgumentList(installerArgs);
-    final escapedArgs = escapePowerShellString(formattedArgs);
-    final escapedTarget = escapePowerShellString(targetExePath);
-    final escapedScript = escapePowerShellString(scriptPath);
+    String literal(String value) => "'${escapePowerShellString(value)}'";
     final verbParam = isElevated ? '-Verb RunAs ' : '';
 
     return '''
 \$logPath = "\$env:TEMP\\flax_updater.log"
+\$setupPath = ${literal(setupExePath)}
+\$setupArgs = ${literal(installerArgs.join(' '))}
+\$targetExe = ${literal(targetExePath)}
+\$scriptPath = ${literal(scriptPath)}
+
 function Log(\$msg) {
     \$ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     Add-Content -Path \$logPath -Value "[\$ts] \$msg" -ErrorAction SilentlyContinue
@@ -95,22 +89,23 @@ if (\$proc) {
 Start-Sleep -Milliseconds 500
 
 # 2. Run the Inno Setup installer silently
-Log "Launching installer '\$escapedSetup' with args: '\$escapedArgs' (elevated: $isElevated)"
+Log "Launching installer '\$setupPath' with args: \$setupArgs (elevated: $isElevated)"
 try {
-    \$setup = Start-Process -FilePath '$escapedSetup' -ArgumentList '$escapedArgs' $verbParam-Wait -PassThru
+    \$setup = Start-Process -FilePath \$setupPath -ArgumentList \$setupArgs $verbParam-Wait -PassThru
     Log "Installer exited with code: \$(\$setup.ExitCode)"
 } catch {
     Log "Installer failed to start: \$_"
     \$setup = \$null
 }
+\$installed = \$setup -and (\$setup.ExitCode -eq 0 -or \$setup.ExitCode -eq \$null)
 
 # 3. Relaunch Flax upon successful installation
-if (\$setup -and (\$setup.ExitCode -eq 0 -or \$setup.ExitCode -eq \$null)) {
-    Log "Installation successful. Relaunching Flax at '\$escapedTarget'..."
+if (\$installed) {
+    Log "Installation successful. Relaunching Flax at '\$targetExe'..."
     Start-Sleep -Milliseconds 500
-    \$targetDir = Split-Path -Parent '$escapedTarget'
+    \$targetDir = Split-Path -Parent \$targetExe
     try {
-        Start-Process -FilePath '$escapedTarget' -WorkingDirectory "\$targetDir"
+        Start-Process -FilePath \$targetExe -WorkingDirectory \$targetDir
         Log "Flax relaunched successfully."
     } catch {
         Log "Failed to relaunch Flax: \$_"
@@ -120,10 +115,10 @@ if (\$setup -and (\$setup.ExitCode -eq 0 -or \$setup.ExitCode -eq \$null)) {
 }
 
 # 4. Clean up downloaded installer and updater script if successful
-if (\$setup -and (\$setup.ExitCode -eq 0 -or \$setup.ExitCode -eq \$null)) {
+if (\$installed) {
     Start-Sleep -Seconds 2
-    Remove-Item -Path '$escapedSetup' -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path '$escapedScript' -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath \$setupPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath \$scriptPath -Force -ErrorAction SilentlyContinue
 } else {
     Log "Retaining installer and script for inspection."
 }
@@ -179,7 +174,14 @@ if (\$setup -and (\$setup.ExitCode -eq 0 -or \$setup.ExitCode -eq \$null)) {
         scriptPath: scriptFile.path,
         isElevated: !userWritable,
       );
-      await scriptFile.writeAsString(scriptContent);
+      // Windows PowerShell reads a script without a byte order mark in the
+      // ANSI code page, which would garble any non-ASCII character in a path.
+      await scriptFile.writeAsBytes([
+        0xEF,
+        0xBB,
+        0xBF,
+        ...utf8.encode(scriptContent),
+      ]);
 
       try {
         await Process.start('powershell.exe', [
