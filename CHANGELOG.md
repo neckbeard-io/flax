@@ -10,109 +10,70 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.6.0 — 2026-10-05
+
+### Upgrading from v0.5.6
+- macOS: v0.5.6 cannot install this update. Get the .dmg from github.com/neckbeard-io/flax/releases.
+- Windows: uninstall v0.5.6 first, then run the new setup. Servers and settings are kept.
+- In-app updates work again from v0.6.0 on.
+
 ### Added
-- Diagnostics export now includes errors saved from earlier sessions.
-- Flax logo on Android Auto's small Now Playing card (right side).
-- Albums screen now includes a manual refresh button and pull-to-refresh.
-- Check for updates tile retains a recheck button when an update is available.
-- Orphaned cache cleanup tool and server reset option in Metadata & Storage settings.
-- Automatic detection and startup warning banner for Navidrome 0.64.0 item ID migrations.
-- Option to isolate playback queue locally, preventing server queues from overwriting device state.
-- Offline scrobbles now persist locally and automatically flush when server connection restores.
-- Artist country flags and active years now display on Now Playing and persist locally.
-- In-app sanitized diagnostics export and one-click GitHub issue reporting tool in Settings.
-- Wi-Fi driven local network routing switches traffic directly to server LAN IP on home networks.
-- Android Auto and Android Automotive support with media browse tree and vehicle transport controls.
-- Android Automotive OS native media source discovery and adaptive vehicle screen layout support.
-- Multi-language support (EN, DE, FR, ES, JA, ZH) with setup and appearance screen selector.
-- High-performance zero-jank in-memory ring buffer logger for diagnostic retention.
-- Downloads screen now breaks down active downloads track-by-track with live download speeds, ETAs, and queue status.
-- Mobile active downloads pill displays real-time transfer rates alongside completed item counts.
-- Android Auto albums tab now features standard library sections (All, Recently Added, Recently Played, Random, Most Played, Favorites, Top Rated, Downloaded).
-- Android Auto queue list now formats as Title · Artist on compact vehicle cards.
-- Android Auto Now Playing screen now features interactive Favorite (Heart) and Shuffle toggle actions.
-- Android Auto Now Playing subtitle displays dynamic audiophile codec and resolution badges (e.g. FLAC 24/96, FLAC 16/44.1, MP3 320k).
-- Android Auto browse tree now filters all standard views (Albums, Artists, Recent, Favorites) to downloaded music in offline mode.
-- Auto-offline setting for Android Auto to automatically engage offline mode when connected to vehicle head units.
-- High-performance native Android background downloader with Foreground Service, persistent progress notification, and screen-timeout sleep immunity.
-- Android Auto root browse menu includes interactive mode toggle to switch between online and offline playback.
-- Full-hierarchy metadata caching automatically stores lyrics, album sleeves, artist bios, and avatars when caching music.
-- Automated nightly library and artwork background sync on Android via WorkManager.
-- Partial cache indicators: albums and artists with some cached tracks show outlined pin badge, context menus offer both "Complete Caching" and "Remove from Cache".
-- Password manager autofill support on server setup via AutofillGroup and semantic autofill hints.
-- AutoEQ database download shows determinate progress bar with live byte transfer metrics.
-- Full library metadata sync option for nightly background sync crawls and fills missing artwork and bios.
+- Android Auto and Android Automotive: browse your library and control playback from the car.
+- Android Auto has album tabs, A–Z artists, heart and shuffle buttons, and codec badges.
+- Offline mode in Android Auto, with an option to go offline whenever the car connects.
+- Android downloads keep going with the screen off, with a progress notification.
+- Downloads screen lists each track with its own speed and time left.
+- Caching music also stores its lyrics, covers, artist bios and photos.
+- Partly cached albums and artists show an outlined pin and offer Complete Caching.
+- Nightly library and artwork sync on Android, optionally filling in all missing art and bios.
+- Your server's local address is used automatically on your home Wi-Fi.
+- Plays made offline are scrobbled once the server is reachable again.
+- Sync Queue with Server setting; turn it off to keep this device's queue its own.
+- Now Playing shows the artist's country flag and active years.
+- Warning when Navidrome 0.64 changes item IDs, with Reset & Re-sync Library.
+- Clean Orphaned Files and Reset & Re-sync in Storage & Caching settings.
+- Export sanitized diagnostics or report a GitHub issue from Settings.
+- Language setting (DE, FR, ES, JA, ZH); setup, navigation and Settings translated so far.
+- Password managers can fill in the server login.
+- Albums has a refresh button and pull-to-refresh.
+- AutoEQ database download shows its progress.
+- Update prompt lists the notes of every release since your version.
 
 ### Changed
-- 'Offline when not on Wi-Fi' no longer appears on desktop.
-- Android Auto offline option no longer appears on desktop.
+- Windows installs for the current user, so installing and updating need no admin prompt.
+- Android pauses playback when headphones or Bluetooth disconnect.
+- Downloads, caching and Android app updates are faster.
 - Playback notification shows the flax logo instead of a solid icon.
+- 'Offline when not on Wi-Fi' no longer appears on desktop.
 
 ### Fixed
-- Sync Queue with Server no longer downloads another device's current track.
-- Tracks cached while streaming no longer turn into downloads when flax reopens.
-- A screen that fails to load shows the error and a restart button, not plain grey.
-- Reopening flax after a screen failed now recovers instead of staying grey until force-stopped.
-- Android Auto's small card (right side) shows the album cover again.
-- Cached tracks keep a full-size cover offline, not a blurry thumbnail.
-- Offline queues with undownloaded tracks no longer show the wrong song after a track change.
-- Downloaded album art now shows offline on every screen and in Android Auto.
-- Android Auto's large view (left side) no longer sits black while artwork loads.
-- Audio no longer hiccups when Android Auto resumes playback on reconnect.
-- Android Auto offline mode no longer contacts the server at startup.
+- Windows self-update installs silently, keeps taskbar pins and reopens flax.
+- macOS and Linux self-update swap in the new version and relaunch reliably.
+- Update pill in the title bar responds to clicks on Windows and Linux.
+- Android updater asks for install permission instead of failing.
+- flax opens straight away offline or with the server unreachable, showing downloaded music.
+- Startup no longer stalls when the audio cache is on an unreachable network share.
+- Desktop no longer drops into offline mode after sleep or behind a VPN.
+- Wi-Fi without internet, like a car's, no longer blocks streaming over cellular.
+- Streaming quality now follows Wi-Fi and cellular changes after launch.
 - Offline mode no longer sends scrobbles, queue saves or server checks.
+- Downloaded covers show offline everywhere, at full size rather than a blurry thumbnail.
+- Offline views no longer list downloads whose files were deleted.
+- Offline queues with undownloaded tracks no longer show the wrong song after a skip.
+- Tracks cached while streaming no longer turn into downloads when flax reopens.
+- Downloads no longer reset when the SD card, USB drive or network share is missing.
+- Download speed no longer jumps around erratically.
+- Caching notification no longer stays stuck on screen.
+- Artwork and bio sync now covers every artist, not just the first batch.
+- Artists screen shows the whole library, not only artists flax had already seen.
+- Album tabs like Recently Added refresh after server scans.
 - Resuming starts at the saved position without playing the track's opening first.
-- Global hotkeys show the actual key, like Ctrl + Alt + A, instead of "Key".
-- Endless splash screen after Android Auto, a media button, or background sync started flax.
-- Android Auto no longer loses car and network detection after flax is closed.
-- Local server address and streaming quality now follow network changes after launch.
-- Downloads no longer reset when the SD card, USB drive, or network share is missing.
-- Startup no longer stalls when the audio cache folder is on an unreachable network share.
-- Blank grey screen lockout after Android Auto sessions caused by background route persistence.
-- Album orderings now refresh on server scans, volatile TTL expiry, and tab re-taps.
-- Windows self-update closed flax without installing; it now updates in place and reopens.
-- Platform-tailored offline handling prevents false offlining on desktop laptops after sleep/resume.
-- Player startup hang when restoring queue in offline mode without network connectivity.
-- Android Auto startup spin, missing Coolwalk card, and rail icon in release builds.
-- Offline views no longer display ghost downloads whose cache files were deleted.
-- Android Auto startup spinner and phone launch screen freeze when sharing background engine.
-- Windows taskbar pinning and grouping preserved across self-updates using explicit AppUserModelID.
-- Keyboard shortcuts screen layout, recording dialog conflicts, and hidden mobile menu.
-- Desktop VPN and virtual network adapters no longer trigger false offline mode.
-- Android Auto left sidebar rail, Coolwalk dashboard card, and Now Playing playback.
-- Detect primary network adapter automatically so car Wi-Fi doesn't block cellular internet.
-- App opens immediately without network gating and engages auto-offline on Android Auto.
-- Offline scrobble sync skips missing deleted tracks on server without stalling queue.
-- macOS self-updater attaches to a private mount to prevent volume listing permission errors.
-- Metadata and artwork sync indexes all artists instead of stopping early on partial libraries.
-- App opens immediately on Android without startup hangs or offline stalls.
-- Library screens instantly display downloaded music when offline or server unreachable.
-- Self-updater APK downloads on Android now use high-throughput native HTTP/2 stack.
-- Total download speed spiking erratically from concurrent worker event bursts.
-- Dev pre-releases now extract precise tag-to-tag changelog deltas, and in-app self-updater aggregates skipped versions cleanly.
-- Individual songs in the download queue show their own transfer speeds rather than duplicating the batch rate.
-- Local server routing automatically probes LAN endpoints on Wi-Fi even when Android hides the SSID.
-- Added Wi-Fi detection button and permission handling for Android in Server Connection settings.
-- Caching notification automatically dismisses on timeout or when download queue finishes instead of remaining stuck on screen.
-- Fixed updater SemVer precedence on Windows for numeric 4-part pre-release builds.
-- Windows self-updater runs silently without privilege escalation and relaunches automatically.
-- Desktop header update pill responds to taps on Windows and Linux without title bar drag interference.
-- Eliminated transient startup flash of the setup screen when reopening with configured servers.
-- Android system back button and gesture navigation now pop or navigate back up screens instead of exiting the app.
-- Metadata and artwork sync card no longer clips or pushes content off screen on mobile displays.
-- Android Auto artists browse tree groups by A-Z index with favorite artists sync and vehicle IPC safety.
-- Eliminated missing image caution symbols on Android Auto container folders with lead album artwork and vector icons.
-- Eliminated "getting your categories" flash during seekbar interaction by preserving active playback state.
-- Integrated Android audio session focus management so media streams output properly to vehicle audio sinks.
-- Audio caching and album downloads now saturate bandwidth with connection pooling and raw endpoints.
-- macOS self-updater no longer fails with "Device not configured" when mounting the DMG; removed App Sandbox from release builds and added DiskImageMounter fallback.
-- macOS and Linux in-place self-updaters cleanly swap application bundles and relaunch without script truncation or permission issues.
-- Artists screen now populates full library artist list rather than stalling when single artists were previously fetched or favorited.
-- Non-fatal demuxer and TLS handshake warnings no longer replace track format badges with error text during active playback.
-- Audio playback now automatically pauses when Android Auto, car Bluetooth, or headphones disconnect (`AUDIO_BECOMING_NOISY`).
-- Cold-start offline mode resilience: preloaded offline settings on launch and resilient local database fallback prevent startup stalls when offline.
-- Android in-place updater prompts unknown source permissions seamlessly.
-- Eliminated Android startup crash in release builds by adding ProGuard keep rules for WorkManager and Room, and resolving device inspection errors.
+- Format badges no longer turn into error text after harmless stream warnings.
+- A screen that fails to load now shows the error and a restart button.
+- No more flash of the setup screen when reopening flax.
+- Android back button and gesture go back a screen instead of closing flax.
+- Keyboard shortcuts show real key names, like Ctrl + Alt + A, and record reliably.
+- Sync status card no longer overflows on phones.
 
 ### Removed
 - Post-update What's New dialog; release notes already show before updating.
