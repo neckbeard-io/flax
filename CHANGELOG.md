@@ -10,6 +10,11 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+- Update dialog no longer shows an earlier check's error beside the update.
+- Failed update checks give up after 15 seconds and say why in plain words.
+- A failed background check no longer hides an update already found.
+
 ## v0.6.0 — 2026-10-05
 
 ### Upgrading from v0.5.6

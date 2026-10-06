@@ -18,7 +18,38 @@ class UpdateService {
 
   final Dio _dio;
 
-  UpdateService({Dio? dio}) : _dio = dio ?? Dio();
+  // Without these a dead connection waits out the OS connect timeout, which
+  // is 75 seconds on macOS. The receive timeout applies between chunks, so it
+  // does not cap how long a large download may take.
+  UpdateService({Dio? dio})
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 15),
+              receiveTimeout: const Duration(seconds: 30),
+            ),
+          );
+
+  /// A sentence for the update dialog in place of a raw exception dump.
+  static String describeFailure(Object error) {
+    if (error is! DioException) return error.toString();
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return "Couldn't reach GitHub. Check your connection and try again.";
+      case DioExceptionType.badResponse:
+        final status = error.response?.statusCode;
+        if (status == 403 || status == 429) {
+          return 'GitHub is limiting update checks right now. Try again later.';
+        }
+        return 'GitHub returned an error (HTTP $status). Try again later.';
+      default:
+        return error.message ?? error.toString();
+    }
+  }
 
   /// Determines the installation method for the current host OS.
   InstallMethod detectInstallMethod() {
