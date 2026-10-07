@@ -15,6 +15,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Fixed
 - Covers saved for offline no longer vanish when the system frees up storage.
+- A background error no longer skips checking the server for library changes.
 - Cancel stops a metadata sync, from the app or its notification, and clears it.
 - Metadata sync no longer hangs forever if its downloader can't start.
 - Covers fetched by the nightly background sync now show up in the app.

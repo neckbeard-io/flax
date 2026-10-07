@@ -20,6 +20,8 @@ final scrobbleSyncServiceProvider = Provider<ScrobbleSyncService>((ref) {
 class ScrobbleSyncService {
   final Ref _ref;
   bool _isDraining = false;
+  bool _drainScheduled = false;
+  bool _disposed = false;
   AppLifecycleListener? _lifecycleListener;
 
   ScrobbleSyncService(this._ref) {
@@ -39,7 +41,7 @@ class ScrobbleSyncService {
                 c != ConnectivityResult.bluetooth,
           );
           if (hasNetwork) {
-            drainPendingScrobbles();
+            _scheduleDrain();
           }
         }
       },
@@ -48,31 +50,27 @@ class ScrobbleSyncService {
     // 2. Server Reachability Transitions (isReachable flips false -> true)
     _ref.listen<ServerReachability>(serverReachabilityProvider, (prev, next) {
       if (next.isReachable && prev?.isReachable != true) {
-        drainPendingScrobbles();
+        _scheduleDrain();
       }
     });
 
     // 3. Offline Mode Deactivation (offline -> online)
     _ref.listen<bool>(isOfflineModeProvider, (prev, next) {
       if (!next && prev == true) {
-        drainPendingScrobbles();
+        _scheduleDrain();
       }
     });
 
     // 4. Client Startup & Authentication
     _ref.listen<SubsonicClient?>(subsonicClientProvider, (prev, next) {
       if (next != null) {
-        drainPendingScrobbles();
+        _scheduleDrain();
       }
     });
 
     // 5. App Lifecycle Resume (foregrounding from background / lockscreen)
     try {
-      _lifecycleListener = AppLifecycleListener(
-        onResume: () {
-          drainPendingScrobbles();
-        },
-      );
+      _lifecycleListener = AppLifecycleListener(onResume: _scheduleDrain);
     } catch (_) {
       // AppLifecycleListener may not be available in headless test bindings
     }
@@ -179,7 +177,26 @@ class ScrobbleSyncService {
     }
   }
 
+  /// Starts a drain once the change that asked for it has settled.
+  ///
+  /// The listeners above run while Riverpod is still refreshing the providers
+  /// they listen to, and a drain reads isOfflineModeProvider before its first
+  /// await. Read there, it rebuilt that provider in the middle of the walk
+  /// over its own dependencies, which threw "Concurrent modification during
+  /// iteration" from whatever read offline mode next: AppChrome's library
+  /// sync timer, on a phone in the background. A microtask runs after that
+  /// walk, and triggers that land together start one drain.
+  void _scheduleDrain() {
+    if (_drainScheduled || _disposed) return;
+    _drainScheduled = true;
+    scheduleMicrotask(() {
+      _drainScheduled = false;
+      if (!_disposed) drainPendingScrobbles();
+    });
+  }
+
   void dispose() {
+    _disposed = true;
     _lifecycleListener?.dispose();
     _lifecycleListener = null;
   }
