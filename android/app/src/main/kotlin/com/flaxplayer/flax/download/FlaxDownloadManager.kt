@@ -29,12 +29,17 @@ object FlaxDownloadManager {
         eventSink = sink
     }
 
-    fun enqueue(context: Context, tasks: List<DownloadTask>, concurrency: Int = 4, notificationTitle: String? = null) {
+    /**
+     * Queues [tasks] and starts the service. False when Android refused to
+     * start it, which it does once flax is in the background; the tasks are
+     * taken back off the queue so the caller can fetch them another way.
+     */
+    fun enqueue(context: Context, tasks: List<DownloadTask>, concurrency: Int = 4, notificationTitle: String? = null): Boolean {
         maxConcurrency = concurrency.coerceIn(1, 32)
         customNotificationTitle = notificationTitle
         val existingIds = pendingQueue.map { it.songId }.toSet() + activeTasks.keys
         val newTasks = tasks.filter { it.songId !in existingIds }
-        if (newTasks.isEmpty()) return
+        if (newTasks.isEmpty()) return true
 
         newTasks.forEach { canceledSongIds.remove(it.songId) }
         pendingQueue.addAll(newTasks)
@@ -43,10 +48,14 @@ object FlaxDownloadManager {
         val intent = Intent(context, FlaxDownloadService::class.java).apply {
             action = FlaxDownloadService.ACTION_START_DOWNLOADS
         }
-        try {
+        return try {
             context.startForegroundService(intent)
+            true
         } catch (e: Exception) {
-            context.startService(intent)
+            val ids = newTasks.map { it.songId }.toSet()
+            pendingQueue.removeIf { it.songId in ids }
+            totalEnqueuedTasks.addAndGet(-newTasks.size)
+            false
         }
     }
 
@@ -69,20 +78,40 @@ object FlaxDownloadManager {
         }
     }
 
-    fun cancelAll(context: Context) {
+    /**
+     * Empties the queue and marks every download in progress canceled, so its
+     * worker stops at the next chunk. Does not touch the service.
+     */
+    fun clearQueue() {
         pendingQueue.clear()
-        activeTasks.clear()
-        canceledSongIds.clear()
+        canceledSongIds.addAll(activeTasks.keys)
         customNotificationTitle = null
         totalEnqueuedTasks.set(0)
         completedSessionTasks.set(0)
         totalSessionBytes.set(0)
+    }
 
+    /**
+     * Cancels everything, from Dart. The service stops, removes its
+     * notification and reports `canceled`.
+     *
+     * This used to clear the queue and then send the service a cancel that
+     * called back into here, which sent another: the service restarted itself
+     * every few milliseconds, and downloads still in flight re-posted the
+     * notification, which no cancel removed.
+     */
+    fun cancelAll(context: Context) {
+        clearQueue()
         val intent = Intent(context, FlaxDownloadService::class.java).apply {
             action = FlaxDownloadService.ACTION_CANCEL_ALL
         }
-        context.startService(intent)
-        sendEvent(mapOf("type" to "canceled"))
+        try {
+            context.startService(intent)
+        } catch (_: Exception) {
+            // Not running, and Android will not start it from the background:
+            // there is nothing to stop.
+            sendEvent(mapOf("type" to "canceled"))
+        }
     }
 
     fun resetSession() {

@@ -164,4 +164,36 @@ void main() {
     // Not a cover request; left exactly as it was.
     expect(store.files.keys, contains('https://images.example.com/artist.jpg'));
   });
+
+  test(
+    'covers the nightly sync downloaded are filed under their key',
+    () async {
+      final inbox = dir.childDirectory('inbox')..createSync();
+      inbox.childFile('cover-al-1-512').writeAsBytesSync([1, 2]);
+      inbox.childFile('cover-ar-2-orig').writeAsBytesSync([3]);
+      // Still being written by the worker.
+      inbox.childFile('cover-al-3-512.tmp').writeAsBytesSync([4]);
+
+      final filed = await CoverArtCache.importNightlyCovers(
+        store,
+        inbox: inbox,
+      );
+
+      expect(filed, 2);
+      expect(
+        store.files.keys,
+        unorderedEquals(['cover-al-1-512', 'cover-ar-2-orig']),
+      );
+      expect(inbox.childFile('cover-al-1-512').existsSync(), isFalse);
+      expect(inbox.childFile('cover-al-3-512.tmp').existsSync(), isTrue);
+    },
+  );
+
+  test('no nightly folder files nothing', () async {
+    final filed = await CoverArtCache.importNightlyCovers(
+      store,
+      inbox: dir.childDirectory('missing'),
+    );
+    expect(filed, 0);
+  });
 }

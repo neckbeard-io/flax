@@ -113,6 +113,13 @@ downloaded item needs the server. Two rules keep that true:
   the moment a track plays, so `storeForOffline` skips only when a copy at
   least the requested size exists. When any size counted, cached tracks were
   left with just the thumbnail, drawn full-screen in the car.
+- **Covers live with the app's data, never in a temporary folder.**
+  `ArtCacheFileSystem` keeps `ArtCache`'s files in the application support
+  directory. `flutter_cache_manager` defaults to the temporary directory, which
+  every platform treats as disposable: Android empties an app's cache folder
+  down to its quota whenever storage is wanted, which once left a synced phone
+  with a few hundred covers out of thousands. Anything stored for offline use
+  belongs in the support directory too.
 
 ### Hover / mouseover conventions
 

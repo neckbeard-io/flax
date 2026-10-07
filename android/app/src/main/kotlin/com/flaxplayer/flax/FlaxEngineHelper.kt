@@ -280,8 +280,9 @@ object FlaxEngineHelper {
                                 expectedSizeBytes = expectedSizeBytes
                             )
                         }
-                        FlaxDownloadManager.enqueue(appContext, tasks, concurrency, notificationTitle)
-                        result.success(true)
+                        result.success(
+                            FlaxDownloadManager.enqueue(appContext, tasks, concurrency, notificationTitle)
+                        )
                     } else {
                         result.error("INVALID_ARGUMENT", "tasks list is required", null)
                     }

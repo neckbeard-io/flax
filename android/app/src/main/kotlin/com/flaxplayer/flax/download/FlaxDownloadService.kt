@@ -86,7 +86,7 @@ class FlaxDownloadService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_CANCEL_ALL -> {
-                cancelAllDownloads()
+                stopDownloads()
             }
             ACTION_CHECK_QUEUE -> {
                 checkQueueStatus()
@@ -173,23 +173,23 @@ class FlaxDownloadService : Service() {
             ensureWorkersRunning()
             return
         }
-        if (FlaxDownloadManager.pendingQueue.isEmpty() &&
-            FlaxDownloadManager.activeTasks.isEmpty() &&
-            activeWorkerCount.get() == 0) {
-            isDownloading.set(false)
+        if (!FlaxDownloadManager.activeTasks.isEmpty() || activeWorkerCount.get() > 0) return
+        // Only the run that finishes reports it; a cancel already said so.
+        if (isDownloading.compareAndSet(true, false)) {
             val finalCompleted = FlaxDownloadManager.completedSessionTasks.get()
             val finalBytes = FlaxDownloadManager.totalSessionBytes.get()
             FlaxDownloadManager.notifyQueueCompleted(finalCompleted, finalBytes)
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
         }
+        notificationManager.cancel(NOTIFICATION_ID)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private fun downloadSingleTask(task: DownloadTask) {
         if (FlaxDownloadManager.canceledSongIds.contains(task.songId)) return
 
         FlaxDownloadManager.notifyTaskStarted(task)
-        updateNotification(
+        updateNotificationThrottled(
             task.title,
             FlaxDownloadManager.completedSessionTasks.get(),
             FlaxDownloadManager.totalEnqueuedTasks.get(),
@@ -278,13 +278,18 @@ class FlaxDownloadService : Service() {
             val done = FlaxDownloadManager.completedSessionTasks.incrementAndGet()
             val total = FlaxDownloadManager.totalEnqueuedTasks.get()
             FlaxDownloadManager.notifyTaskCompleted(task, destFile.absolutePath, done, total)
-            updateNotification(task.title, done, total, currentSpeedBytesPerSec)
+            updateNotificationThrottled(task.title, done, total, currentSpeedBytesPerSec)
 
         } catch (e: Exception) {
             tempFile.delete()
-            val done = FlaxDownloadManager.completedSessionTasks.get()
-            val total = FlaxDownloadManager.totalEnqueuedTasks.get()
-            FlaxDownloadManager.notifyTaskFailed(task, e.message ?: "Unknown download error", done, total)
+            if (FlaxDownloadManager.canceledSongIds.contains(task.songId)) {
+                // Canceled, not failed: whoever canceled it has been told.
+                FlaxDownloadManager.activeTasks.remove(task.songId)
+            } else {
+                val done = FlaxDownloadManager.completedSessionTasks.get()
+                val total = FlaxDownloadManager.totalEnqueuedTasks.get()
+                FlaxDownloadManager.notifyTaskFailed(task, e.message ?: "Unknown download error", done, total)
+            }
         }
     }
 
@@ -300,6 +305,9 @@ class FlaxDownloadService : Service() {
         }
     }
 
+    // Every start and finish used to post: dozens of covers a second, and
+    // Android drops all but five posts a second from an app.
+    @Synchronized
     private fun updateNotificationThrottled(title: String, completed: Int, total: Int, speed: Long) {
         val now = System.currentTimeMillis()
         if (now - lastNotificationTime >= 500) {
@@ -309,6 +317,10 @@ class FlaxDownloadService : Service() {
     }
 
     private fun updateNotification(title: String, completed: Int, total: Int, speed: Long) {
+        // A download that ends after a cancel must not bring the notification
+        // back: the service is no longer in the foreground, and nothing would
+        // remove it again.
+        if (!isDownloading.get()) return
         notificationManager.notify(NOTIFICATION_ID, buildNotification(title, completed, total, speed))
     }
 
@@ -386,14 +398,19 @@ class FlaxDownloadService : Service() {
         }
     }
 
-    private fun cancelAllDownloads() {
-        FlaxDownloadManager.cancelAll(this)
+    /** Cancel, from the notification or from Dart via [FlaxDownloadManager.cancelAll]. */
+    private fun stopDownloads() {
+        FlaxDownloadManager.clearQueue()
         isDownloading.set(false)
+        notificationManager.cancel(NOTIFICATION_ID)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+        FlaxDownloadManager.sendEvent(mapOf("type" to "canceled"))
     }
 
     override fun onDestroy() {
+        isDownloading.set(false)
+        notificationManager.cancel(NOTIFICATION_ID)
         releaseLocks()
         serviceScope.cancel()
         super.onDestroy()

@@ -1,4 +1,5 @@
 import 'package:flutter/painting.dart';
+import 'package:flax/shared/widgets/art_cache_file_system.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
@@ -26,10 +27,10 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 /// was controlled for, and these requests make a small self-hosted server do real
 /// work — a client that opens fifty sockets to be first is not being a good guest.
 ///
-/// 4000 objects at cover-art sizes is a few hundred megabytes at worst, in the OS
-/// cache directory, which the system may reclaim and a user can clear. A stale
-/// period of a year rather than 30 days keeps a library you browse seasonally from
-/// going cold.
+/// The files live with flax's own data rather than in the OS cache directory,
+/// because covers stored for offline use must not disappear; see
+/// [ArtCacheFileSystem]. Neither age nor count evicts anything: a library's
+/// covers are a few hundred megabytes, and Settings clears them on request.
 ///
 /// Its own cache key, not the default `libCachedImageData`, so the settings here
 /// govern a store that only flax writes.
@@ -38,12 +39,17 @@ class ArtCache {
 
   static const key = 'flaxArtCache';
 
+  /// Where the files are kept. `FlaxArtProvider` serves Android Auto's small
+  /// card from the same folder.
+  static final ArtCacheFileSystem fileSystem = ArtCacheFileSystem(key);
+
   /// Held so the store behind [instance] can be listed — see
   /// `CoverArtCache.rekeyLegacyEntries`.
   static final Config config = Config(
     key,
     stalePeriod: const Duration(days: 365 * 100),
     maxNrOfCacheObjects: 1000000000,
+    fileSystem: fileSystem,
   );
 
   static final CacheManager instance = CacheManager(config);

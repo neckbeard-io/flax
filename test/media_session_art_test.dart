@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flax/services/audio/media_session_art.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
+import 'package:flax/shared/widgets/cover_art_cache.dart';
 
 /// The content:// art URIs only work if the Dart side, the manifest and the
 /// provider agree on where covers are. Each lives in a different language, and
@@ -15,6 +16,9 @@ void main() {
   final gradle = File('android/app/build.gradle.kts').readAsStringSync();
   final provider = File(
     'android/app/src/main/kotlin/com/flaxplayer/flax/FlaxArtProvider.kt',
+  ).readAsStringSync();
+  final worker = File(
+    'android/app/src/main/kotlin/com/flaxplayer/flax/sync/FlaxSyncWorker.kt',
   ).readAsStringSync();
 
   test('the manifest exports the art provider under the Dart authority', () {
@@ -40,11 +44,24 @@ void main() {
 
   test('the provider serves the folder the art cache writes to', () {
     expect(provider, contains('ART_CACHE_DIR = "${ArtCache.key}"'));
+    // ArtCacheFileSystem keeps it in the support directory: filesDir on
+    // Android, never the cache directory Android empties.
+    expect(provider, contains('filesDir, ART_CACHE_DIR'));
+    expect(provider, isNot(contains('cacheDir')));
+  });
+
+  test('the nightly sync leaves covers where the app files them', () {
+    expect(
+      worker,
+      contains('NIGHTLY_INBOX = "${CoverArtCache.nightlyInboxFolder}"'),
+    );
+    expect(worker, contains('File(context.filesDir, NIGHTLY_INBOX)'));
+    expect(worker, isNot(contains('context.cacheDir')));
   });
 
   test('a stored cover is named by its file alone', () {
     final uri = mediaSessionArtUri(
-      '/data/user/0/com.flaxplayer.flax/cache/flaxArtCache/1b2c.jpeg',
+      '/data/user/0/com.flaxplayer.flax/files/flaxArtCache/1b2c.jpeg',
       android: true,
     );
     expect(uri.toString(), 'content://$mediaSessionArtAuthority/1b2c.jpeg');

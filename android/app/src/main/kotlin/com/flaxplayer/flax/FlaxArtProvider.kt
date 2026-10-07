@@ -39,7 +39,7 @@ class FlaxArtProvider : ContentProvider() {
 
     /** The art cache file [uri] names, refusing anything outside the cache. */
     private fun resolve(uri: Uri): File {
-        val root = File(requireNotNull(context).cacheDir, ART_CACHE_DIR).canonicalFile
+        val root = File(requireNotNull(context).filesDir, ART_CACHE_DIR).canonicalFile
         val file = uri.pathSegments.singleOrNull()?.let { File(root, it).canonicalFile }
         if (file == null || file.parentFile != root || !file.isFile) {
             throw FileNotFoundException("No stored cover for $uri")
@@ -69,8 +69,9 @@ class FlaxArtProvider : ContentProvider() {
     companion object {
         /**
          * `ArtCache.key` in lib/shared/widgets/art_cache.dart. The cache keeps its
-         * files in the temporary directory under that name, which on Android is
-         * [android.content.Context.getCacheDir].
+         * files in the application support directory under that name, which on
+         * Android is [android.content.Context.getFilesDir] — not the cache
+         * directory, which Android empties when it wants the space.
          */
         private const val ART_CACHE_DIR = "flaxArtCache"
     }
