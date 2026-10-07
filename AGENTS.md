@@ -188,6 +188,23 @@ Auto spinning.
   `main.dart` or `bootstrap.dart`. To reproduce a headless start, see
   [docs/VERIFYING.md](docs/VERIFYING.md#android-starts-without-an-activity).
 
+### Listeners never read providers synchronously
+
+Riverpod 2 refreshes a stale provider by walking its dependencies, and a
+dependency that rebuilds notifies its `ref.listen` listeners right then. A
+listener that reads a provider at that moment can rebuild it in the middle of
+the walk over its own dependencies, which throws "Concurrent modification
+during iteration" from whatever read it. Scrobble sync's drains did exactly
+that to `isOfflineModeProvider`, and AppChrome's library sync timer hit it on a
+phone in the background, where no frame runs the scheduled refreshes first.
+
+- A listener that needs to read providers or start work defers it:
+  `scheduleMicrotask`, a `Timer`, or code after an `await`, as
+  `ScrobbleSyncService._scheduleDrain` does.
+- `test/offline_mode_reentrancy_test.dart` reproduces the crash with the real
+  providers; extend it when adding a listener to anything offline mode
+  depends on.
+
 ### Android Auto: the large view and the small card
 
 On a widescreen head unit Android Auto splits the screen, and flax can be in
