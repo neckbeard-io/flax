@@ -21,6 +21,7 @@ import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 import 'package:flax/shared/widgets/cover_art_cache.dart';
+import 'package:flax/shared/widgets/cover_index.dart';
 
 class MetadataCacheSummary {
   final int albumArtCached;
@@ -78,10 +79,15 @@ class MetadataCacheSummary {
 class MetadataSyncService {
   final Ref _ref;
   final BaseCacheManager? _cacheManager;
+  final Future<CoverIndex> Function() _readCoverIndex;
   bool _isCanceled = false;
   TaskHandle? _activeHandle;
 
-  MetadataSyncService(this._ref, {this._cacheManager});
+  MetadataSyncService(
+    this._ref, {
+    this._cacheManager,
+    this._readCoverIndex = CoverIndex.readArtCache,
+  });
 
   BaseCacheManager get _artCache => _cacheManager ?? ArtCache.instance;
 
@@ -129,6 +135,9 @@ class MetadataSyncService {
         artists = [...artists, ...missingArtists];
       }
 
+      // Read once, and only when some art is wanted.
+      late final coverIndex = _readCoverIndex();
+
       int albumArtCached = 0;
       int albumArtBytes = 0;
       final albumArtTotal = albums
@@ -137,28 +146,13 @@ class MetadataSyncService {
 
       if (config.albumArtQuality != MetadataQuality.disabled) {
         final reqSize = config.albumArtQuality.requestSize;
-        final validAlbums = albums
-            .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
-            .toList();
-        const chunkSize = 200;
-        for (var i = 0; i < validAlbums.length; i += chunkSize) {
-          final chunk = validAlbums.sublist(
-            i,
-            (i + chunkSize).clamp(0, validAlbums.length),
-          );
-          final files = await Future.wait(
-            chunk.map((a) {
-              final key = coverCacheKey(a.coverArtId!, reqSize);
-              return _artCache.getFileFromCache(key);
-            }),
-          );
-          for (final f in files) {
-            if (f != null) {
-              albumArtCached++;
-              albumArtBytes += await f.file.length();
-            }
-          }
-        }
+        final stored = await (await coverIndex).measure([
+          for (final a in albums)
+            if (a.coverArtId != null && a.coverArtId!.isNotEmpty)
+              coverCacheKey(a.coverArtId!, reqSize),
+        ]);
+        albumArtCached = stored.count;
+        albumArtBytes = stored.bytes;
       }
 
       int artistArtCached = 0;
@@ -175,28 +169,13 @@ class MetadataSyncService {
 
       if (config.artistArtQuality != MetadataQuality.disabled) {
         final reqSize = config.artistArtQuality.requestSize;
-        final validArtists = artists
-            .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
-            .toList();
-        const chunkSize = 200;
-        for (var i = 0; i < validArtists.length; i += chunkSize) {
-          final chunk = validArtists.sublist(
-            i,
-            (i + chunkSize).clamp(0, validArtists.length),
-          );
-          final files = await Future.wait(
-            chunk.map((a) {
-              final key = coverCacheKey(a.coverArtId!, reqSize);
-              return _artCache.getFileFromCache(key);
-            }),
-          );
-          for (final f in files) {
-            if (f != null) {
-              artistArtCached++;
-              artistArtBytes += await f.file.length();
-            }
-          }
-        }
+        final stored = await (await coverIndex).measure([
+          for (final a in artists)
+            if (a.coverArtId != null && a.coverArtId!.isNotEmpty)
+              coverCacheKey(a.coverArtId!, reqSize),
+        ]);
+        artistArtCached = stored.count;
+        artistArtBytes = stored.bytes;
       }
 
       int artistInfoCached = 0;
@@ -447,65 +426,37 @@ class MetadataSyncService {
       final artWorkItems = <_SyncWorkItem>[];
       final infoWorkItems = <_SyncWorkItem>[];
 
+      // Read once, and only when some art is wanted.
+      late final coverIndex = _readCoverIndex();
+
       if (config.albumArtQuality != MetadataQuality.disabled) {
         final reqSize = config.albumArtQuality.requestSize;
-        final validAlbums = albums
-            .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
-            .toList();
-        const chunkSize = 50;
-        for (var i = 0; i < validAlbums.length; i += chunkSize) {
-          if (_isCanceled || handle.isCanceled) return;
-          final chunk = validAlbums.sublist(
-            i,
-            (i + chunkSize).clamp(0, validAlbums.length),
+        final missing = (await coverIndex).missing(
+          albums.where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty),
+          (a) => coverCacheKey(a.coverArtId!, reqSize),
+        );
+        for (final album in missing) {
+          artWorkItems.add(
+            _AlbumArtWorkItem(album: album, quality: config.albumArtQuality),
           );
-          final files = await Future.wait(
-            chunk.map((a) {
-              final key = coverCacheKey(a.coverArtId!, reqSize);
-              return _artCache.getFileFromCache(key);
-            }),
-          );
-          for (var j = 0; j < chunk.length; j++) {
-            if (files[j] == null) {
-              artWorkItems.add(
-                _AlbumArtWorkItem(
-                  album: chunk[j],
-                  quality: config.albumArtQuality,
-                ),
-              );
-            }
-          }
         }
       }
 
       if (config.artistArtQuality != MetadataQuality.disabled) {
         final reqSize = config.artistArtQuality.requestSize;
-        final validArtists = artists
-            .where((a) => a.coverArtId != null && a.coverArtId!.isNotEmpty)
-            .toList();
-        const chunkSize = 50;
-        for (var i = 0; i < validArtists.length; i += chunkSize) {
-          if (_isCanceled || handle.isCanceled) return;
-          final chunk = validArtists.sublist(
-            i,
-            (i + chunkSize).clamp(0, validArtists.length),
+        final missing = (await coverIndex).missing(
+          artists.where(
+            (a) => a.coverArtId != null && a.coverArtId!.isNotEmpty,
+          ),
+          (a) => coverCacheKey(a.coverArtId!, reqSize),
+        );
+        for (final artist in missing) {
+          artWorkItems.add(
+            _ArtistArtWorkItem(
+              artist: artist,
+              quality: config.artistArtQuality,
+            ),
           );
-          final files = await Future.wait(
-            chunk.map((a) {
-              final key = coverCacheKey(a.coverArtId!, reqSize);
-              return _artCache.getFileFromCache(key);
-            }),
-          );
-          for (var j = 0; j < chunk.length; j++) {
-            if (files[j] == null) {
-              artWorkItems.add(
-                _ArtistArtWorkItem(
-                  artist: chunk[j],
-                  quality: config.artistArtQuality,
-                ),
-              );
-            }
-          }
         }
       }
 
