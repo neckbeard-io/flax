@@ -18,6 +18,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - A background error no longer skips checking the server for library changes.
 - Cancel stops a metadata sync, from the app or its notification, and clears it.
 - Metadata sync no longer hangs forever if its downloader can't start.
+- Cache Status and Sync start in seconds on large libraries instead of stalling.
 - Covers fetched by the nightly background sync now show up in the app.
 - Update dialog no longer shows an earlier check's error beside the update.
 - Failed update checks give up after 15 seconds and say why in plain words.

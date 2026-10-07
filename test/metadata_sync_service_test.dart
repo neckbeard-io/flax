@@ -1,6 +1,9 @@
+import 'dart:io' as io;
+
 import 'package:file/file.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -14,6 +17,10 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/database/library_dao.dart';
 import 'package:flax/services/metadata/metadata_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
+import 'package:flax/shared/widgets/cover_art_cache.dart';
+import 'package:flax/shared/widgets/cover_index.dart';
+
+import 'helpers/fake_cache_info_repository.dart';
 
 @GenerateNiceMocks([
   MockSpec<SubsonicClient>(),
@@ -31,9 +38,13 @@ void main() {
   late MockSubsonicClient mockClient;
   late MockLibraryDao mockDao;
   late MockBaseCacheManager mockCache;
+  late FakeCacheInfoRepository coverRepo;
+  late io.Directory coverDir;
   late MetadataSyncService service;
 
   setUp(() async {
+    coverRepo = FakeCacheInfoRepository();
+    coverDir = io.Directory.systemTemp.createTempSync('metadata_sync_covers');
     SharedPreferences.setMockInitialValues({});
     mockClient = MockSubsonicClient();
     mockDao = MockLibraryDao();
@@ -50,12 +61,26 @@ void main() {
     service = MetadataSyncService(
       container.read(providerElementProvider),
       cacheManager: mockCache,
+      readCoverIndex: () =>
+          CoverIndex.read(repo: coverRepo, directory: coverDir),
     );
   });
 
   tearDown(() {
     container.dispose();
+    coverDir.deleteSync(recursive: true);
   });
+
+  /// Stores a cover of [bytes] bytes under [key], as the art store files one.
+  void storeCover(String key, int bytes, {bool recordLength = true}) {
+    final name = '$key.jpg';
+    io.File(
+      p.join(coverDir.path, name),
+    ).writeAsBytesSync(List.filled(bytes, 0));
+    coverRepo.objects.add(
+      coverRow(key, name, length: recordLength ? bytes : null),
+    );
+  }
 
   const testServer = Server(
     id: 'srv-1',
@@ -288,6 +313,104 @@ void main() {
       expect(summary.isFullyCached, isFalse);
     },
   );
+
+  group('stored covers', () {
+    final size = MetadataQuality.low.requestSize;
+    final albums = [
+      for (final n in [1, 2, 3])
+        Album(
+          id: 'alb-$n',
+          serverId: 'srv-1',
+          name: 'Album $n',
+          coverArtId: 'alb-cov-$n',
+        ),
+    ];
+    const artists = [
+      Artist(
+        id: 'art-1',
+        serverId: 'srv-1',
+        name: 'Artist One',
+        coverArtId: 'art-cov-1',
+        biography: 'Bio',
+      ),
+    ];
+
+    setUp(() {
+      storeCover(coverCacheKey('alb-cov-1', size), 1000);
+      // The row outlived its file.
+      storeCover(coverCacheKey('alb-cov-2', size), 500);
+      io.File(
+        p.join(coverDir.path, '${coverCacheKey('alb-cov-2', size)}.jpg'),
+      ).deleteSync();
+      // Filed by Android's downloader, which records no length.
+      storeCover(coverCacheKey('art-cov-1', size), 300, recordLength: false);
+
+      when(mockDao.getAllAlbums('srv-1')).thenAnswer((_) async => albums);
+      when(mockDao.getAllArtists('srv-1')).thenAnswer((_) async => artists);
+      when(
+        mockDao.watchAllAlbums('srv-1'),
+      ).thenAnswer((_) => Stream.value(albums));
+      when(
+        mockDao.watchArtists('srv-1'),
+      ).thenAnswer((_) => Stream.value(artists));
+      when(
+        mockDao.artistsFetchedAt('srv-1'),
+      ).thenAnswer((_) async => DateTime(2026));
+    });
+
+    test('getSummary counts them from one read of the index', () async {
+      final summary = await service.getSummary(testServer, mockDao);
+
+      expect(summary.albumArtTotal, 3);
+      expect(summary.albumArtCached, 1);
+      expect(summary.albumArtBytes, 1000);
+      expect(summary.artistArtTotal, 1);
+      expect(summary.artistArtCached, 1);
+      expect(summary.artistArtBytes, 300);
+      verifyNever(mockCache.getFileFromCache(any));
+      expect(coverRepo.openConnections, 0);
+    });
+
+    test('startSync fetches only the covers not stored', () async {
+      when(
+        mockClient.getAlbumList(
+          any,
+          count: anyNamed('count'),
+          offset: anyNamed('offset'),
+        ),
+      ).thenAnswer((_) async => albums);
+      when(mockClient.getArtists()).thenAnswer((_) async => artists);
+      when(
+        mockClient.getCoverArtUri(any, size: anyNamed('size')),
+      ).thenReturn(Uri.parse('https://music.example.com/cover'));
+      final mockFileInfo = MockFileInfo();
+      final mockFile = MockFile();
+      when(mockFile.length()).thenAnswer((_) async => 1024);
+      when(mockFileInfo.file).thenReturn(mockFile);
+      when(mockCache.getFileFromCache(any)).thenAnswer((_) async => null);
+      when(
+        mockCache.downloadFile(any, key: anyNamed('key')),
+      ).thenAnswer((_) async => mockFileInfo);
+
+      await service.startSync(
+        server: testServer,
+        client: mockClient,
+        dao: mockDao,
+      );
+
+      final fetched = verify(
+        mockCache.downloadFile(any, key: captureAnyNamed('key')),
+      ).captured;
+      expect(
+        fetched,
+        unorderedEquals([
+          coverCacheKey('alb-cov-2', size),
+          coverCacheKey('alb-cov-3', size),
+        ]),
+      );
+      expect(container.read(taskRegistryProvider).first.state, TaskState.done);
+    });
+  });
 
   test(
     'MetadataCacheSummary respects disabled configuration in isFullyCached',
