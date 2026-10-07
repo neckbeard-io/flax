@@ -55,6 +55,16 @@ Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon; AppUserModelID: "{#AppUserModelID}"
 
 [Run]
-; Silent installs come from the in-app updater, whose script relaunches flax
-; once Setup exits. Launching it here too would open a second copy.
+; A person running Setup gets a checkbox to open flax at the end.
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runascurrentuser
+; The in-app updater runs Setup silently and exits; this reopens flax once
+; its files are replaced. As the user who started the update, even when Setup
+; elevated itself for an install for all users.
+Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Flags: nowait runasoriginaluser; Check: RelaunchAfterUpdate
+
+[Code]
+// The updater passes /RELAUNCH=1. Any other silent install leaves flax closed.
+function RelaunchAfterUpdate: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:RELAUNCH|0}') = '1');
+end;

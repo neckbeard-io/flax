@@ -33,6 +33,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
   }
 
   Future<void> _init() async {
+    unawaited(_service.deleteLeftoverDownloads());
     final version = await _service.getCurrentVersion();
     final method = _service.detectInstallMethod();
     final prefs = await SharedPreferences.getInstance();

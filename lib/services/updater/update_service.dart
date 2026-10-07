@@ -355,6 +355,13 @@ class UpdateService {
     return targetPath;
   }
 
+  /// Deletes installers and scripts earlier updates left in the temporary
+  /// directory. Only Windows leaves any behind.
+  Future<void> deleteLeftoverDownloads() async {
+    if (!Platform.isWindows) return;
+    await WindowsInstaller.deleteLeftovers(await getTemporaryDirectory());
+  }
+
   /// Triggers the platform-specific installation or upgrade process.
   Future<void> installUpdate({
     required InstallMethod method,

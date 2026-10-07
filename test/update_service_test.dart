@@ -438,12 +438,13 @@ void main() {
         expect(args, contains('/CLOSEAPPLICATIONS'));
         expect(args, contains('/NORESTARTAPPLICATIONS'));
         expect(args, isNot(contains('/RESTARTAPPLICATIONS')));
+        expect(args, contains(WindowsInstaller.relaunchArg));
         expect(args, contains('/CURRENTUSER'));
         expect(args, contains('/LOG'));
         expect(args, isNot(contains('/ALLUSERS')));
         expect(
           args,
-          contains(r'/DIR="C:\Users\tester\AppData\Local\Programs\flax"'),
+          contains(r'/DIR=C:\Users\tester\AppData\Local\Programs\flax'),
         );
       },
     );
@@ -460,8 +461,8 @@ void main() {
 
         expect(args, isNot(contains('/CURRENTUSER')));
         expect(args, contains('/ALLUSERS'));
-        expect(args, contains(r'/LOG="C:\Temp\install.log"'));
-        expect(args, contains(r'/DIR="C:\Program Files\flax"'));
+        expect(args, contains(r'/LOG=C:\Temp\install.log'));
+        expect(args, contains(r'/DIR=C:\Program Files\flax'));
       },
     );
 
@@ -472,133 +473,97 @@ void main() {
       );
 
       expect(args, isNot(contains('/VERYSILENT')));
-      expect(args, contains(r'/DIR="C:\Users\tester\flax"'));
+      expect(args, isNot(contains(WindowsInstaller.relaunchArg)));
+      expect(args, contains(r'/DIR=C:\Users\tester\flax'));
     });
 
-    test('escapePowerShellString escapes single quotes properly', () {
-      expect(
-        WindowsInstaller.escapePowerShellString(r"C:\Users\O'Connor\flax"),
-        equals(r"C:\Users\O''Connor\flax"),
-      );
-      expect(
-        WindowsInstaller.escapePowerShellString(r'C:\Simple\Path'),
-        equals(r'C:\Simple\Path'),
-      );
-    });
-
-    test(
-      'buildUpdateScript contains process wait, execution, relaunch with working directory, and logging',
-      () {
-        final script = WindowsInstaller.buildUpdateScript(
-          currentPid: 12345,
-          setupExePath: r'C:\Temp\flax_setup.exe',
-          installerArgs: [
-            '/VERYSILENT',
-            '/CURRENTUSER',
-            r'/DIR="C:\Program Files\flax"',
-          ],
-          targetExePath:
-              r'C:\Users\tester\AppData\Local\Programs\flax\flax.exe',
-          scriptPath: r'C:\Temp\update_12345.ps1',
-        );
-
-        // Verifies logging is initialized
-        expect(script, contains(r'$logPath = "$env:TEMP\flax_updater.log"'));
-        expect(script, contains('Log "Updater script started for PID 12345."'));
-
-        // Verifies it waits for the current process to exit
-        expect(script, contains(r'$proc = Get-Process -Id 12345'));
-        expect(script, contains(r'$proc.WaitForExit(10000)'));
-
-        // Verifies it launches Inno Setup and waits for it
-        expect(script, contains(r"$setupPath = 'C:\Temp\flax_setup.exe'"));
-        expect(
-          script,
-          contains(
-            r'Start-Process -FilePath $setupPath -ArgumentList $setupArgs -Wait -PassThru',
-          ),
-        );
-
-        // Verifies relaunch with WorkingDirectory set
-        expect(
-          script,
-          contains(
-            r"$targetExe = 'C:\Users\tester\AppData\Local\Programs\flax\flax.exe'",
-          ),
-        );
-        expect(
-          script,
-          contains(
-            r'Start-Process -FilePath $targetExe -WorkingDirectory $targetDir',
-          ),
-        );
-
-        // Verifies cleanup of installer and script
-        expect(script, contains(r"$scriptPath = 'C:\Temp\update_12345.ps1'"));
-        expect(script, contains(r'Remove-Item -LiteralPath $setupPath'));
-        expect(script, contains(r'Remove-Item -LiteralPath $scriptPath'));
-      },
-    );
-
-    test('buildUpdateScript hands Setup the install directory intact', () {
-      // A path with a space and an apostrophe exercises both quoting layers.
+    test('Setup receives the install directory intact', () {
+      // A space and an apostrophe, in the directory and in the log path.
       const installDir = r"C:\Users\O'Brien\My Apps\flax";
-      final script = WindowsInstaller.buildUpdateScript(
-        currentPid: 12345,
-        setupExePath: r'C:\Temp\flax_setup.exe',
-        installerArgs: WindowsInstaller.buildInstallerArgs(
-          installDir: installDir,
-        ),
-        targetExePath: '$installDir\\flax.exe',
-        scriptPath: r'C:\Temp\update_12345.ps1',
+      const logPath = r"C:\Users\O'Brien\Temp Files\flax setup.log";
+      final args = WindowsInstaller.buildInstallerArgs(
+        installDir: installDir,
+        logFilePath: logPath,
       );
 
-      // Start-Process passes the string to Setup's command line verbatim.
-      final commandLine = _powerShellLiteral(script, 'setupArgs');
-      final setupArgs = _innoSetupArgs(commandLine);
+      // Process.start builds the command line; Setup splits it.
+      final received = _innoSetupArgs(_dartWindowsCommandLine(args));
 
-      expect(setupArgs, contains('/DIR=$installDir'));
-      expect(setupArgs, contains('/VERYSILENT'));
-      expect(_powerShellLiteral(script, 'targetExe'), '$installDir\\flax.exe');
+      expect(received, args.map((arg) => arg.replaceAll('"', '')).toList());
+      expect(received, contains('/DIR=$installDir'));
+      expect(received, contains('/LOG=$logPath'));
+      for (final arg in args) {
+        expect(arg, isNot(contains('"')), reason: 'Setup reads \\" as text');
+      }
     });
 
-    test('buildUpdateScript adds RunAs verb when elevated is true', () {
-      final script = WindowsInstaller.buildUpdateScript(
-        currentPid: 12345,
-        setupExePath: r'C:\Temp\flax_setup.exe',
-        installerArgs: ['/VERYSILENT', '/ALLUSERS'],
-        targetExePath: r'C:\Program Files\flax\flax.exe',
-        scriptPath: r'C:\Temp\update_12345.ps1',
-        isElevated: true,
-      );
-
-      expect(script, contains(r"$setupArgs = '/VERYSILENT /ALLUSERS'"));
-      expect(
-        script,
-        contains(r'-ArgumentList $setupArgs -Verb RunAs -Wait -PassThru'),
-      );
-    });
-
-    test('installer launches flax only when a person runs it', () {
-      // A silent install comes from the updater, whose script relaunches flax
-      // after Setup exits. A [Run] entry that also fires silently opens a
-      // second copy.
+    group('installer', () {
       final iss = File('packaging/windows/flax.iss').readAsStringSync();
-      final runSection = iss
+      final launches = iss
           .split('[Run]')
           .last
           .split(RegExp(r'^\[', multiLine: true))
-          .first;
-      final launches = runSection
+          .first
           .split('\n')
           .where((line) => line.contains('{#AppExeName}'))
           .toList();
 
-      expect(launches, isNotEmpty);
-      for (final line in launches) {
-        expect(line, contains('skipifsilent'));
-        expect(line, isNot(contains('WizardSilent')));
+      test('opens flax silently only when the updater asks', () {
+        // A silent install that is not an update must leave flax closed, and
+        // an update must open exactly one copy.
+        expect(launches, hasLength(2));
+        final silent = launches.where((l) => !l.contains('skipifsilent'));
+        expect(silent, hasLength(1));
+        expect(silent.single, contains('Check: RelaunchAfterUpdate'));
+        expect(silent.single, contains('runasoriginaluser'));
+        expect(silent.single, isNot(contains('postinstall')));
+      });
+
+      test('reads the same switch the updater passes', () {
+        final code = iss.split('[Code]').last;
+        final check = RegExp(
+          r'function RelaunchAfterUpdate: Boolean;\s*begin\s*(.*?)\s*end;',
+          dotAll: true,
+        ).firstMatch(code);
+        expect(check, isNotNull);
+        expect(check!.group(1), contains('WizardSilent'));
+
+        final param = RegExp(
+          r"ExpandConstant\('\{param:(\w+)\|0\}'\) = '(\w+)'",
+        ).firstMatch(check.group(1)!);
+        expect(param, isNotNull);
+        expect(
+          WindowsInstaller.relaunchArg,
+          '/${param!.group(1)}=${param.group(2)}',
+        );
+      });
+    });
+
+    test('deleteLeftovers removes old installers and update scripts', () async {
+      final tempDir = await Directory.systemTemp.createTemp('flax-leftovers-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      const leftovers = [
+        'flax-0.6.1-dev.3-windows-x64-setup.exe',
+        'flax_update_10176.ps1',
+      ];
+      const kept = [
+        'flax-0.6.1-dev.3-windows-x64.zip',
+        'flax_updater.log',
+        'Setup Log 2026-10-07 #001.txt',
+        'other-setup.exe',
+      ];
+      for (final name in [...leftovers, ...kept]) {
+        File(p.join(tempDir.path, name)).writeAsStringSync('x');
       }
+
+      final deleted = await WindowsInstaller.deleteLeftovers(tempDir);
+
+      expect(deleted, leftovers.length);
+      final remaining = tempDir
+          .listSync()
+          .map((e) => p.basename(e.path))
+          .toList();
+      expect(remaining, unorderedEquals(kept));
     });
 
     test(
@@ -651,17 +616,23 @@ void main() {
   });
 }
 
-/// Reads the single-quoted PowerShell literal assigned to `$variable` in
-/// [script]. Inside such a literal only a doubled single quote is special;
-/// a backtick or double quote is an ordinary character.
-String _powerShellLiteral(String script, String variable) {
-  final match = RegExp(
-    '^\\\$$variable = \'((?:[^\']|\'\')*)\'\$',
-    multiLine: true,
-  ).firstMatch(script);
-  expect(match, isNotNull, reason: '\$$variable is not assigned a literal');
-  return match!.group(1)!.replaceAll("''", "'");
-}
+/// The command line `Process.start` builds from [args] on Windows, following
+/// `_windowsArgumentEscape` in dart:io: an argument with a space, tab or quote
+/// is wrapped in quotes, with quotes escaped and trailing backslashes doubled.
+String _dartWindowsCommandLine(List<String> args) => args
+    .map((arg) {
+      if (arg.isEmpty) return '""';
+      if (!arg.contains(' ') && !arg.contains('\t') && !arg.contains('"')) {
+        return arg;
+      }
+      final escaped = arg.replaceAllMapped(
+        RegExp(r'(\\*)"'),
+        (m) => '${m[1]}${m[1]}\\"',
+      );
+      final trailing = RegExp(r'\\*$').firstMatch(arg)![0]!;
+      return '"$escaped$trailing"';
+    })
+    .join(' ');
 
 /// Splits a command line the way Inno Setup reads its parameters: whitespace
 /// outside quotes ends an argument, and every double quote is dropped.
