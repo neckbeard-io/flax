@@ -1326,6 +1326,11 @@ class AudioCacheService {
           if (!completer.isCompleted) completer.complete();
         case NativeCanceledEvent():
           _ref.read(songDownloadProgressProvider.notifier).clear();
+          // Canceled from the notification: end the task too, or Downloads
+          // shows it running forever.
+          if (handle != null) {
+            _ref.read(taskRegistryProvider.notifier).cancel(handle.id);
+          }
           if (!completer.isCompleted) completer.complete();
       }
     });

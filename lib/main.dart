@@ -137,6 +137,22 @@ Future<void> main() async {
     ),
   );
 
+  // Covers Android's nightly sync downloaded since the last launch.
+  if (Platform.isAndroid) {
+    unawaited(
+      Future<void>.delayed(const Duration(seconds: 25), () async {
+        try {
+          await CoverArtCache.importNightlyCovers(
+            ArtCache.instance,
+            inbox: await CoverArtCache.nightlyInbox(),
+          );
+        } catch (e) {
+          AppLogger.w('CoverArt', 'Filing nightly covers failed: $e');
+        }
+      }),
+    );
+  }
+
   // Ensure periodic background sync is scheduled on Android if enabled
   if (Platform.isAndroid) {
     try {

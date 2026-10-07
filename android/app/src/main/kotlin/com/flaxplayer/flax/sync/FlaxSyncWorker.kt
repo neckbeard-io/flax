@@ -1,6 +1,7 @@
 package com.flaxplayer.flax.sync
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
@@ -10,6 +11,8 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
+
+private const val NIGHTLY_INBOX = "flaxArtInbox"
 
 class FlaxSyncWorker(
     private val context: Context,
@@ -33,13 +36,20 @@ class FlaxSyncWorker(
                 return Result.success()
             }
 
-            val cacheDir = File(context.cacheDir, "flaxArtCache")
+            // The app files these into its cover store on its next launch or
+            // sync (CoverArtCache.importNightlyCovers). Written straight into
+            // the store's folder they were never indexed, so no screen found
+            // them.
+            val cacheDir = File(context.filesDir, NIGHTLY_INBOX)
             if (!cacheDir.exists()) {
                 cacheDir.mkdirs()
             }
 
             val metaConfig = server.optJSONObject("metadataCacheConfig")
             val fullMetadata = metaConfig?.optBoolean("backgroundSyncFullMetadata", false) ?: false
+            val albumSize = requestSize(metaConfig?.optString("albumArtQuality"))
+            val artistSize = requestSize(metaConfig?.optString("artistArtQuality"))
+            stored = StoredCovers(context)
 
             if (fullMetadata) {
                 // 1. Full Library Deep Scan: Paginate all albums and fill in missing covers
@@ -62,7 +72,7 @@ class FlaxSyncWorker(
                         val album = albumArray.optJSONObject(i) ?: continue
                         val coverId = album.optString("coverArt")
                         if (coverId.isNotEmpty()) {
-                            precacheCover(url, user, token, salt, coverId, cacheDir)
+                            precacheCover(url, user, token, salt, coverId, albumSize, cacheDir)
                         }
                     }
 
@@ -89,7 +99,7 @@ class FlaxSyncWorker(
                                     val artist = artistArray.optJSONObject(j) ?: continue
                                     val coverId = artist.optString("coverArt")
                                     if (coverId.isNotEmpty()) {
-                                        precacheCover(url, user, token, salt, coverId, cacheDir)
+                                        precacheCover(url, user, token, salt, coverId, artistSize, cacheDir)
                                     }
                                 }
                             }
@@ -112,7 +122,7 @@ class FlaxSyncWorker(
                         val album = albumArray.optJSONObject(i) ?: continue
                         val coverId = album.optString("coverArt")
                         if (coverId.isNotEmpty()) {
-                            precacheCover(url, user, token, salt, coverId, cacheDir)
+                            precacheCover(url, user, token, salt, coverId, albumSize, cacheDir)
                         }
                     }
                 }
@@ -133,7 +143,7 @@ class FlaxSyncWorker(
                             val album = starredAlbums.optJSONObject(i) ?: continue
                             val coverId = album.optString("coverArt")
                             if (coverId.isNotEmpty()) {
-                                precacheCover(url, user, token, salt, coverId, cacheDir)
+                                precacheCover(url, user, token, salt, coverId, albumSize, cacheDir)
                             }
                         }
                     }
@@ -147,7 +157,20 @@ class FlaxSyncWorker(
             return Result.success()
         } catch (e: Exception) {
             return Result.retry()
+        } finally {
+            stored?.close()
+            stored = null
         }
+    }
+
+    private var stored: StoredCovers? = null
+
+    /** The size the app's quality setting asks for: null for the original, 0 when disabled. */
+    private fun requestSize(quality: String?): Int? = when (quality) {
+        "low" -> 256
+        "original" -> null
+        "disabled" -> 0
+        else -> 512
     }
 
     private fun precacheCover(
@@ -156,14 +179,19 @@ class FlaxSyncWorker(
         token: String,
         salt: String,
         coverId: String,
+        size: Int?,
         cacheDir: File
     ): Boolean {
-        val cacheKey = "cover-$coverId-512"
+        if (size == 0) return false
+        // coverCacheKey in lib/shared/widgets/cover_art_cache.dart.
+        val cacheKey = "cover-$coverId-${size ?: "orig"}"
+        if (stored?.contains(cacheKey) == true) return false
         val targetFile = File(cacheDir, cacheKey)
         if (targetFile.exists() && targetFile.length() > 0L) {
             return false // Already cached! Fill-in-the-blanks skips immediately
         }
-        val coverUrl = "$url/rest/getCoverArt.view?id=$coverId&size=512&u=$user&t=$token&s=$salt&v=1.16.1&c=Flax"
+        val sizeParam = if (size != null) "&size=$size" else ""
+        val coverUrl = "$url/rest/getCoverArt.view?id=$coverId$sizeParam&u=$user&t=$token&s=$salt&v=1.16.1&c=Flax"
         val coverReq = Request.Builder().url(coverUrl).build()
         return try {
             val coverResp = okHttpClient.newCall(coverReq).execute()
@@ -179,6 +207,46 @@ class FlaxSyncWorker(
             } else false
         } catch (_: Exception) {
             false
+        }
+    }
+
+    /**
+     * Read-only view of the app's cover store index: flutter_cache_manager's
+     * `flaxArtCache.db`, next to the store's folder in the application support
+     * directory. Lets the worker skip covers the app already has instead of
+     * downloading the whole library again every night.
+     */
+    private class StoredCovers(context: Context) : AutoCloseable {
+        private val folder = File(context.filesDir, "flaxArtCache")
+        private val db: SQLiteDatabase? = try {
+            val file = File(context.filesDir, "flaxArtCache.db")
+            if (file.exists()) {
+                SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY)
+            } else {
+                null
+            }
+        } catch (_: Exception) {
+            null
+        }
+
+        fun contains(key: String): Boolean {
+            val database = db ?: return false
+            return try {
+                database.rawQuery(
+                    "SELECT relativePath FROM cacheObject WHERE key = ? LIMIT 1",
+                    arrayOf(key),
+                ).use { cursor ->
+                    cursor.moveToFirst() && File(folder, cursor.getString(0)).isFile
+                }
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+        override fun close() {
+            try {
+                db?.close()
+            } catch (_: Exception) {}
         }
     }
 

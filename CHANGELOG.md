@@ -10,7 +10,14 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Changed
+- Covers now count as app data; clear them in Settings, not Android's Clear cache.
+
 ### Fixed
+- Covers saved for offline no longer vanish when the system frees up storage.
+- Cancel stops a metadata sync, from the app or its notification, and clears it.
+- Metadata sync no longer hangs forever if its downloader can't start.
+- Covers fetched by the nightly background sync now show up in the app.
 - Update dialog no longer shows an earlier check's error beside the update.
 - Failed update checks give up after 15 seconds and say why in plain words.
 - A failed background check no longer hides an update already found.

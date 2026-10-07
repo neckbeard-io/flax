@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/core/logging/app_logger.dart';
@@ -219,5 +220,53 @@ class CoverArtCache {
   static String _extension(String path) {
     final ext = p.extension(path);
     return ext.length > 1 ? ext.substring(1) : 'jpg';
+  }
+
+  /// The folder Android's nightly sync (`FlaxSyncWorker`) downloads covers
+  /// into, in the application support directory, each file named by its
+  /// [coverCacheKey].
+  ///
+  /// The worker runs without Dart and cannot write the store's index, so the
+  /// app files what it finds there. Covers it once wrote straight into the
+  /// store's folder were never indexed, and no screen could find them.
+  static const nightlyInboxFolder = 'flaxArtInbox';
+
+  /// The [nightlyInboxFolder] on this device.
+  static Future<Directory> nightlyInbox() async => Directory(
+    p.join((await getApplicationSupportDirectory()).path, nightlyInboxFolder),
+  );
+
+  /// Files covers the nightly sync left in [inbox] into [cache] and empties
+  /// it. Returns how many were filed.
+  static Future<int> importNightlyCovers(
+    BaseCacheManager cache, {
+    required Directory inbox,
+  }) async {
+    if (!await inbox.exists()) return 0;
+    var filed = 0;
+    await for (final entity in inbox.list()) {
+      if (entity is! File) continue;
+      final key = p.basename(entity.path);
+      if (!key.startsWith('cover-') || key.endsWith('.tmp')) continue;
+      try {
+        await cache.putFile(
+          key,
+          await entity.readAsBytes(),
+          key: key,
+          maxAge: const Duration(days: 365),
+          fileExtension: 'jpg',
+        );
+        filed++;
+      } catch (e) {
+        AppLogger.w('CoverArt', 'Could not file nightly cover $key: $e');
+      }
+      try {
+        await entity.delete();
+      } catch (_) {}
+    }
+    if (filed > 0) {
+      AppLogger.i('CoverArt', 'Filed $filed covers from the nightly sync');
+    }
+    return filed;
   }
 }

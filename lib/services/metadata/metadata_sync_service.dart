@@ -262,6 +262,9 @@ class MetadataSyncService {
       label: 'Syncing metadata & cover art',
       serverId: server.id,
       onCancel: () {
+        // Already canceled when the downloader reported it: stopping it again
+        // would only start the service to stop it.
+        if (_isCanceled) return;
         _isCanceled = true;
         if (NativeDownloader.isSupported) {
           NativeDownloader.cancelAll().ignore();
@@ -431,6 +434,16 @@ class MetadataSyncService {
 
       // 2. Build sync work items for MISSING metadata & artwork only (parallel checks)
       handle.note('Checking for missing artwork and metadata...');
+      if (NativeDownloader.isSupported) {
+        try {
+          await CoverArtCache.importNightlyCovers(
+            _artCache,
+            inbox: await CoverArtCache.nightlyInbox(),
+          );
+        } catch (e) {
+          AppLogger.w('Sync', 'Could not file nightly covers: $e');
+        }
+      }
       final artWorkItems = <_SyncWorkItem>[];
       final infoWorkItems = <_SyncWorkItem>[];
 
@@ -531,6 +544,45 @@ class MetadataSyncService {
       int itemsDone = 0;
       int bytesDone = 0;
 
+      // The Dart worker pool: desktop, and Android when the downloader cannot
+      // start.
+      Future<void> fetchArtInProcess() async {
+        int currentIndex = 0;
+        Future<void> artWorker() async {
+          while (!_isCanceled && !handle.isCanceled) {
+            final itemIndex = currentIndex++;
+            if (itemIndex >= artWorkItems.length) break;
+            final item = artWorkItems[itemIndex];
+
+            try {
+              if (_isCanceled || handle.isCanceled) break;
+              handle.note(item.description);
+              final bytes = await item.execute(
+                client,
+                dao,
+                server.id,
+                _artCache,
+              );
+              if (!_isCanceled && !handle.isCanceled) {
+                itemsDone++;
+                bytesDone += bytes;
+                handle.progress(items: itemsDone, bytes: bytesDone);
+              }
+            } catch (e) {
+              AppLogger.w('Sync', 'Error processing sync item: $e');
+              if (!_isCanceled && !handle.isCanceled) {
+                itemsDone++;
+                handle.itemFailed(1);
+                handle.progress(items: itemsDone, bytes: bytesDone);
+              }
+            }
+          }
+        }
+
+        final workers = List.generate(concurrency, (_) => artWorker());
+        await Future.wait(workers);
+      }
+
       if (NativeDownloader.isSupported && artWorkItems.isNotEmpty) {
         // 3a. Process artwork via Android Foreground Service OkHttp engine
         final tempDir = await getTemporaryDirectory();
@@ -624,6 +676,13 @@ class MetadataSyncService {
                 batchDone.complete();
               }
             case NativeCanceledEvent():
+              // Canceled outside this screen: the notification's Cancel, or
+              // cancelling every download. The whole sync stops; it used to
+              // carry on to the biographies and record itself as finished.
+              if (!_isCanceled) {
+                _isCanceled = true;
+                _ref.read(taskRegistryProvider.notifier).cancel(handle.id);
+              }
               if (!batchDone.isCompleted) {
                 batchDone.complete();
               }
@@ -633,51 +692,26 @@ class MetadataSyncService {
         });
 
         try {
-          await NativeDownloader.startDownload(
+          final started = await NativeDownloader.startDownload(
             tasks: nativeTasks,
             concurrency: concurrency,
             notificationTitle: 'Syncing metadata & cover art',
           );
-          await batchDone.future;
+          if (started) {
+            await batchDone.future;
+          } else {
+            // Android refuses to start a foreground service once flax is in
+            // the background, which listing a large library can outlast.
+            // Waiting on a batch that never began left the sync running
+            // forever, and every later tap of Sync did nothing.
+            AppLogger.w('Sync', 'Downloader did not start; fetching in-app');
+            await fetchArtInProcess();
+          }
         } finally {
           sub.cancel().ignore();
         }
       } else if (artWorkItems.isNotEmpty) {
-        // Desktop platforms: Dart worker pool
-        int currentIndex = 0;
-        Future<void> artWorker() async {
-          while (!_isCanceled && !handle.isCanceled) {
-            final itemIndex = currentIndex++;
-            if (itemIndex >= artWorkItems.length) break;
-            final item = artWorkItems[itemIndex];
-
-            try {
-              if (_isCanceled || handle.isCanceled) break;
-              handle.note(item.description);
-              final bytes = await item.execute(
-                client,
-                dao,
-                server.id,
-                _artCache,
-              );
-              if (!_isCanceled && !handle.isCanceled) {
-                itemsDone++;
-                bytesDone += bytes;
-                handle.progress(items: itemsDone, bytes: bytesDone);
-              }
-            } catch (e) {
-              AppLogger.w('Sync', 'Error processing sync item: $e');
-              if (!_isCanceled && !handle.isCanceled) {
-                itemsDone++;
-                handle.itemFailed(1);
-                handle.progress(items: itemsDone, bytes: bytesDone);
-              }
-            }
-          }
-        }
-
-        final workers = List.generate(concurrency, (_) => artWorker());
-        await Future.wait(workers);
+        await fetchArtInProcess();
       }
 
       // 3b. Process artist info items (biographies)
