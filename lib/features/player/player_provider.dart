@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/logging/playback_trace.dart';
 import 'package:flax/features/player/audio_focus_policy.dart';
+import 'package:flax/features/player/queue_advance.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
@@ -177,6 +178,16 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// cannot be played offline are left out of the playlist.
   MpvQueueMap _mpvMap = MpvQueueMap.empty;
   final _audioFocus = AudioFocusPolicy();
+
+  /// Counts requests to play or to load a queue. The server's queue arrives
+  /// late, and if this moved while it was on its way it stands down rather
+  /// than reload mpv paused under music that just started.
+  int _playRequests = 0;
+
+  /// Android Auto's play waits for the saved queue before it reaches [play].
+  /// Counting it on arrival keeps a late server queue from replacing the
+  /// queue it is about to start.
+  void notePlayRequested() => _playRequests++;
   GaplessProbe? _probe;
 
   PlayerNotifier(this._ref)
@@ -394,14 +405,37 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         !_mpvMap.isLastEntry(state.queueIndex)) {
       return;
     }
-    if (state.queueIndex < state.queue.length - 1) {
-      next();
-    } else if (state.repeatMode == RepeatMode.all && state.queue.isNotEmpty) {
-      _playIndex(0);
-    } else {
+    // Offline, songs that are not downloaded never reach mpv. The next song
+    // that can play is where to go, and the queue has only run out once none
+    // is left. Going to the very next song threw "not available offline"
+    // into a future nobody awaited, and playback stopped mid-queue.
+    final from = state.queueIndex + 1;
+    final index = nextPlayableIndex(
+      state.queue,
+      from,
+      _canPlay,
+      wrap: state.repeatMode == RepeatMode.all,
+    );
+    if (index == null) {
+      PlaybackTrace.record('queue finished: nothing after this can play');
       _onQueueFinished();
+      return;
     }
+    if (index != from) {
+      PlaybackTrace.record(
+        'skipping to track ${index + 1}: the songs between cannot play',
+      );
+    }
+    _playIndex(index).catchError((Object e) {
+      PlaybackTrace.record('could not play track ${index + 1}: $e');
+    });
   }
+
+  /// Whether [song] can be played right now: downloaded, or streamable.
+  bool _canPlay(Song song) =>
+      _findCachedSongPath(song) != null ||
+      (!_ref.read(isOfflineModeProvider) &&
+          _ref.read(subsonicClientProvider) != null);
 
   /// The queue ran out with repeat off.
   ///
@@ -536,6 +570,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     List<Song> songs,
     int index, {
     required bool play,
+    bool Function()? standDown,
   }) async {
     final connectivity = await _getConnectivity();
     TranscodeParameters? transcode;
@@ -603,6 +638,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // An mpv slot, not a queue index: songs that could not be handed to mpv
     // leave gaps, so the two diverge after the first one.
     final targetIndex = _mpvMap.startIndexFor(index);
+    if (standDown?.call() ?? false) {
+      PlaybackTrace.record('server queue stood down: playback was requested');
+      return false;
+    }
     await _player.openAll(medias, play: play, index: targetIndex);
     if (play) {
       await _activateAudioSession();
@@ -624,6 +663,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     int index,
     Duration position, {
     required bool play,
+    bool Function()? standDown,
   }) async {
     // mpv's start-file sets buffering and file-loaded clears it, so the first
     // "not buffering" after the load is issued means the file is open. That
@@ -635,7 +675,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
               .timeout(const Duration(seconds: 3), onTimeout: () => false)
               .catchError((Object _) => false)
         : null;
-    final opened = await _openQueue(songs, index, play: false);
+    final opened = await _openQueue(
+      songs,
+      index,
+      play: false,
+      standDown: standDown,
+    );
     if (!opened) return;
     if (loaded != null) {
       await loaded;
@@ -687,6 +732,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<void> _playIndex(int index) async {
     if (index < 0 || index >= state.queue.length) return;
+    notePlayRequested();
     final song = state.queue[index];
     final isCached = _isSongCached(song);
     _resetScrobble();
@@ -713,6 +759,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   Future<void> playSong(Song song, {List<Song>? queue, int? index}) async {
+    notePlayRequested();
     final newQueue = queue ?? [song];
     final newIndex = index ?? 0;
     _resetScrobble();
@@ -1308,6 +1355,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<void> playTracks(List<Song> songs, {int initialIndex = 0}) async {
     if (songs.isEmpty) return;
+    notePlayRequested();
     _resetScrobble();
     final idx = initialIndex.clamp(0, songs.length - 1);
     state = state.copyWith(
@@ -1356,6 +1404,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
     final queueBefore = state.queue;
     final indexBefore = state.queueIndex;
+    final requestsBefore = _playRequests;
+    bool playRequested() => _playRequests != requestsBefore;
     try {
       final client = _ref.read(subsonicClientProvider);
       if (client == null) return false;
@@ -1366,7 +1416,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       // The server queue only fills in for the local one; it never replaces a
       // queue that has been touched since, and never interrupts playback. It
       // used to, which reloaded mpv under a track that had just started.
-      if (!identical(state.queue, queueBefore) || state.isPlaying) {
+      if (!identical(state.queue, queueBefore) ||
+          state.isPlaying ||
+          playRequested()) {
         PlaybackTrace.record(
           'server queue arrived after playback or a queue change; kept ours',
         );
@@ -1383,7 +1435,12 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       PlaybackTrace.record(
         'server queue replaces the restored one, playing=${state.isPlaying}',
       );
-      await _applyRestoredQueue(pq.songs, pq.currentIndex, pq.positionMs);
+      await _applyRestoredQueue(
+        pq.songs,
+        pq.currentIndex,
+        pq.positionMs,
+        standDown: playRequested,
+      );
       // Also save locally so offline restore works next time
       _saveLocal(pq.songs, pq.songs[pq.currentIndex].id, pq.positionMs);
       AppLogger.i(
@@ -1440,8 +1497,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   Future<void> _applyRestoredQueue(
     List<Song> songs,
     int idx,
-    int positionMs,
-  ) async {
+    int positionMs, {
+    bool Function()? standDown,
+  }) async {
     final song = songs[idx];
     final position = Duration(milliseconds: positionMs);
 
@@ -1462,7 +1520,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
     if (isCached || (!isOffline && reachability.isReachable)) {
       try {
-        await _openAt(songs, idx, position, play: false);
+        await _openAt(songs, idx, position, play: false, standDown: standDown);
       } catch (e) {
         // Offline — can't open stream, but state is set so UI shows the queue
         AppLogger.w('Player', 'Could not open stream (offline?): $e');
@@ -1533,6 +1591,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// resuming when an interruption ends.
   Future<void> play({String source = 'app'}) {
     _audioFocus.cancel();
+    notePlayRequested();
     return _play(source);
   }
 

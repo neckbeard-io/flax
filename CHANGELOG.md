@@ -25,6 +25,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - A failed background check no longer hides an update already found.
 - Windows updates now install and reopen flax. Install this build by hand once.
 - Music resumes after the Assistant or a call instead of staying paused.
+- Android Auto no longer pauses right after resuming when the server's queue arrives late.
+- Offline queues skip songs that aren't downloaded instead of stopping mid-queue.
 
 ## v0.6.0 — 2026-10-05
 
