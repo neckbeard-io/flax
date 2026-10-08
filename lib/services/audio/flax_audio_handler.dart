@@ -1899,6 +1899,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
   @override
   Future<void> play() async {
     AppLogger.i('AudioHandler', 'Play requested from the media session');
+    if (_container.exists(playerProvider)) _player.notePlayRequested();
     await _activateAudioSession();
     unawaited(
       _container.read(carConnectionServiceProvider).activateMediaSession(),
