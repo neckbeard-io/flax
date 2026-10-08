@@ -12,6 +12,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import androidx.media.MediaBrowserServiceCompat
 import com.ryanheise.audioservice.AudioService
+import com.ryanheise.audioservice.MediaButton
 
 object FlaxMediaSessionHelper {
     private const val TAG = "FlaxMediaSession"
@@ -122,18 +123,42 @@ class FlaxServiceListenerWrapper(
     }
 
     override fun onPlay() {
+        PlaybackTrace.record(context, "media session play")
         FlaxMediaSessionHelper.activateMediaSession(context)
         delegate.onPlay()
     }
 
     override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
+        PlaybackTrace.record(context, "media session play $mediaId")
         FlaxMediaSessionHelper.activateMediaSession(context)
         delegate.onPlayFromMediaId(mediaId, extras)
     }
 
     override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+        PlaybackTrace.record(context, "media session play from search")
         FlaxMediaSessionHelper.activateMediaSession(context)
         delegate.onPlayFromSearch(query, extras)
+    }
+
+    override fun onPause() {
+        PlaybackTrace.record(context, "media session pause")
+        delegate.onPause()
+    }
+
+    override fun onStop() {
+        PlaybackTrace.record(context, "media session stop")
+        delegate.onStop()
+    }
+
+    // A headset or car button: audio_service toggles play and pause.
+    override fun onClick(mediaButton: MediaButton?) {
+        PlaybackTrace.record(context, "media button ${mediaButton?.name}")
+        delegate.onClick(mediaButton)
+    }
+
+    override fun onSkipToNext() {
+        PlaybackTrace.record(context, "media session next")
+        delegate.onSkipToNext()
     }
 
     override fun onPlayFromUri(uri: Uri?, extras: Bundle?) {
@@ -142,6 +167,7 @@ class FlaxServiceListenerWrapper(
     }
 
     override fun onPrepare() {
+        PlaybackTrace.record(context, "media session prepare")
         FlaxMediaSessionHelper.activateMediaSession(context)
         delegate.onPrepare()
     }

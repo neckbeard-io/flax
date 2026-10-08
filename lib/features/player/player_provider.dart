@@ -10,6 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' as mpv;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/logging/playback_trace.dart';
+import 'package:flax/features/player/audio_focus_policy.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
@@ -174,6 +176,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// [PlayerState.queue] — and which song an mpv index names, since songs that
   /// cannot be played offline are left out of the playlist.
   MpvQueueMap _mpvMap = MpvQueueMap.empty;
+  final _audioFocus = AudioFocusPolicy();
   GaplessProbe? _probe;
 
   PlayerNotifier(this._ref)
@@ -228,8 +231,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   void _initMediaKeys() {
-    _nowPlaying.onPlay = () => play();
-    _nowPlaying.onPause = () => pause();
+    _nowPlaying.onPlay = () => play(source: 'system media controls');
+    _nowPlaying.onPause = () => pause(source: 'system media controls');
     _nowPlaying.onTogglePlayPause = () => togglePlayPause();
     _nowPlaying.onNext = () => next();
     _nowPlaying.onPrevious = () => previous();
@@ -311,6 +314,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _subs.add(
       _player.stream.error.listen((err) {
         AppLogger.e('Player', 'mpv error: ${err.message}');
+        PlaybackTrace.record('mpv error: ${err.message}');
         if (mounted) {
           // If playback is active and streaming normally, transient warnings
           // (such as demuxer warnings, background prefetch TLS notices, etc.)
@@ -336,32 +340,31 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       final session = await AudioSession.instance;
       _subs.add(
         session.becomingNoisyEventStream.listen((_) {
-          AppLogger.i(
-            'Player',
-            'Audio becoming noisy (car turned off, headphones/AA disconnected), pausing playback',
+          PlaybackTrace.record(
+            'audio becoming noisy (output disconnected), playing=${state.isPlaying}',
           );
           if (state.isPlaying) {
-            pause();
+            pause(source: 'audio becoming noisy');
           }
         }),
       );
       _subs.add(
         session.interruptionEventStream.listen((event) {
-          AppLogger.i(
-            'Player',
-            'Audio interruption: type=${event.type}, begin=${event.begin}',
+          final action = _audioFocus.onInterruption(
+            event,
+            isPlaying: state.isPlaying,
           );
-          if (event.begin) {
-            switch (event.type) {
-              case AudioInterruptionType.duck:
-                break;
-              case AudioInterruptionType.pause:
-              case AudioInterruptionType.unknown:
-                if (state.isPlaying) {
-                  pause();
-                }
-                break;
-            }
+          PlaybackTrace.record(
+            'audio focus ${event.begin ? 'lost' : 'returned'} '
+            '(${event.type.name}), playing=${state.isPlaying}: ${action.name}',
+          );
+          switch (action) {
+            case AudioFocusAction.pause:
+              _pause('audio focus lost');
+            case AudioFocusAction.resume:
+              _play('audio focus returned');
+            case AudioFocusAction.none:
+              break;
           }
         }),
       );
@@ -371,6 +374,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   void _onTrackCompleted() {
+    PlaybackTrace.record(
+      'track ended at ${state.queueIndex + 1}/${state.queue.length}, '
+      'mpv in sync=$_mpvQueueInSync, repeat=${state.repeatMode.name}',
+    );
     if (state.repeatMode == RepeatMode.one) {
       // A second time through is a second listen, so this play has to be able
       // to be recorded again.
@@ -1360,9 +1367,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       // queue that has been touched since, and never interrupts playback. It
       // used to, which reloaded mpv under a track that had just started.
       if (!identical(state.queue, queueBefore) || state.isPlaying) {
-        AppLogger.i(
-          'Player',
-          'Server queue arrived after playback or a queue change; keeping ours',
+        PlaybackTrace.record(
+          'server queue arrived after playback or a queue change; kept ours',
         );
         return false;
       }
@@ -1374,6 +1380,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
           );
       if (sameQueue) return true;
 
+      PlaybackTrace.record(
+        'server queue replaces the restored one, playing=${state.isPlaying}',
+      );
       await _applyRestoredQueue(pq.songs, pq.currentIndex, pq.positionMs);
       // Also save locally so offline restore works next time
       _saveLocal(pq.songs, pq.songs[pq.currentIndex].id, pq.positionMs);
@@ -1518,7 +1527,17 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
-  Future<void> play() async {
+  /// Plays the queue. [source] says what asked, for the playback trace.
+  ///
+  /// A play or pause from anywhere but audio focus is a choice, and cancels
+  /// resuming when an interruption ends.
+  Future<void> play({String source = 'app'}) {
+    _audioFocus.cancel();
+    return _play(source);
+  }
+
+  Future<void> _play(String source) async {
+    PlaybackTrace.record('play ($source)');
     await waitForRestore();
     if (mounted) {
       state = state.copyWith(clearPlaybackError: true);
@@ -1531,7 +1550,14 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     }
   }
 
-  Future<void> pause() async {
+  /// Pauses. [source] says what asked, for the playback trace.
+  Future<void> pause({String source = 'app'}) {
+    _audioFocus.cancel();
+    return _pause(source);
+  }
+
+  Future<void> _pause(String source) async {
+    PlaybackTrace.record('pause ($source)');
     await _player.pause();
     _saveQueue();
   }
