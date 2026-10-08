@@ -12,6 +12,7 @@ import 'package:flax/app/router.dart';
 import 'package:flax/app/screen_recovery.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/logging/crash_log.dart';
+import 'package:flax/core/logging/playback_trace.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/audio/audio_handler_provider.dart';
@@ -23,7 +24,9 @@ import 'package:flax/shared/widgets/cover_art_cache.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  unawaited(CrashLog.init());
+  unawaited(
+    CrashLog.init().then((_) => PlaybackTrace.init(CrashLog.directory)),
+  );
 
   // Catch unhandled Flutter and platform errors to prevent silent startup crashes.
   FlutterError.onError = (FlutterErrorDetails details) {

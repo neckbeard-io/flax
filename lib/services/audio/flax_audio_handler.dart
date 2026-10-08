@@ -7,6 +7,7 @@ import 'package:collection/collection.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/logging/playback_trace.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -1912,6 +1913,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
         if (_isOffline) {
           final downloaded = await library.getDownloadedSongs();
           if (downloaded.isNotEmpty) {
+            PlaybackTrace.record('nothing to resume; playing downloads');
             await _player.playTracks(downloaded, initialIndex: 0);
             return;
           }
@@ -1922,6 +1924,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
           if (albums.isNotEmpty) {
             final songs = await library.watchAlbumSongs(albums.first.id).first;
             if (songs.isNotEmpty) {
+              PlaybackTrace.record('nothing to resume; playing newest album');
               await _player.playTracks(songs, initialIndex: 0);
               return;
             }
@@ -1929,14 +1932,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
         }
       }
     }
-    await _player.play();
+    await _player.play(source: 'media session');
   }
 
   @override
-  Future<void> pause() async => _player.pause();
+  Future<void> pause() async => _player.pause(source: 'media session');
 
   @override
-  Future<void> stop() async => _player.pause();
+  Future<void> stop() async => _player.pause(source: 'media session stop');
 
   @override
   Future<void> onTaskRemoved() async {

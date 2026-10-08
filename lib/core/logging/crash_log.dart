@@ -36,6 +36,9 @@ class CrashLog {
   /// Where errors are written, once [init] has run.
   static String? get path => _file?.path;
 
+  /// The `logs` folder the error log is in, once [init] has run.
+  static Directory? get directory => _file?.parent;
+
   /// Opens the log under [directory], or the platform default.
   static Future<void> init({Directory? directory}) async {
     try {
@@ -95,18 +98,22 @@ class CrashLog {
 
     try {
       file.writeAsStringSync(out.toString(), mode: FileMode.append);
-      if (file.lengthSync() > maxBytes) {
-        final bytes = file.readAsBytesSync();
-        var tail = bytes.sublist(bytes.length - maxBytes ~/ 2);
-        // Cut at a line break: a byte offset can land inside a multi-byte
-        // character, and one malformed character makes the file unreadable.
-        final lineBreak = tail.indexOf(0x0A);
-        if (lineBreak >= 0) tail = tail.sublist(lineBreak + 1);
-        file.writeAsBytesSync(tail);
-      }
+      keepTail(file, maxBytes);
     } catch (_) {
       // Nowhere left to report a failure to record a failure.
     }
+  }
+
+  /// Cuts [file] to its newer half once it grows past [maxBytes].
+  static void keepTail(File file, int maxBytes) {
+    if (file.lengthSync() <= maxBytes) return;
+    final bytes = file.readAsBytesSync();
+    var tail = bytes.sublist(bytes.length - maxBytes ~/ 2);
+    // Cut at a line break: a byte offset can land inside a multi-byte
+    // character, and one malformed character makes the file unreadable.
+    final lineBreak = tail.indexOf(0x0A);
+    if (lineBreak >= 0) tail = tail.sublist(lineBreak + 1);
+    file.writeAsBytesSync(tail);
   }
 
   /// The most recent [maxChars] of the log, or null when nothing was saved.
