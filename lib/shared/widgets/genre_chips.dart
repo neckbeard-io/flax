@@ -16,21 +16,30 @@ enum GenreChipSize {
   /// Beside a heading on desktop.
   regular(height: 26, padding: 10, fontSize: 12),
 
-  /// On a phone, where it is a finger's target.
-  touch(height: 32, padding: 12, fontSize: 13);
+  /// On a phone, where it is a finger's target: drawn 32 high, answering
+  /// taps across 48.
+  touch(height: 32, padding: 12, fontSize: 13, hitHeight: 48);
 
   const GenreChipSize({
     required this.height,
     required this.padding,
     required this.fontSize,
-  });
+    double? hitHeight,
+  }) : hitHeight = hitHeight ?? height;
 
   final double height;
   final double padding;
   final double fontSize;
 
+  /// Height that answers a tap. Taller than [height] only for [touch].
+  final double hitHeight;
+
   /// Gap between neighboring chips.
   double get spacing => this == dense ? 4 : 6;
+
+  /// Gap between wrapped rows. A touch chip's own hit area already puts 16
+  /// between rows, the same as Material's padded chips.
+  double get runSpacing => hitHeight > height ? 0 : spacing;
 }
 
 /// Genres as tappable chips, each opening its genre's page.
@@ -74,7 +83,7 @@ class GenreChips extends StatelessWidget {
     if (!singleLine) {
       return Wrap(
         spacing: size.spacing,
-        runSpacing: size.spacing,
+        runSpacing: size.runSpacing,
         children: [
           for (final g in genres)
             GenreChip(name: g, size: size, onTap: () => select(g)),
@@ -282,7 +291,7 @@ class _ChipFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    final chip = DecoratedBox(
       decoration: BoxDecoration(
         color: background,
         borderRadius: _radius,
@@ -309,7 +318,77 @@ class _ChipFrame extends StatelessWidget {
         ),
       ),
     );
+    if (size.hitHeight <= size.height) return chip;
+
+    // A finger needs more than the 32 the chip is drawn at. The band above and
+    // below it answers the tap too; on the chip itself the ink still wins.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: (size.hitHeight - size.height) / 2,
+        ),
+        child: chip,
+      ),
+    );
   }
+}
+
+/// Every genre, in a bottom sheet: where a phone's `+N` leads.
+///
+/// [onSelected] runs after the sheet closes; it opens the genre's page when
+/// null. [title] names what the genres belong to.
+Future<void> showGenresSheet(
+  BuildContext context, {
+  required String title,
+  required List<String> genres,
+  ValueChanged<String>? onSelected,
+}) {
+  final theme = Theme.of(context);
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+    ),
+    builder: (sheetContext) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Genres', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              '$title · ${genres.length} '
+              '${genres.length == 1 ? 'genre' : 'genres'}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            GenreChips(
+              genres: genres,
+              size: GenreChipSize.touch,
+              onSelected: (name) {
+                Navigator.of(sheetContext).pop();
+                if (onSelected != null) {
+                  onSelected(name);
+                } else {
+                  context.push(genreLocation(name));
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 TextStyle _labelStyle(BuildContext context, GenreChipSize size) =>
