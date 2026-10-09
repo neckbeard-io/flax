@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/domain/genres.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
@@ -11,6 +12,7 @@ import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/shared/widgets/caching_snack_bar.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
+import 'package:flax/shared/widgets/genre_chips.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/song_context_menu.dart';
@@ -107,10 +109,14 @@ class AlbumDetailScreen extends ConsumerWidget {
                 if (songs.isEmpty) {
                   return const SliverToBoxAdapter(child: SizedBox.shrink());
                 }
+                final genreColumn =
+                    desktop && tracksNeedGenreColumn(album, songs);
                 return SliverMainAxisGroup(
                   slivers: [
                     if (desktop)
-                      const SliverToBoxAdapter(child: _TrackTableHeader()),
+                      SliverToBoxAdapter(
+                        child: _TrackTableHeader(genreColumn: genreColumn),
+                      ),
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => _TrackRow(
@@ -119,6 +125,7 @@ class AlbumDetailScreen extends ConsumerWidget {
                           songs: songs,
                           albumId: albumId,
                           desktop: desktop,
+                          genreColumn: genreColumn,
                         ),
                         childCount: songs.length,
                       ),
@@ -140,6 +147,27 @@ class AlbumDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Whether the desktop track table needs a GENRE column.
+///
+/// Only when some track's genres differ from the album's — the same rule as the
+/// per-track artist line: repeating the album's genres on every row is noise.
+/// Unknown genres on either side mean no column. During the backfill an album
+/// row can arrive with every genre while its tracks still hold one, and
+/// comparing those would show the column only to take it away again when the
+/// refresh lands, shifting the table under the pointer.
+@visibleForTesting
+bool tracksNeedGenreColumn(Album album, List<Song> songs) {
+  final albumGenres = album.genres;
+  if (albumGenres == null) return false;
+  var differs = false;
+  for (final song in songs) {
+    final genres = song.genres;
+    if (genres == null) return false;
+    if (!sameGenres(genres, albumGenres)) differs = true;
+  }
+  return differs;
 }
 
 /// Album-level rating and favorite.
@@ -378,7 +406,6 @@ class _DesktopHeader extends StatelessWidget {
                           '${album.songCount} '
                               '${album.songCount == 1 ? "track" : "tracks"}',
                           formatDuration(album.duration),
-                          if (album.genre != null) album.genre!,
                         ].join(' · '),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
@@ -395,6 +422,12 @@ class _DesktopHeader extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                      // Every genre: a desktop header has the room, and this
+                      // is the one place that lists them all.
+                      if (album.displayGenres.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        GenreChips(genres: album.displayGenres),
+                      ],
                       const SizedBox(height: 16),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -493,7 +526,9 @@ class _MobileHeader extends StatelessWidget {
 
 /// Column headings for the desktop track table.
 class _TrackTableHeader extends StatelessWidget {
-  const _TrackTableHeader();
+  const _TrackTableHeader({required this.genreColumn});
+
+  final bool genreColumn;
 
   @override
   Widget build(BuildContext context) {
@@ -512,6 +547,11 @@ class _TrackTableHeader extends StatelessWidget {
               SizedBox(width: 32, child: Text('#', style: style)),
               const SizedBox(width: 8),
               Expanded(child: Text('TITLE', style: style)),
+              if (genreColumn)
+                SizedBox(
+                  width: _TrackRow.genreWidth,
+                  child: Text('GENRE', style: style),
+                ),
               SizedBox(
                 width: _TrackRow.ratingWidth,
                 child: Text('RATING', style: style),
@@ -552,6 +592,7 @@ class _TrackRow extends ConsumerWidget {
     required this.songs,
     required this.albumId,
     required this.desktop,
+    this.genreColumn = false,
   });
 
   final Song song;
@@ -559,8 +600,10 @@ class _TrackRow extends ConsumerWidget {
   final List<Song> songs;
   final String albumId;
   final bool desktop;
+  final bool genreColumn;
 
   static const ratingWidth = 96.0;
+  static const genreWidth = 200.0;
 
   void _play(BuildContext context, WidgetRef ref) {
     ref
@@ -752,6 +795,21 @@ class _TrackRow extends ConsumerWidget {
                   ],
                 ),
               ),
+              if (genreColumn)
+                SizedBox(
+                  width: genreWidth,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: GenreChips(
+                        genres: song.displayGenres,
+                        singleLine: true,
+                        size: GenreChipSize.dense,
+                      ),
+                    ),
+                  ),
+                ),
               SizedBox(
                 width: ratingWidth,
                 child: StarRating(

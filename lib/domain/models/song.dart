@@ -1,4 +1,5 @@
 import 'package:flax/domain/enums.dart';
+import 'package:flax/domain/genres.dart';
 
 class Song {
   final String id;
@@ -14,6 +15,10 @@ class Song {
   final int? discNumber;
   final int? year;
   final String? genre;
+
+  /// Every genre the server tags this track with. Null means unknown, as on
+  /// [Album.genres]; screens read [displayGenres].
+  final List<String>? genres;
   final int? bitRate;
   final int? bitDepth;
   final int? sampleRate;
@@ -46,6 +51,7 @@ class Song {
     this.discNumber,
     this.year,
     this.genre,
+    this.genres,
     this.bitRate,
     this.bitDepth,
     this.sampleRate,
@@ -65,6 +71,9 @@ class Song {
     this.downloadState = DownloadState.none,
   });
 
+  /// [genres], or the single [genre] while the full list is unknown.
+  List<String> get displayGenres => genres ?? genresFromSingle(genre);
+
   bool get isAvailableOffline =>
       downloadState == DownloadState.complete && localPath != null;
 
@@ -82,6 +91,7 @@ class Song {
     if (discNumber != null) 'discNumber': discNumber,
     if (year != null) 'year': year,
     if (genre != null) 'genre': genre,
+    if (genres != null) 'genres': genres,
     if (bitRate != null) 'bitRate': bitRate,
     if (bitDepth != null) 'bitDepth': bitDepth,
     if (sampleRate != null) 'sampleRate': sampleRate,
@@ -109,6 +119,7 @@ class Song {
     discNumber: json['discNumber'] as int?,
     year: json['year'] as int?,
     genre: json['genre'] as String?,
+    genres: (json['genres'] as List<dynamic>?)?.whereType<String>().toList(),
     bitRate: json['bitRate'] as int?,
     bitDepth: json['bitDepth'] as int?,
     sampleRate: json['sampleRate'] as int?,
@@ -136,6 +147,7 @@ class Song {
     int? discNumber,
     int? year,
     String? genre,
+    List<String>? genres,
     int? bitRate,
     int? bitDepth,
     int? sampleRate,
@@ -168,6 +180,7 @@ class Song {
       discNumber: discNumber ?? this.discNumber,
       year: year ?? this.year,
       genre: genre ?? this.genre,
+      genres: genres ?? this.genres,
       bitRate: bitRate ?? this.bitRate,
       bitDepth: bitDepth ?? this.bitDepth,
       sampleRate: sampleRate ?? this.sampleRate,

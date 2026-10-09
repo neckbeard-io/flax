@@ -8,6 +8,7 @@ import 'package:dio/io.dart';
 import 'package:meta/meta.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/domain/enums.dart';
+import 'package:flax/domain/genres.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/music_backend.dart';
 
@@ -736,6 +737,7 @@ class SubsonicClient implements MusicBackend {
       duration: json['duration'] as int? ?? 0,
       year: json['year'] as int?,
       genre: json['genre'] as String?,
+      genres: parseGenres(json),
       starred: json['starred'] != null,
       starredAt: json['starred'] != null
           ? DateTime.tryParse(json['starred'] as String)
@@ -763,6 +765,7 @@ class SubsonicClient implements MusicBackend {
       discNumber: json['discNumber'] as int?,
       year: json['year'] as int?,
       genre: json['genre'] as String?,
+      genres: parseGenres(json),
       bitRate: json['bitRate'] as int?,
       bitDepth: json['bitDepth'] as int?,
       sampleRate: json['samplingRate'] as int?,
@@ -789,6 +792,25 @@ class SubsonicClient implements MusicBackend {
         (json['replayGain'] as Map<String, dynamic>?)?['albumPeak'],
       ),
     );
+  }
+
+  /// Every genre an album or a track carries.
+  ///
+  /// OpenSubsonic's `genres` (`[{"name": "Rock"}, …]`) is the full list; the
+  /// plain `genre` is only its first entry, and the whole story on a server
+  /// without the extension. Null when the response mentions neither, so a thin
+  /// record never overwrites a stored list with an empty one.
+  @visibleForTesting
+  static List<String>? parseGenres(Map<String, dynamic> json) {
+    final list = json['genres'];
+    if (list is List) {
+      return normalizeGenres(
+        list.map((g) => g is Map ? g['name'] : g).whereType<String>(),
+      );
+    }
+    final single = json['genre'];
+    if (single is String) return genresFromSingle(single);
+    return null;
   }
 
   static double? _toDouble(dynamic value) {

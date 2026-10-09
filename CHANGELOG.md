@@ -10,8 +10,13 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Albums show every genre; tap one to browse that genre.
+- Genre pages, with Shuffle.
+
 ### Changed
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
+- Album genres are now tags under the artist instead of the end of the details line.
 
 ### Fixed
 - Covers saved for offline no longer vanish when the system frees up storage.

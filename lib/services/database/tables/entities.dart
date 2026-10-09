@@ -71,6 +71,11 @@ class Albums extends Table {
   IntColumn get year => integer().nullable()();
   TextColumn get genre => text().nullable()();
 
+  /// Every genre, as a JSON array, like [Artists.genresJson]. Null means the
+  /// row predates it or no response has said, which is what tells a backfill
+  /// apart from an album that has no genres. Schema v4.
+  TextColumn get genresJson => text().nullable()();
+
   BoolColumn get starred => boolean().withDefault(const Constant(false))();
   DateTimeColumn get starredAt => dateTime().nullable()();
   IntColumn get userRating => integer().nullable()();
@@ -103,6 +108,9 @@ class Songs extends Table {
   IntColumn get discNumber => integer().nullable()();
   IntColumn get year => integer().nullable()();
   TextColumn get genre => text().nullable()();
+
+  /// Every genre, as on [Albums.genresJson]. Schema v4.
+  TextColumn get genresJson => text().nullable()();
 
   IntColumn get bitRate => integer().nullable()();
   IntColumn get bitDepth => integer().nullable()();
