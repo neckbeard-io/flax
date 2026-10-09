@@ -60,10 +60,6 @@ class GenreScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-              child: const UpBackButton(fallbackLocation: '/albums'),
-            ),
             GenreHeader(
               genre: genre,
               albumCount: albums?.length,
@@ -120,7 +116,10 @@ class GenreScreen extends ConsumerWidget {
   }
 }
 
-/// The genre's name, how many albums it has, and Shuffle.
+/// Back, the genre's name, how many albums it has, and Shuffle.
+///
+/// Laid out like the album page on desktop. A phone gets an app bar's shape
+/// instead: the name beside Back, then the count and Shuffle on one row.
 ///
 /// A plain widget, apart from the providers behind it, so its layout can be
 /// tested at phone and desktop widths.
@@ -143,17 +142,68 @@ class GenreHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final desktop = isDesktopLayout(context);
     final count = albumCount;
+    final countText = Text(
+      count == null ? ' ' : '$count ${count == 1 ? 'album' : 'albums'}',
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
+    final shuffle = FilledButton.icon(
+      key: shuffleKey,
+      onPressed: onShuffle,
+      icon: const Icon(Icons.shuffle, size: 18),
+      label: const Text('Shuffle'),
+    );
+    const back = UpBackButton(fallbackLocation: '/albums');
 
+    if (!isDesktopLayout(context)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
+            child: Row(
+              children: [
+                back,
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    genre,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Row(
+              children: [
+                Expanded(child: countText),
+                shuffle,
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(padding: EdgeInsets.fromLTRB(8, 4, 8, 0), child: back),
+        _desktopDetails(theme, countText, shuffle),
+      ],
+    );
+  }
+
+  Widget _desktopDetails(ThemeData theme, Widget countText, Widget shuffle) {
     return Padding(
       // The window controls are drawn over the top-right corner on desktop.
-      padding: EdgeInsets.fromLTRB(
-        desktop ? 24 : 16,
-        4,
-        desktop ? windowButtonsReservedWidth + 24 : 16,
-        12,
-      ),
+      padding: EdgeInsets.fromLTRB(24, 4, windowButtonsReservedWidth + 24, 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -174,31 +224,18 @@ class GenreHeader extends StatelessWidget {
                   genre,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style:
-                      (desktop
-                              ? theme.textTheme.displaySmall
-                              : theme.textTheme.headlineSmall)
-                          ?.copyWith(fontWeight: FontWeight.bold, height: 1.1),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  count == null
-                      ? ' '
-                      : '$count ${count == 1 ? 'album' : 'albums'}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    height: 1.1,
                   ),
                 ),
+                const SizedBox(height: 6),
+                countText,
               ],
             ),
           ),
           const SizedBox(width: 12),
-          FilledButton.icon(
-            key: shuffleKey,
-            onPressed: onShuffle,
-            icon: const Icon(Icons.shuffle, size: 18),
-            label: const Text('Shuffle'),
-          ),
+          shuffle,
         ],
       ),
     );

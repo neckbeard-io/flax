@@ -16,6 +16,7 @@ import 'package:flax/features/player/seek_bar.dart';
 import 'package:flax/features/player/volume_control.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/genre_chips.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
@@ -245,192 +246,218 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         countryCode == null &&
         ref.watch(musicBrainzInfoProvider(song.artistId!)).isLoading;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxArtSize = (constraints.maxWidth - 80).clamp(0.0, 360.0);
-        final availableHeight = constraints.maxHeight;
-        final artSize = maxArtSize.clamp(
-          0.0,
-          (availableHeight - 290).clamp(120.0, 360.0),
-        );
+    final genres = song.displayGenres;
 
-        return Column(
-          children: [
-            const Spacer(flex: 1),
+    // Pop Now Playing, then open the genre: the artist link's pattern.
+    void openGenre(String name) {
+      Navigator.of(context).pop();
+      context.push(genreLocation(name));
+    }
 
-            // ── Album art ──
-            SizedBox(
-              width: artSize,
-              height: artSize,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: CoverArtImage(
-                  key: ValueKey('cover-${song.coverArtId}'),
-                  coverArtId: song.coverArtId,
-                  size: 600,
+    return Column(
+      children: [
+        // ── Album art ──
+        //
+        // Square, centered in whatever height the controls below leave. It was
+        // sized from the window less a fixed guess at their height, which ran
+        // short and overflowed phones where the art was height-bound — and every
+        // row added below, like the genres, needed the guess updating.
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final artSize = (constraints.maxWidth - 80)
+                  .clamp(0.0, 360.0)
+                  .clamp(0.0, (constraints.maxHeight - 16).clamp(0.0, 360.0));
+              return Center(
+                child: SizedBox(
+                  width: artSize,
+                  height: artSize,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: CoverArtImage(
+                      key: ValueKey('cover-${song.coverArtId}'),
+                      coverArtId: song.coverArtId,
+                      size: 600,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        // ── Song info ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            children: [
+              Text(
+                song.title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: HoverLink(
+                      text: song.artistName ?? '',
+                      onTap: song.artistId != null
+                          ? () {
+                              Navigator.of(context).pop();
+                              context.push('/artists/${song.artistId}');
+                            }
+                          : null,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: song.artistId != null
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (CountryFlagIcon.isSupported(countryCode)) ...[
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: countryLabel ?? countryCode!,
+                      child: CountryFlagIcon(countryCode: countryCode!),
+                    ),
+                  ] else if (isFlagLoading) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      width: infoChipLeadingWidth,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.12,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        if (genres.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: GenreChips(
+              genres: genres,
+              singleLine: true,
+              size: GenreChipSize.touch,
+              onSelected: openGenre,
+              onMore: () => showGenresSheet(
+                context,
+                title: song.title,
+                genres: genres,
+                onSelected: openGenre,
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 8),
+
+        // ── Audio format info ──
+        if (song.suffix != null ||
+            song.bitRate != null ||
+            state.activeTranscode?.isTranscoded == true ||
+            isSongCached)
+          _AudioFormatBadge(
+            song: song,
+            transcode: state.activeTranscode,
+            isCached: isSongCached,
+          ),
+
+        const SizedBox(height: 8),
+
+        // ── Progress bar ──
+        //
+        // The same control the mini player uses. It used to be a
+        // second copy here, which seeked on every frame of the drag
+        // rather than at the end of it.
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 32),
+          child: TrackSeekBar(),
+        ),
+
+        const SizedBox(height: 8),
+
+        // ── Transport controls ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.shuffle,
+                  color: state.shuffle
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                onPressed: () =>
+                    ref.read(playerProvider.notifier).toggleShuffle(),
+              ),
+              IconButton(
+                icon: const Icon(Icons.skip_previous_rounded),
+                iconSize: 36,
+                onPressed: () => ref.read(playerProvider.notifier).previous(),
+              ),
+              FilledButton(
+                onPressed: () =>
+                    ref.read(playerProvider.notifier).togglePlayPause(),
+                style: FilledButton.styleFrom(
+                  shape: const CircleBorder(),
+                  padding: const EdgeInsets.all(16),
+                ),
+                child: Icon(
+                  state.isPlaying
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
+                  size: 36,
                 ),
               ),
-            ),
-
-            const Spacer(flex: 1),
-
-            // ── Song info ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
-                children: [
-                  Text(
-                    song.title,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: HoverLink(
-                          text: song.artistName ?? '',
-                          onTap: song.artistId != null
-                              ? () {
-                                  Navigator.of(context).pop();
-                                  context.push('/artists/${song.artistId}');
-                                }
-                              : null,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: song.artistId != null
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      if (CountryFlagIcon.isSupported(countryCode)) ...[
-                        const SizedBox(width: 8),
-                        Tooltip(
-                          message: countryLabel ?? countryCode!,
-                          child: CountryFlagIcon(countryCode: countryCode!),
-                        ),
-                      ] else if (isFlagLoading) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          width: infoChipLeadingWidth,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
+              IconButton(
+                icon: const Icon(Icons.skip_next_rounded),
+                iconSize: 36,
+                onPressed: () => ref.read(playerProvider.notifier).next(),
               ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Audio format info ──
-            if (song.suffix != null ||
-                song.bitRate != null ||
-                state.activeTranscode?.isTranscoded == true ||
-                isSongCached)
-              _AudioFormatBadge(
-                song: song,
-                transcode: state.activeTranscode,
-                isCached: isSongCached,
+              IconButton(
+                icon: Icon(
+                  state.repeatMode == RepeatMode.one
+                      ? Icons.repeat_one
+                      : Icons.repeat,
+                  color: state.repeatMode != RepeatMode.off
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+                onPressed: () =>
+                    ref.read(playerProvider.notifier).cycleRepeatMode(),
               ),
+            ],
+          ),
+        ),
 
-            const SizedBox(height: 8),
+        // ── Volume ──
+        // Wider fader than the mini player's, with the dB readout
+        // visible since there is room for it here.
+        Padding(
+          padding: const EdgeInsets.only(left: 24, right: 24, top: 8),
+          child: Center(child: VolumeControl(width: 200, showLabel: true)),
+        ),
 
-            // ── Progress bar ──
-            //
-            // The same control the mini player uses. It used to be a
-            // second copy here, which seeked on every frame of the drag
-            // rather than at the end of it.
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32),
-              child: TrackSeekBar(),
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Transport controls ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.shuffle,
-                      color: state.shuffle
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                    onPressed: () =>
-                        ref.read(playerProvider.notifier).toggleShuffle(),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.skip_previous_rounded),
-                    iconSize: 36,
-                    onPressed: () =>
-                        ref.read(playerProvider.notifier).previous(),
-                  ),
-                  FilledButton(
-                    onPressed: () =>
-                        ref.read(playerProvider.notifier).togglePlayPause(),
-                    style: FilledButton.styleFrom(
-                      shape: const CircleBorder(),
-                      padding: const EdgeInsets.all(16),
-                    ),
-                    child: Icon(
-                      state.isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      size: 36,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.skip_next_rounded),
-                    iconSize: 36,
-                    onPressed: () => ref.read(playerProvider.notifier).next(),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      state.repeatMode == RepeatMode.one
-                          ? Icons.repeat_one
-                          : Icons.repeat,
-                      color: state.repeatMode != RepeatMode.off
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                    onPressed: () =>
-                        ref.read(playerProvider.notifier).cycleRepeatMode(),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Volume ──
-            // Wider fader than the mini player's, with the dB readout
-            // visible since there is room for it here.
-            Padding(
-              padding: const EdgeInsets.only(left: 24, right: 24, top: 8),
-              child: Center(child: VolumeControl(width: 200, showLabel: true)),
-            ),
-
-            const SizedBox(height: 16),
-          ],
-        );
-      },
+        const SizedBox(height: 16),
+      ],
     );
   }
 }

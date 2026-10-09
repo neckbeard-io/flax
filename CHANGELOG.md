@@ -13,6 +13,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ### Added
 - Albums show every genre; tap one to browse that genre.
 - Genre pages, with Shuffle.
+- Phones show album genres, and the playing song's genres in Now Playing.
 
 ### Changed
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.

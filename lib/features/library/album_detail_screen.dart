@@ -511,7 +511,23 @@ class _MobileHeader extends StatelessWidget {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 10),
+                // One line on a phone: wrapping a compilation's genres would
+                // push the tracks down by rows. The rest are a tap away.
+                if (album.displayGenres.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  GenreChips(
+                    genres: album.displayGenres,
+                    singleLine: true,
+                    size: GenreChipSize.touch,
+                    onMore: () => showGenresSheet(
+                      context,
+                      title: album.name,
+                      genres: album.displayGenres,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                ] else
+                  const SizedBox(height: 10),
                 _AlbumPlayActions(albumId: albumId),
                 const SizedBox(height: 8),
                 _AlbumActions(album: album, albumId: albumId, size: 24),
