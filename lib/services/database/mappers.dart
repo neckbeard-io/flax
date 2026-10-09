@@ -76,6 +76,7 @@ Album albumFromRow(AlbumRow r) => Album(
   duration: r.duration,
   year: r.year,
   genre: r.genre,
+  genres: _decodeGenres(r.genresJson),
   starred: r.starred,
   starredAt: r.starredAt,
   userRating: r.userRating,
@@ -94,6 +95,7 @@ AlbumsCompanion albumToCompanion(Album a, DateTime now) => AlbumsCompanion(
   duration: a.duration > 0 ? Value(a.duration) : const Value.absent(),
   year: _absentIfNull(a.year),
   genre: _absentIfNull(a.genre),
+  genresJson: _encodeGenres(a.genres),
   starred: Value(a.starred),
   starredAt: _absentIfNull(a.starredAt),
   userRating: _absentIfNull(a.userRating),
@@ -117,6 +119,7 @@ Song songFromRow(SongRow r) => Song(
   discNumber: r.discNumber,
   year: r.year,
   genre: r.genre,
+  genres: _decodeGenres(r.genresJson),
   bitRate: r.bitRate,
   bitDepth: r.bitDepth,
   sampleRate: r.sampleRate,
@@ -151,6 +154,7 @@ SongsCompanion songToCompanion(Song s, DateTime now) => SongsCompanion(
   discNumber: _absentIfNull(s.discNumber),
   year: _absentIfNull(s.year),
   genre: _absentIfNull(s.genre),
+  genresJson: _encodeGenres(s.genres),
   bitRate: _absentIfNull(s.bitRate),
   bitDepth: _absentIfNull(s.bitDepth),
   sampleRate: _absentIfNull(s.sampleRate),
@@ -205,6 +209,12 @@ PlaylistsCompanion playlistToCompanion(Playlist p, DateTime now) =>
 
 Value<T> _absentIfNull<T extends Object>(T? value) =>
     value == null ? const Value.absent() : Value(value);
+
+/// An album's or a song's genres. Unlike an artist's, an empty list is stored:
+/// "the server says none" has to stay distinguishable from "not fetched yet",
+/// which is the null left on rows from before the column existed.
+Value<String> _encodeGenres(List<String>? genres) =>
+    genres == null ? const Value.absent() : Value(jsonEncode(genres));
 
 List<String>? _decodeGenres(String? json) {
   if (json == null || json.isEmpty) return null;

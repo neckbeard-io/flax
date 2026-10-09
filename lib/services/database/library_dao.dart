@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'package:flax/domain/enums.dart';
+import 'package:flax/domain/genres.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/services/database/database.dart';
@@ -432,6 +433,95 @@ class LibraryDao {
       );
     final row = await q.getSingle();
     return row.read(count) ?? 0;
+  }
+
+  /// Whether an album, or any of its cached tracks, has genres that predate
+  /// schema v4.
+  ///
+  /// The genre backfill's test. A full album fetch stores a list for every row
+  /// it returns, so this turns false after one refresh and stays false.
+  Future<bool> albumGenresUnknown(String serverId, String albumId) async {
+    final album =
+        await (_db.selectOnly(_db.albums)
+              ..addColumns([_db.albums.id])
+              ..where(
+                _db.albums.serverId.equals(serverId) &
+                    _db.albums.id.equals(albumId) &
+                    _db.albums.genresJson.isNull(),
+              ))
+            .getSingleOrNull();
+    if (album != null) return true;
+    final song =
+        await (_db.selectOnly(_db.songs)
+              ..addColumns([_db.songs.id])
+              ..where(
+                _db.songs.serverId.equals(serverId) &
+                    _db.songs.albumId.equals(albumId) &
+                    _db.songs.genresJson.isNull(),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return song != null;
+  }
+
+  /// Record whatever genres are still unknown on an album as none.
+  ///
+  /// Only after a full `getAlbum`: whatever that left unknown, the server has
+  /// no genre for — a field it never sends, or a cached track it no longer
+  /// lists on the album. Settling them is what ends the backfill for the album;
+  /// left unknown, [albumGenresUnknown] would refetch it on every visit.
+  Future<void> settleAlbumGenres(String serverId, String albumId) async {
+    const none = Value('[]');
+    await _db.transaction(() async {
+      await (_db.update(_db.albums)..where(
+            (t) =>
+                t.serverId.equals(serverId) &
+                t.id.equals(albumId) &
+                t.genresJson.isNull(),
+          ))
+          .write(const AlbumsCompanion(genresJson: none));
+      await (_db.update(_db.songs)..where(
+            (t) =>
+                t.serverId.equals(serverId) &
+                t.albumId.equals(albumId) &
+                t.genresJson.isNull(),
+          ))
+          .write(const SongsCompanion(genresJson: none));
+    });
+  }
+
+  /// Downloaded albums whose genres are still unknown.
+  ///
+  /// Downloaded means available offline, genres included, and an album opened
+  /// offline cannot fetch them. The metadata sync refreshes these instead —
+  /// only these, never the whole library.
+  Future<List<String>> downloadedAlbumIdsMissingGenres(String serverId) async {
+    final downloaded =
+        _db.songs.serverId.equals(serverId) &
+        _db.songs.localPath.isNotNull() &
+        _db.songs.downloadState.equals(DownloadState.complete.index) &
+        _db.songs.albumId.isNotNull();
+
+    final songAlbumId = _db.songs.albumId;
+    final fromSongs = _db.selectOnly(_db.songs, distinct: true)
+      ..addColumns([songAlbumId])
+      ..where(downloaded & _db.songs.genresJson.isNull());
+
+    final downloadedAlbumIds = _db.selectOnly(_db.songs)
+      ..addColumns([songAlbumId])
+      ..where(downloaded);
+    final fromAlbums = _db.selectOnly(_db.albums)
+      ..addColumns([_db.albums.id])
+      ..where(
+        _db.albums.serverId.equals(serverId) &
+            _db.albums.genresJson.isNull() &
+            _db.albums.id.isInQuery(downloadedAlbumIds),
+      );
+
+    return {
+      for (final r in await fromSongs.get()) ?r.read(songAlbumId),
+      for (final r in await fromAlbums.get()) ?r.read(_db.albums.id),
+    }.toList();
   }
 
   // ── Playlists ────────────────────────────────────────────────────────────
@@ -941,7 +1031,18 @@ class LibraryDao {
       q.orderBy([(t) => OrderingTerm(expression: t.name)]);
     }
 
-    return q.watch().map((rows) => rows.map(albumFromRow).toList());
+    final albums = q.watch().map((rows) => rows.map(albumFromRow).toList());
+    final genre = query?.genre;
+    if (genre == null) return albums;
+    // Filtered here rather than in SQL: genres are a JSON array, and a
+    // downloaded library is small enough that decoding it costs less than
+    // teaching SQLite to look inside one.
+    return albums.map(
+      (list) => [
+        for (final a in list)
+          if (hasGenre(a.displayGenres, genre)) a,
+      ],
+    );
   }
 
   Stream<List<Artist>> watchDownloadedArtists(String serverId) {

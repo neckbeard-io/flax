@@ -400,8 +400,10 @@ class _AlbumTile extends ConsumerWidget {
           [
             if (album.year != null) '${album.year}',
             '${album.songCount} tracks',
-            if (album.genre != null) album.genre!,
+            if (album.displayGenres.isNotEmpty) album.displayGenres.join(', '),
           ].join(' · '),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
         ),
         trailing: album.userRating != null && album.userRating! > 0

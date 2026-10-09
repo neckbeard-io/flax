@@ -9,6 +9,7 @@ import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
+import 'package:flax/shared/widgets/genre_chips.dart';
 import 'package:flax/shared/widgets/song_context_menu.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 
@@ -180,6 +181,18 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 11,
                       ),
+                    ),
+                  ),
+                // The playing track's genres, read from the song in hand rather
+                // than the album provider, so nothing arrives late and shoves
+                // the queue down. One line: the album page lists them all.
+                if (song.displayGenres.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: GenreChips(
+                      genres: song.displayGenres,
+                      singleLine: true,
+                      size: GenreChipSize.dense,
                     ),
                   ),
                 const SizedBox(height: 4),

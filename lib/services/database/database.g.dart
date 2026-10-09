@@ -1199,6 +1199,17 @@ class $AlbumsTable extends Albums with TableInfo<$AlbumsTable, AlbumRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _genresJsonMeta = const VerificationMeta(
+    'genresJson',
+  );
+  @override
+  late final GeneratedColumn<String> genresJson = GeneratedColumn<String>(
+    'genres_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _starredMeta = const VerificationMeta(
     'starred',
   );
@@ -1305,6 +1316,7 @@ class $AlbumsTable extends Albums with TableInfo<$AlbumsTable, AlbumRow> {
     duration,
     year,
     genre,
+    genresJson,
     starred,
     starredAt,
     userRating,
@@ -1390,6 +1402,12 @@ class $AlbumsTable extends Albums with TableInfo<$AlbumsTable, AlbumRow> {
       context.handle(
         _genreMeta,
         genre.isAcceptableOrUnknown(data['genre']!, _genreMeta),
+      );
+    }
+    if (data.containsKey('genres_json')) {
+      context.handle(
+        _genresJsonMeta,
+        genresJson.isAcceptableOrUnknown(data['genres_json']!, _genresJsonMeta),
       );
     }
     if (data.containsKey('starred')) {
@@ -1499,6 +1517,10 @@ class $AlbumsTable extends Albums with TableInfo<$AlbumsTable, AlbumRow> {
         DriftSqlType.string,
         data['${effectivePrefix}genre'],
       ),
+      genresJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}genres_json'],
+      ),
       starred: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}starred'],
@@ -1551,6 +1573,11 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
   final int duration;
   final int? year;
   final String? genre;
+
+  /// Every genre, as a JSON array, like [Artists.genresJson]. Null means the
+  /// row predates it or no response has said, which is what tells a backfill
+  /// apart from an album that has no genres. Schema v4.
+  final String? genresJson;
   final bool starred;
   final DateTime? starredAt;
   final int? userRating;
@@ -1570,6 +1597,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     required this.duration,
     this.year,
     this.genre,
+    this.genresJson,
     required this.starred,
     this.starredAt,
     this.userRating,
@@ -1601,6 +1629,9 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     }
     if (!nullToAbsent || genre != null) {
       map['genre'] = Variable<String>(genre);
+    }
+    if (!nullToAbsent || genresJson != null) {
+      map['genres_json'] = Variable<String>(genresJson);
     }
     map['starred'] = Variable<bool>(starred);
     if (!nullToAbsent || starredAt != null) {
@@ -1641,6 +1672,9 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
       genre: genre == null && nullToAbsent
           ? const Value.absent()
           : Value(genre),
+      genresJson: genresJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(genresJson),
       starred: Value(starred),
       starredAt: starredAt == null && nullToAbsent
           ? const Value.absent()
@@ -1676,6 +1710,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
       duration: serializer.fromJson<int>(json['duration']),
       year: serializer.fromJson<int?>(json['year']),
       genre: serializer.fromJson<String?>(json['genre']),
+      genresJson: serializer.fromJson<String?>(json['genresJson']),
       starred: serializer.fromJson<bool>(json['starred']),
       starredAt: serializer.fromJson<DateTime?>(json['starredAt']),
       userRating: serializer.fromJson<int?>(json['userRating']),
@@ -1700,6 +1735,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
       'duration': serializer.toJson<int>(duration),
       'year': serializer.toJson<int?>(year),
       'genre': serializer.toJson<String?>(genre),
+      'genresJson': serializer.toJson<String?>(genresJson),
       'starred': serializer.toJson<bool>(starred),
       'starredAt': serializer.toJson<DateTime?>(starredAt),
       'userRating': serializer.toJson<int?>(userRating),
@@ -1722,6 +1758,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     int? duration,
     Value<int?> year = const Value.absent(),
     Value<String?> genre = const Value.absent(),
+    Value<String?> genresJson = const Value.absent(),
     bool? starred,
     Value<DateTime?> starredAt = const Value.absent(),
     Value<int?> userRating = const Value.absent(),
@@ -1741,6 +1778,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     duration: duration ?? this.duration,
     year: year.present ? year.value : this.year,
     genre: genre.present ? genre.value : this.genre,
+    genresJson: genresJson.present ? genresJson.value : this.genresJson,
     starred: starred ?? this.starred,
     starredAt: starredAt.present ? starredAt.value : this.starredAt,
     userRating: userRating.present ? userRating.value : this.userRating,
@@ -1768,6 +1806,9 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
       duration: data.duration.present ? data.duration.value : this.duration,
       year: data.year.present ? data.year.value : this.year,
       genre: data.genre.present ? data.genre.value : this.genre,
+      genresJson: data.genresJson.present
+          ? data.genresJson.value
+          : this.genresJson,
       starred: data.starred.present ? data.starred.value : this.starred,
       starredAt: data.starredAt.present ? data.starredAt.value : this.starredAt,
       userRating: data.userRating.present
@@ -1798,6 +1839,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
           ..write('duration: $duration, ')
           ..write('year: $year, ')
           ..write('genre: $genre, ')
+          ..write('genresJson: $genresJson, ')
           ..write('starred: $starred, ')
           ..write('starredAt: $starredAt, ')
           ..write('userRating: $userRating, ')
@@ -1822,6 +1864,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     duration,
     year,
     genre,
+    genresJson,
     starred,
     starredAt,
     userRating,
@@ -1845,6 +1888,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
           other.duration == this.duration &&
           other.year == this.year &&
           other.genre == this.genre &&
+          other.genresJson == this.genresJson &&
           other.starred == this.starred &&
           other.starredAt == this.starredAt &&
           other.userRating == this.userRating &&
@@ -1866,6 +1910,7 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
   final Value<int> duration;
   final Value<int?> year;
   final Value<String?> genre;
+  final Value<String?> genresJson;
   final Value<bool> starred;
   final Value<DateTime?> starredAt;
   final Value<int?> userRating;
@@ -1886,6 +1931,7 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     this.duration = const Value.absent(),
     this.year = const Value.absent(),
     this.genre = const Value.absent(),
+    this.genresJson = const Value.absent(),
     this.starred = const Value.absent(),
     this.starredAt = const Value.absent(),
     this.userRating = const Value.absent(),
@@ -1907,6 +1953,7 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     this.duration = const Value.absent(),
     this.year = const Value.absent(),
     this.genre = const Value.absent(),
+    this.genresJson = const Value.absent(),
     this.starred = const Value.absent(),
     this.starredAt = const Value.absent(),
     this.userRating = const Value.absent(),
@@ -1932,6 +1979,7 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     Expression<int>? duration,
     Expression<int>? year,
     Expression<String>? genre,
+    Expression<String>? genresJson,
     Expression<bool>? starred,
     Expression<DateTime>? starredAt,
     Expression<int>? userRating,
@@ -1953,6 +2001,7 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
       if (duration != null) 'duration': duration,
       if (year != null) 'year': year,
       if (genre != null) 'genre': genre,
+      if (genresJson != null) 'genres_json': genresJson,
       if (starred != null) 'starred': starred,
       if (starredAt != null) 'starred_at': starredAt,
       if (userRating != null) 'user_rating': userRating,
@@ -1976,6 +2025,7 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     Value<int>? duration,
     Value<int?>? year,
     Value<String?>? genre,
+    Value<String?>? genresJson,
     Value<bool>? starred,
     Value<DateTime?>? starredAt,
     Value<int?>? userRating,
@@ -1997,6 +2047,7 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
       duration: duration ?? this.duration,
       year: year ?? this.year,
       genre: genre ?? this.genre,
+      genresJson: genresJson ?? this.genresJson,
       starred: starred ?? this.starred,
       starredAt: starredAt ?? this.starredAt,
       userRating: userRating ?? this.userRating,
@@ -2042,6 +2093,9 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     if (genre.present) {
       map['genre'] = Variable<String>(genre.value);
     }
+    if (genresJson.present) {
+      map['genres_json'] = Variable<String>(genresJson.value);
+    }
     if (starred.present) {
       map['starred'] = Variable<bool>(starred.value);
     }
@@ -2085,6 +2139,7 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
           ..write('duration: $duration, ')
           ..write('year: $year, ')
           ..write('genre: $genre, ')
+          ..write('genresJson: $genresJson, ')
           ..write('starred: $starred, ')
           ..write('starredAt: $starredAt, ')
           ..write('userRating: $userRating, ')
@@ -2233,6 +2288,17 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongRow> {
   @override
   late final GeneratedColumn<String> genre = GeneratedColumn<String>(
     'genre',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _genresJsonMeta = const VerificationMeta(
+    'genresJson',
+  );
+  @override
+  late final GeneratedColumn<String> genresJson = GeneratedColumn<String>(
+    'genres_json',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -2477,6 +2543,7 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongRow> {
     discNumber,
     year,
     genre,
+    genresJson,
     bitRate,
     bitDepth,
     sampleRate,
@@ -2592,6 +2659,12 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongRow> {
       context.handle(
         _genreMeta,
         genre.isAcceptableOrUnknown(data['genre']!, _genreMeta),
+      );
+    }
+    if (data.containsKey('genres_json')) {
+      context.handle(
+        _genresJsonMeta,
+        genresJson.isAcceptableOrUnknown(data['genres_json']!, _genresJsonMeta),
       );
     }
     if (data.containsKey('bit_rate')) {
@@ -2803,6 +2876,10 @@ class $SongsTable extends Songs with TableInfo<$SongsTable, SongRow> {
         DriftSqlType.string,
         data['${effectivePrefix}genre'],
       ),
+      genresJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}genres_json'],
+      ),
       bitRate: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}bit_rate'],
@@ -2906,6 +2983,9 @@ class SongRow extends DataClass implements Insertable<SongRow> {
   final int? discNumber;
   final int? year;
   final String? genre;
+
+  /// Every genre, as on [Albums.genresJson]. Schema v4.
+  final String? genresJson;
   final int? bitRate;
   final int? bitDepth;
   final int? sampleRate;
@@ -2943,6 +3023,7 @@ class SongRow extends DataClass implements Insertable<SongRow> {
     this.discNumber,
     this.year,
     this.genre,
+    this.genresJson,
     this.bitRate,
     this.bitDepth,
     this.sampleRate,
@@ -2997,6 +3078,9 @@ class SongRow extends DataClass implements Insertable<SongRow> {
     }
     if (!nullToAbsent || genre != null) {
       map['genre'] = Variable<String>(genre);
+    }
+    if (!nullToAbsent || genresJson != null) {
+      map['genres_json'] = Variable<String>(genresJson);
     }
     if (!nullToAbsent || bitRate != null) {
       map['bit_rate'] = Variable<int>(bitRate);
@@ -3080,6 +3164,9 @@ class SongRow extends DataClass implements Insertable<SongRow> {
       genre: genre == null && nullToAbsent
           ? const Value.absent()
           : Value(genre),
+      genresJson: genresJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(genresJson),
       bitRate: bitRate == null && nullToAbsent
           ? const Value.absent()
           : Value(bitRate),
@@ -3148,6 +3235,7 @@ class SongRow extends DataClass implements Insertable<SongRow> {
       discNumber: serializer.fromJson<int?>(json['discNumber']),
       year: serializer.fromJson<int?>(json['year']),
       genre: serializer.fromJson<String?>(json['genre']),
+      genresJson: serializer.fromJson<String?>(json['genresJson']),
       bitRate: serializer.fromJson<int?>(json['bitRate']),
       bitDepth: serializer.fromJson<int?>(json['bitDepth']),
       sampleRate: serializer.fromJson<int?>(json['sampleRate']),
@@ -3195,6 +3283,7 @@ class SongRow extends DataClass implements Insertable<SongRow> {
       'discNumber': serializer.toJson<int?>(discNumber),
       'year': serializer.toJson<int?>(year),
       'genre': serializer.toJson<String?>(genre),
+      'genresJson': serializer.toJson<String?>(genresJson),
       'bitRate': serializer.toJson<int?>(bitRate),
       'bitDepth': serializer.toJson<int?>(bitDepth),
       'sampleRate': serializer.toJson<int?>(sampleRate),
@@ -3232,6 +3321,7 @@ class SongRow extends DataClass implements Insertable<SongRow> {
     Value<int?> discNumber = const Value.absent(),
     Value<int?> year = const Value.absent(),
     Value<String?> genre = const Value.absent(),
+    Value<String?> genresJson = const Value.absent(),
     Value<int?> bitRate = const Value.absent(),
     Value<int?> bitDepth = const Value.absent(),
     Value<int?> sampleRate = const Value.absent(),
@@ -3266,6 +3356,7 @@ class SongRow extends DataClass implements Insertable<SongRow> {
     discNumber: discNumber.present ? discNumber.value : this.discNumber,
     year: year.present ? year.value : this.year,
     genre: genre.present ? genre.value : this.genre,
+    genresJson: genresJson.present ? genresJson.value : this.genresJson,
     bitRate: bitRate.present ? bitRate.value : this.bitRate,
     bitDepth: bitDepth.present ? bitDepth.value : this.bitDepth,
     sampleRate: sampleRate.present ? sampleRate.value : this.sampleRate,
@@ -3316,6 +3407,9 @@ class SongRow extends DataClass implements Insertable<SongRow> {
           : this.discNumber,
       year: data.year.present ? data.year.value : this.year,
       genre: data.genre.present ? data.genre.value : this.genre,
+      genresJson: data.genresJson.present
+          ? data.genresJson.value
+          : this.genresJson,
       bitRate: data.bitRate.present ? data.bitRate.value : this.bitRate,
       bitDepth: data.bitDepth.present ? data.bitDepth.value : this.bitDepth,
       sampleRate: data.sampleRate.present
@@ -3375,6 +3469,7 @@ class SongRow extends DataClass implements Insertable<SongRow> {
           ..write('discNumber: $discNumber, ')
           ..write('year: $year, ')
           ..write('genre: $genre, ')
+          ..write('genresJson: $genresJson, ')
           ..write('bitRate: $bitRate, ')
           ..write('bitDepth: $bitDepth, ')
           ..write('sampleRate: $sampleRate, ')
@@ -3414,6 +3509,7 @@ class SongRow extends DataClass implements Insertable<SongRow> {
     discNumber,
     year,
     genre,
+    genresJson,
     bitRate,
     bitDepth,
     sampleRate,
@@ -3452,6 +3548,7 @@ class SongRow extends DataClass implements Insertable<SongRow> {
           other.discNumber == this.discNumber &&
           other.year == this.year &&
           other.genre == this.genre &&
+          other.genresJson == this.genresJson &&
           other.bitRate == this.bitRate &&
           other.bitDepth == this.bitDepth &&
           other.sampleRate == this.sampleRate &&
@@ -3488,6 +3585,7 @@ class SongsCompanion extends UpdateCompanion<SongRow> {
   final Value<int?> discNumber;
   final Value<int?> year;
   final Value<String?> genre;
+  final Value<String?> genresJson;
   final Value<int?> bitRate;
   final Value<int?> bitDepth;
   final Value<int?> sampleRate;
@@ -3523,6 +3621,7 @@ class SongsCompanion extends UpdateCompanion<SongRow> {
     this.discNumber = const Value.absent(),
     this.year = const Value.absent(),
     this.genre = const Value.absent(),
+    this.genresJson = const Value.absent(),
     this.bitRate = const Value.absent(),
     this.bitDepth = const Value.absent(),
     this.sampleRate = const Value.absent(),
@@ -3559,6 +3658,7 @@ class SongsCompanion extends UpdateCompanion<SongRow> {
     this.discNumber = const Value.absent(),
     this.year = const Value.absent(),
     this.genre = const Value.absent(),
+    this.genresJson = const Value.absent(),
     this.bitRate = const Value.absent(),
     this.bitDepth = const Value.absent(),
     this.sampleRate = const Value.absent(),
@@ -3599,6 +3699,7 @@ class SongsCompanion extends UpdateCompanion<SongRow> {
     Expression<int>? discNumber,
     Expression<int>? year,
     Expression<String>? genre,
+    Expression<String>? genresJson,
     Expression<int>? bitRate,
     Expression<int>? bitDepth,
     Expression<int>? sampleRate,
@@ -3635,6 +3736,7 @@ class SongsCompanion extends UpdateCompanion<SongRow> {
       if (discNumber != null) 'disc_number': discNumber,
       if (year != null) 'year': year,
       if (genre != null) 'genre': genre,
+      if (genresJson != null) 'genres_json': genresJson,
       if (bitRate != null) 'bit_rate': bitRate,
       if (bitDepth != null) 'bit_depth': bitDepth,
       if (sampleRate != null) 'sample_rate': sampleRate,
@@ -3677,6 +3779,7 @@ class SongsCompanion extends UpdateCompanion<SongRow> {
     Value<int?>? discNumber,
     Value<int?>? year,
     Value<String?>? genre,
+    Value<String?>? genresJson,
     Value<int?>? bitRate,
     Value<int?>? bitDepth,
     Value<int?>? sampleRate,
@@ -3713,6 +3816,7 @@ class SongsCompanion extends UpdateCompanion<SongRow> {
       discNumber: discNumber ?? this.discNumber,
       year: year ?? this.year,
       genre: genre ?? this.genre,
+      genresJson: genresJson ?? this.genresJson,
       bitRate: bitRate ?? this.bitRate,
       bitDepth: bitDepth ?? this.bitDepth,
       sampleRate: sampleRate ?? this.sampleRate,
@@ -3778,6 +3882,9 @@ class SongsCompanion extends UpdateCompanion<SongRow> {
     }
     if (genre.present) {
       map['genre'] = Variable<String>(genre.value);
+    }
+    if (genresJson.present) {
+      map['genres_json'] = Variable<String>(genresJson.value);
     }
     if (bitRate.present) {
       map['bit_rate'] = Variable<int>(bitRate.value);
@@ -3869,6 +3976,7 @@ class SongsCompanion extends UpdateCompanion<SongRow> {
           ..write('discNumber: $discNumber, ')
           ..write('year: $year, ')
           ..write('genre: $genre, ')
+          ..write('genresJson: $genresJson, ')
           ..write('bitRate: $bitRate, ')
           ..write('bitDepth: $bitDepth, ')
           ..write('sampleRate: $sampleRate, ')
@@ -6707,6 +6815,7 @@ typedef $$AlbumsTableCreateCompanionBuilder =
       Value<int> duration,
       Value<int?> year,
       Value<String?> genre,
+      Value<String?> genresJson,
       Value<bool> starred,
       Value<DateTime?> starredAt,
       Value<int?> userRating,
@@ -6729,6 +6838,7 @@ typedef $$AlbumsTableUpdateCompanionBuilder =
       Value<int> duration,
       Value<int?> year,
       Value<String?> genre,
+      Value<String?> genresJson,
       Value<bool> starred,
       Value<DateTime?> starredAt,
       Value<int?> userRating,
@@ -6796,6 +6906,11 @@ class $$AlbumsTableFilterComposer
 
   ColumnFilters<String> get genre => $composableBuilder(
     column: $table.genre,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get genresJson => $composableBuilder(
+    column: $table.genresJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6899,6 +7014,11 @@ class $$AlbumsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get genresJson => $composableBuilder(
+    column: $table.genresJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get starred => $composableBuilder(
     column: $table.starred,
     builder: (column) => ColumnOrderings(column),
@@ -6983,6 +7103,11 @@ class $$AlbumsTableAnnotationComposer
   GeneratedColumn<String> get genre =>
       $composableBuilder(column: $table.genre, builder: (column) => column);
 
+  GeneratedColumn<String> get genresJson => $composableBuilder(
+    column: $table.genresJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get starred =>
       $composableBuilder(column: $table.starred, builder: (column) => column);
 
@@ -7052,6 +7177,7 @@ class $$AlbumsTableTableManager
                 Value<int> duration = const Value.absent(),
                 Value<int?> year = const Value.absent(),
                 Value<String?> genre = const Value.absent(),
+                Value<String?> genresJson = const Value.absent(),
                 Value<bool> starred = const Value.absent(),
                 Value<DateTime?> starredAt = const Value.absent(),
                 Value<int?> userRating = const Value.absent(),
@@ -7072,6 +7198,7 @@ class $$AlbumsTableTableManager
                 duration: duration,
                 year: year,
                 genre: genre,
+                genresJson: genresJson,
                 starred: starred,
                 starredAt: starredAt,
                 userRating: userRating,
@@ -7094,6 +7221,7 @@ class $$AlbumsTableTableManager
                 Value<int> duration = const Value.absent(),
                 Value<int?> year = const Value.absent(),
                 Value<String?> genre = const Value.absent(),
+                Value<String?> genresJson = const Value.absent(),
                 Value<bool> starred = const Value.absent(),
                 Value<DateTime?> starredAt = const Value.absent(),
                 Value<int?> userRating = const Value.absent(),
@@ -7114,6 +7242,7 @@ class $$AlbumsTableTableManager
                 duration: duration,
                 year: year,
                 genre: genre,
+                genresJson: genresJson,
                 starred: starred,
                 starredAt: starredAt,
                 userRating: userRating,
@@ -7161,6 +7290,7 @@ typedef $$SongsTableCreateCompanionBuilder =
       Value<int?> discNumber,
       Value<int?> year,
       Value<String?> genre,
+      Value<String?> genresJson,
       Value<int?> bitRate,
       Value<int?> bitDepth,
       Value<int?> sampleRate,
@@ -7198,6 +7328,7 @@ typedef $$SongsTableUpdateCompanionBuilder =
       Value<int?> discNumber,
       Value<int?> year,
       Value<String?> genre,
+      Value<String?> genresJson,
       Value<int?> bitRate,
       Value<int?> bitDepth,
       Value<int?> sampleRate,
@@ -7291,6 +7422,11 @@ class $$SongsTableFilterComposer extends Composer<_$FlaxDatabase, $SongsTable> {
 
   ColumnFilters<String> get genre => $composableBuilder(
     column: $table.genre,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get genresJson => $composableBuilder(
+    column: $table.genresJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7469,6 +7605,11 @@ class $$SongsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get genresJson => $composableBuilder(
+    column: $table.genresJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get bitRate => $composableBuilder(
     column: $table.bitRate,
     builder: (column) => ColumnOrderings(column),
@@ -7624,6 +7765,11 @@ class $$SongsTableAnnotationComposer
   GeneratedColumn<String> get genre =>
       $composableBuilder(column: $table.genre, builder: (column) => column);
 
+  GeneratedColumn<String> get genresJson => $composableBuilder(
+    column: $table.genresJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get bitRate =>
       $composableBuilder(column: $table.bitRate, builder: (column) => column);
 
@@ -7746,6 +7892,7 @@ class $$SongsTableTableManager
                 Value<int?> discNumber = const Value.absent(),
                 Value<int?> year = const Value.absent(),
                 Value<String?> genre = const Value.absent(),
+                Value<String?> genresJson = const Value.absent(),
                 Value<int?> bitRate = const Value.absent(),
                 Value<int?> bitDepth = const Value.absent(),
                 Value<int?> sampleRate = const Value.absent(),
@@ -7781,6 +7928,7 @@ class $$SongsTableTableManager
                 discNumber: discNumber,
                 year: year,
                 genre: genre,
+                genresJson: genresJson,
                 bitRate: bitRate,
                 bitDepth: bitDepth,
                 sampleRate: sampleRate,
@@ -7818,6 +7966,7 @@ class $$SongsTableTableManager
                 Value<int?> discNumber = const Value.absent(),
                 Value<int?> year = const Value.absent(),
                 Value<String?> genre = const Value.absent(),
+                Value<String?> genresJson = const Value.absent(),
                 Value<int?> bitRate = const Value.absent(),
                 Value<int?> bitDepth = const Value.absent(),
                 Value<int?> sampleRate = const Value.absent(),
@@ -7853,6 +8002,7 @@ class $$SongsTableTableManager
                 discNumber: discNumber,
                 year: year,
                 genre: genre,
+                genresJson: genresJson,
                 bitRate: bitRate,
                 bitDepth: bitDepth,
                 sampleRate: sampleRate,

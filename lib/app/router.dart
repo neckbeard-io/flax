@@ -12,6 +12,7 @@ import 'package:flax/features/library/album_detail_screen.dart';
 import 'package:flax/features/library/artists_screen.dart';
 import 'package:flax/features/library/artist_detail_screen.dart';
 import 'package:flax/features/library/downloads_screen.dart';
+import 'package:flax/features/library/genre_screen.dart';
 import 'package:flax/features/search/search_screen.dart';
 import 'package:flax/features/settings/settings_screen.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
@@ -71,6 +72,9 @@ bool isValidRoute(String location) {
   if (validExactRoutes.contains(path)) return true;
 
   if (path.startsWith('/artists/') && path.length > '/artists/'.length) {
+    return true;
+  }
+  if (path.startsWith('/genres/') && path.length > '/genres/'.length) {
     return true;
   }
   if (path.startsWith('/albums/') && path.length > '/albums/'.length) {
@@ -198,6 +202,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/albums/:id',
             builder: (context, state) =>
                 AlbumDetailScreen(albumId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: '/genres/:name',
+            builder: (context, state) =>
+                GenreScreen(genre: state.pathParameters['name']!),
           ),
           GoRoute(path: '/songs', redirect: (context, state) => '/albums'),
           GoRoute(

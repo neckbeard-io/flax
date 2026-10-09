@@ -223,6 +223,50 @@ class MetadataSyncService {
   }
 
   /// Starts a background metadata & art precache synchronization.
+  /// Genres for downloaded albums cached before genres were stored.
+  ///
+  /// Downloaded means available offline, and an album opened offline cannot
+  /// fetch what it is missing. Downloaded albums only: the rest of the library
+  /// fills in as albums are opened. Each album leaves
+  /// [LibraryDao.downloadedAlbumIdsMissingGenres] once its rows hold a list, so
+  /// later syncs find nothing to do.
+  Future<void> _backfillDownloadedGenres({
+    required SubsonicClient client,
+    required LibraryDao dao,
+    required String serverId,
+    required int concurrency,
+    required TaskHandle handle,
+  }) async {
+    final ids = await dao.downloadedAlbumIdsMissingGenres(serverId);
+    if (ids.isEmpty) return;
+    handle.note('Adding genres to ${ids.length} downloaded albums');
+
+    var next = 0;
+    Future<void> worker() async {
+      while (!_isCanceled && !handle.isCanceled && next < ids.length) {
+        final id = ids[next++];
+        try {
+          final now = DateTime.now();
+          await dao.upsertSongs(await client.getAlbumSongs(id), now);
+          // The album row was filled by the crawl above, unless the server
+          // listed it without any genre at all. Only then is it fetched.
+          final album = await dao.watchAlbum(serverId, id).first;
+          if (album != null && album.genres == null) {
+            await dao.upsertAlbums([await client.getAlbum(id)], now);
+          }
+          await dao.settleAlbumGenres(serverId, id);
+        } catch (e) {
+          AppLogger.w('Sync', 'Genre backfill failed for album $id: $e');
+        }
+      }
+    }
+
+    await Future.wait(
+      List.generate(concurrency.clamp(1, ids.length), (_) => worker()),
+    );
+    handle.note(null);
+  }
+
   Future<void> startSync({
     required Server server,
     required SubsonicClient client,
@@ -408,6 +452,16 @@ class MetadataSyncService {
         await dao.upsertArtists(missingArtists, DateTime.now());
         artists = await dao.getAllArtists(server.id);
       }
+
+      if (_isCanceled || handle.isCanceled) return;
+
+      await _backfillDownloadedGenres(
+        client: client,
+        dao: dao,
+        serverId: server.id,
+        concurrency: config.concurrency.clamp(1, 24),
+        handle: handle,
+      );
 
       if (_isCanceled || handle.isCanceled) return;
 

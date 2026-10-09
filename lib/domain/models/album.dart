@@ -1,3 +1,5 @@
+import 'package:flax/domain/genres.dart';
+
 class Album {
   final String id;
   final String serverId;
@@ -9,6 +11,13 @@ class Album {
   final int duration;
   final int? year;
   final String? genre;
+
+  /// Every genre the server tags this album with, in the server's order.
+  ///
+  /// Null means unknown — a row cached before genres were stored, or a response
+  /// that said nothing about genre — which is not the same as an empty list.
+  /// Screens read [displayGenres]; comparisons that must not guess read this.
+  final List<String>? genres;
   final bool starred;
   final DateTime? starredAt;
   final int? userRating;
@@ -26,12 +35,16 @@ class Album {
     this.duration = 0,
     this.year,
     this.genre,
+    this.genres,
     this.starred = false,
     this.starredAt,
     this.userRating,
     this.created,
     this.musicBrainzId,
   });
+
+  /// [genres], or the single [genre] while the full list is unknown.
+  List<String> get displayGenres => genres ?? genresFromSingle(genre);
 
   Album copyWith({
     String? id,
@@ -44,6 +57,7 @@ class Album {
     int? duration,
     int? year,
     String? genre,
+    List<String>? genres,
     bool? starred,
     DateTime? starredAt,
     int? userRating,
@@ -61,6 +75,7 @@ class Album {
       duration: duration ?? this.duration,
       year: year ?? this.year,
       genre: genre ?? this.genre,
+      genres: genres ?? this.genres,
       starred: starred ?? this.starred,
       starredAt: starredAt ?? this.starredAt,
       userRating: userRating ?? this.userRating,

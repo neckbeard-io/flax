@@ -38,7 +38,7 @@ class FlaxDatabase extends _$FlaxDatabase {
   FlaxDatabase.open() : super(_openOnDisk());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -53,6 +53,13 @@ class FlaxDatabase extends _$FlaxDatabase {
       }
       if (from < 3) {
         await m.createTable(pendingScrobbles);
+      }
+      if (from < 4) {
+        // Columns only. Existing rows keep a null list, which is what the
+        // genre backfill looks for; rewriting them here would touch every
+        // song row on the first launch after the update.
+        await m.addColumn(albums, albums.genresJson);
+        await m.addColumn(songs, songs.genresJson);
       }
     },
     beforeOpen: (details) async {

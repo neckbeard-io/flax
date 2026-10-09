@@ -77,8 +77,8 @@ class LibraryRepositoryImpl implements LibraryRepository {
   Stream<Song?> watchSong(String songId) => _dao.watchSong(_serverId, songId);
 
   @override
-  Stream<List<Song>> watchRandomSongs({int count = 100}) async* {
-    final songs = await _backend.getRandomSongs(count: count);
+  Stream<List<Song>> watchRandomSongs({int count = 100, String? genre}) async* {
+    final songs = await _backend.getRandomSongs(count: count, genre: genre);
     await _dao.upsertSongs(songs, _clock());
     yield* _dao.watchSongsByIds(_serverId, songs.map((s) => s.id).toList());
   }
@@ -221,13 +221,16 @@ class LibraryRepositoryImpl implements LibraryRepository {
           }
         }
 
-        final albums = await _backend.getAlbumList(
+        Future<List<Album>> page(int offset) => _backend.getAlbumList(
           query.type,
-          count: 500,
+          count: _albumListPageSize,
+          offset: offset,
           genre: query.genre,
           fromYear: query.fromYear,
           toYear: query.toYear,
         );
+
+        final albums = await page(0);
         onNetworkSuccess?.call();
 
         final now = _clock();
@@ -242,6 +245,19 @@ class LibraryRepositoryImpl implements LibraryRepository {
             now,
           );
         }
+
+        // A genre page is the whole genre, and a large one runs past the 500
+        // a single request may return. Callers wait for this first page only —
+        // it is already on screen — and the rest follow behind it.
+        if (query.type == AlbumListType.byGenre &&
+            albums.length == _albumListPageSize) {
+          unawaited(
+            _once(
+              'list-rest:${query.type.name}:${query.filterKey}',
+              () => _fetchRestOfList(query, albums, page),
+            ),
+          );
+        }
       } catch (e) {
         AppLogger.w('Library', 'refreshAlbumList(${query.type}) failed: $e');
         _reportIfNetworkError(e);
@@ -249,11 +265,51 @@ class LibraryRepositoryImpl implements LibraryRepository {
     });
   }
 
+  /// The most `getAlbumList2` returns per request.
+  static const _albumListPageSize = 500;
+
+  /// Every page after [first], then the ordering rewritten to hold them all.
+  Future<void> _fetchRestOfList(
+    AlbumListQuery query,
+    List<Album> first,
+    Future<List<Album>> Function(int offset) page,
+  ) async {
+    try {
+      final all = [...first];
+      final seen = {for (final a in first) a.id};
+      var offset = first.length;
+      while (true) {
+        final next = await page(offset);
+        offset += next.length;
+        final fresh = [
+          for (final a in next)
+            if (seen.add(a.id)) a,
+        ];
+        await _dao.upsertAlbums(fresh, _clock());
+        all.addAll(fresh);
+        // A short page is the end. So is a page with nothing new, which is
+        // what a server that ignores `offset` sends forever.
+        if (next.length < _albumListPageSize || fresh.isEmpty) break;
+      }
+      await _dao.replaceAlbumList(
+        _serverId,
+        query,
+        all.map((a) => a.id).toList(),
+        _clock(),
+      );
+    } catch (e) {
+      AppLogger.w('Library', 'Paging ${query.type} ${query.filterKey}: $e');
+      _reportIfNetworkError(e);
+    }
+  }
+
   @override
   Future<void> refreshAlbum(String albumId, {bool force = false}) {
     return _once('album:$albumId', () async {
       try {
-        if (!force && !await _albumSongsIncomplete(albumId)) {
+        if (!force &&
+            !await _albumSongsIncomplete(albumId) &&
+            !await _dao.albumGenresUnknown(_serverId, albumId)) {
           final fetchedAt = await _dao.albumDetailFetchedAt(_serverId, albumId);
           if (!await _shouldFetch(SyncPolicy.albumDetail, fetchedAt)) return;
         }
@@ -263,6 +319,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         final now = _clock();
         await _dao.upsertAlbums([album], now);
         await _dao.upsertSongs(songs, now);
+        await _dao.settleAlbumGenres(_serverId, albumId);
       } catch (e) {
         AppLogger.w('Library', 'refreshAlbum($albumId) failed: $e');
         _reportIfNetworkError(e);

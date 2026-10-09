@@ -4,20 +4,21 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i8;
-import 'dart:convert' as _i15;
+import 'dart:convert' as _i16;
 import 'dart:io' as _i6;
-import 'dart:typed_data' as _i14;
+import 'dart:typed_data' as _i15;
 
 import 'package:file/file.dart' as _i4;
 import 'package:flax/domain/enums.dart' as _i9;
 import 'package:flax/domain/models/models.dart' as _i2;
 import 'package:flax/domain/repositories/library_repository.dart' as _i11;
+import 'package:flax/services/database/database.dart' as _i12;
 import 'package:flax/services/database/library_dao.dart' as _i10;
 import 'package:flax/services/subsonic/subsonic_client.dart' as _i3;
 import 'package:flutter_cache_manager/src/cache_managers/base_cache_manager.dart'
-    as _i12;
+    as _i13;
 import 'package:flutter_cache_manager/src/result/file_info.dart' as _i5;
-import 'package:flutter_cache_manager/src/result/file_response.dart' as _i13;
+import 'package:flutter_cache_manager/src/result/file_response.dart' as _i14;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i7;
 
@@ -1011,6 +1012,35 @@ class MockLibraryDao extends _i1.Mock implements _i10.LibraryDao {
           as _i8.Future<int>);
 
   @override
+  _i8.Future<bool> albumGenresUnknown(String? serverId, String? albumId) =>
+      (super.noSuchMethod(
+            Invocation.method(#albumGenresUnknown, [serverId, albumId]),
+            returnValue: _i8.Future<bool>.value(false),
+            returnValueForMissingStub: _i8.Future<bool>.value(false),
+          )
+          as _i8.Future<bool>);
+
+  @override
+  _i8.Future<void> settleAlbumGenres(String? serverId, String? albumId) =>
+      (super.noSuchMethod(
+            Invocation.method(#settleAlbumGenres, [serverId, albumId]),
+            returnValue: _i8.Future<void>.value(),
+            returnValueForMissingStub: _i8.Future<void>.value(),
+          )
+          as _i8.Future<void>);
+
+  @override
+  _i8.Future<List<String>> downloadedAlbumIdsMissingGenres(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#downloadedAlbumIdsMissingGenres, [serverId]),
+            returnValue: _i8.Future<List<String>>.value(<String>[]),
+            returnValueForMissingStub: _i8.Future<List<String>>.value(
+              <String>[],
+            ),
+          )
+          as _i8.Future<List<String>>);
+
+  @override
   _i8.Stream<List<_i2.Playlist>> watchPlaylists(String? serverId) =>
       (super.noSuchMethod(
             Invocation.method(#watchPlaylists, [serverId]),
@@ -1124,6 +1154,15 @@ class MockLibraryDao extends _i1.Mock implements _i10.LibraryDao {
   ) =>
       (super.noSuchMethod(
             Invocation.method(#putSyncValue, [serverId, key, value, now]),
+            returnValue: _i8.Future<void>.value(),
+            returnValueForMissingStub: _i8.Future<void>.value(),
+          )
+          as _i8.Future<void>);
+
+  @override
+  _i8.Future<void> deleteSyncValue(String? serverId, String? key) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteSyncValue, [serverId, key]),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )
@@ -1369,6 +1408,51 @@ class MockLibraryDao extends _i1.Mock implements _i10.LibraryDao {
           as _i8.Future<void>);
 
   @override
+  _i8.Future<void> clearServerLibrary(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#clearServerLibrary, [serverId]),
+            returnValue: _i8.Future<void>.value(),
+            returnValueForMissingStub: _i8.Future<void>.value(),
+          )
+          as _i8.Future<void>);
+
+  @override
+  _i8.Future<Set<String>> getAllSongIds(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getAllSongIds, [serverId]),
+            returnValue: _i8.Future<Set<String>>.value(<String>{}),
+            returnValueForMissingStub: _i8.Future<Set<String>>.value(
+              <String>{},
+            ),
+          )
+          as _i8.Future<Set<String>>);
+
+  @override
+  _i8.Future<List<String>> getSampleSongIds(
+    String? serverId, {
+    int? limit = 5,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#getSampleSongIds, [serverId], {#limit: limit}),
+            returnValue: _i8.Future<List<String>>.value(<String>[]),
+            returnValueForMissingStub: _i8.Future<List<String>>.value(
+              <String>[],
+            ),
+          )
+          as _i8.Future<List<String>>);
+
+  @override
+  _i8.Future<Set<String>> getAllAlbumIds(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#getAllAlbumIds, [serverId]),
+            returnValue: _i8.Future<Set<String>>.value(<String>{}),
+            returnValueForMissingStub: _i8.Future<Set<String>>.value(
+              <String>{},
+            ),
+          )
+          as _i8.Future<Set<String>>);
+
+  @override
   _i8.Future<int> collectGarbage(String? serverId, DateTime? before) =>
       (super.noSuchMethod(
             Invocation.method(#collectGarbage, [serverId, before]),
@@ -1376,12 +1460,89 @@ class MockLibraryDao extends _i1.Mock implements _i10.LibraryDao {
             returnValueForMissingStub: _i8.Future<int>.value(0),
           )
           as _i8.Future<int>);
+
+  @override
+  _i8.Future<int> insertPendingScrobble(
+    String? serverId,
+    String? songId,
+    DateTime? listenedAt, {
+    DateTime? now,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #insertPendingScrobble,
+              [serverId, songId, listenedAt],
+              {#now: now},
+            ),
+            returnValue: _i8.Future<int>.value(0),
+            returnValueForMissingStub: _i8.Future<int>.value(0),
+          )
+          as _i8.Future<int>);
+
+  @override
+  _i8.Future<List<_i12.PendingScrobbleRow>> getPendingScrobbles(
+    String? serverId, {
+    int? limit = 100,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #getPendingScrobbles,
+              [serverId],
+              {#limit: limit},
+            ),
+            returnValue: _i8.Future<List<_i12.PendingScrobbleRow>>.value(
+              <_i12.PendingScrobbleRow>[],
+            ),
+            returnValueForMissingStub:
+                _i8.Future<List<_i12.PendingScrobbleRow>>.value(
+                  <_i12.PendingScrobbleRow>[],
+                ),
+          )
+          as _i8.Future<List<_i12.PendingScrobbleRow>>);
+
+  @override
+  _i8.Future<void> deletePendingScrobble(int? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#deletePendingScrobble, [id]),
+            returnValue: _i8.Future<void>.value(),
+            returnValueForMissingStub: _i8.Future<void>.value(),
+          )
+          as _i8.Future<void>);
+
+  @override
+  _i8.Future<void> incrementPendingScrobbleAttempts(int? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#incrementPendingScrobbleAttempts, [id]),
+            returnValue: _i8.Future<void>.value(),
+            returnValueForMissingStub: _i8.Future<void>.value(),
+          )
+          as _i8.Future<void>);
+
+  @override
+  _i8.Future<int> pruneFailedPendingScrobbles({int? maxAttempts = 5}) =>
+      (super.noSuchMethod(
+            Invocation.method(#pruneFailedPendingScrobbles, [], {
+              #maxAttempts: maxAttempts,
+            }),
+            returnValue: _i8.Future<int>.value(0),
+            returnValueForMissingStub: _i8.Future<int>.value(0),
+          )
+          as _i8.Future<int>);
+
+  @override
+  _i8.Stream<int> watchPendingScrobblesCount(String? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#watchPendingScrobblesCount, [serverId]),
+            returnValue: _i8.Stream<int>.empty(),
+            returnValueForMissingStub: _i8.Stream<int>.empty(),
+          )
+          as _i8.Stream<int>);
 }
 
 /// A class which mocks [BaseCacheManager].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockBaseCacheManager extends _i1.Mock implements _i12.BaseCacheManager {
+class MockBaseCacheManager extends _i1.Mock implements _i13.BaseCacheManager {
   @override
   _i8.Future<_i4.File> getSingleFile(
     String? url, {
@@ -1431,7 +1592,7 @@ class MockBaseCacheManager extends _i1.Mock implements _i12.BaseCacheManager {
           as _i8.Stream<_i5.FileInfo>);
 
   @override
-  _i8.Stream<_i13.FileResponse> getFileStream(
+  _i8.Stream<_i14.FileResponse> getFileStream(
     String? url, {
     String? key,
     Map<String, String>? headers,
@@ -1443,10 +1604,10 @@ class MockBaseCacheManager extends _i1.Mock implements _i12.BaseCacheManager {
               [url],
               {#key: key, #headers: headers, #withProgress: withProgress},
             ),
-            returnValue: _i8.Stream<_i13.FileResponse>.empty(),
-            returnValueForMissingStub: _i8.Stream<_i13.FileResponse>.empty(),
+            returnValue: _i8.Stream<_i14.FileResponse>.empty(),
+            returnValueForMissingStub: _i8.Stream<_i14.FileResponse>.empty(),
           )
-          as _i8.Stream<_i13.FileResponse>);
+          as _i8.Stream<_i14.FileResponse>);
 
   @override
   _i8.Future<_i5.FileInfo> downloadFile(
@@ -1512,7 +1673,7 @@ class MockBaseCacheManager extends _i1.Mock implements _i12.BaseCacheManager {
   @override
   _i8.Future<_i4.File> putFile(
     String? url,
-    _i14.Uint8List? fileBytes, {
+    _i15.Uint8List? fileBytes, {
     String? key,
     String? eTag,
     Duration? maxAge = const Duration(days: 30),
@@ -1937,7 +2098,7 @@ class MockFile extends _i1.Mock implements _i4.File {
   _i8.Future<_i4.File> writeAsString(
     String? contents, {
     _i6.FileMode? mode = _i6.FileMode.write,
-    _i15.Encoding? encoding = const _i15.Utf8Codec(),
+    _i16.Encoding? encoding = const _i16.Utf8Codec(),
     bool? flush = false,
   }) =>
       (super.noSuchMethod(
@@ -2251,7 +2412,7 @@ class MockFile extends _i1.Mock implements _i4.File {
   @override
   _i6.IOSink openWrite({
     _i6.FileMode? mode = _i6.FileMode.write,
-    _i15.Encoding? encoding = const _i15.Utf8Codec(),
+    _i16.Encoding? encoding = const _i16.Utf8Codec(),
   }) =>
       (super.noSuchMethod(
             Invocation.method(#openWrite, [], {
@@ -2276,28 +2437,28 @@ class MockFile extends _i1.Mock implements _i4.File {
           as _i6.IOSink);
 
   @override
-  _i8.Future<_i14.Uint8List> readAsBytes() =>
+  _i8.Future<_i15.Uint8List> readAsBytes() =>
       (super.noSuchMethod(
             Invocation.method(#readAsBytes, []),
-            returnValue: _i8.Future<_i14.Uint8List>.value(_i14.Uint8List(0)),
-            returnValueForMissingStub: _i8.Future<_i14.Uint8List>.value(
-              _i14.Uint8List(0),
+            returnValue: _i8.Future<_i15.Uint8List>.value(_i15.Uint8List(0)),
+            returnValueForMissingStub: _i8.Future<_i15.Uint8List>.value(
+              _i15.Uint8List(0),
             ),
           )
-          as _i8.Future<_i14.Uint8List>);
+          as _i8.Future<_i15.Uint8List>);
 
   @override
-  _i14.Uint8List readAsBytesSync() =>
+  _i15.Uint8List readAsBytesSync() =>
       (super.noSuchMethod(
             Invocation.method(#readAsBytesSync, []),
-            returnValue: _i14.Uint8List(0),
-            returnValueForMissingStub: _i14.Uint8List(0),
+            returnValue: _i15.Uint8List(0),
+            returnValueForMissingStub: _i15.Uint8List(0),
           )
-          as _i14.Uint8List);
+          as _i15.Uint8List);
 
   @override
   _i8.Future<String> readAsString({
-    _i15.Encoding? encoding = const _i15.Utf8Codec(),
+    _i16.Encoding? encoding = const _i16.Utf8Codec(),
   }) =>
       (super.noSuchMethod(
             Invocation.method(#readAsString, [], {#encoding: encoding}),
@@ -2317,7 +2478,7 @@ class MockFile extends _i1.Mock implements _i4.File {
           as _i8.Future<String>);
 
   @override
-  String readAsStringSync({_i15.Encoding? encoding = const _i15.Utf8Codec()}) =>
+  String readAsStringSync({_i16.Encoding? encoding = const _i16.Utf8Codec()}) =>
       (super.noSuchMethod(
             Invocation.method(#readAsStringSync, [], {#encoding: encoding}),
             returnValue: _i7.dummyValue<String>(
@@ -2333,7 +2494,7 @@ class MockFile extends _i1.Mock implements _i4.File {
 
   @override
   _i8.Future<List<String>> readAsLines({
-    _i15.Encoding? encoding = const _i15.Utf8Codec(),
+    _i16.Encoding? encoding = const _i16.Utf8Codec(),
   }) =>
       (super.noSuchMethod(
             Invocation.method(#readAsLines, [], {#encoding: encoding}),
@@ -2346,7 +2507,7 @@ class MockFile extends _i1.Mock implements _i4.File {
 
   @override
   List<String> readAsLinesSync({
-    _i15.Encoding? encoding = const _i15.Utf8Codec(),
+    _i16.Encoding? encoding = const _i16.Utf8Codec(),
   }) =>
       (super.noSuchMethod(
             Invocation.method(#readAsLinesSync, [], {#encoding: encoding}),
@@ -2369,7 +2530,7 @@ class MockFile extends _i1.Mock implements _i4.File {
   void writeAsStringSync(
     String? contents, {
     _i6.FileMode? mode = _i6.FileMode.write,
-    _i15.Encoding? encoding = const _i15.Utf8Codec(),
+    _i16.Encoding? encoding = const _i16.Utf8Codec(),
     bool? flush = false,
   }) => super.noSuchMethod(
     Invocation.method(

@@ -754,6 +754,9 @@ void main() {
         song('s1', albumId: 'al1', track: 1),
         song('s2', albumId: 'al1', track: 2),
       ], now);
+      // Rows a current flax wrote: genres known. Rows without them would be
+      // refetched once by the genre backfill, which is not what this is about.
+      await dao.settleAlbumGenres(sid, 'al1');
       backend.album = album('al1', songCount: 2);
       backend.songs = const [];
 

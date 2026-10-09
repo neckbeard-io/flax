@@ -78,6 +78,7 @@ const mobileNavDestinations = <NavDestination>[
 /// Index of the destination matching [location] in desktop navDestinations, or null when
 /// the route is not one of them (e.g. Now Playing or Settings).
 int? navDestinationIndex(String location) {
+  location = _navLocation(location);
   for (var i = 0; i < navDestinations.length; i++) {
     if (location.startsWith(navDestinations[i].path)) return i;
   }
@@ -86,8 +87,14 @@ int? navDestinationIndex(String location) {
 
 /// Index of the destination matching [location] in mobile bottom bar, or 0.
 int navIndexForLocation(String location) {
+  location = _navLocation(location);
   for (var i = 0; i < mobileNavDestinations.length; i++) {
     if (location.startsWith(mobileNavDestinations[i].path)) return i;
   }
   return 0;
 }
+
+/// A genre page is a view of the albums, so it highlights Albums rather than
+/// leaving the navigation with nothing selected.
+String _navLocation(String location) =>
+    location.startsWith('/genres/') ? '/albums' : location;

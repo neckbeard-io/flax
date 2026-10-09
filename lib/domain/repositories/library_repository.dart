@@ -20,10 +20,10 @@ abstract class LibraryRepository {
   Stream<List<Song>> watchAlbumSongs(String albumId);
   Stream<Song?> watchSong(String songId);
 
-  /// A shuffle of the library. Like the Random album tab, this is never cached
-  /// as an ordering — the rows are watched so annotations stay live, but the
-  /// order belongs to the subscription.
-  Stream<List<Song>> watchRandomSongs({int count = 100});
+  /// A shuffle of the library, or of one [genre]. Like the Random album tab,
+  /// this is never cached as an ordering — the rows are watched so annotations
+  /// stay live, but the order belongs to the subscription.
+  Stream<List<Song>> watchRandomSongs({int count = 100, String? genre});
 
   /// Local substring search over cached entities. Instant, and works offline.
   /// The server is still asked separately to widen the result set.
