@@ -14,11 +14,13 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Albums show every genre; tap one to browse that genre.
 - Genre pages, with Shuffle.
 - Phones show album genres, and the playing song's genres in Now Playing.
+- A–Z index on long artist lists: tap or drag a letter to jump there.
 
 ### Changed
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
 - Album genres are now tags under the artist instead of the end of the details line.
 - The offline pin now means the track is playing from its download.
+- Long artist names in Artists now end with "…" instead of wrapping.
 
 ### Fixed
 - Downloaded tracks no longer show the streaming format (e.g. → OPUS 256kbps).
