@@ -18,8 +18,47 @@ final kIndexLetters = List<String>.unmodifiable([
 /// nothing in a row ends up beneath a letter.
 const kAlphabetScrollerWidth = 28.0;
 
+/// Lists sorted by name get the index from this many items. A shorter one
+/// fits in a few flicks, and the strip would only crowd it.
+const kAlphabetIndexMinItems = 40;
+
+// Accented capitals and the letters they file under, position for position.
+const _accented =
+    'ÀÁÂÃÄÅÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝĀĂĄĆĈĊČĎĒĔĖĘĚĜĞĠĢĤĨĪĬĮİĴĶĹĻĽŃŅŇŌŎŐŔŖŘŚŜŞŠŢŤŨŪŬŮŰŲŴŶŸŹŻŽØĐŁÆŒ';
+const _unaccented =
+    'AAAAAACEEEEIIIINOOOOOUUUUYAAACCCCDEEEEEGGGGHIIIIIJKLLLNNNOOORRRSSSSTTUUUUUUWYYZZZODLAO';
+
+/// Navidrome's default ignored articles, which it leaves off the front of a
+/// name when sorting.
+const _ignoredArticles = [
+  'the',
+  'el',
+  'la',
+  'los',
+  'las',
+  'le',
+  'les',
+  'os',
+  'as',
+  'o',
+  'a',
+];
+
+/// [name] the way the server sorts it: without a leading article. Lists in the
+/// server's order put "The Wall" among the W's, so its letter is W.
+String withoutLeadingArticle(String name) {
+  final trimmed = name.trimLeft();
+  final lower = trimmed.toLowerCase();
+  for (final article in _ignoredArticles) {
+    if (lower.length > article.length + 1 && lower.startsWith('$article ')) {
+      return trimmed.substring(article.length + 1).trimLeft();
+    }
+  }
+  return trimmed;
+}
+
 /// The index letter a row sorts under: the first letter of [sortKey],
-/// upper-cased, or `#`.
+/// upper-cased with any accent dropped, or `#`.
 ///
 /// Pass the key the list is actually ordered by. Artists sort on the server's
 /// sort name, which drops "The", so "The Beatles" belongs under B — filing it
@@ -27,7 +66,9 @@ const kAlphabetScrollerWidth = 28.0;
 String indexLetterOf(String sortKey) {
   final trimmed = sortKey.trimLeft();
   if (trimmed.isEmpty) return '#';
-  final first = trimmed[0].toUpperCase();
+  var first = trimmed[0].toUpperCase();
+  final accented = _accented.indexOf(first);
+  if (accented >= 0) first = _unaccented[accented];
   final code = first.codeUnitAt(0);
   return code >= 0x41 && code <= 0x5A ? first : '#';
 }
@@ -311,6 +352,87 @@ class _Bubble extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A list of rows that are all one height, with the A–Z index once it holds
+/// [kAlphabetIndexMinItems] rows or more.
+///
+/// One height is what makes a letter a jump rather than a search: a row's
+/// offset is its position times the height, with nothing laid out first.
+/// [prototypeItem] sets that height, so build it like the other rows.
+class AlphabetIndexedList extends StatefulWidget {
+  const AlphabetIndexedList({
+    super.key,
+    required this.sortKeys,
+    required this.prototypeItem,
+    required this.itemBuilder,
+    this.padding = EdgeInsets.zero,
+  });
+
+  /// What each row is sorted on, in display order: one per row.
+  final List<String> sortKeys;
+  final Widget prototypeItem;
+  final IndexedWidgetBuilder itemBuilder;
+  final EdgeInsets padding;
+
+  @override
+  State<AlphabetIndexedList> createState() => _AlphabetIndexedListState();
+}
+
+class _AlphabetIndexedListState extends State<AlphabetIndexedList> {
+  final _scroll = ScrollController();
+
+  /// On the prototype, which the list lays out to learn every row's height.
+  final _prototype = GlobalKey();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Scrolls [letter]'s first row to the top.
+  ///
+  /// Row height comes from the measured prototype, and the furthest the list
+  /// can go from that height, rather than from the scroll position: a list
+  /// that grew below the rows on screen keeps its old length there until it
+  /// next scrolls, and anything worked out from it lands short.
+  void _jumpTo(String letter, Map<String, int> firstRows, EdgeInsets padding) {
+    final row = rowForLetter(letter, firstRows);
+    final box = _prototype.currentContext?.findRenderObject() as RenderBox?;
+    if (row == null || box == null || !box.hasSize || !_scroll.hasClients) {
+      return;
+    }
+    final rowExtent = box.size.height;
+    final length = padding.vertical + widget.sortKeys.length * rowExtent;
+    final furthest = math.max(0.0, length - _scroll.position.viewportDimension);
+    _scroll.jumpTo((padding.top + row * rowExtent).clamp(0.0, furthest));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final indexed = widget.sortKeys.length >= kAlphabetIndexMinItems;
+    final padding = indexed
+        ? widget.padding.copyWith(
+            right: widget.padding.right + kAlphabetScrollerWidth,
+          )
+        : widget.padding;
+    final list = ListView.builder(
+      controller: _scroll,
+      padding: padding,
+      prototypeItem: KeyedSubtree(key: _prototype, child: widget.prototypeItem),
+      itemCount: widget.sortKeys.length,
+      itemBuilder: widget.itemBuilder,
+    );
+    if (!indexed) return list;
+
+    final firstRows = firstRowByLetter(widget.sortKeys);
+    return AlphabetScroller(
+      available: firstRows.keys.toSet(),
+      onLetter: (letter) => _jumpTo(letter, firstRows, padding),
+      child: list,
     );
   }
 }

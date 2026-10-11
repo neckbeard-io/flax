@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/features/library/album_filter.dart';
+import 'package:flax/features/library/albums_screen.dart';
 import 'package:flax/features/library/artists_screen.dart';
 import 'package:flax/shared/widgets/alphabet_scroller.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
@@ -52,8 +54,23 @@ void main() {
       expect(indexLetterOf('Mastodon'), 'M');
       expect(indexLetterOf('65daysofstatic'), '#');
       expect(indexLetterOf('!!!'), '#');
-      expect(indexLetterOf('Ólafur Arnalds'), '#');
       expect(indexLetterOf(''), '#');
+    });
+
+    test('accented capitals file under their letter', () {
+      expect(indexLetterOf('Ólafur Arnalds'), 'O');
+      expect(indexLetterOf('édith piaf'), 'E');
+      expect(indexLetterOf('Ørkenkjøter'), 'O');
+      expect(indexLetterOf('Ænima'), 'A');
+    });
+
+    test('server-sorted names lose a leading article', () {
+      expect(withoutLeadingArticle('The Wall'), 'Wall');
+      expect(withoutLeadingArticle('A Perfect Circle'), 'Perfect Circle');
+      expect(withoutLeadingArticle('Los Lobos'), 'Lobos');
+      expect(withoutLeadingArticle('Theatre of Tragedy'), 'Theatre of Tragedy');
+      expect(withoutLeadingArticle('The'), 'The', reason: 'nothing after it');
+      expect(withoutLeadingArticle('Abbath'), 'Abbath');
     });
 
     test('a letter goes to its first row', () {
@@ -201,6 +218,224 @@ void main() {
     testWidgets('a short library has no index', (tester) async {
       await pumpArtists(tester, _library(perLetter: 1).take(20).toList());
       expect(find.byType(AlphabetScroller), findsNothing);
+    });
+  });
+
+  group('the shared list', () {
+    testWidgets('a letter lands on its row, padding and all', (tester) async {
+      final titles = [
+        for (var c = 0x41; c <= 0x5A; c++)
+          for (var i = 0; i < 3; i++) '${String.fromCharCode(c)}itle $i',
+      ];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AlphabetIndexedList(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              sortKeys: titles,
+              prototypeItem: const ListTile(title: Text('x')),
+              itemBuilder: (context, i) => ListTile(title: Text(titles[i])),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlphabetScroller),
+          matching: find.text('K'),
+        ),
+      );
+      await tester.pump();
+
+      final listTop = tester.getRect(find.byType(ListView)).top;
+      final row = tester.getRect(
+        find.ancestor(
+          of: find.text('Kitle 0'),
+          matching: find.byType(ListTile),
+        ),
+      );
+      expect(row.top, moreOrLessEquals(listTop));
+    });
+
+    // A list that grows below the rows on screen keeps its old length on the
+    // scroll position until it next scrolls. Worked out from that, the first
+    // jump after the rest of a list arrived landed short.
+    testWidgets('a letter still lands after the list grows', (tester) async {
+      List<String> titles(int letters) => [
+        for (var c = 0x41; c < 0x41 + letters; c++)
+          for (var i = 0; i < 6; i++) '${String.fromCharCode(c)}itle $i',
+      ];
+      Widget list(List<String> keys) => MaterialApp(
+        home: Scaffold(
+          body: AlphabetIndexedList(
+            sortKeys: keys,
+            prototypeItem: const ListTile(title: Text('x')),
+            itemBuilder: (context, i) => ListTile(title: Text(keys[i])),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(list(titles(8)));
+      await tester.pump();
+      await tester.pumpWidget(list(titles(26)));
+      await tester.pump();
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlphabetScroller),
+          matching: find.text('W'),
+        ),
+      );
+      await tester.pump();
+      final listTop = tester.getRect(find.byType(ListView)).top;
+      final row = tester.getRect(
+        find.ancestor(
+          of: find.text('Witle 0'),
+          matching: find.byType(ListTile),
+        ),
+      );
+      expect(row.top, moreOrLessEquals(listTop));
+    });
+
+    testWidgets('a short list has no index', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AlphabetIndexedList(
+              sortKeys: const ['a', 'b'],
+              prototypeItem: const ListTile(title: Text('x')),
+              itemBuilder: (context, i) => const ListTile(title: Text('row')),
+            ),
+          ),
+        ),
+      );
+      expect(find.byType(AlphabetScroller), findsNothing);
+    });
+  });
+
+  group('albums', () {
+    test('only the tabs sorted by name are indexed', () {
+      const wall = Album(id: 'w', serverId: 's', name: 'The Wall');
+      final all = albumIndexKey(AlbumFilter.all, offline: false)!;
+      expect(indexLetterOf(all(wall)), 'W', reason: 'the server skips "The"');
+
+      final downloaded = albumIndexKey(AlbumFilter.downloaded, offline: false)!;
+      expect(indexLetterOf(downloaded(wall)), 'T', reason: 'sorted as written');
+      final allOffline = albumIndexKey(AlbumFilter.all, offline: true)!;
+      expect(indexLetterOf(allOffline(wall)), 'T');
+
+      for (final filter in [
+        AlbumFilter.random,
+        AlbumFilter.recentlyAdded,
+        AlbumFilter.recentlyPlayed,
+        AlbumFilter.mostPlayed,
+        AlbumFilter.favorites,
+        AlbumFilter.topRated,
+      ]) {
+        expect(
+          albumIndexKey(filter, offline: false),
+          isNull,
+          reason: '$filter',
+        );
+      }
+    });
+
+    testWidgets('on a phone, a letter brings its row of albums to the top', (
+      tester,
+    ) async {
+      debugOverrideIsDesktopPlatform = false;
+      addTearDown(() => debugOverrideIsDesktopPlatform = null);
+      tester.view.physicalSize = const ui.Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final albums = [
+        for (var c = 0x41; c <= 0x5A; c++)
+          for (var i = 0; i < 5; i++)
+            Album(
+              id: '$c-$i',
+              serverId: 's',
+              name: '${String.fromCharCode(c)}lbum $i',
+            ),
+      ];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            isOfflineModeProvider.overrideWithValue(false),
+            libraryRepositoryProvider.overrideWithValue(null),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: AlbumGrid(albums: albums, indexBy: (a) => a.name),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlphabetScroller),
+          matching: find.text('M'),
+        ),
+      );
+      await tester.pump();
+
+      final gridRect = tester.getRect(find.byType(GridView));
+      final first = tester.getRect(find.text('Mlbum 0'));
+      // The art is square and sits above the name, so the name is one tile
+      // width down; the row itself starts at the top of the grid.
+      expect(first.top, greaterThan(gridRect.top));
+      expect(first.top, lessThan(gridRect.top + gridRect.width / 2));
+      expect(find.text('Llbum 4'), findsNothing, reason: 'L is above the top');
+      expect(first.right, lessThanOrEqualTo(390 - kAlphabetScrollerWidth));
+    });
+
+    // The rest of a genre arrives after its first 500. The grid grows below
+    // the rows on screen, and the first letter tapped after that stopped
+    // where the first 500 ended.
+    testWidgets('a letter still lands after the grid grows', (tester) async {
+      tester.view.physicalSize = const ui.Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      List<Album> albums(int letters) => [
+        for (var c = 0x41; c < 0x41 + letters; c++)
+          for (var i = 0; i < 5; i++)
+            Album(
+              id: '$c-$i',
+              serverId: 's',
+              name: '${String.fromCharCode(c)}lbum $i',
+            ),
+      ];
+      Widget grid(List<Album> albums) => ProviderScope(
+        overrides: [
+          isOfflineModeProvider.overrideWithValue(false),
+          libraryRepositoryProvider.overrideWithValue(null),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: AlbumGrid(albums: albums, indexBy: (a) => a.name),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(grid(albums(10)));
+      await tester.pump();
+      await tester.pumpWidget(grid(albums(26)));
+      await tester.pump();
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlphabetScroller),
+          matching: find.text('W'),
+        ),
+      );
+      await tester.pump();
+      final gridRect = tester.getRect(find.byType(GridView));
+      final first = tester.getRect(find.text('Wlbum 0'));
+      expect(first.top, greaterThan(gridRect.top));
+      expect(first.top, lessThan(gridRect.top + gridRect.width / 2));
     });
   });
 }

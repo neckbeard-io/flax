@@ -11,6 +11,7 @@ import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/library/albums_screen.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
+import 'package:flax/shared/widgets/alphabet_scroller.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/offline_mode_toggle.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
@@ -54,6 +55,7 @@ class GenreScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final albumsAsync = ref.watch(genreAlbumsProvider(genre));
     final albums = albumsAsync.valueOrNull;
+    final isOffline = ref.watch(isOfflineModeProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -79,7 +81,15 @@ class GenreScreen extends ConsumerWidget {
                           ),
                         ),
                       )
-                    : AlbumGrid(albums: albums),
+                    : AlbumGrid(
+                        albums: albums,
+                        // Online, the server's genre list, sorted by name
+                        // without a leading "The"; offline, the downloaded
+                        // albums, sorted by name as written.
+                        indexBy: isOffline
+                            ? (a) => a.name
+                            : (a) => withoutLeadingArticle(a.name),
+                      ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Error: $e')),
               ),

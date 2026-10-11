@@ -43,7 +43,8 @@ enum AlbumFilter {
   static const AlbumFilter defaultFilter = AlbumFilter.all;
 }
 
-/// How many albums a tab asks for. 500 is the Subsonic ceiling on `size`.
+/// How many albums a tab asks for at a time. 500 is the Subsonic ceiling on
+/// `size`; the alphabetical tabs page past it to the whole library.
 const int albumFilterPageSize = 500;
 
 /// The open tab.

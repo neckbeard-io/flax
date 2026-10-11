@@ -13,6 +13,7 @@ import 'package:flax/features/library/albums_screen.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/platform/native_downloader.dart';
+import 'package:flax/shared/widgets/alphabet_scroller.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/offline_mode_toggle.dart';
@@ -658,7 +659,8 @@ class _DownloadedAlbumsTab extends StatelessWidget {
                 ),
               ),
             )
-          : AlbumGrid(albums: albums),
+          // Downloaded albums come sorted by name as written.
+          : AlbumGrid(albums: albums, indexBy: (a) => a.name),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
     );
@@ -712,68 +714,25 @@ class _DownloadedTracksTab extends ConsumerWidget {
                 ),
               ),
             )
-          : ListView.builder(
+          // Sorted by title, so the index is too.
+          : AlphabetIndexedList(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: songs.length,
+              sortKeys: [for (final song in songs) song.title],
+              prototypeItem: _DownloadedTrackTile(song: _prototypeSong),
               itemBuilder: (context, index) {
                 final song = songs[index];
                 return SongContextMenu(
                   song: song,
                   index: index,
                   queue: songs,
-                  child: ListTile(
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: SizedBox(
-                        width: 42,
-                        height: 42,
-                        child: CoverArtImage(
-                          coverArtId: song.coverArtId,
-                          size: 42,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      song.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    subtitle: Text(
-                      '${song.artistName ?? ""} · ${song.albumName ?? ""}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _formatDuration(song.duration),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 20),
-                          tooltip: 'Remove from cache',
-                          onPressed: () {
-                            ref
-                                .read(audioCacheServiceProvider)
-                                .removeCachedSong(song.id);
-                          },
-                        ),
-                      ],
-                    ),
-                    onTap: () {
-                      ref
-                          .read(playerProvider.notifier)
-                          .playSong(song, queue: songs, index: index);
-                    },
+                  child: _DownloadedTrackTile(
+                    song: song,
+                    onTap: () => ref
+                        .read(playerProvider.notifier)
+                        .playSong(song, queue: songs, index: index),
+                    onRemove: () => ref
+                        .read(audioCacheServiceProvider)
+                        .removeCachedSong(song.id),
                   ),
                 );
               },
@@ -782,8 +741,77 @@ class _DownloadedTracksTab extends ConsumerWidget {
       error: (e, _) => Center(child: Text('Error: $e')),
     );
   }
+}
 
-  String _formatDuration(int seconds) {
+/// Stands in for every row when the tracks list measures its row height.
+const _prototypeSong = Song(
+  id: '',
+  serverId: '',
+  title: 'Track',
+  artistName: 'Artist',
+  albumName: 'Album',
+  duration: 0,
+);
+
+/// One downloaded track. Every row is this one height — one line of title,
+/// one of artist and album — which is what lets the index jump straight to a
+/// letter.
+class _DownloadedTrackTile extends StatelessWidget {
+  const _DownloadedTrackTile({required this.song, this.onTap, this.onRemove});
+
+  final Song song;
+  final VoidCallback? onTap;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListTile(
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: SizedBox(
+          width: 42,
+          height: 42,
+          child: CoverArtImage(coverArtId: song.coverArtId, size: 42),
+        ),
+      ),
+      title: Text(
+        song.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        '${song.artistName ?? ""} · ${song.albumName ?? ""}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 12,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _formatDuration(song.duration),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20),
+            tooltip: 'Remove from cache',
+            onPressed: onRemove,
+          ),
+        ],
+      ),
+      onTap: onTap,
+    );
+  }
+
+  static String _formatDuration(int seconds) {
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return '$m:${s.toString().padLeft(2, "0")}';

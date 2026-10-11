@@ -47,7 +47,12 @@ double artGridLabelExtent(BuildContext context) =>
 /// so a tile is one width of art plus [artGridLabelExtent], and that is a height
 /// rather than a ratio.
 double artGridTileWidth(double width, double maxExtent, double spacing) {
-  final columns = math.max(1, (width / (maxExtent + spacing)).ceil());
+  final columns = artGridColumns(width, maxExtent, spacing);
   final usable = math.max(0.0, width - spacing * (columns - 1));
   return usable / columns;
 }
+
+/// How many [maxExtent]-wide tiles fit across [width], with the same
+/// arithmetic as [artGridTileWidth].
+int artGridColumns(double width, double maxExtent, double spacing) =>
+    math.max(1, (width / (maxExtent + spacing)).ceil());
