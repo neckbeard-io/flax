@@ -21,7 +21,10 @@ class StreamingDisabledException implements Exception {
 class TranscodeParameters {
   final int? maxBitRate;
   final String? format;
-  final StreamQuality quality;
+
+  /// The setting this came from, or null for a [TranscodeParameters.downloaded]
+  /// file, whose quality is not recorded.
+  final StreamQuality? quality;
   final bool isTranscoded;
 
   const TranscodeParameters({
@@ -36,6 +39,13 @@ class TranscodeParameters {
       format = null,
       quality = StreamQuality.original,
       isTranscoded = false;
+
+  /// A track downloaded as [format] rather than as the original. The download
+  /// quality in force at the time is not recorded, so there is no bitrate.
+  const TranscodeParameters.downloaded(String this.format)
+    : maxBitRate = null,
+      quality = null,
+      isTranscoded = true;
 
   /// Formatted display label, e.g. "OPUS 256kbps", "FLAC", or "Original".
   String get displayLabel {
@@ -72,7 +82,7 @@ class TranscodeParameters {
 
   @override
   String toString() =>
-      'TranscodeParameters(format: $format, maxBitRate: $maxBitRate, quality: ${quality.name}, isTranscoded: $isTranscoded)';
+      'TranscodeParameters(format: $format, maxBitRate: $maxBitRate, quality: ${quality?.name}, isTranscoded: $isTranscoded)';
 }
 
 /// Resolves audio transcoding parameters according to the server's

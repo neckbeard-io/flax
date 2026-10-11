@@ -66,4 +66,45 @@ void main() {
     expect(shifted.queueIndexAt(2), 3);
     expect(shifted.length, 4);
   });
+
+  group('which entries mpv plays from a download', () {
+    // Song 0 was downloaded when the queue loaded; 2 and 4 were streamed.
+    final mixed = MpvQueueMap.of(
+      queue,
+      const [0, 2, 4],
+      const ['/cache/s0.flac', null, null],
+    );
+
+    test('records the file each entry was given, null for a stream', () {
+      expect(mixed.fileOf(0), '/cache/s0.flac');
+      expect(mixed.fileOf(2), isNull);
+      expect(mixed.fileOf(1), isNull, reason: 'mpv does not hold song 1');
+      expect(map.fileOf(0), isNull, reason: 'no files given: all streams');
+    });
+
+    test('lists only the streams after the playing song', () {
+      expect(mixed.streamedAfter(0), [2, 4]);
+      expect(mixed.streamedAfter(2), [4]);
+      expect(mixed.streamedAfter(4), isEmpty);
+    });
+
+    test('a swapped-in download stops being a stream', () {
+      final swapped = mixed.withFile(4, '/cache/s4.opus');
+      expect(swapped.fileOf(4), '/cache/s4.opus');
+      expect(swapped.streamedAfter(0), [2]);
+      expect(swapped.matches(queue), isTrue);
+      expect(mixed.fileOf(4), isNull, reason: 'the original is unchanged');
+      expect(identical(mixed.withFile(1, '/x'), mixed), isTrue);
+    });
+
+    test('inserting keeps each entry\'s source with its song', () {
+      final inserted = mixed
+          .shiftedForInsert(1, 1)
+          .withEntry(1, 'new', '/cache/new.mp3');
+      expect(inserted.fileOf(0), '/cache/s0.flac');
+      expect(inserted.fileOf(1), '/cache/new.mp3');
+      expect(inserted.fileOf(3), isNull);
+      expect(inserted.streamedAfter(0), [3, 5]);
+    });
+  });
 }

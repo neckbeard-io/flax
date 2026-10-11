@@ -33,10 +33,7 @@ class MiniPlayer extends ConsumerWidget {
               playerState.duration.inMilliseconds
         : 0.0;
 
-    final downloadedSongIds =
-        ref.watch(downloadedSongIdsProvider).valueOrNull ?? const {};
-    final isCached =
-        playerState.isPlayingCached || downloadedSongIds.contains(song.id);
+    final isCached = playerState.isPlayingCached;
 
     // The desktop now-playing screen keeps the shell, and so keeps this bar.
     // Without the guard, clicking it there pushes /now-playing on top of
@@ -161,7 +158,7 @@ class MiniPlayer extends ConsumerWidget {
                                           ),
                                         if (_formatLabel(
                                               song,
-                                              playerState.activeTranscode,
+                                              playerState.playingTranscode,
                                             ) !=
                                             null) ...[
                                           if (song.artistName != null)
@@ -178,7 +175,7 @@ class MiniPlayer extends ConsumerWidget {
                                           TextSpan(
                                             text: _formatLabel(
                                               song,
-                                              playerState.activeTranscode,
+                                              playerState.playingTranscode,
                                             )!,
                                             style: theme.textTheme.bodySmall
                                                 ?.copyWith(

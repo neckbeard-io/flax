@@ -172,11 +172,11 @@ class _NowPlayingAlbumHeader extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (song.suffix != null ||
-                    playerState.activeTranscode?.isTranscoded == true)
+                    playerState.playingTranscode?.isTranscoded == true)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
-                      _formatInfo(song, playerState.activeTranscode),
+                      _formatInfo(song, playerState.playingTranscode),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontSize: 11,

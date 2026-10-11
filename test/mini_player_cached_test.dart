@@ -2,9 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/player/mini_player.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/services/transcoding/transcoding_service.dart';
+
+const _cellular = TranscodeParameters(
+  maxBitRate: 256,
+  format: 'opus',
+  quality: StreamQuality.kbps256,
+  isTranscoded: true,
+);
 
 void main() {
   const testSong = Song(
@@ -28,7 +37,7 @@ void main() {
                 const PlayerState(
                   currentSong: testSong,
                   isPlaying: true,
-                  isPlayingCached: true,
+                  cachedFormat: 'flac',
                 ),
               ),
             ),
@@ -49,8 +58,10 @@ void main() {
     },
   );
 
+  // The badge describes what is playing. A download that finished after the
+  // track started streaming does not play until the next time it comes up.
   testWidgets(
-    'MiniPlayer displays offline checkmark badge when song id is in downloadedSongIds',
+    'MiniPlayer shows the stream, not the badge, for a song downloaded mid-play',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -60,7 +71,39 @@ void main() {
                 const PlayerState(
                   currentSong: testSong,
                   isPlaying: true,
-                  isPlayingCached: false,
+                  activeTranscode: _cellular,
+                ),
+              ),
+            ),
+            downloadedSongIdsProvider.overrideWith(
+              (ref) => Stream.value({'s1'}),
+            ),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(bottomNavigationBar: MiniPlayer()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byIcon(Icons.offline_pin), findsNothing);
+      expect(find.textContaining('OPUS 256k'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'MiniPlayer shows a downloaded song as its file, not the stream',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            playerProvider.overrideWith(
+              (ref) => MockPlayerNotifier(
+                const PlayerState(
+                  currentSong: testSong,
+                  isPlaying: true,
+                  activeTranscode: _cellular,
+                  cachedFormat: 'flac',
                 ),
               ),
             ),
@@ -76,6 +119,8 @@ void main() {
       await tester.pump();
 
       expect(find.byIcon(Icons.offline_pin), findsOneWidget);
+      expect(find.textContaining('FLAC 1411k'), findsOneWidget);
+      expect(find.textContaining('OPUS'), findsNothing);
     },
   );
 
@@ -87,11 +132,7 @@ void main() {
           overrides: [
             playerProvider.overrideWith(
               (ref) => MockPlayerNotifier(
-                const PlayerState(
-                  currentSong: testSong,
-                  isPlaying: true,
-                  isPlayingCached: false,
-                ),
+                const PlayerState(currentSong: testSong, isPlaying: true),
               ),
             ),
             downloadedSongIdsProvider.overrideWith(

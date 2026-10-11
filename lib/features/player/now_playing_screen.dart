@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/library/artist_detail_screen.dart';
@@ -229,10 +228,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
     PlayerState state,
     Song song,
   ) {
-    final downloadedSongIds =
-        ref.watch(downloadedSongIdsProvider).valueOrNull ?? const {};
-    final isSongCached =
-        state.isPlayingCached || downloadedSongIds.contains(song.id);
+    // What mpv is actually reading. A download that finished after the track
+    // started streaming is not playing yet, so it is not shown as playing.
+    final isSongCached = state.isPlayingCached;
+    final transcode = state.playingTranscode;
     final artist = song.artistId != null
         ? ref.watch(artistDetailProvider(song.artistId!)).valueOrNull
         : null;
@@ -370,11 +369,11 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
         // ── Audio format info ──
         if (song.suffix != null ||
             song.bitRate != null ||
-            state.activeTranscode?.isTranscoded == true ||
+            transcode?.isTranscoded == true ||
             isSongCached)
           _AudioFormatBadge(
             song: song,
-            transcode: state.activeTranscode,
+            transcode: transcode,
             isCached: isSongCached,
           ),
 

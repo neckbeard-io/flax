@@ -18,8 +18,11 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ### Changed
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
 - Album genres are now tags under the artist instead of the end of the details line.
+- The offline pin now means the track is playing from its download.
 
 ### Fixed
+- Downloaded tracks no longer show the streaming format (e.g. → OPUS 256kbps).
+- Queued songs that finish downloading play from the download instead of streaming.
 - Covers saved for offline no longer vanish when the system frees up storage.
 - A background error no longer skips checking the server for library changes.
 - Cancel stops a metadata sync, from the app or its notification, and clears it.
