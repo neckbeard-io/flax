@@ -13,6 +13,11 @@ class NativeDownloadTask {
   final String destinationPath;
   final int? expectedSizeBytes;
 
+  /// Accept any certificate from [downloadUrl]'s host. Only for a host the
+  /// server trusts, as decided by `acceptsAnyCertificateFor`; every other task
+  /// goes through the downloader's verifying client.
+  final bool trustAnyCertificate;
+
   const NativeDownloadTask({
     required this.songId,
     required this.serverId,
@@ -21,6 +26,7 @@ class NativeDownloadTask {
     required this.downloadUrl,
     required this.destinationPath,
     this.expectedSizeBytes,
+    this.trustAnyCertificate = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -31,6 +37,7 @@ class NativeDownloadTask {
     'downloadUrl': downloadUrl,
     'destinationPath': destinationPath,
     'expectedSizeBytes': expectedSizeBytes,
+    'trustAnyCertificate': trustAnyCertificate,
   };
 }
 

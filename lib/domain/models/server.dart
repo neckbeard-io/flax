@@ -161,7 +161,6 @@ class LocalNetworkConfig {
   final String localHost;
   final int localPort;
   final bool useHttps;
-  final bool trustSelfSignedCerts;
   final bool fallbackToExternal;
   final int probeTimeoutMs;
 
@@ -171,7 +170,6 @@ class LocalNetworkConfig {
     this.localHost = '',
     this.localPort = 4533,
     this.useHttps = false,
-    this.trustSelfSignedCerts = false,
     this.fallbackToExternal = true,
     this.probeTimeoutMs = 1500,
   });
@@ -182,7 +180,6 @@ class LocalNetworkConfig {
     String? localHost,
     int? localPort,
     bool? useHttps,
-    bool? trustSelfSignedCerts,
     bool? fallbackToExternal,
     int? probeTimeoutMs,
   }) {
@@ -192,7 +189,6 @@ class LocalNetworkConfig {
       localHost: localHost ?? this.localHost,
       localPort: localPort ?? this.localPort,
       useHttps: useHttps ?? this.useHttps,
-      trustSelfSignedCerts: trustSelfSignedCerts ?? this.trustSelfSignedCerts,
       fallbackToExternal: fallbackToExternal ?? this.fallbackToExternal,
       probeTimeoutMs: probeTimeoutMs ?? this.probeTimeoutMs,
     );
@@ -225,7 +221,6 @@ class LocalNetworkConfig {
     'localHost': localHost,
     'localPort': localPort,
     'useHttps': useHttps,
-    'trustSelfSignedCerts': trustSelfSignedCerts,
     'fallbackToExternal': fallbackToExternal,
     'probeTimeoutMs': probeTimeoutMs,
   };
@@ -241,7 +236,6 @@ class LocalNetworkConfig {
       localHost: json['localHost'] as String? ?? '',
       localPort: (json['localPort'] as num?)?.toInt() ?? 4533,
       useHttps: json['useHttps'] as bool? ?? false,
-      trustSelfSignedCerts: json['trustSelfSignedCerts'] as bool? ?? false,
       fallbackToExternal: json['fallbackToExternal'] as bool? ?? true,
       probeTimeoutMs: (json['probeTimeoutMs'] as num?)?.toInt() ?? 1500,
     );
@@ -262,6 +256,11 @@ class Server {
   final MetadataCacheConfig metadataCacheConfig;
   final LocalNetworkConfig localNetworkConfig;
 
+  /// Whether the remote URL's certificate is checked. Off trusts any
+  /// certificate from that host, for a self-signed public server. The local
+  /// network target is never checked; see `acceptsAnyCertificate`.
+  final bool verifyCertificates;
+
   const Server({
     required this.id,
     required this.name,
@@ -275,6 +274,7 @@ class Server {
     this.transcodingConfig = const TranscodingConfig(),
     this.metadataCacheConfig = const MetadataCacheConfig(),
     this.localNetworkConfig = const LocalNetworkConfig(),
+    this.verifyCertificates = true,
   });
 
   Server copyWith({
@@ -290,6 +290,7 @@ class Server {
     TranscodingConfig? transcodingConfig,
     MetadataCacheConfig? metadataCacheConfig,
     LocalNetworkConfig? localNetworkConfig,
+    bool? verifyCertificates,
   }) {
     return Server(
       id: id ?? this.id,
@@ -304,6 +305,7 @@ class Server {
       transcodingConfig: transcodingConfig ?? this.transcodingConfig,
       metadataCacheConfig: metadataCacheConfig ?? this.metadataCacheConfig,
       localNetworkConfig: localNetworkConfig ?? this.localNetworkConfig,
+      verifyCertificates: verifyCertificates ?? this.verifyCertificates,
     );
   }
 
@@ -323,6 +325,7 @@ class Server {
     'transcodingConfig': transcodingConfig.toJson(),
     'metadataCacheConfig': metadataCacheConfig.toJson(),
     'localNetworkConfig': localNetworkConfig.toJson(),
+    'verifyCertificates': verifyCertificates,
   };
 
   factory Server.fromJson(Map<String, dynamic> json) {
@@ -353,6 +356,7 @@ class Server {
               json['localNetworkConfig'] as Map<String, dynamic>,
             )
           : const LocalNetworkConfig(),
+      verifyCertificates: json['verifyCertificates'] as bool? ?? true,
     );
   }
 }

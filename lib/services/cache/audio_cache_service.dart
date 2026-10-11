@@ -18,6 +18,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/services/cache/storage_manager.dart';
 import 'package:flax/services/database/library_dao.dart';
+import 'package:flax/services/network/certificate_trust.dart';
 import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
@@ -413,9 +414,12 @@ class AudioCacheService {
     }
   }
 
-  AudioCacheService(this._ref, {Dio? dio}) : _dio = dio ?? _createDefaultDio();
+  AudioCacheService(this._ref, {Dio? dio})
+    : _dio = dio ?? _createDefaultDio(() => _ref.read(activeServerProvider));
 
-  static Dio _createDefaultDio() {
+  /// [server] is read per connection: downloads go to the active server's
+  /// effective URL, which changes with the server and the network.
+  static Dio _createDefaultDio(Server? Function() server) {
     final dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 15),
@@ -428,6 +432,10 @@ class AudioCacheService {
         final client = HttpClient();
         client.maxConnectionsPerHost = 16;
         client.idleTimeout = const Duration(seconds: 60);
+        client.badCertificateCallback = (cert, host, port) {
+          final active = server();
+          return active != null && acceptsAnyCertificate(active, host, port);
+        };
         return client;
       },
     );
@@ -1179,6 +1187,10 @@ class AudioCacheService {
           downloadUrl: downloadUri.toString(),
           destinationPath: destPath,
           expectedSizeBytes: song.size,
+          trustAnyCertificate: acceptsAnyCertificateFor(
+            client.server,
+            downloadUri,
+          ),
         ),
       );
     }
