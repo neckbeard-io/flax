@@ -1,12 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
+import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/library/album_filter.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
+import 'package:flax/shared/widgets/alphabet_scroller.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
@@ -159,7 +163,10 @@ class AlbumsScreen extends ConsumerWidget {
                               .read(libraryRepositoryProvider)
                               ?.refreshAlbumList(query, force: true);
                         },
-                        child: AlbumGrid(albums: albums),
+                        child: AlbumGrid(
+                          albums: albums,
+                          indexBy: albumIndexKey(filter, offline: isOffline),
+                        ),
                       ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Error: $e')),
@@ -170,6 +177,21 @@ class AlbumsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// What a tab's albums are sorted on, for the A–Z index, or null for a tab
+/// not sorted by name.
+///
+/// All, online, is the server's alphabetical list, which leaves a leading
+/// "The" off ("The Wall" is among the W's). Downloaded albums, and All while
+/// offline, come from the local database sorted on the name as written.
+String Function(Album)? albumIndexKey(
+  AlbumFilter filter, {
+  required bool offline,
+}) {
+  if (filter.listType != AlbumListType.alphabeticalByName) return null;
+  if (filter == AlbumFilter.downloaded || offline) return (a) => a.name;
+  return (a) => withoutLeadingArticle(a.name);
 }
 
 /// The row of tabs above the grid.
@@ -251,16 +273,58 @@ class _FilterTab extends StatelessWidget {
 }
 
 /// Grid of album tiles, identical whichever tab is open.
-class AlbumGrid extends ConsumerWidget {
-  const AlbumGrid({super.key, required this.albums});
+///
+/// With [indexBy] — what the albums are sorted on — a grid of at least
+/// [kAlphabetIndexMinItems] albums gets the A–Z index. Leave it null for any
+/// order that is not by name: letters mean nothing on Recently Added.
+class AlbumGrid extends ConsumerStatefulWidget {
+  const AlbumGrid({super.key, required this.albums, this.indexBy});
 
   final List<Album> albums;
-
-  static const _spacing = 12.0;
-  static const _padding = EdgeInsets.all(12);
+  final String Function(Album album)? indexBy;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AlbumGrid> createState() => _AlbumGridState();
+}
+
+class _AlbumGridState extends ConsumerState<AlbumGrid> {
+  static const _spacing = 12.0;
+
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Scrolls the row holding [letter]'s first album to the top. Every row is
+  /// one height, so its offset is its number times that height.
+  ///
+  /// The furthest it can go is worked out here too, not read from the scroll
+  /// position: a grid that grew below the rows on screen — the rest of a
+  /// genre arriving after its first 500 — keeps its old length there until it
+  /// next scrolls, and clamping to that stopped every letter at the 500th.
+  void _jumpTo(
+    String letter,
+    Map<String, int> firstRows, {
+    required int columns,
+    required double rowExtent,
+    required EdgeInsets padding,
+  }) {
+    final index = rowForLetter(letter, firstRows);
+    if (index == null || !_scroll.hasClients) return;
+    final rows = (widget.albums.length / columns).ceil();
+    final length =
+        padding.vertical + rows * rowExtent + math.max(0, rows - 1) * _spacing;
+    final furthest = math.max(0.0, length - _scroll.position.viewportDimension);
+    final offset = padding.top + (index ~/ columns) * (rowExtent + _spacing);
+    _scroll.jumpTo(offset.clamp(0.0, furthest));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final albums = widget.albums;
     final theme = Theme.of(context);
     final maxExtent = artGridExtent(context);
     final labelExtent = artGridLabelExtent(context);
@@ -268,26 +332,34 @@ class AlbumGrid extends ConsumerWidget {
         ref.watch(downloadedAlbumIdsProvider).valueOrNull ?? const {};
     final anyDownloadedAlbumIds =
         ref.watch(anyDownloadedAlbumIdsProvider).valueOrNull ?? const {};
+    final indexBy = widget.indexBy;
+    final indexed = indexBy != null && albums.length >= kAlphabetIndexMinItems;
+    // The strip sits over the right edge, so the tiles stop short of it.
+    final padding = EdgeInsets.fromLTRB(
+      12,
+      12,
+      indexed ? kAlphabetScrollerWidth + 4 : 12,
+      12,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final width = constraints.maxWidth - padding.horizontal;
         // The tile's height is derived from its width rather than from a fixed
         // childAspectRatio. A ratio cannot say "square art plus two lines": it
         // gave the art whatever was left over, which was taller than it was
         // wide, and CoverArtImage's BoxFit.cover then cropped every sleeve.
-        final tileWidth = artGridTileWidth(
-          constraints.maxWidth - _padding.horizontal,
-          maxExtent,
-          _spacing,
-        );
+        final tileWidth = artGridTileWidth(width, maxExtent, _spacing);
+        final rowExtent = tileWidth + labelExtent;
 
-        return GridView.builder(
-          padding: _padding,
+        final grid = GridView.builder(
+          controller: _scroll,
+          padding: padding,
           gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
             maxCrossAxisExtent: maxExtent,
             mainAxisSpacing: _spacing,
             crossAxisSpacing: _spacing,
-            mainAxisExtent: tileWidth + labelExtent,
+            mainAxisExtent: rowExtent,
           ),
           itemCount: albums.length,
           itemBuilder: (context, index) {
@@ -367,6 +439,22 @@ class AlbumGrid extends ConsumerWidget {
               ),
             );
           },
+        );
+        if (!indexed) return grid;
+
+        final firstRows = firstRowByLetter([
+          for (final album in albums) indexBy(album),
+        ]);
+        return AlphabetScroller(
+          available: firstRows.keys.toSet(),
+          onLetter: (letter) => _jumpTo(
+            letter,
+            firstRows,
+            columns: artGridColumns(width, maxExtent, _spacing),
+            rowExtent: rowExtent,
+            padding: padding,
+          ),
+          child: grid,
         );
       },
     );

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:io';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -22,6 +24,9 @@ class _Backend implements MusicBackend {
   /// A server that ignores `offset` and returns the first page every time.
   bool ignoresOffset = false;
 
+  /// Holds every page after the first until it completes.
+  Future<void>? laterPages;
+
   Album? album;
   List<Song> songs = const [];
   Map<String, dynamic>? scanStatus;
@@ -40,6 +45,7 @@ class _Backend implements MusicBackend {
     String? genre,
   }) async {
     listOffsets.add(offset);
+    if (offset > 0) await laterPages;
     final start = ignoresOffset ? 0 : offset;
     return library.skip(start).take(count).toList();
   }
@@ -378,6 +384,46 @@ void main() {
 
       expect(backend.listOffsets, [0, 500]);
       expect(await dao.watchAlbumList(sid, rock).first, hasLength(500));
+    });
+
+    // All stopped at the first 500 albums, a few letters in, which also gave
+    // its A–Z index nowhere to go.
+    test('the library by name is paged through too', () async {
+      backend.library = [for (var i = 0; i < 1200; i++) album('a$i')];
+      const byName = AlbumListQuery(AlbumListType.alphabeticalByName);
+
+      await repo().refreshAlbumList(byName, force: true);
+      final all = await dao
+          .watchAlbumList(sid, byName)
+          .firstWhere((list) => list.length == 1200)
+          .timeout(const Duration(seconds: 5));
+      expect(all.last.id, 'a1199');
+      expect(backend.listOffsets, [0, 500, 1000]);
+    });
+
+    test('a refresh keeps the whole list until the rest arrives', () async {
+      backend.library = [for (var i = 0; i < 1200; i++) album('a$i')];
+      const byName = AlbumListQuery(AlbumListType.alphabeticalByName);
+      final r = repo();
+      await r.refreshAlbumList(byName, force: true);
+      await dao
+          .watchAlbumList(sid, byName)
+          .firstWhere((list) => list.length == 1200)
+          .timeout(const Duration(seconds: 5));
+
+      // Refreshed again, with the later pages slow to come.
+      final rest = Completer<void>();
+      backend.laterPages = rest.future;
+      await r.refreshAlbumList(byName, force: true);
+      expect(
+        await dao.watchAlbumList(sid, byName).first,
+        hasLength(1200),
+        reason: 'cutting it to the first page pulled the view back to it',
+      );
+
+      rest.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(await dao.watchAlbumList(sid, byName).first, hasLength(1200));
     });
 
     test('other lists still ask for one page', () async {

@@ -235,9 +235,26 @@ class LibraryRepositoryImpl implements LibraryRepository {
 
         final now = _clock();
         await _dao.upsertAlbums(albums, now);
+
+        // A genre page is the whole genre, and the All tab the whole library;
+        // both run past the 500 a single request may return. All used to stop
+        // there, a few letters into the alphabet, which also left its A–Z
+        // index nowhere to go. Callers wait for this first page only — it is
+        // already on screen — and the rest follow behind it.
+        final morePages =
+            _pagedListTypes.contains(query.type) &&
+            albums.length == _albumListPageSize;
+
         // Random is never persisted as an ordering — a cached "random" shelf never
         // reshuffles. Its entities are still worth keeping.
-        if (query.isCacheable) {
+        //
+        // A longer list already cached stays until every page is in. Replacing
+        // it with the first page cut it to 500 for as long as paging took,
+        // and pulled anyone scrolled past that back to the end of the 500.
+        if (query.isCacheable &&
+            (!morePages ||
+                await _dao.albumListLength(_serverId, query) <=
+                    albums.length)) {
           await _dao.replaceAlbumList(
             _serverId,
             query,
@@ -246,11 +263,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
           );
         }
 
-        // A genre page is the whole genre, and a large one runs past the 500
-        // a single request may return. Callers wait for this first page only —
-        // it is already on screen — and the rest follow behind it.
-        if (query.type == AlbumListType.byGenre &&
-            albums.length == _albumListPageSize) {
+        if (morePages) {
           unawaited(
             _once(
               'list-rest:${query.type.name}:${query.filterKey}',
@@ -267,6 +280,14 @@ class LibraryRepositoryImpl implements LibraryRepository {
 
   /// The most `getAlbumList2` returns per request.
   static const _albumListPageSize = 500;
+
+  /// Lists fetched in full rather than first page only: the ones that are a
+  /// whole set — a genre, the library by name — rather than a top N.
+  static const _pagedListTypes = {
+    AlbumListType.byGenre,
+    AlbumListType.alphabeticalByName,
+    AlbumListType.alphabeticalByArtist,
+  };
 
   /// Every page after [first], then the ordering rewritten to hold them all.
   Future<void> _fetchRestOfList(

@@ -283,6 +283,20 @@ class LibraryDao {
   }
 
   /// When a cached ordering was last written, or null if it has never been.
+  /// How many albums the cached ordering for [query] holds.
+  Future<int> albumListLength(String serverId, AlbumListQuery query) async {
+    final count = _db.albumListEntries.albumId.count();
+    final q = _db.selectOnly(_db.albumListEntries)
+      ..addColumns([count])
+      ..where(
+        _db.albumListEntries.serverId.equals(serverId) &
+            _db.albumListEntries.listType.equals(query.type.name) &
+            _db.albumListEntries.filterKey.equals(query.filterKey),
+      );
+    final row = await q.getSingle();
+    return row.read(count) ?? 0;
+  }
+
   Future<DateTime?> albumListFetchedAt(
     String serverId,
     AlbumListQuery query,

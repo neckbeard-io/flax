@@ -15,6 +15,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Genre pages, with Shuffle.
 - Phones show album genres, and the playing song's genres in Now Playing.
 - A–Z index on long artist lists: tap or drag a letter to jump there.
+- The A–Z index on Albums (All, Downloaded), genre pages and Downloads too.
 
 ### Changed
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
@@ -23,6 +24,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Long artist names in Artists now end with "…" instead of wrapping.
 
 ### Fixed
+- Albums' All tab shows the whole library, not just the first 500 albums.
 - Downloaded tracks no longer show the streaming format (e.g. → OPUS 256kbps).
 - Queued songs that finish downloading play from the download instead of streaming.
 - Fixed an occasional error after leaving the car or changing networks.

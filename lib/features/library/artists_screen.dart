@@ -51,19 +51,8 @@ final artistsProvider = StreamProvider<List<Artist>>((ref) async* {
   yield* repo.watchArtists();
 });
 
-/// Lists at least this long get the A–Z index. A short library fits in a few
-/// flicks, and the strip would only crowd it.
-const kArtistIndexMinArtists = 40;
-
-class ArtistsScreen extends ConsumerStatefulWidget {
+class ArtistsScreen extends ConsumerWidget {
   const ArtistsScreen({super.key});
-
-  @override
-  ConsumerState<ArtistsScreen> createState() => _ArtistsScreenState();
-}
-
-class _ArtistsScreenState extends ConsumerState<ArtistsScreen> {
-  final _scroll = ScrollController();
 
   /// Stands in for every row when the list measures its row height. Rows are
   /// one height — one line of name, one of album count — which is what lets a
@@ -76,24 +65,7 @@ class _ArtistsScreenState extends ConsumerState<ArtistsScreen> {
   );
 
   @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
-
-  void _jumpTo(String letter, int rowCount, Map<String, int> firstRows) {
-    final row = rowForLetter(letter, firstRows);
-    if (row == null || rowCount == 0 || !_scroll.hasClients) return;
-    final position = _scroll.position;
-    // Every row is the prototype's height, so the list's full length divided
-    // by its rows is that height.
-    final rowExtent =
-        (position.maxScrollExtent + position.viewportDimension) / rowCount;
-    _scroll.jumpTo((row * rowExtent).clamp(0.0, position.maxScrollExtent));
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isOffline = ref.watch(isOfflineModeProvider);
     final artistsAsync = ref.watch(artistsProvider);
@@ -101,29 +73,6 @@ class _ArtistsScreenState extends ConsumerState<ArtistsScreen> {
         ref.watch(downloadedArtistIdsProvider).valueOrNull ?? const {};
     final anyDownloadedArtistIds =
         ref.watch(anyDownloadedArtistIdsProvider).valueOrNull ?? const {};
-
-    Widget list(List<Artist> artists, {required bool indexed}) =>
-        ListView.builder(
-          controller: _scroll,
-          padding: EdgeInsets.only(right: indexed ? kAlphabetScrollerWidth : 0),
-          prototypeItem: const _ArtistTile(artist: _prototype),
-          itemCount: artists.length,
-          itemBuilder: (context, index) {
-            final artist = artists[index];
-            final isFullyCached = downloadedArtistIds.contains(artist.id);
-            return ArtistContextMenu(
-              artist: artist,
-              child: _ArtistTile(
-                artist: artist,
-                isFullyCached: isFullyCached,
-                isPartiallyCached:
-                    anyDownloadedArtistIds.contains(artist.id) &&
-                    !isFullyCached,
-                onTap: () => context.push('/artists/${artist.id}'),
-              ),
-            );
-          },
-        );
 
     return Scaffold(
       body: SafeArea(
@@ -173,19 +122,28 @@ class _ArtistsScreenState extends ConsumerState<ArtistsScreen> {
                       ),
                     );
                   }
-                  if (artists.length < kArtistIndexMinArtists) {
-                    return list(artists, indexed: false);
-                  }
-                  // Indexed by what the list is sorted on: the server's sort
-                  // name where it gave one, so "The Beatles" is under B.
-                  final firstRows = firstRowByLetter(
-                    artists.map((a) => a.sortName ?? a.name),
-                  );
-                  return AlphabetScroller(
-                    available: firstRows.keys.toSet(),
-                    onLetter: (letter) =>
-                        _jumpTo(letter, artists.length, firstRows),
-                    child: list(artists, indexed: true),
+                  return AlphabetIndexedList(
+                    // Indexed by what the list is sorted on: the server's sort
+                    // name where it gave one, so "The Beatles" is under B.
+                    sortKeys: [for (final a in artists) a.sortName ?? a.name],
+                    prototypeItem: const _ArtistTile(artist: _prototype),
+                    itemBuilder: (context, index) {
+                      final artist = artists[index];
+                      final isFullyCached = downloadedArtistIds.contains(
+                        artist.id,
+                      );
+                      return ArtistContextMenu(
+                        artist: artist,
+                        child: _ArtistTile(
+                          artist: artist,
+                          isFullyCached: isFullyCached,
+                          isPartiallyCached:
+                              anyDownloadedArtistIds.contains(artist.id) &&
+                              !isFullyCached,
+                          onTap: () => context.push('/artists/${artist.id}'),
+                        ),
+                      );
+                    },
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
