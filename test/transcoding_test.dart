@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 
@@ -225,6 +226,65 @@ void main() {
       expect(uri.queryParameters['id'], 'song-100');
       expect(uri.queryParameters['maxBitRate'], '256');
       expect(uri.queryParameters['format'], 'opus');
+    });
+  });
+
+  // A downloaded album played over cellular showed FLAC → OPUS 256kbps: the
+  // stream setting was shown for a track that was not being streamed.
+  group('what the playing track is converted to', () {
+    const flac = Song(
+      id: 's1',
+      serverId: 'srv',
+      title: 'Tormento',
+      suffix: 'flac',
+      bitDepth: 24,
+      sampleRate: 44100,
+      duration: 264,
+    );
+    const cellular = TranscodeParameters(
+      maxBitRate: 256,
+      format: 'opus',
+      quality: StreamQuality.kbps256,
+      isTranscoded: true,
+    );
+
+    test('a streamed track is converted by the stream setting', () {
+      const state = PlayerState(currentSong: flac, activeTranscode: cellular);
+      expect(state.isPlayingCached, isFalse);
+      expect(state.playingTranscode, cellular);
+    });
+
+    test('a track downloaded as the original plays as the original', () {
+      const state = PlayerState(
+        currentSong: flac,
+        activeTranscode: cellular,
+        cachedFormat: 'flac',
+      );
+      expect(state.isPlayingCached, isTrue);
+      expect(state.playingTranscode, isNull);
+    });
+
+    test('a track downloaded converted shows the format it was saved as', () {
+      const state = PlayerState(
+        currentSong: flac,
+        activeTranscode: cellular,
+        cachedFormat: 'opus',
+      );
+      final transcode = state.playingTranscode!;
+      expect(transcode.isTranscoded, isTrue);
+      expect(transcode.format, 'opus');
+      expect(transcode.maxBitRate, isNull, reason: 'not recorded');
+      expect(transcode.displayLabel, 'OPUS');
+      expect(transcode.shortLabel, 'OPUS');
+    });
+
+    test('a download of a song with no known format claims no conversion', () {
+      const state = PlayerState(
+        currentSong: Song(id: 's2', serverId: 'srv', title: 'X', duration: 1),
+        activeTranscode: cellular,
+        cachedFormat: 'mp3',
+      );
+      expect(state.playingTranscode, isNull);
     });
   });
 }

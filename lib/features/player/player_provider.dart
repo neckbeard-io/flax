@@ -55,15 +55,20 @@ class PlayerState {
   final RepeatMode repeatMode;
   final bool buffering;
 
-  /// Active transcoding parameters for the current stream, or null if playing
-  /// at original source quality.
+  /// Transcoding the server applies to the queue's streamed tracks, or null
+  /// when they stream at original quality. A track played from its download is
+  /// not streamed, so this does not describe it — see [playingTranscode].
   final TranscodeParameters? activeTranscode;
 
   /// Human-readable error if playback was prevented (e.g. streaming disabled).
   final String? playbackError;
 
-  /// Whether the currently playing track is playing from local offline cache.
-  final bool isPlayingCached;
+  /// Format of the downloaded file the current track plays from — its
+  /// extension, such as `flac` or `opus` — or null while it streams.
+  ///
+  /// This is the file mpv was given, not whether one exists: a track
+  /// downloaded after mpv was handed its stream keeps streaming.
+  final String? cachedFormat;
 
   const PlayerState({
     this.currentSong,
@@ -79,12 +84,30 @@ class PlayerState {
     this.buffering = false,
     this.activeTranscode,
     this.playbackError,
-    this.isPlayingCached = false,
+    this.cachedFormat,
   });
 
   /// Attenuation the current fader position corresponds to, in dB, or null at
   /// the very bottom of the fader (true silence, which has no finite dB value).
   double? get volumeDb => volume <= 0 ? null : PlayerNotifier.faderToDb(volume);
+
+  /// Whether the current track plays from a downloaded file.
+  bool get isPlayingCached => cachedFormat != null;
+
+  /// How the current track is converted on its way to the speaker, or null
+  /// when it plays as the original.
+  ///
+  /// A download was fetched at the download quality, so the stream setting
+  /// does not apply to it; its own format says whether it was converted.
+  /// Showing [activeTranscode] for every track put a cellular OPUS badge on
+  /// downloaded FLAC.
+  TranscodeParameters? get playingTranscode {
+    final format = cachedFormat;
+    if (format == null) return activeTranscode;
+    final suffix = currentSong?.suffix?.toLowerCase();
+    if (suffix == null || suffix.isEmpty || suffix == format) return null;
+    return TranscodeParameters.downloaded(format);
+  }
 
   PlayerState copyWith({
     Song? currentSong,
@@ -102,7 +125,8 @@ class PlayerState {
     bool clearActiveTranscode = false,
     String? playbackError,
     bool clearPlaybackError = false,
-    bool? isPlayingCached,
+    String? cachedFormat,
+    bool clearCachedFormat = false,
   }) {
     return PlayerState(
       currentSong: currentSong ?? this.currentSong,
@@ -122,7 +146,9 @@ class PlayerState {
       playbackError: clearPlaybackError
           ? null
           : (playbackError ?? this.playbackError),
-      isPlayingCached: isPlayingCached ?? this.isPlayingCached,
+      cachedFormat: clearCachedFormat
+          ? null
+          : (cachedFormat ?? this.cachedFormat),
     );
   }
 }
@@ -157,6 +183,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   ProviderSubscription<EqEngine>? _eqEngineSub;
   ProviderSubscription<PlaybackSettings>? _playbackSub;
   ProviderSubscription<AudioOutputSettings>? _audioOutputSub;
+  ProviderSubscription<AsyncValue<Set<String>>>? _downloadsSub;
 
   /// Fade attenuation last pushed to mpv, so the ramp only re-applies when it
   /// has actually moved.
@@ -201,6 +228,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _initEqListener();
     _initPlaybackSettings();
     _initAudioOutputSettings();
+    _initDownloadListener();
     _restoreVolume();
     _restored = _restorePlayQueue().catchError((Object e) {
       AppLogger.w('Player', 'Queue restore failed: $e');
@@ -522,10 +550,15 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     return _findCachedSongPath(song) != null;
   }
 
-  Uri _streamUri(Song song, [TranscodeParameters? transcode]) {
+  /// Where mpv should read [song] from: its download when there is one,
+  /// otherwise the server. `file` is the download, or null for a stream.
+  ({Uri uri, String? file}) _sourceOf(
+    Song song, [
+    TranscodeParameters? transcode,
+  ]) {
     final cachedPath = _findCachedSongPath(song);
     if (cachedPath != null) {
-      return Uri.file(cachedPath);
+      return (uri: Uri.file(cachedPath), file: cachedPath);
     }
     final isOffline = _ref.read(isOfflineModeProvider);
     if (isOffline) {
@@ -535,11 +568,20 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (client == null) {
       throw Exception('No server connected');
     }
-    return client.getStreamUri(
+    final uri = client.getStreamUri(
       song.id,
       maxBitRate: transcode?.maxBitRate,
       format: transcode?.format,
     );
+    return (uri: uri, file: null);
+  }
+
+  /// The format of a downloaded [file]: its extension, lowercased.
+  static String? _formatOf(String? file) {
+    if (file == null) return null;
+    final name = file.substring(file.lastIndexOf(RegExp(r'[/\\]')) + 1);
+    final dot = name.lastIndexOf('.');
+    return dot < 0 ? '' : name.substring(dot + 1).toLowerCase();
   }
 
   // ── The queue, as mpv holds it ─────────────────────────────────────
@@ -595,16 +637,17 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     final currentSong = songs.isNotEmpty && index < songs.length
         ? songs[index]
         : null;
-    final isCached = _isSongCached(currentSong);
 
     final medias = <mpv.Media>[];
     final positions = <int>[];
+    final files = <String?>[];
     for (var i = 0; i < songs.length; i++) {
       final song = songs[i];
       try {
-        final uri = _streamUri(song, transcode);
-        medias.add(mpv.Media(uri.toString()));
+        final source = _sourceOf(song, transcode);
+        medias.add(mpv.Media(source.uri.toString()));
         positions.add(i);
+        files.add(source.file);
       } catch (e) {
         if (song.id == currentSong?.id && play) {
           rethrow;
@@ -619,30 +662,38 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
           queueIndex: index,
           currentSong: currentSong,
           isPlaying: false,
-          isPlayingCached: isCached,
+          clearCachedFormat: true,
         );
       }
       return false;
     }
 
-    _mpvMap = MpvQueueMap.of(songs, positions);
+    // Loading replaces the whole playlist, so it waits for any edit of the
+    // old one to finish rather than land in the middle of it.
+    final loaded = await _editPlaylist(() async {
+      _mpvMap = MpvQueueMap.of(songs, positions, files);
 
-    if (mounted) {
-      state = state.copyWith(
-        activeTranscode: transcode,
-        clearActiveTranscode: transcode == null,
-        clearPlaybackError: true,
-        isPlayingCached: isCached,
-      );
-    }
-    // An mpv slot, not a queue index: songs that could not be handed to mpv
-    // leave gaps, so the two diverge after the first one.
-    final targetIndex = _mpvMap.startIndexFor(index);
-    if (standDown?.call() ?? false) {
-      PlaybackTrace.record('server queue stood down: playback was requested');
-      return false;
-    }
-    await _player.openAll(medias, play: play, index: targetIndex);
+      if (mounted) {
+        final format = _formatOf(_mpvMap.fileOf(index));
+        state = state.copyWith(
+          activeTranscode: transcode,
+          clearActiveTranscode: transcode == null,
+          clearPlaybackError: true,
+          cachedFormat: format,
+          clearCachedFormat: format == null,
+        );
+      }
+      // An mpv slot, not a queue index: songs that could not be handed to mpv
+      // leave gaps, so the two diverge after the first one.
+      final targetIndex = _mpvMap.startIndexFor(index);
+      if (standDown?.call() ?? false) {
+        PlaybackTrace.record('server queue stood down: playback was requested');
+        return false;
+      }
+      await _player.openAll(medias, play: play, index: targetIndex);
+      return true;
+    });
+    if (!loaded) return false;
     if (play) {
       await _activateAudioSession();
       await _player.play();
@@ -715,12 +766,13 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (index == state.queueIndex) return;
 
     final song = state.queue[index];
-    final isCached = _isSongCached(song);
+    final format = _formatOf(_mpvMap.fileOf(index));
     _resetScrobble();
     state = state.copyWith(
       queueIndex: index,
       currentSong: song,
-      isPlayingCached: isCached,
+      cachedFormat: format,
+      clearCachedFormat: format == null,
       clearPlaybackError: true,
     );
     _updateNowPlayingForSong(song);
@@ -734,18 +786,28 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (index < 0 || index >= state.queue.length) return;
     notePlayRequested();
     final song = state.queue[index];
-    final isCached = _isSongCached(song);
+    // A jump inside the playlist mpv already holds, rather than a fresh load:
+    // reloading would throw away the prefetched next entry every time someone
+    // pressed skip. Except when mpv would stream a song that has been
+    // downloaded since — earlier entries are never swapped for their files
+    // (see [_playDownloadsFromDisk]) — where the reload picks up the file.
+    var slot = _mpvQueueInSync ? _mpvMap.mpvIndexOf(index) : null;
+    if (slot != null &&
+        _mpvMap.fileOf(index) == null &&
+        _findCachedSongPath(song) != null) {
+      slot = null;
+    }
+    final format = _formatOf(
+      slot != null ? _mpvMap.fileOf(index) : _findCachedSongPath(song),
+    );
     _resetScrobble();
     state = state.copyWith(
       currentSong: song,
       queueIndex: index,
-      isPlayingCached: isCached,
+      cachedFormat: format,
+      clearCachedFormat: format == null,
       clearPlaybackError: true,
     );
-    // A jump inside the playlist mpv already holds, rather than a fresh load:
-    // reloading would throw away the prefetched next entry every time someone
-    // pressed skip.
-    final slot = _mpvQueueInSync ? _mpvMap.mpvIndexOf(index) : null;
     if (slot != null) {
       await _player.jump(slot);
       await _activateAudioSession();
@@ -1321,36 +1383,124 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// insert, and reloading the playlist to add one track would restart whatever
   /// is playing. Anything that goes wrong here only costs the mirror, which
   /// [_playIndex] rebuilds on the next skip.
-  Future<void> _insertIntoMpvQueue(List<Song> songs, int at) async {
-    var map = _mpvMap.shiftedForInsert(at, songs.length);
-    if (!map.matches(state.queue)) {
-      // Already out of step with mpv; leave it to be rebuilt wholesale.
-      _mpvMap = MpvQueueMap.empty;
-      return;
-    }
-    try {
-      final transcode = state.activeTranscode;
-      for (var i = 0; i < songs.length; i++) {
-        final queueIndex = at + i;
-        final Uri uri;
-        try {
-          uri = _streamUri(songs[i], transcode);
-        } catch (_) {
-          // Not playable right now (not downloaded, offline): left out of
-          // mpv, like the gaps _openQueue leaves.
-          continue;
+  Future<void> _insertIntoMpvQueue(List<Song> songs, int at) =>
+      _editPlaylist(() async {
+        var map = _mpvMap.shiftedForInsert(at, songs.length);
+        if (!map.matches(state.queue)) {
+          // Already out of step with mpv; leave it to be rebuilt wholesale.
+          _mpvMap = MpvQueueMap.empty;
+          return;
         }
-        await _player.add(mpv.Media(uri.toString()));
-        final from = map.length;
-        final to = map.slotFor(queueIndex);
-        map = map.withEntry(queueIndex, songs[i].id);
-        if (from != to) await _player.move(from, to);
-      }
-      _mpvMap = map;
-    } catch (e) {
-      AppLogger.w('Player', 'Queue insert into mpv failed: $e');
-      _mpvMap = MpvQueueMap.empty;
+        try {
+          final transcode = state.activeTranscode;
+          for (var i = 0; i < songs.length; i++) {
+            final queueIndex = at + i;
+            final ({Uri uri, String? file}) source;
+            try {
+              source = _sourceOf(songs[i], transcode);
+            } catch (_) {
+              // Not playable right now (not downloaded, offline): left out of
+              // mpv, like the gaps _openQueue leaves.
+              continue;
+            }
+            await _player.add(mpv.Media(source.uri.toString()));
+            final from = map.length;
+            final to = map.slotFor(queueIndex);
+            map = map.withEntry(queueIndex, songs[i].id, source.file);
+            if (from != to) await _player.move(from, to);
+          }
+          _mpvMap = map;
+        } catch (e) {
+          AppLogger.w('Player', 'Queue insert into mpv failed: $e');
+          _mpvMap = MpvQueueMap.empty;
+        }
+      });
+
+  /// The edit of mpv's playlist under way, if any. See [_editPlaylist].
+  Future<void>? _playlistEdit;
+
+  /// Runs [edit] once no other edit of mpv's playlist is under way.
+  ///
+  /// Loading, inserting and swapping in downloads each take several mpv
+  /// commands and work out slots from the playlist as it stood when they
+  /// began. Interleaved, one moves entries the other is counting, and mpv
+  /// ends up playing a different song from the one shown. With nothing under
+  /// way, [edit] starts straight away, as if called directly.
+  Future<T> _editPlaylist<T>(Future<T> Function() edit) async {
+    while (_playlistEdit != null) {
+      await _playlistEdit;
     }
+    final done = Completer<void>();
+    _playlistEdit = done.future;
+    try {
+      return await edit();
+    } finally {
+      _playlistEdit = null;
+      done.complete();
+    }
+  }
+
+  /// How close to the end of a track the entry after it is left alone, since
+  /// a gapless advance onto it is imminent. See [_playDownloadsFromDisk].
+  static const _swapCutoff = Duration(seconds: 10);
+
+  /// Points mpv at the downloads of queued songs it was handed as streams.
+  ///
+  /// mpv keeps what it was given when the queue loaded, so an album downloaded
+  /// while queued went on streaming — transcoded, over cellular — with the
+  /// files already on disk. Only entries after the playing one are swapped:
+  /// swapping the playing entry restarts the track, and swapping an earlier
+  /// one moves mpv's index under it. [_playIndex] reloads for those instead.
+  ///
+  /// The entry right after the playing one is skipped in the last
+  /// [_swapCutoff] of a track. mpv swaps an entry by removing it and inserting
+  /// the file; a gapless advance onto it in between would skip the song.
+  Future<void> _playDownloadsFromDisk(Set<String> downloaded) =>
+      _editPlaylist(() async {
+        for (final queueIndex in _mpvMap.streamedAfter(state.queueIndex)) {
+          if (!mounted || !_mpvQueueInSync) return;
+          final song = state.queue[queueIndex];
+          if (!downloaded.contains(song.id)) continue;
+          final slot = _mpvMap.mpvIndexOf(queueIndex);
+          if (slot == null || slot <= _player.state.playlist.index) continue;
+          if (slot == _player.state.playlist.index + 1 &&
+              state.duration - state.position < _swapCutoff) {
+            continue;
+          }
+          final file = _findCachedSongPath(song);
+          if (file == null) continue;
+          try {
+            await _player.replace(slot, mpv.Media(Uri.file(file).toString()));
+          } catch (e) {
+            AppLogger.w('Player', 'Swapping in a download failed: $e');
+            return;
+          }
+          _mpvMap = _mpvMap.withFile(queueIndex, file);
+          PlaybackTrace.record(
+            'track ${queueIndex + 1} now plays from its download',
+          );
+        }
+      });
+
+  /// Swaps queued streams for their downloads as downloads finish.
+  void _initDownloadListener() {
+    _downloadsSub = _ref.listen<AsyncValue<Set<String>>>(
+      downloadedSongIdsProvider,
+      (previous, next) {
+        final added = (next.valueOrNull ?? const <String>{}).difference(
+          previous?.valueOrNull ?? const <String>{},
+        );
+        if (added.isEmpty) return;
+        // Deferred: a listener that reads providers mid-refresh throws
+        // "Concurrent modification during iteration".
+        scheduleMicrotask(() {
+          if (!mounted) return;
+          _playDownloadsFromDisk(added).catchError((Object e) {
+            AppLogger.w('Player', 'Swapping in downloads failed: $e');
+          });
+        });
+      },
+    );
   }
 
   Future<void> playTracks(List<Song> songs, {int initialIndex = 0}) async {
@@ -1843,6 +1993,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _eqEngineSub?.close();
     _playbackSub?.close();
     _audioOutputSub?.close();
+    _downloadsSub?.close();
     _probe?.dispose();
     _player.dispose();
     super.dispose();
