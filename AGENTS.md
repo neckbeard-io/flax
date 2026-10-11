@@ -188,7 +188,7 @@ Auto spinning.
   `main.dart` or `bootstrap.dart`. To reproduce a headless start, see
   [docs/VERIFYING.md](docs/VERIFYING.md#android-starts-without-an-activity).
 
-### Listeners never read providers synchronously
+### Listeners never read or change providers synchronously
 
 Riverpod 2 refreshes a stale provider by walking its dependencies, and a
 dependency that rebuilds notifies its `ref.listen` listeners right then. A
@@ -198,9 +198,18 @@ during iteration" from whatever read it. Scrobble sync's drains did exactly
 that to `isOfflineModeProvider`, and AppChrome's library sync timer hit it on a
 phone in the background, where no frame runs the scheduled refreshes first.
 
-- A listener that needs to read providers or start work defers it:
-  `scheduleMicrotask`, a `Timer`, or code after an `await`, as
-  `ScrobbleSyncService._scheduleDrain` does.
+Changing a provider's state from such a listener sets that up too. The
+reachability probes marked reachability as probing from inside them, which
+made offline mode stale in the middle of its own refresh, so a later read in
+that walk could rebuild it. That followed a car disconnecting and a switch to the
+server's local address. In the foreground the
+refresh runs inside the root `ProviderScope`'s build, so the whole app is
+replaced by its error screen.
+
+- A listener that needs to read providers, change one, or start work defers
+  it: `scheduleMicrotask`, a `Timer`, or code after an `await`, as
+  `ScrobbleSyncService._scheduleDrain` and
+  `ServerReachabilityNotifier._afterNotification` do.
 - `test/offline_mode_reentrancy_test.dart` reproduces the crash with the real
   providers; extend it when adding a listener to anything offline mode
   depends on.

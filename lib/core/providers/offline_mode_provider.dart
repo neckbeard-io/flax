@@ -238,16 +238,18 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
     ServerReachability? initialReachability,
   }) : super(initialReachability ?? const ServerReachability()) {
     _ref.listen<SubsonicClient?>(subsonicClientProvider, (prev, next) {
-      if (next != null) {
-        try {
-          _checkStoredMigrationAlert(next.server.id);
-        } catch (_) {}
-        if (prev != null && prev != next) {
-          probeServer(silent: true);
+      _afterNotification(() {
+        if (next != null) {
+          try {
+            _checkStoredMigrationAlert(next.server.id);
+          } catch (_) {}
+          if (prev != null && prev != next) {
+            probeServer(silent: true);
+          }
+        } else {
+          state = const ServerReachability();
         }
-      } else {
-        state = const ServerReachability();
-      }
+      });
     });
 
     // Forced offline pauses every check; lifting it is the moment to look
@@ -257,7 +259,7 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
         _retryTimer?.cancel();
         _retryTimer = null;
       } else if (prev == true) {
-        probeServer(silent: true);
+        _afterNotification(() => probeServer(silent: true));
       }
     });
 
@@ -272,11 +274,32 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
                 c != ConnectivityResult.bluetooth,
           );
           if (hasNetwork && !state.isReachable && !state.isProbing) {
-            probeServer(silent: true);
+            _afterNotification(() {
+              // A probe may have started since.
+              if (!state.isReachable && !state.isProbing) {
+                probeServer(silent: true);
+              }
+            });
           }
         }
       },
     );
+  }
+
+  /// Runs [work] once the change that asked for it has settled.
+  ///
+  /// The listeners above run while Riverpod is still refreshing whatever read
+  /// the provider they listen to — usually isOfflineModeProvider, which
+  /// watches this one. A probe marks this probing before its first await, so
+  /// started right there it changed reachability in the middle of offline
+  /// mode's refresh. Offline mode went stale inside its own refresh, which is
+  /// what lets a later read in that walk rebuild it under itself: "Concurrent
+  /// modification during iteration". It followed a car disconnecting and the
+  /// app switching to the server's local address.
+  void _afterNotification(void Function() work) {
+    scheduleMicrotask(() {
+      if (mounted) work();
+    });
   }
 
   Future<void> _checkStoredMigrationAlert(String serverId) async {
@@ -423,6 +446,8 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
     } catch (e) {
       error = e.toString();
     }
+    // Probes start from listeners a microtask late, so one can outlive this.
+    if (!mounted) return error == null;
     final isPingSuccess = error == null;
     final wasReachable = state.isReachable;
     final failures = isPingSuccess ? 0 : state.consecutiveFailures + 1;

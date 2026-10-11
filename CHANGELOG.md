@@ -23,6 +23,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ### Fixed
 - Downloaded tracks no longer show the streaming format (e.g. → OPUS 256kbps).
 - Queued songs that finish downloading play from the download instead of streaming.
+- Fixed an occasional error after leaving the car or changing networks.
 - Covers saved for offline no longer vanish when the system frees up storage.
 - A background error no longer skips checking the server for library changes.
 - Cancel stops a metadata sync, from the app or its notification, and clears it.
