@@ -47,6 +47,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Offline queues skip songs that aren't downloaded instead of stopping mid-queue.
 - Now Playing keeps its title and queue button in a narrow desktop window.
 - A certificate problem says so instead of "Network error: unknown".
+- Settings' Language and Theme choices fit on narrow phones in every language.
 
 ## v0.6.0 — 2026-10-05
 

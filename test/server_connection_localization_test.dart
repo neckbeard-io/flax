@@ -122,11 +122,7 @@ void main() {
   });
 
   testWidgets('Settings describes the servers in German', (tester) async {
-    // The narrowest desktop window, which still gets the phone layout. At
-    // 390pt the Theme row overflows in every Latin-script language (#153).
-    tester.view.physicalSize = const Size(460, 844);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+    phone(tester);
     await tester.pumpWidget(
       _german(
         const SettingsScreen(),
