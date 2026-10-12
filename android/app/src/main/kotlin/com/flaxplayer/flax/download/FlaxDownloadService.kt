@@ -46,24 +46,16 @@ class FlaxDownloadService : Service() {
     private lateinit var notificationManager: NotificationManager
 
     private val okHttpClient: OkHttpClient by lazy {
-        val builder = OkHttpClient.Builder()
+        OkHttpClient.Builder()
             .connectionPool(ConnectionPool(32, 5, TimeUnit.MINUTES))
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
+            .build()
+    }
 
-        try {
-            val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
-                override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
-                override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
-                override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
-            })
-            val sslContext = javax.net.ssl.SSLContext.getInstance("SSL")
-            sslContext.init(null, trustAllCerts, java.security.SecureRandom())
-            builder.sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
-            builder.hostnameVerifier { _, _ -> true }
-        } catch (_: Exception) {}
-
-        builder.build()
+    /** Only for tasks flagged [DownloadTask.trustAnyCertificate]. */
+    private val trustingClient: OkHttpClient by lazy {
+        okHttpClient.newBuilder().trustingAnyCertificate().build()
     }
 
     private val isDownloading = AtomicBoolean(false)
@@ -210,7 +202,8 @@ class FlaxDownloadService : Service() {
                 .header("Accept-Encoding", "identity")
                 .build()
 
-            val response = okHttpClient.newCall(request).execute()
+            val client = if (task.trustAnyCertificate) trustingClient else okHttpClient
+            val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 throw Exception("HTTP ${response.code}: ${response.message}")
             }

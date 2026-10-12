@@ -7,5 +7,7 @@ data class DownloadTask(
     val artist: String? = null,
     val downloadUrl: String,
     val destinationPath: String,
-    val expectedSizeBytes: Long? = null
+    val expectedSizeBytes: Long? = null,
+    /** Set by Dart for a host the server trusts; see [trustingAnyCertificate]. */
+    val trustAnyCertificate: Boolean = false
 )

@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.flaxplayer.flax.download.trustingAnyCertificate
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -19,10 +20,13 @@ class FlaxSyncWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(context, workerParams) {
 
-    private val okHttpClient = OkHttpClient.Builder()
+    private val verifyingClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
+
+    /** Set per run from the server's "Verify certificates". */
+    private var okHttpClient = verifyingClient
 
     override suspend fun doWork(): Result {
         try {
@@ -34,6 +38,17 @@ class FlaxSyncWorker(
 
             if (url.isEmpty() || user.isEmpty() || token.isEmpty() || salt.isEmpty()) {
                 return Result.success()
+            }
+
+            // Every request here goes to the server's remote URL, which the app
+            // trusts with any certificate only when "Verify certificates" is
+            // off (acceptsAnyCertificate in certificate_trust.dart).
+            val trustAny = url.startsWith("https://", ignoreCase = true) &&
+                !server.optBoolean("verifyCertificates", true)
+            okHttpClient = if (trustAny) {
+                verifyingClient.newBuilder().trustingAnyCertificate().build()
+            } else {
+                verifyingClient
             }
 
             // The app files these into its cover store on its next launch or

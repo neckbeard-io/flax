@@ -22,6 +22,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Album genres are now tags under the artist instead of the end of the details line.
 - The offline pin now means the track is playing from its download.
 - Long artist names in Artists now end with "…" instead of wrapping.
+- Flax now checks server certificates; turn off "Verify Certificates" for a self-signed server.
+- The local network target is never checked, so its Trust Self-Signed switch is gone.
 
 ### Fixed
 - Albums' All tab shows the whole library, not just the first 500 albums.

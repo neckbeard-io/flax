@@ -17,6 +17,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/database/library_dao.dart';
 import 'package:flax/services/database/tables/orderings.dart';
+import 'package:flax/services/network/certificate_trust.dart';
 import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
@@ -627,6 +628,7 @@ class MetadataSyncService {
               title: desc,
               downloadUrl: uri.toString(),
               destinationPath: destPath,
+              trustAnyCertificate: acceptsAnyCertificateFor(client.server, uri),
             ),
           );
           taskMetaMap[cacheKey] = (uri.toString(), desc);

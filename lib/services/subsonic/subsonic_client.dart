@@ -11,6 +11,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/genres.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/music_backend.dart';
+import 'package:flax/services/network/certificate_trust.dart';
 
 class SubsonicClient implements MusicBackend {
   final Server server;
@@ -29,16 +30,14 @@ class SubsonicClient implements MusicBackend {
     this.customBaseUrl,
     Dio? dio,
     this.onRequest,
-  }) : _dio =
-           dio ??
-           _createDefaultDio(server: server, customBaseUrl: customBaseUrl);
+  }) : _dio = dio ?? _createDefaultDio(server);
 
   String get baseUrl {
     final base = customBaseUrl ?? server.baseUrl;
     return base.endsWith('/') ? base.substring(0, base.length - 1) : base;
   }
 
-  static Dio _createDefaultDio({Server? server, String? customBaseUrl}) {
+  static Dio _createDefaultDio(Server server) {
     final dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 10),
@@ -51,9 +50,8 @@ class SubsonicClient implements MusicBackend {
         final client = HttpClient();
         client.maxConnectionsPerHost = 16;
         client.idleTimeout = const Duration(seconds: 60);
-        if (server?.localNetworkConfig.trustSelfSignedCerts == true) {
-          client.badCertificateCallback = (cert, host, port) => true;
-        }
+        client.badCertificateCallback = (cert, host, port) =>
+            acceptsAnyCertificate(server, host, port);
         return client;
       },
     );

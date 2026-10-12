@@ -110,7 +110,7 @@ class _ServerConnectionScreenState
     _saveConfig(server, config);
   }
 
-  Future<void> _testConnection(LocalNetworkConfig config) async {
+  Future<void> _testConnection(Server server) async {
     final host = _hostController.text.trim();
     final port = int.tryParse(_portController.text.trim()) ?? 4533;
 
@@ -122,7 +122,10 @@ class _ServerConnectionScreenState
       return;
     }
 
-    final testConfig = config.copyWith(localHost: host, localPort: port);
+    final testConfig = server.localNetworkConfig.copyWith(
+      localHost: host,
+      localPort: port,
+    );
     final url = testConfig.localBaseUrl;
     if (url == null) {
       setState(() {
@@ -141,8 +144,7 @@ class _ServerConnectionScreenState
     final stopwatch = Stopwatch()..start();
     final ok = await NetworkTargetResolver.probeLocalEndpoint(
       url,
-      server: _getServer(ref.read(serverListProvider)),
-      trustSelfSigned: testConfig.trustSelfSignedCerts,
+      server: server.copyWith(localNetworkConfig: testConfig),
       timeout: Duration(milliseconds: testConfig.probeTimeoutMs),
     );
     stopwatch.stop();
@@ -283,6 +285,24 @@ class _ServerConnectionScreenState
             ),
           ),
 
+          // ── Security ──
+          _SectionTitle(title: 'Security'),
+          SwitchListTile(
+            title: const Text('Verify Certificates'),
+            subtitle: const Text(
+              'Turning this off lets anyone on the network between you and '
+              'the server read your password and traffic. Only for a '
+              'self-signed server.',
+            ),
+            value: server.verifyCertificates,
+            onChanged: (val) {
+              ref
+                  .read(serverListProvider.notifier)
+                  .updateServer(server.copyWith(verifyCertificates: val));
+            },
+          ),
+          const Divider(),
+
           // ── Local Network Target Section ──
           _SectionTitle(title: 'Local Network Target'),
           Padding(
@@ -376,21 +396,6 @@ class _ServerConnectionScreenState
                 ),
               ),
 
-            if (config.useHttps)
-              SwitchListTile(
-                title: const Text('Trust Self-Signed Certificates'),
-                subtitle: const Text(
-                  'Allow HTTPS connections with private/homelab certificates',
-                ),
-                value: config.trustSelfSignedCerts,
-                onChanged: (val) {
-                  _saveConfig(
-                    server,
-                    config.copyWith(trustSelfSignedCerts: val),
-                  );
-                },
-              ),
-
             // Live Connection Test
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -402,7 +407,7 @@ class _ServerConnectionScreenState
                   ElevatedButton.icon(
                     onPressed: _testingConnection
                         ? null
-                        : () => _testConnection(config),
+                        : () => _testConnection(server),
                     icon: _testingConnection
                         ? const SizedBox(
                             width: 16,

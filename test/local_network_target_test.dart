@@ -51,7 +51,6 @@ void main() {
       expect(config.localHost, '');
       expect(config.localPort, 4533);
       expect(config.useHttps, isFalse);
-      expect(config.trustSelfSignedCerts, isFalse);
       expect(config.fallbackToExternal, isTrue);
       expect(config.probeTimeoutMs, 1500);
       expect(config.localBaseUrl, isNull);
@@ -103,7 +102,6 @@ void main() {
         localHost: '192.168.1.120',
         localPort: 4040,
         useHttps: true,
-        trustSelfSignedCerts: true,
         fallbackToExternal: false,
         probeTimeoutMs: 2500,
       );
@@ -116,7 +114,6 @@ void main() {
       expect(restored.localHost, '192.168.1.120');
       expect(restored.localPort, 4040);
       expect(restored.useHttps, isTrue);
-      expect(restored.trustSelfSignedCerts, isTrue);
       expect(restored.fallbackToExternal, isFalse);
       expect(restored.probeTimeoutMs, 2500);
       expect(restored.localBaseUrl, 'https://192.168.1.120:4040');
@@ -421,6 +418,11 @@ void main() {
 
         // Now settings are revealed
         expect(find.text('Local Endpoint Settings'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('Local IP / Hostname'),
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
         expect(find.text('Local IP / Hostname'), findsOneWidget);
 
         // Scroll to manual SSID input field
@@ -441,6 +443,67 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('OfficeWiFi_5G'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Verify Certificates is on by default and turning it off is saved',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        final testServer = Server(
+          id: 'test-srv-3',
+          name: 'Self-Signed Server',
+          url: 'https://music.example.com',
+          username: 'user',
+          tokenHash: 'pw',
+          salt: 's',
+          isActive: true,
+          localNetworkConfig: const LocalNetworkConfig(
+            enabled: true,
+            localHost: '192.168.1.20',
+            useHttps: true,
+          ),
+        );
+
+        late ProviderContainer container;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              serverListProvider.overrideWith(
+                (ref) => ServerListNotifier(initialServers: [testServer]),
+              ),
+            ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                container = ProviderScope.containerOf(context);
+                return const MaterialApp(home: ServerConnectionScreen());
+              },
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final verify = find.widgetWithText(
+          SwitchListTile,
+          'Verify Certificates',
+        );
+        expect(verify, findsOneWidget);
+        expect(tester.widget<SwitchListTile>(verify).value, isTrue);
+        expect(tester.getRect(verify).right, lessThanOrEqualTo(390));
+        // The local target is never checked, so it has no switch of its own.
+        expect(find.text('Trust Self-Signed Certificates'), findsNothing);
+
+        await tester.tap(verify);
+        await tester.pumpAndSettle();
+
+        expect(tester.widget<SwitchListTile>(verify).value, isFalse);
+        expect(
+          container.read(serverListProvider).single.verifyCertificates,
+          isFalse,
+        );
       },
     );
   });

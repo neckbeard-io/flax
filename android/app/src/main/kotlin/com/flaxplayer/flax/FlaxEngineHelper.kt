@@ -269,6 +269,7 @@ object FlaxEngineHelper {
                             val downloadUrl = map["downloadUrl"] as? String ?: return@mapNotNull null
                             val destinationPath = map["destinationPath"] as? String ?: return@mapNotNull null
                             val expectedSizeBytes = (map["expectedSizeBytes"] as? Number)?.toLong()
+                            val trustAnyCertificate = map["trustAnyCertificate"] as? Boolean ?: false
 
                             DownloadTask(
                                 songId = songId,
@@ -277,7 +278,8 @@ object FlaxEngineHelper {
                                 artist = artist,
                                 downloadUrl = downloadUrl,
                                 destinationPath = destinationPath,
-                                expectedSizeBytes = expectedSizeBytes
+                                expectedSizeBytes = expectedSizeBytes,
+                                trustAnyCertificate = trustAnyCertificate
                             )
                         }
                         result.success(

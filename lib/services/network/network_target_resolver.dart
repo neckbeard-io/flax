@@ -15,6 +15,7 @@ import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
+import 'package:flax/services/network/certificate_trust.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
 
 enum EndpointTargetType { external, local }
@@ -271,7 +272,6 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
     final reachable = await probeLocalEndpoint(
       localBaseUrl,
       server: server,
-      trustSelfSigned: config.trustSelfSignedCerts,
       timeout: Duration(milliseconds: config.probeTimeoutMs),
     );
     stopwatch.stop();
@@ -335,11 +335,10 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
     }
   }
 
-  /// Probes an endpoint to verify whether it is alive and responding.
+  /// Probes [server]'s local target at [baseUrl] to see whether it responds.
   static Future<bool> probeLocalEndpoint(
     String baseUrl, {
-    Server? server,
-    bool trustSelfSigned = false,
+    required Server server,
     Duration timeout = const Duration(milliseconds: 1500),
   }) async {
     final dio = Dio(
@@ -355,9 +354,8 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       createHttpClient: () {
         final client = HttpClient();
         client.connectionTimeout = timeout;
-        if (trustSelfSigned) {
-          client.badCertificateCallback = (cert, host, port) => true;
-        }
+        client.badCertificateCallback = (cert, host, port) =>
+            acceptsAnyCertificate(server, host, port);
         return client;
       },
     );
@@ -367,24 +365,21 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
           ? baseUrl.substring(0, baseUrl.length - 1)
           : baseUrl;
 
+      final salt = List.generate(
+        16,
+        (_) => Random.secure().nextInt(36).toRadixString(36),
+      ).join();
+      final token = md5
+          .convert(utf8.encode('${server.tokenHash}$salt'))
+          .toString();
       final queryParams = <String, String>{
         'v': '1.16.1',
         'c': 'flax',
         'f': 'json',
+        'u': server.username,
+        't': token,
+        's': salt,
       };
-
-      if (server != null) {
-        final salt = List.generate(
-          16,
-          (_) => Random.secure().nextInt(36).toRadixString(36),
-        ).join();
-        final token = md5
-            .convert(utf8.encode('${server.tokenHash}$salt'))
-            .toString();
-        queryParams['u'] = server.username;
-        queryParams['t'] = token;
-        queryParams['s'] = salt;
-      }
 
       final uri = Uri.parse(
         '$cleanBase/rest/ping',
