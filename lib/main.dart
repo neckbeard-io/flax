@@ -19,6 +19,8 @@ import 'package:flax/services/audio/audio_handler_provider.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/platform/background_sync_service.dart';
 import 'package:flax/services/platform/window_state.dart';
+import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/domain/models/server.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 import 'package:flax/shared/widgets/cover_art_cache.dart';
 
@@ -88,6 +90,14 @@ Future<void> main() async {
   }
 
   final container = ProviderContainer(overrides: startup.overrides);
+  // Covers are fetched outside Riverpod, so hand them the server whose
+  // certificate rule they follow. Only a static is set, which reads and
+  // changes no provider, so nothing here needs deferring.
+  container.listen<Server?>(
+    activeServerProvider,
+    (_, server) => ArtCache.activeServer = server,
+    fireImmediately: true,
+  );
   ScreenRecovery.install(
     goHome: () => container.read(routerProvider).go('/albums'),
   );

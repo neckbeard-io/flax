@@ -1,4 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/painting.dart';
+import 'package:http/io_client.dart';
+import 'package:meta/meta.dart';
+import 'package:flax/domain/models/server.dart';
+import 'package:flax/services/network/certificate_trust.dart';
 import 'package:flax/shared/widgets/art_cache_file_system.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -50,7 +56,25 @@ class ArtCache {
     stalePeriod: const Duration(days: 365 * 100),
     maxNrOfCacheObjects: 1000000000,
     fileSystem: fileSystem,
+    fileService: HttpFileService(httpClient: IOClient(httpClient())),
   );
+
+  /// The server whose certificate rule covers follow. `main.dart` keeps it
+  /// current from `activeServerProvider`; this class is static and has no
+  /// `Ref` of its own.
+  static Server? activeServer;
+
+  /// Checks certificates the way every other connection to the server does
+  /// (`acceptsAnyCertificate`). The default client always verified, so covers
+  /// failed from a self-signed local target, or from a self-signed server with
+  /// Verify Certificates off, while everything else from it loaded.
+  @visibleForTesting
+  static HttpClient httpClient() =>
+      HttpClient()
+        ..badCertificateCallback = (cert, host, port) {
+          final server = activeServer;
+          return server != null && acceptsAnyCertificate(server, host, port);
+        };
 
   static final CacheManager instance = CacheManager(config);
 
