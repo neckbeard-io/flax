@@ -139,7 +139,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   // AppChrome paints the window controls over this corner, so
                   // the clear button has to step aside — it was drawn directly
                   // under the close button, and neither was reliably clickable.
-                  SizedBox(width: windowButtonsReservedWidth),
+                  SizedBox(width: WindowControlsInset.of(context)),
                 ],
               ),
             ),

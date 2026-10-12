@@ -306,14 +306,15 @@ void main() {
     }
 
     testWidgets('centers the title in a wider desktop window', (tester) async {
+      // Two full sides and a 120pt title: 2 × (48 + 220) + 120 + 8 = 664.
       debugOverrideIsDesktopPlatform = true;
-      await pumpAt(tester, const ui.Size(650, 900));
+      await pumpAt(tester, const ui.Size(690, 900));
 
       expect(tester.takeException(), isNull);
-      expect(title(tester).center.dx, moreOrLessEquals(325));
+      expect(title(tester).center.dx, moreOrLessEquals(345));
       expect(
         queueButton(tester).right,
-        lessThanOrEqualTo(650 - windowButtonsReservedWidth),
+        lessThanOrEqualTo(690 - windowButtonsReservedWidth),
       );
     });
 

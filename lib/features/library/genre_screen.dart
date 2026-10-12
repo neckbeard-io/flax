@@ -205,15 +205,25 @@ class GenreHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(padding: EdgeInsets.fromLTRB(8, 4, 8, 0), child: back),
-        _desktopDetails(theme, countText, shuffle),
+        _desktopDetails(context, theme, countText, shuffle),
       ],
     );
   }
 
-  Widget _desktopDetails(ThemeData theme, Widget countText, Widget shuffle) {
+  Widget _desktopDetails(
+    BuildContext context,
+    ThemeData theme,
+    Widget countText,
+    Widget shuffle,
+  ) {
     return Padding(
       // The window controls are drawn over the top-right corner on desktop.
-      padding: EdgeInsets.fromLTRB(24, 4, windowButtonsReservedWidth + 24, 12),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        4,
+        WindowControlsInset.of(context) + 24,
+        12,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [

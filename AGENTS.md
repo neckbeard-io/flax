@@ -294,8 +294,14 @@ session either — every media controller can read it, login token included.
 `AppChrome` draws over the top of every route on desktop (see
 `lib/shared/widgets/window_buttons.dart`):
 
-- **Top right:** the window controls. Screens that put controls there must
-  reserve `windowButtonsReservedWidth`, or they end up underneath.
+- **Top right:** the window controls — Offline toggle, update button, window
+  buttons. Screens keep clear of them by reserving
+  `WindowControlsInset.of(context)`, the width `AppChrome` last measured;
+  an `AppBar` reserves it as a trailing `actions:` spacer, which also stops
+  its title short of them. The width changes while flax runs, as the update
+  button comes and goes, so never cache it or use a fixed number:
+  `windowButtonsReservedWidth` is only the estimate used before the first
+  measurement and in tests without `AppChrome`.
 - **Top left, Windows and Linux only:** a `windowDragStripHeight`-tall drag
   strip across the rest of the top edge, which swallows taps. Keep tappable
   controls out of it — including in widget tests that wrap `AppChrome`, which

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart' show kBackMouseButton;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -98,12 +99,19 @@ class _AppChromeState extends ConsumerState<AppChrome>
   Timer? _syncTimer;
   bool _promptsChecked = false;
 
+  /// Width of the controls in the top-right corner as last laid out, inset
+  /// included; null until measured. A notifier rather than state because the
+  /// drag strip that reads it lives in an Overlay entry, which a rebuild of
+  /// this widget does not reach.
+  final _controlsWidth = ValueNotifier<double?>(null);
+
   @override
   void dispose() {
     _wakeDebounceTimer?.cancel();
     _syncTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     HardwareKeyboard.instance.removeHandler(_onKey);
+    _controlsWidth.dispose();
     super.dispose();
   }
 
@@ -332,7 +340,18 @@ class _AppChromeState extends ConsumerState<AppChrome>
           },
           child: NotificationListener<ScrollNotification>(
             onNotification: _onScroll,
-            child: hasScreen ? widget.child : const SizedBox.shrink(),
+            child: hasScreen
+                ? ValueListenableBuilder<double?>(
+                    valueListenable: _controlsWidth,
+                    builder: (context, width, child) => WindowControlsInset(
+                      width: isDesktop
+                          ? (width ?? windowButtonsReservedWidth)
+                          : 0,
+                      child: child!,
+                    ),
+                    child: widget.child,
+                  )
+                : const SizedBox.shrink(),
           ),
         ),
         // The chrome gets an Overlay of its own. MaterialApp.builder runs
@@ -350,24 +369,33 @@ class _AppChromeState extends ConsumerState<AppChrome>
                   children: [
                     // Drag strip first, leaving right space so controls keep their taps.
                     if (Platform.isWindows || Platform.isLinux)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: windowButtonsReservedWidth + 120,
+                      ValueListenableBuilder<double?>(
+                        valueListenable: _controlsWidth,
+                        builder: (context, width, child) => Positioned(
+                          top: 0,
+                          left: 0,
+                          right: width ?? windowButtonsReservedWidth,
+                          child: child!,
+                        ),
                         child: const WindowDragArea(),
                       ),
                     if (isDesktop)
                       Positioned(
                         top: top + 4,
                         right: 4,
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            OfflineModeToggle(),
-                            SizedBox(width: 8),
-                            UpdateButton(),
-                            WindowButtons(),
-                          ],
+                        child: _SizeReporter(
+                          // The 4 is the inset from the right edge above.
+                          onSize: (size) =>
+                              _controlsWidth.value = size.width + 4,
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              OfflineModeToggle(),
+                              SizedBox(width: 8),
+                              UpdateButton(),
+                              WindowButtons(),
+                            ],
+                          ),
                         ),
                       ),
                     // In-window toast notices (e.g. server reachability fallback)
@@ -390,5 +418,40 @@ class _AppChromeState extends ConsumerState<AppChrome>
         ),
       ],
     );
+  }
+}
+
+/// Reports its child's size after each frame in which it changed.
+///
+/// After the frame because layout is no time to change what other widgets
+/// depend on: the width it reports reaches every screen.
+class _SizeReporter extends SingleChildRenderObjectWidget {
+  const _SizeReporter({required this.onSize, super.child});
+
+  final ValueChanged<Size> onSize;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderSizeReporter(onSize);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderSizeReporter renderObject,
+  ) => renderObject.onSize = onSize;
+}
+
+class _RenderSizeReporter extends RenderProxyBox {
+  _RenderSizeReporter(this.onSize);
+
+  ValueChanged<Size> onSize;
+  Size? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (size == _reported) return;
+    final reported = _reported = size;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onSize(reported));
   }
 }
