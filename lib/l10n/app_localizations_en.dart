@@ -165,4 +165,205 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addWithoutVerifying => 'Add without verifying';
+
+  @override
+  String get serverConnectionTitle => 'Server Connection';
+
+  @override
+  String get noServerFound => 'No server found';
+
+  @override
+  String get localLanBadge => 'Local LAN';
+
+  @override
+  String get remoteBadge => 'Remote';
+
+  @override
+  String activeUrl(String url) {
+    return 'Active URL: $url';
+  }
+
+  @override
+  String connectedWifi(String ssid) {
+    return 'Connected Wi-Fi: $ssid';
+  }
+
+  @override
+  String get statusConnectedLocal => 'Connected directly via local network';
+
+  @override
+  String statusConnectedLocalOn(String ssid) {
+    return 'Connected directly via local network ($ssid)';
+  }
+
+  @override
+  String get statusLocalUnreachableFallback =>
+      'Local endpoint unreachable. Routed via external URL.';
+
+  @override
+  String get statusLocalUnreachable => 'Local endpoint unreachable';
+
+  @override
+  String get securitySection => 'Security';
+
+  @override
+  String get verifyCertificates => 'Verify Certificates';
+
+  @override
+  String get verifyCertificatesSubtitle =>
+      'Turning this off lets anyone on the network between you and the server read your password and traffic. Only for a self-signed server.';
+
+  @override
+  String get localNetworkTarget => 'Local Network Target';
+
+  @override
+  String get localNetworkTargetDescription =>
+      'Route requests directly to your server on your home Wi-Fi network. Bypasses hairpin NAT, CGNAT, and bandwidth limits.';
+
+  @override
+  String get enableLocalEndpoint => 'Enable Local LAN Endpoint';
+
+  @override
+  String get enableLocalEndpointSubtitle =>
+      'Connect via local IP when on home Wi-Fi';
+
+  @override
+  String get localEndpointSettings => 'Local Endpoint Settings';
+
+  @override
+  String get localHostLabel => 'Local IP / Hostname';
+
+  @override
+  String get portLabel => 'Port';
+
+  @override
+  String resolvedLocalUrl(String url) {
+    return 'Resolved Local URL: $url';
+  }
+
+  @override
+  String get testLocalConnection => 'Test Local Connection';
+
+  @override
+  String get testEnterHost => 'Please enter a valid IP address or hostname';
+
+  @override
+  String get testInvalidEndpoint => 'Invalid endpoint configuration';
+
+  @override
+  String testConnected(int ms) {
+    return 'Connected successfully ($ms ms)';
+  }
+
+  @override
+  String testUnreachable(String url) {
+    return 'Unreachable at $url. Verify server IP, port, and Wi-Fi connection.';
+  }
+
+  @override
+  String get targetWifiNetworks => 'Target Wi-Fi Networks (SSIDs)';
+
+  @override
+  String get targetWifiNetworksDescription =>
+      'Specify the Wi-Fi network names where this local IP is reachable. If empty, local target is automatically attempted on any Wi-Fi or Ethernet.';
+
+  @override
+  String addCurrentWifi(String ssid) {
+    return 'Add Current Wi-Fi: \"$ssid\"';
+  }
+
+  @override
+  String get refreshWifiName => 'Refresh Wi-Fi Name';
+
+  @override
+  String get detectCurrentWifi => 'Detect Current Wi-Fi';
+
+  @override
+  String get noSsidsConfigured =>
+      'No SSIDs configured. Direct local connection will be attempted on all Wi-Fi and Ethernet networks.';
+
+  @override
+  String get addSsidManually => 'Add Wi-Fi SSID manually';
+
+  @override
+  String get addSsidHint => 'e.g. MyHomeNetwork_5G';
+
+  @override
+  String get addSsid => 'Add SSID';
+
+  @override
+  String get failoverAndProbing => 'Failover & Probing';
+
+  @override
+  String get automaticFailover => 'Automatic Failover to External URL';
+
+  @override
+  String get automaticFailoverSubtitle =>
+      'If local endpoint is unreachable on matching Wi-Fi, seamlessly fallback to external server URL';
+
+  @override
+  String get probeTimeout => 'Probe Timeout';
+
+  @override
+  String probeTimeoutSubtitle(int ms) {
+    return 'Maximum time to wait when verifying local endpoint: $ms ms';
+  }
+
+  @override
+  String get serversAndConnection => 'Servers & Connection';
+
+  @override
+  String serverOnLocalLan(String url) {
+    return 'Local LAN ($url)';
+  }
+
+  @override
+  String get probingLocalEndpoint => 'Probing local endpoint...';
+
+  @override
+  String get localUnreachableRemoteFallback =>
+      'Local unreachable · Remote fallback';
+
+  @override
+  String get connectionSettings => 'Connection Settings';
+
+  @override
+  String get removeServerTitle => 'Remove server?';
+
+  @override
+  String removeServerMessage(String name) {
+    return 'Remove \"$name\"?';
+  }
+
+  @override
+  String get remove => 'Remove';
+
+  @override
+  String get addServer => 'Add Server';
+
+  @override
+  String get localTargetDisabled => 'Disabled · Connects via remote URL';
+
+  @override
+  String localTargetActive(String url) {
+    return 'Active: $url';
+  }
+
+  @override
+  String localTargetActiveOn(String url, String ssid) {
+    return 'Active: $url on \"$ssid\"';
+  }
+
+  @override
+  String get localTargetUnreachable => 'Unreachable · Routed via remote';
+
+  @override
+  String localTargetUnreachableOn(String ssid) {
+    return 'Unreachable on \"$ssid\" · Routed via remote';
+  }
+
+  @override
+  String localTargetAway(String url) {
+    return 'Remote: $url · Away from home Wi-Fi';
+  }
 }

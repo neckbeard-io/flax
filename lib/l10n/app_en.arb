@@ -197,5 +197,298 @@
   "addWithoutVerifying": "Add without verifying",
   "@addWithoutVerifying": {
     "description": "Adds a server whose certificate isn't trusted, with certificate checks off for it"
+  },
+  "serverConnectionTitle": "Server Connection",
+  "@serverConnectionTitle": {
+    "description": "Title of a server's connection settings screen"
+  },
+  "noServerFound": "No server found",
+  "@noServerFound": {
+    "description": "Connection settings opened for a server that no longer exists"
+  },
+  "localLanBadge": "Local LAN",
+  "@localLanBadge": {
+    "description": "Badge: connected through the local network target"
+  },
+  "remoteBadge": "Remote",
+  "@remoteBadge": {
+    "description": "Badge: connected through the server's remote URL"
+  },
+  "activeUrl": "Active URL: {url}",
+  "@activeUrl": {
+    "description": "The URL requests currently go to",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "connectedWifi": "Connected Wi-Fi: {ssid}",
+  "@connectedWifi": {
+    "description": "The Wi-Fi network the device is on",
+    "placeholders": {
+      "ssid": {
+        "type": "String"
+      }
+    }
+  },
+  "statusConnectedLocal": "Connected directly via local network",
+  "@statusConnectedLocal": {
+    "description": "Status: requests go straight to the local network target"
+  },
+  "statusConnectedLocalOn": "Connected directly via local network ({ssid})",
+  "@statusConnectedLocalOn": {
+    "description": "Status: as statusConnectedLocal, naming the Wi-Fi network",
+    "placeholders": {
+      "ssid": {
+        "type": "String"
+      }
+    }
+  },
+  "statusLocalUnreachableFallback": "Local endpoint unreachable. Routed via external URL.",
+  "@statusLocalUnreachableFallback": {
+    "description": "Status: the local target did not answer, so requests use the remote URL"
+  },
+  "statusLocalUnreachable": "Local endpoint unreachable",
+  "@statusLocalUnreachable": {
+    "description": "Status: the local target did not answer and failover is off"
+  },
+  "securitySection": "Security",
+  "@securitySection": {
+    "description": "Section title for certificate settings"
+  },
+  "verifyCertificates": "Verify Certificates",
+  "@verifyCertificates": {
+    "description": "Switch: check the server's TLS certificate"
+  },
+  "verifyCertificatesSubtitle": "Turning this off lets anyone on the network between you and the server read your password and traffic. Only for a self-signed server.",
+  "@verifyCertificatesSubtitle": {
+    "description": "What turning Verify Certificates off risks"
+  },
+  "localNetworkTarget": "Local Network Target",
+  "@localNetworkTarget": {
+    "description": "Feature name: connecting to the server by its LAN address on home Wi-Fi"
+  },
+  "localNetworkTargetDescription": "Route requests directly to your server on your home Wi-Fi network. Bypasses hairpin NAT, CGNAT, and bandwidth limits.",
+  "@localNetworkTargetDescription": {
+    "description": "Explains the Local Network Target"
+  },
+  "enableLocalEndpoint": "Enable Local LAN Endpoint",
+  "@enableLocalEndpoint": {
+    "description": "Switch: turn the Local Network Target on"
+  },
+  "enableLocalEndpointSubtitle": "Connect via local IP when on home Wi-Fi",
+  "@enableLocalEndpointSubtitle": {
+    "description": "Subtitle of enableLocalEndpoint"
+  },
+  "localEndpointSettings": "Local Endpoint Settings",
+  "@localEndpointSettings": {
+    "description": "Section title for the local target's address"
+  },
+  "localHostLabel": "Local IP / Hostname",
+  "@localHostLabel": {
+    "description": "Field label: the server's LAN address"
+  },
+  "portLabel": "Port",
+  "@portLabel": {
+    "description": "Field label: network port"
+  },
+  "resolvedLocalUrl": "Resolved Local URL: {url}",
+  "@resolvedLocalUrl": {
+    "description": "The full local URL built from the fields above",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "testLocalConnection": "Test Local Connection",
+  "@testLocalConnection": {
+    "description": "Button: try reaching the local target now"
+  },
+  "testEnterHost": "Please enter a valid IP address or hostname",
+  "@testEnterHost": {
+    "description": "Connection test: the address field is empty"
+  },
+  "testInvalidEndpoint": "Invalid endpoint configuration",
+  "@testInvalidEndpoint": {
+    "description": "Connection test: the address could not be turned into a URL"
+  },
+  "testConnected": "Connected successfully ({ms} ms)",
+  "@testConnected": {
+    "description": "Connection test succeeded, with the time it took",
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "testUnreachable": "Unreachable at {url}. Verify server IP, port, and Wi-Fi connection.",
+  "@testUnreachable": {
+    "description": "Connection test failed",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "targetWifiNetworks": "Target Wi-Fi Networks (SSIDs)",
+  "@targetWifiNetworks": {
+    "description": "Section title: Wi-Fi networks where the local target is used"
+  },
+  "targetWifiNetworksDescription": "Specify the Wi-Fi network names where this local IP is reachable. If empty, local target is automatically attempted on any Wi-Fi or Ethernet.",
+  "@targetWifiNetworksDescription": {
+    "description": "Explains the target Wi-Fi networks list"
+  },
+  "addCurrentWifi": "Add Current Wi-Fi: \"{ssid}\"",
+  "@addCurrentWifi": {
+    "description": "Chip: add the Wi-Fi network the device is on",
+    "placeholders": {
+      "ssid": {
+        "type": "String"
+      }
+    }
+  },
+  "refreshWifiName": "Refresh Wi-Fi Name",
+  "@refreshWifiName": {
+    "description": "Button: read the Wi-Fi name again"
+  },
+  "detectCurrentWifi": "Detect Current Wi-Fi",
+  "@detectCurrentWifi": {
+    "description": "Button: find out which Wi-Fi network the device is on"
+  },
+  "noSsidsConfigured": "No SSIDs configured. Direct local connection will be attempted on all Wi-Fi and Ethernet networks.",
+  "@noSsidsConfigured": {
+    "description": "Shown when the target Wi-Fi list is empty"
+  },
+  "addSsidManually": "Add Wi-Fi SSID manually",
+  "@addSsidManually": {
+    "description": "Field label: type a Wi-Fi network name"
+  },
+  "addSsidHint": "e.g. MyHomeNetwork_5G",
+  "@addSsidHint": {
+    "description": "Example Wi-Fi network name in the field above"
+  },
+  "addSsid": "Add SSID",
+  "@addSsid": {
+    "description": "Tooltip: add the typed Wi-Fi network name"
+  },
+  "failoverAndProbing": "Failover & Probing",
+  "@failoverAndProbing": {
+    "description": "Section title: falling back to the remote URL, and probe timing"
+  },
+  "automaticFailover": "Automatic Failover to External URL",
+  "@automaticFailover": {
+    "description": "Switch: use the remote URL when the local target does not answer"
+  },
+  "automaticFailoverSubtitle": "If local endpoint is unreachable on matching Wi-Fi, seamlessly fallback to external server URL",
+  "@automaticFailoverSubtitle": {
+    "description": "Subtitle of automaticFailover"
+  },
+  "probeTimeout": "Probe Timeout",
+  "@probeTimeout": {
+    "description": "Setting: how long to wait for the local target"
+  },
+  "probeTimeoutSubtitle": "Maximum time to wait when verifying local endpoint: {ms} ms",
+  "@probeTimeoutSubtitle": {
+    "description": "Subtitle of probeTimeout, with the current value",
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "serversAndConnection": "Servers & Connection",
+  "@serversAndConnection": {
+    "description": "Settings section title"
+  },
+  "serverOnLocalLan": "Local LAN ({url})",
+  "@serverOnLocalLan": {
+    "description": "Server list subtitle: connected through the local target at this URL",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "probingLocalEndpoint": "Probing local endpoint...",
+  "@probingLocalEndpoint": {
+    "description": "Status: checking whether the local target answers"
+  },
+  "localUnreachableRemoteFallback": "Local unreachable · Remote fallback",
+  "@localUnreachableRemoteFallback": {
+    "description": "Server list subtitle: local target did not answer, using the remote URL"
+  },
+  "connectionSettings": "Connection Settings",
+  "@connectionSettings": {
+    "description": "Tooltip: open a server's connection settings"
+  },
+  "removeServerTitle": "Remove server?",
+  "@removeServerTitle": {
+    "description": "Dialog title: confirm removing a server"
+  },
+  "removeServerMessage": "Remove \"{name}\"?",
+  "@removeServerMessage": {
+    "description": "Dialog body: confirm removing the named server",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "remove": "Remove",
+  "@remove": {
+    "description": "Button: remove the item"
+  },
+  "addServer": "Add Server",
+  "@addServer": {
+    "description": "Button: add another server"
+  },
+  "localTargetDisabled": "Disabled · Connects via remote URL",
+  "@localTargetDisabled": {
+    "description": "Local Network Target subtitle: turned off"
+  },
+  "localTargetActive": "Active: {url}",
+  "@localTargetActive": {
+    "description": "Local Network Target subtitle: in use at this URL",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "localTargetActiveOn": "Active: {url} on \"{ssid}\"",
+  "@localTargetActiveOn": {
+    "description": "Local Network Target subtitle: in use at this URL on this Wi-Fi network",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      },
+      "ssid": {
+        "type": "String"
+      }
+    }
+  },
+  "localTargetUnreachable": "Unreachable · Routed via remote",
+  "@localTargetUnreachable": {
+    "description": "Local Network Target subtitle: did not answer, using the remote URL"
+  },
+  "localTargetUnreachableOn": "Unreachable on \"{ssid}\" · Routed via remote",
+  "@localTargetUnreachableOn": {
+    "description": "As localTargetUnreachable, naming the Wi-Fi network",
+    "placeholders": {
+      "ssid": {
+        "type": "String"
+      }
+    }
+  },
+  "localTargetAway": "Remote: {url} · Away from home Wi-Fi",
+  "@localTargetAway": {
+    "description": "Local Network Target subtitle: not on a target Wi-Fi network",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
   }
 }

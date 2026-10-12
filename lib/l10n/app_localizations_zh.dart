@@ -153,4 +153,201 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get addWithoutVerifying => '跳过验证并添加';
+
+  @override
+  String get serverConnectionTitle => '服务器连接';
+
+  @override
+  String get noServerFound => '未找到服务器';
+
+  @override
+  String get localLanBadge => '本地局域网';
+
+  @override
+  String get remoteBadge => '远程';
+
+  @override
+  String activeUrl(String url) {
+    return '当前网址：$url';
+  }
+
+  @override
+  String connectedWifi(String ssid) {
+    return '已连接的 Wi-Fi：$ssid';
+  }
+
+  @override
+  String get statusConnectedLocal => '已通过本地网络直接连接';
+
+  @override
+  String statusConnectedLocalOn(String ssid) {
+    return '已通过本地网络直接连接（$ssid）';
+  }
+
+  @override
+  String get statusLocalUnreachableFallback => '无法访问本地端点。已改用外部网址。';
+
+  @override
+  String get statusLocalUnreachable => '无法访问本地端点';
+
+  @override
+  String get securitySection => '安全';
+
+  @override
+  String get verifyCertificates => '验证证书';
+
+  @override
+  String get verifyCertificatesSubtitle =>
+      '关闭后，您与服务器之间网络上的任何人都可以读取您的密码和通信内容。仅适用于使用自签名证书的服务器。';
+
+  @override
+  String get localNetworkTarget => '本地网络目标';
+
+  @override
+  String get localNetworkTargetDescription =>
+      '在家庭 Wi-Fi 网络中将请求直接发送到您的服务器。可绕过 NAT 回环、CGNAT 和带宽限制。';
+
+  @override
+  String get enableLocalEndpoint => '启用本地局域网端点';
+
+  @override
+  String get enableLocalEndpointSubtitle => '在家庭 Wi-Fi 中通过本地 IP 连接';
+
+  @override
+  String get localEndpointSettings => '本地端点设置';
+
+  @override
+  String get localHostLabel => '本地 IP / 主机名';
+
+  @override
+  String get portLabel => '端口';
+
+  @override
+  String resolvedLocalUrl(String url) {
+    return '解析后的本地网址：$url';
+  }
+
+  @override
+  String get testLocalConnection => '测试本地连接';
+
+  @override
+  String get testEnterHost => '请输入有效的 IP 地址或主机名';
+
+  @override
+  String get testInvalidEndpoint => '端点配置无效';
+
+  @override
+  String testConnected(int ms) {
+    return '连接成功（$ms ms）';
+  }
+
+  @override
+  String testUnreachable(String url) {
+    return '无法访问 $url。请检查服务器 IP、端口和 Wi-Fi 连接。';
+  }
+
+  @override
+  String get targetWifiNetworks => '目标 Wi-Fi 网络（SSID）';
+
+  @override
+  String get targetWifiNetworksDescription =>
+      '指定可以访问此本地 IP 的 Wi-Fi 网络名称。若留空，将在任何 Wi-Fi 或以太网上自动尝试本地目标。';
+
+  @override
+  String addCurrentWifi(String ssid) {
+    return '添加当前 Wi-Fi：“$ssid”';
+  }
+
+  @override
+  String get refreshWifiName => '刷新 Wi-Fi 名称';
+
+  @override
+  String get detectCurrentWifi => '检测当前 Wi-Fi';
+
+  @override
+  String get noSsidsConfigured => '未配置 SSID。将在所有 Wi-Fi 和以太网网络上尝试直接本地连接。';
+
+  @override
+  String get addSsidManually => '手动添加 Wi-Fi SSID';
+
+  @override
+  String get addSsidHint => '例如 MyHomeNetwork_5G';
+
+  @override
+  String get addSsid => '添加 SSID';
+
+  @override
+  String get failoverAndProbing => '故障转移与探测';
+
+  @override
+  String get automaticFailover => '自动故障转移到外部网址';
+
+  @override
+  String get automaticFailoverSubtitle =>
+      '如果在匹配的 Wi-Fi 上无法访问本地端点，则无缝回退到服务器的外部网址';
+
+  @override
+  String get probeTimeout => '探测超时';
+
+  @override
+  String probeTimeoutSubtitle(int ms) {
+    return '验证本地端点时的最长等待时间：$ms ms';
+  }
+
+  @override
+  String get serversAndConnection => '服务器与连接';
+
+  @override
+  String serverOnLocalLan(String url) {
+    return '本地局域网（$url）';
+  }
+
+  @override
+  String get probingLocalEndpoint => '正在探测本地端点…';
+
+  @override
+  String get localUnreachableRemoteFallback => '本地无法访问 · 已回退到远程';
+
+  @override
+  String get connectionSettings => '连接设置';
+
+  @override
+  String get removeServerTitle => '移除服务器？';
+
+  @override
+  String removeServerMessage(String name) {
+    return '移除“$name”？';
+  }
+
+  @override
+  String get remove => '移除';
+
+  @override
+  String get addServer => '添加服务器';
+
+  @override
+  String get localTargetDisabled => '已停用 · 通过远程网址连接';
+
+  @override
+  String localTargetActive(String url) {
+    return '使用中：$url';
+  }
+
+  @override
+  String localTargetActiveOn(String url, String ssid) {
+    return '使用中：$url（“$ssid”）';
+  }
+
+  @override
+  String get localTargetUnreachable => '无法访问 · 已通过远程连接';
+
+  @override
+  String localTargetUnreachableOn(String ssid) {
+    return '在“$ssid”上无法访问 · 已通过远程连接';
+  }
+
+  @override
+  String localTargetAway(String url) {
+    return '远程：$url · 不在家庭 Wi-Fi 中';
+  }
 }

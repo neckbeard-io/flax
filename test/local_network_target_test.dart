@@ -310,10 +310,7 @@ void main() {
         final state = container.read(networkTargetResolverProvider);
         // isLocalReachable is evaluated (false in offline test environment)
         expect(state.isLocalReachable, isFalse);
-        expect(
-          state.statusMessage,
-          'Local endpoint unreachable. Routed via external URL.',
-        );
+        expect(state.status, NetworkTargetStatus.localUnreachableFallback);
       },
     );
   });

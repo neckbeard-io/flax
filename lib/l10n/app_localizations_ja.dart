@@ -153,4 +153,203 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get addWithoutVerifying => '検証せずに追加';
+
+  @override
+  String get serverConnectionTitle => 'サーバー接続';
+
+  @override
+  String get noServerFound => 'サーバーが見つかりません';
+
+  @override
+  String get localLanBadge => 'ローカルLAN';
+
+  @override
+  String get remoteBadge => 'リモート';
+
+  @override
+  String activeUrl(String url) {
+    return '使用中のURL: $url';
+  }
+
+  @override
+  String connectedWifi(String ssid) {
+    return '接続中のWi-Fi: $ssid';
+  }
+
+  @override
+  String get statusConnectedLocal => 'ローカルネットワーク経由で直接接続しています';
+
+  @override
+  String statusConnectedLocalOn(String ssid) {
+    return 'ローカルネットワーク経由で直接接続しています（$ssid）';
+  }
+
+  @override
+  String get statusLocalUnreachableFallback =>
+      'ローカルエンドポイントに接続できません。外部URL経由で接続しています。';
+
+  @override
+  String get statusLocalUnreachable => 'ローカルエンドポイントに接続できません';
+
+  @override
+  String get securitySection => 'セキュリティ';
+
+  @override
+  String get verifyCertificates => '証明書を検証';
+
+  @override
+  String get verifyCertificatesSubtitle =>
+      'オフにすると、あなたとサーバーの間のネットワーク上の誰もが、パスワードと通信内容を読み取れるようになります。自己署名証明書のサーバーの場合にのみオフにしてください。';
+
+  @override
+  String get localNetworkTarget => 'ローカルネットワーク接続先';
+
+  @override
+  String get localNetworkTargetDescription =>
+      '自宅のWi-Fiでは、リクエストをサーバーに直接送ります。ヘアピンNAT、CGNAT、帯域制限を回避できます。';
+
+  @override
+  String get enableLocalEndpoint => 'ローカルLANエンドポイントを有効にする';
+
+  @override
+  String get enableLocalEndpointSubtitle => '自宅のWi-FiではローカルIPで接続します';
+
+  @override
+  String get localEndpointSettings => 'ローカルエンドポイントの設定';
+
+  @override
+  String get localHostLabel => 'ローカルIP / ホスト名';
+
+  @override
+  String get portLabel => 'ポート';
+
+  @override
+  String resolvedLocalUrl(String url) {
+    return '解決されたローカルURL: $url';
+  }
+
+  @override
+  String get testLocalConnection => 'ローカル接続をテスト';
+
+  @override
+  String get testEnterHost => '有効なIPアドレスまたはホスト名を入力してください';
+
+  @override
+  String get testInvalidEndpoint => 'エンドポイントの設定が無効です';
+
+  @override
+  String testConnected(int ms) {
+    return '接続に成功しました（$ms ms）';
+  }
+
+  @override
+  String testUnreachable(String url) {
+    return '$url に接続できません。サーバーのIP、ポート、Wi-Fi接続を確認してください。';
+  }
+
+  @override
+  String get targetWifiNetworks => '対象のWi-Fiネットワーク（SSID）';
+
+  @override
+  String get targetWifiNetworksDescription =>
+      'このローカルIPに接続できるWi-Fiネットワーク名を指定します。空の場合は、どのWi-Fiやイーサネットでも自動的にローカル接続先を試します。';
+
+  @override
+  String addCurrentWifi(String ssid) {
+    return '現在のWi-Fiを追加: 「$ssid」';
+  }
+
+  @override
+  String get refreshWifiName => 'Wi-Fi名を更新';
+
+  @override
+  String get detectCurrentWifi => '現在のWi-Fiを検出';
+
+  @override
+  String get noSsidsConfigured =>
+      'SSIDが設定されていません。すべてのWi-Fiとイーサネットでローカルへの直接接続を試みます。';
+
+  @override
+  String get addSsidManually => 'Wi-Fi SSIDを手動で追加';
+
+  @override
+  String get addSsidHint => '例: MyHomeNetwork_5G';
+
+  @override
+  String get addSsid => 'SSIDを追加';
+
+  @override
+  String get failoverAndProbing => 'フェイルオーバーと接続確認';
+
+  @override
+  String get automaticFailover => '外部URLへ自動でフェイルオーバー';
+
+  @override
+  String get automaticFailoverSubtitle =>
+      '一致するWi-Fiでローカルエンドポイントに接続できない場合、サーバーの外部URLにシームレスに切り替えます';
+
+  @override
+  String get probeTimeout => '接続確認のタイムアウト';
+
+  @override
+  String probeTimeoutSubtitle(int ms) {
+    return 'ローカルエンドポイント確認時の最大待ち時間: $ms ms';
+  }
+
+  @override
+  String get serversAndConnection => 'サーバーと接続';
+
+  @override
+  String serverOnLocalLan(String url) {
+    return 'ローカルLAN（$url）';
+  }
+
+  @override
+  String get probingLocalEndpoint => 'ローカルエンドポイントを確認中…';
+
+  @override
+  String get localUnreachableRemoteFallback => 'ローカル接続不可・リモートに切り替え';
+
+  @override
+  String get connectionSettings => '接続設定';
+
+  @override
+  String get removeServerTitle => 'サーバーを削除しますか？';
+
+  @override
+  String removeServerMessage(String name) {
+    return '「$name」を削除しますか？';
+  }
+
+  @override
+  String get remove => '削除';
+
+  @override
+  String get addServer => 'サーバーを追加';
+
+  @override
+  String get localTargetDisabled => '無効・リモートURLで接続';
+
+  @override
+  String localTargetActive(String url) {
+    return '使用中: $url';
+  }
+
+  @override
+  String localTargetActiveOn(String url, String ssid) {
+    return '使用中: $url（「$ssid」）';
+  }
+
+  @override
+  String get localTargetUnreachable => '接続不可・リモート経由';
+
+  @override
+  String localTargetUnreachableOn(String ssid) {
+    return '「$ssid」では接続不可・リモート経由';
+  }
+
+  @override
+  String localTargetAway(String url) {
+    return 'リモート: $url・自宅のWi-Fi外';
+  }
 }

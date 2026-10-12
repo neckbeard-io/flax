@@ -17,6 +17,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - A–Z index on long artist lists: tap or drag a letter to jump there.
 - The A–Z index on Albums (All, Downloaded), genre pages and Downloads too.
 - Adding a self-signed server offers to skip the certificate check.
+- Server connection settings follow your chosen language.
 
 ### Changed
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.

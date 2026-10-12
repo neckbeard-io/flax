@@ -20,6 +20,19 @@ import 'package:flax/services/platform/car_connection_service.dart';
 
 enum EndpointTargetType { external, local }
 
+/// What the last local probe decided, for the connection screen to describe in
+/// the user's language.
+enum NetworkTargetStatus {
+  /// Requests go straight to the local target.
+  connectedLocal,
+
+  /// The local target did not answer, so requests use the remote URL.
+  localUnreachableFallback,
+
+  /// The local target did not answer, and failover is off.
+  localUnreachable,
+}
+
 class NetworkTargetState {
   final EndpointTargetType activeTarget;
   final String effectiveBaseUrl;
@@ -28,7 +41,7 @@ class NetworkTargetState {
   final bool isProbing;
   final bool? isLocalReachable;
   final int? lastProbeLatencyMs;
-  final String? statusMessage;
+  final NetworkTargetStatus? status;
 
   const NetworkTargetState({
     required this.activeTarget,
@@ -38,7 +51,7 @@ class NetworkTargetState {
     this.isProbing = false,
     this.isLocalReachable,
     this.lastProbeLatencyMs,
-    this.statusMessage,
+    this.status,
   });
 
   bool get isUsingLocal => activeTarget == EndpointTargetType.local;
@@ -51,8 +64,8 @@ class NetworkTargetState {
     bool? isProbing,
     bool? isLocalReachable,
     int? lastProbeLatencyMs,
-    String? statusMessage,
-    bool clearStatusMessage = false,
+    NetworkTargetStatus? status,
+    bool clearStatus = false,
   }) {
     return NetworkTargetState(
       activeTarget: activeTarget ?? this.activeTarget,
@@ -62,9 +75,7 @@ class NetworkTargetState {
       isProbing: isProbing ?? this.isProbing,
       isLocalReachable: isLocalReachable ?? this.isLocalReachable,
       lastProbeLatencyMs: lastProbeLatencyMs ?? this.lastProbeLatencyMs,
-      statusMessage: clearStatusMessage
-          ? null
-          : (statusMessage ?? this.statusMessage),
+      status: clearStatus ? null : (status ?? this.status),
     );
   }
 }
@@ -175,7 +186,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
         activeTarget: EndpointTargetType.external,
         effectiveBaseUrl: server.baseUrl,
         isLocalConfigured: false,
-        clearStatusMessage: true,
+        clearStatus: true,
       );
       return;
     }
@@ -198,7 +209,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
         effectiveBaseUrl: server.baseUrl,
         isLocalConfigured: true,
         currentSsid: null,
-        clearStatusMessage: true,
+        clearStatus: true,
       );
       return;
     }
@@ -222,7 +233,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
         effectiveBaseUrl: server.baseUrl,
         isLocalConfigured: true,
         currentSsid: currentSsid,
-        clearStatusMessage: true,
+        clearStatus: true,
       );
       return;
     }
@@ -256,7 +267,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
         effectiveBaseUrl: server.baseUrl,
         isLocalConfigured: true,
         currentSsid: currentSsid,
-        clearStatusMessage: true,
+        clearStatus: true,
       );
       return;
     }
@@ -287,9 +298,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
         isProbing: false,
         isLocalReachable: true,
         lastProbeLatencyMs: stopwatch.elapsedMilliseconds,
-        statusMessage: currentSsid != null
-            ? 'Connected directly via local network ($currentSsid)'
-            : 'Connected directly via local network',
+        status: NetworkTargetStatus.connectedLocal,
       );
     } else {
       AppLogger.w(
@@ -302,7 +311,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
           effectiveBaseUrl: server.baseUrl,
           isProbing: false,
           isLocalReachable: false,
-          statusMessage: 'Local endpoint unreachable. Routed via external URL.',
+          status: NetworkTargetStatus.localUnreachableFallback,
         );
       } else {
         state = state.copyWith(
@@ -310,7 +319,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
           effectiveBaseUrl: localBaseUrl,
           isProbing: false,
           isLocalReachable: false,
-          statusMessage: 'Local endpoint unreachable',
+          status: NetworkTargetStatus.localUnreachable,
         );
       }
     }
