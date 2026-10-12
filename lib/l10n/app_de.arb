@@ -44,5 +44,7 @@
   "retry": "Wiederholen",
   "error": "Fehler",
   "trackCount": "{count, plural, =1{1 Titel} other{{count} Titel}}",
-  "albumCount": "{count, plural, =1{1 Album} other{{count} Alben}}"
+  "albumCount": "{count, plural, =1{1 Album} other{{count} Alben}}",
+  "untrustedCertificate": "Das Zertifikat des Servers ist nicht vertrauenswürdig. Es ist möglicherweise selbstsigniert, oder jemand fängt die Verbindung ab. Fahren Sie nur fort, wenn Sie wissen, dass dieser Server ein selbstsigniertes Zertifikat verwendet.",
+  "addWithoutVerifying": "Ohne Überprüfung hinzufügen"
 }

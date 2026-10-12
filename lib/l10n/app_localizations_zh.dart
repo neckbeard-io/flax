@@ -149,8 +149,8 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get untrustedCertificate =>
-      'The server\'s certificate isn\'t trusted. It may be self-signed, or someone may be intercepting the connection. Only continue if you know this server uses a self-signed certificate.';
+      '服务器的证书不受信任。它可能是自签名证书，也可能有人正在拦截连接。只有在您确定此服务器使用自签名证书时才继续。';
 
   @override
-  String get addWithoutVerifying => 'Add without verifying';
+  String get addWithoutVerifying => '跳过验证并添加';
 }
