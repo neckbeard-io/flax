@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
+import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/services/network/network_target_resolver.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
 
@@ -111,13 +112,16 @@ class _ServerConnectionScreenState
   }
 
   Future<void> _testConnection(Server server) async {
+    final l10n = AppLocalizations.of(context);
     final host = _hostController.text.trim();
     final port = int.tryParse(_portController.text.trim()) ?? 4533;
 
     if (host.isEmpty) {
       setState(() {
         _testSuccess = false;
-        _testResult = 'Please enter a valid IP address or hostname';
+        _testResult =
+            l10n?.testEnterHost ??
+            'Please enter a valid IP address or hostname';
       });
       return;
     }
@@ -130,7 +134,8 @@ class _ServerConnectionScreenState
     if (url == null) {
       setState(() {
         _testSuccess = false;
-        _testResult = 'Invalid endpoint configuration';
+        _testResult =
+            l10n?.testInvalidEndpoint ?? 'Invalid endpoint configuration';
       });
       return;
     }
@@ -153,16 +158,38 @@ class _ServerConnectionScreenState
       setState(() {
         _testingConnection = false;
         _testSuccess = ok;
+        final ms = stopwatch.elapsedMilliseconds;
         _testResult = ok
-            ? 'Connected successfully (${stopwatch.elapsedMilliseconds} ms)'
-            : 'Unreachable at $url. Verify server IP, port, and Wi-Fi connection.';
+            ? (l10n?.testConnected(ms) ?? 'Connected successfully ($ms ms)')
+            : (l10n?.testUnreachable(url) ??
+                  'Unreachable at $url. Verify server IP, port, and Wi-Fi connection.');
       });
     }
   }
 
+  /// [status] described in the user's language.
+  static String _statusText(
+    AppLocalizations? l10n,
+    NetworkTargetStatus status,
+    String? ssid,
+  ) => switch (status) {
+    NetworkTargetStatus.connectedLocal =>
+      ssid != null
+          ? (l10n?.statusConnectedLocalOn(ssid) ??
+                'Connected directly via local network ($ssid)')
+          : (l10n?.statusConnectedLocal ??
+                'Connected directly via local network'),
+    NetworkTargetStatus.localUnreachableFallback =>
+      l10n?.statusLocalUnreachableFallback ??
+          'Local endpoint unreachable. Routed via external URL.',
+    NetworkTargetStatus.localUnreachable =>
+      l10n?.statusLocalUnreachable ?? 'Local endpoint unreachable',
+  };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final servers = ref.watch(serverListProvider);
     final server = _getServer(servers);
 
@@ -170,20 +197,23 @@ class _ServerConnectionScreenState
       return Scaffold(
         appBar: AppBar(
           leading: const UpBackButton(fallbackLocation: '/settings'),
-          title: const Text('Server Connection'),
+          title: Text(l10n?.serverConnectionTitle ?? 'Server Connection'),
         ),
-        body: const Center(child: Text('No server found')),
+        body: Center(child: Text(l10n?.noServerFound ?? 'No server found')),
       );
     }
 
     _initFields(server);
     final config = server.localNetworkConfig;
     final targetState = ref.watch(networkTargetResolverProvider);
+    final activeUrl = targetState.effectiveBaseUrl.isNotEmpty
+        ? targetState.effectiveBaseUrl
+        : server.baseUrl;
 
     return Scaffold(
       appBar: AppBar(
         leading: const UpBackButton(fallbackLocation: '/settings'),
-        title: const Text('Server Connection'),
+        title: Text(l10n?.serverConnectionTitle ?? 'Server Connection'),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -240,7 +270,9 @@ class _ServerConnectionScreenState
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
-                            targetState.isUsingLocal ? 'Local LAN' : 'Remote',
+                            targetState.isUsingLocal
+                                ? (l10n?.localLanBadge ?? 'Local LAN')
+                                : (l10n?.remoteBadge ?? 'Remote'),
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: targetState.isUsingLocal
                                   ? theme.colorScheme.onPrimaryContainer
@@ -253,16 +285,20 @@ class _ServerConnectionScreenState
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Active URL: ${targetState.effectiveBaseUrl.isNotEmpty ? targetState.effectiveBaseUrl : server.baseUrl}',
+                      l10n?.activeUrl(activeUrl) ?? 'Active URL: $activeUrl',
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontFamily: 'monospace',
                         color: theme.colorScheme.onSurface,
                       ),
                     ),
-                    if (targetState.statusMessage != null) ...[
+                    if (targetState.status != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        targetState.statusMessage!,
+                        _statusText(
+                          l10n,
+                          targetState.status!,
+                          targetState.currentSsid,
+                        ),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: targetState.isUsingLocal
                               ? theme.colorScheme.primary
@@ -273,7 +309,8 @@ class _ServerConnectionScreenState
                     if (targetState.currentSsid != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Connected Wi-Fi: ${targetState.currentSsid}',
+                        l10n?.connectedWifi(targetState.currentSsid!) ??
+                            'Connected Wi-Fi: ${targetState.currentSsid}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -286,13 +323,14 @@ class _ServerConnectionScreenState
           ),
 
           // ── Security ──
-          _SectionTitle(title: 'Security'),
+          _SectionTitle(title: l10n?.securitySection ?? 'Security'),
           SwitchListTile(
-            title: const Text('Verify Certificates'),
-            subtitle: const Text(
-              'Turning this off lets anyone on the network between you and '
-              'the server read your password and traffic. Only for a '
-              'self-signed server.',
+            title: Text(l10n?.verifyCertificates ?? 'Verify Certificates'),
+            subtitle: Text(
+              l10n?.verifyCertificatesSubtitle ??
+                  'Turning this off lets anyone on the network between you '
+                      'and the server read your password and traffic. Only '
+                      'for a self-signed server.',
             ),
             value: server.verifyCertificates,
             onChanged: (val) {
@@ -304,19 +342,27 @@ class _ServerConnectionScreenState
           const Divider(),
 
           // ── Local Network Target Section ──
-          _SectionTitle(title: 'Local Network Target'),
+          _SectionTitle(
+            title: l10n?.localNetworkTarget ?? 'Local Network Target',
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Text(
-              'Route requests directly to your server on your home Wi-Fi network. Bypasses hairpin NAT, CGNAT, and bandwidth limits.',
+              l10n?.localNetworkTargetDescription ??
+                  'Route requests directly to your server on your home Wi-Fi network. Bypasses hairpin NAT, CGNAT, and bandwidth limits.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ),
           SwitchListTile(
-            title: const Text('Enable Local LAN Endpoint'),
-            subtitle: const Text('Connect via local IP when on home Wi-Fi'),
+            title: Text(
+              l10n?.enableLocalEndpoint ?? 'Enable Local LAN Endpoint',
+            ),
+            subtitle: Text(
+              l10n?.enableLocalEndpointSubtitle ??
+                  'Connect via local IP when on home Wi-Fi',
+            ),
             value: config.enabled,
             onChanged: (val) {
               _saveConfig(server, config.copyWith(enabled: val));
@@ -325,7 +371,9 @@ class _ServerConnectionScreenState
 
           if (config.enabled) ...[
             const Divider(),
-            _SectionTitle(title: 'Local Endpoint Settings'),
+            _SectionTitle(
+              title: l10n?.localEndpointSettings ?? 'Local Endpoint Settings',
+            ),
 
             // Protocol & Host & Port
             Padding(
@@ -354,8 +402,9 @@ class _ServerConnectionScreenState
                     flex: 3,
                     child: TextField(
                       controller: _hostController,
-                      decoration: const InputDecoration(
-                        labelText: 'Local IP / Hostname',
+                      decoration: InputDecoration(
+                        labelText:
+                            l10n?.localHostLabel ?? 'Local IP / Hostname',
                         hintText: '192.168.1.100',
                         border: OutlineInputBorder(),
                         isDense: true,
@@ -369,8 +418,8 @@ class _ServerConnectionScreenState
                     child: TextField(
                       controller: _portController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Port',
+                      decoration: InputDecoration(
+                        labelText: l10n?.portLabel ?? 'Port',
                         hintText: '4533',
                         border: OutlineInputBorder(),
                         isDense: true,
@@ -388,7 +437,8 @@ class _ServerConnectionScreenState
                   vertical: 6,
                 ),
                 child: Text(
-                  'Resolved Local URL: ${config.localBaseUrl}',
+                  l10n?.resolvedLocalUrl(config.localBaseUrl!) ??
+                      'Resolved Local URL: ${config.localBaseUrl}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontFamily: 'monospace',
                     color: theme.colorScheme.primary,
@@ -415,7 +465,9 @@ class _ServerConnectionScreenState
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.network_ping),
-                    label: const Text('Test Local Connection'),
+                    label: Text(
+                      l10n?.testLocalConnection ?? 'Test Local Connection',
+                    ),
                   ),
                   if (_testResult != null)
                     Row(
@@ -449,11 +501,15 @@ class _ServerConnectionScreenState
             ),
 
             const Divider(),
-            _SectionTitle(title: 'Target Wi-Fi Networks (SSIDs)'),
+            _SectionTitle(
+              title:
+                  l10n?.targetWifiNetworks ?? 'Target Wi-Fi Networks (SSIDs)',
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Text(
-                'Specify the Wi-Fi network names where this local IP is reachable. If empty, local target is automatically attempted on any Wi-Fi or Ethernet.',
+                l10n?.targetWifiNetworksDescription ??
+                    'Specify the Wi-Fi network names where this local IP is reachable. If empty, local target is automatically attempted on any Wi-Fi or Ethernet.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -471,7 +527,10 @@ class _ServerConnectionScreenState
                   if (_currentWifiSsid != null && _currentWifiSsid!.isNotEmpty)
                     ActionChip(
                       avatar: const Icon(Icons.add, size: 16),
-                      label: Text('Add Current Wi-Fi: "$_currentWifiSsid"'),
+                      label: Text(
+                        l10n?.addCurrentWifi(_currentWifiSsid!) ??
+                            'Add Current Wi-Fi: "$_currentWifiSsid"',
+                      ),
                       onPressed: config.targetSsids.contains(_currentWifiSsid)
                           ? null
                           : () {
@@ -498,8 +557,8 @@ class _ServerConnectionScreenState
                         : const Icon(Icons.wifi_find, size: 16),
                     label: Text(
                       _currentWifiSsid != null
-                          ? 'Refresh Wi-Fi Name'
-                          : 'Detect Current Wi-Fi',
+                          ? (l10n?.refreshWifiName ?? 'Refresh Wi-Fi Name')
+                          : (l10n?.detectCurrentWifi ?? 'Detect Current Wi-Fi'),
                       style: const TextStyle(fontSize: 12),
                     ),
                     onPressed: _detectingWifi
@@ -530,7 +589,8 @@ class _ServerConnectionScreenState
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'No SSIDs configured. Direct local connection will be attempted on all Wi-Fi and Ethernet networks.',
+                              l10n?.noSsidsConfigured ??
+                                  'No SSIDs configured. Direct local connection will be attempted on all Wi-Fi and Ethernet networks.',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
@@ -568,9 +628,10 @@ class _ServerConnectionScreenState
                   Expanded(
                     child: TextField(
                       controller: _newSsidController,
-                      decoration: const InputDecoration(
-                        labelText: 'Add Wi-Fi SSID manually',
-                        hintText: 'e.g. MyHomeNetwork_5G',
+                      decoration: InputDecoration(
+                        labelText:
+                            l10n?.addSsidManually ?? 'Add Wi-Fi SSID manually',
+                        hintText: l10n?.addSsidHint ?? 'e.g. MyHomeNetwork_5G',
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -591,7 +652,7 @@ class _ServerConnectionScreenState
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
                     icon: const Icon(Icons.add),
-                    tooltip: 'Add SSID',
+                    tooltip: l10n?.addSsid ?? 'Add SSID',
                     onPressed: () {
                       final trimmed = _newSsidController.text.trim();
                       if (trimmed.isNotEmpty &&
@@ -610,11 +671,16 @@ class _ServerConnectionScreenState
             ),
 
             const Divider(),
-            _SectionTitle(title: 'Failover & Probing'),
+            _SectionTitle(
+              title: l10n?.failoverAndProbing ?? 'Failover & Probing',
+            ),
             SwitchListTile(
-              title: const Text('Automatic Failover to External URL'),
-              subtitle: const Text(
-                'If local endpoint is unreachable on matching Wi-Fi, seamlessly fallback to external server URL',
+              title: Text(
+                l10n?.automaticFailover ?? 'Automatic Failover to External URL',
+              ),
+              subtitle: Text(
+                l10n?.automaticFailoverSubtitle ??
+                    'If local endpoint is unreachable on matching Wi-Fi, seamlessly fallback to external server URL',
               ),
               value: config.fallbackToExternal,
               onChanged: (val) {
@@ -622,9 +688,10 @@ class _ServerConnectionScreenState
               },
             ),
             ListTile(
-              title: const Text('Probe Timeout'),
+              title: Text(l10n?.probeTimeout ?? 'Probe Timeout'),
               subtitle: Text(
-                'Maximum time to wait when verifying local endpoint: ${config.probeTimeoutMs} ms',
+                l10n?.probeTimeoutSubtitle(config.probeTimeoutMs) ??
+                    'Maximum time to wait when verifying local endpoint: ${config.probeTimeoutMs} ms',
               ),
               trailing: DropdownButton<int>(
                 value: config.probeTimeoutMs,

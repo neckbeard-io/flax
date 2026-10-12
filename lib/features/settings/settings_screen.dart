@@ -52,7 +52,9 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         children: [
           // ── Servers & Connection ──
-          _SectionTitle(title: 'Servers & Connection'),
+          _SectionTitle(
+            title: l10n?.serversAndConnection ?? 'Servers & Connection',
+          ),
           ...servers.map((s) {
             final isCurrent = s.isActive;
             String subtitleText = s.url;
@@ -62,11 +64,15 @@ class SettingsScreen extends ConsumerWidget {
                 final ms = targetState.lastProbeLatencyMs != null
                     ? ' · ${targetState.lastProbeLatencyMs} ms'
                     : '';
-                subtitleText = 'Local LAN (${targetState.effectiveBaseUrl})$ms';
+                final url = targetState.effectiveBaseUrl;
+                subtitleText =
+                    '${l10n?.serverOnLocalLan(url) ?? 'Local LAN ($url)'}$ms';
               } else if (targetState.isProbing) {
-                subtitleText = '${s.url} · Probing local endpoint...';
+                subtitleText =
+                    '${s.url} · ${l10n?.probingLocalEndpoint ?? 'Probing local endpoint...'}';
               } else if (targetState.isLocalReachable == false) {
-                subtitleText = '${s.url} · Local unreachable · Remote fallback';
+                subtitleText =
+                    '${s.url} · ${l10n?.localUnreachableRemoteFallback ?? 'Local unreachable · Remote fallback'}';
               }
             }
 
@@ -84,7 +90,7 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.tune),
-                    tooltip: 'Connection Settings',
+                    tooltip: l10n?.connectionSettings ?? 'Connection Settings',
                     onPressed: () =>
                         context.push('/settings/server-connection?id=${s.id}'),
                   ),
@@ -94,16 +100,21 @@ class SettingsScreen extends ConsumerWidget {
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Remove server?'),
-                          content: Text('Remove "${s.name}"?'),
+                          title: Text(
+                            l10n?.removeServerTitle ?? 'Remove server?',
+                          ),
+                          content: Text(
+                            l10n?.removeServerMessage(s.name) ??
+                                'Remove "${s.name}"?',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
+                              child: Text(l10n?.cancel ?? 'Cancel'),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Remove'),
+                              child: Text(l10n?.remove ?? 'Remove'),
                             ),
                           ],
                         ),
@@ -121,9 +132,10 @@ class SettingsScreen extends ConsumerWidget {
           }),
           if (activeServer != null)
             ListTile(
-              title: const Text('Local Network Target'),
+              title: Text(l10n?.localNetworkTarget ?? 'Local Network Target'),
               subtitle: Text(
                 _localNetworkSubtitle(
+                  l10n,
                   ref.watch(networkTargetResolverProvider),
                   activeServer,
                 ),
@@ -136,7 +148,7 @@ class SettingsScreen extends ConsumerWidget {
             child: OutlinedButton.icon(
               onPressed: () => context.go('/add-server'),
               icon: const Icon(Icons.add),
-              label: const Text('Add Server'),
+              label: Text(l10n?.addServer ?? 'Add Server'),
             ),
           ),
           const Divider(),
@@ -670,27 +682,34 @@ String _audioOutputSubtitle(AudioOutputSettings settings) {
   return '${settings.deviceDescription} · $dacMode';
 }
 
-String _localNetworkSubtitle(NetworkTargetState target, Server server) {
+String _localNetworkSubtitle(
+  AppLocalizations? l10n,
+  NetworkTargetState target,
+  Server server,
+) {
+  final ssid = target.currentSsid;
   if (!server.localNetworkConfig.enabled) {
-    return 'Disabled · Connects via remote URL';
+    return l10n?.localTargetDisabled ?? 'Disabled · Connects via remote URL';
   }
   if (target.isUsingLocal) {
-    final wifi = target.currentSsid != null
-        ? ' on "${target.currentSsid}"'
-        : '';
+    final url = target.effectiveBaseUrl;
+    final active = ssid != null
+        ? (l10n?.localTargetActiveOn(url, ssid) ?? 'Active: $url on "$ssid"')
+        : (l10n?.localTargetActive(url) ?? 'Active: $url');
     final latency = target.lastProbeLatencyMs != null
         ? ' · ${target.lastProbeLatencyMs} ms'
         : '';
-    return 'Active: ${target.effectiveBaseUrl}$wifi$latency';
+    return '$active$latency';
   }
   if (target.isProbing) {
-    return 'Probing local endpoint...';
+    return l10n?.probingLocalEndpoint ?? 'Probing local endpoint...';
   }
   if (target.isLocalReachable == false) {
-    final wifi = target.currentSsid != null
-        ? ' on "${target.currentSsid}"'
-        : '';
-    return 'Unreachable$wifi · Routed via remote';
+    return ssid != null
+        ? (l10n?.localTargetUnreachableOn(ssid) ??
+              'Unreachable on "$ssid" · Routed via remote')
+        : (l10n?.localTargetUnreachable ?? 'Unreachable · Routed via remote');
   }
-  return 'Remote: ${server.baseUrl} · Away from home Wi-Fi';
+  final url = server.baseUrl;
+  return l10n?.localTargetAway(url) ?? 'Remote: $url · Away from home Wi-Fi';
 }

@@ -165,4 +165,210 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get addWithoutVerifying => 'Añadir sin verificar';
+
+  @override
+  String get serverConnectionTitle => 'Conexión al servidor';
+
+  @override
+  String get noServerFound => 'No se ha encontrado ningún servidor';
+
+  @override
+  String get localLanBadge => 'LAN local';
+
+  @override
+  String get remoteBadge => 'Remoto';
+
+  @override
+  String activeUrl(String url) {
+    return 'URL activa: $url';
+  }
+
+  @override
+  String connectedWifi(String ssid) {
+    return 'Red Wi-Fi conectada: $ssid';
+  }
+
+  @override
+  String get statusConnectedLocal =>
+      'Conectado directamente a través de la red local';
+
+  @override
+  String statusConnectedLocalOn(String ssid) {
+    return 'Conectado directamente a través de la red local ($ssid)';
+  }
+
+  @override
+  String get statusLocalUnreachableFallback =>
+      'No se puede acceder al punto de conexión local. Se usa la URL externa.';
+
+  @override
+  String get statusLocalUnreachable =>
+      'No se puede acceder al punto de conexión local';
+
+  @override
+  String get securitySection => 'Seguridad';
+
+  @override
+  String get verifyCertificates => 'Verificar certificados';
+
+  @override
+  String get verifyCertificatesSubtitle =>
+      'Si lo desactivas, cualquiera en la red entre tú y el servidor podrá leer tu contraseña y tu tráfico. Solo para un servidor con certificado autofirmado.';
+
+  @override
+  String get localNetworkTarget => 'Destino de red local';
+
+  @override
+  String get localNetworkTargetDescription =>
+      'Envía las peticiones directamente a tu servidor cuando estás en la red Wi-Fi de casa. Evita el hairpin NAT, el CGNAT y los límites de ancho de banda.';
+
+  @override
+  String get enableLocalEndpoint => 'Activar punto de conexión LAN local';
+
+  @override
+  String get enableLocalEndpointSubtitle =>
+      'Conectar mediante la IP local en la red Wi-Fi de casa';
+
+  @override
+  String get localEndpointSettings => 'Ajustes del punto de conexión local';
+
+  @override
+  String get localHostLabel => 'IP local / nombre de host';
+
+  @override
+  String get portLabel => 'Puerto';
+
+  @override
+  String resolvedLocalUrl(String url) {
+    return 'URL local resultante: $url';
+  }
+
+  @override
+  String get testLocalConnection => 'Probar conexión local';
+
+  @override
+  String get testEnterHost =>
+      'Introduce una dirección IP o un nombre de host válidos';
+
+  @override
+  String get testInvalidEndpoint =>
+      'Configuración del punto de conexión no válida';
+
+  @override
+  String testConnected(int ms) {
+    return 'Conexión correcta ($ms ms)';
+  }
+
+  @override
+  String testUnreachable(String url) {
+    return 'No se puede acceder a $url. Comprueba la IP del servidor, el puerto y la conexión Wi-Fi.';
+  }
+
+  @override
+  String get targetWifiNetworks => 'Redes Wi-Fi de destino (SSID)';
+
+  @override
+  String get targetWifiNetworksDescription =>
+      'Indica los nombres de las redes Wi-Fi en las que se puede acceder a esta IP local. Si no hay ninguna, se intenta usar el destino local en cualquier red Wi-Fi o Ethernet.';
+
+  @override
+  String addCurrentWifi(String ssid) {
+    return 'Añadir Wi-Fi actual: «$ssid»';
+  }
+
+  @override
+  String get refreshWifiName => 'Actualizar nombre de Wi-Fi';
+
+  @override
+  String get detectCurrentWifi => 'Detectar Wi-Fi actual';
+
+  @override
+  String get noSsidsConfigured =>
+      'No hay SSID configurados. Se intentará la conexión local directa en todas las redes Wi-Fi y Ethernet.';
+
+  @override
+  String get addSsidManually => 'Añadir SSID de Wi-Fi manualmente';
+
+  @override
+  String get addSsidHint => 'p. ej., MiRedDeCasa_5G';
+
+  @override
+  String get addSsid => 'Añadir SSID';
+
+  @override
+  String get failoverAndProbing => 'Conmutación por error y sondeo';
+
+  @override
+  String get automaticFailover => 'Conmutación automática a la URL externa';
+
+  @override
+  String get automaticFailoverSubtitle =>
+      'Si no se puede acceder al punto de conexión local en una red Wi-Fi coincidente, se usa la URL externa del servidor sin interrupciones';
+
+  @override
+  String get probeTimeout => 'Tiempo de espera del sondeo';
+
+  @override
+  String probeTimeoutSubtitle(int ms) {
+    return 'Tiempo máximo de espera al comprobar el punto de conexión local: $ms ms';
+  }
+
+  @override
+  String get serversAndConnection => 'Servidores y conexión';
+
+  @override
+  String serverOnLocalLan(String url) {
+    return 'LAN local ($url)';
+  }
+
+  @override
+  String get probingLocalEndpoint => 'Comprobando el punto de conexión local…';
+
+  @override
+  String get localUnreachableRemoteFallback =>
+      'Local inaccesible · Se usa la remota';
+
+  @override
+  String get connectionSettings => 'Ajustes de conexión';
+
+  @override
+  String get removeServerTitle => '¿Quitar servidor?';
+
+  @override
+  String removeServerMessage(String name) {
+    return '¿Quitar «$name»?';
+  }
+
+  @override
+  String get remove => 'Quitar';
+
+  @override
+  String get addServer => 'Añadir servidor';
+
+  @override
+  String get localTargetDisabled =>
+      'Desactivado · Se conecta mediante la URL remota';
+
+  @override
+  String localTargetActive(String url) {
+    return 'Activo: $url';
+  }
+
+  @override
+  String localTargetActiveOn(String url, String ssid) {
+    return 'Activo: $url en «$ssid»';
+  }
+
+  @override
+  String get localTargetUnreachable => 'Inaccesible · Se usa la remota';
+
+  @override
+  String localTargetUnreachableOn(String ssid) {
+    return 'Inaccesible en «$ssid» · Se usa la remota';
+  }
+
+  @override
+  String localTargetAway(String url) {
+    return 'Remoto: $url · Fuera de la red Wi-Fi de casa';
+  }
 }

@@ -387,6 +387,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add without verifying'**
   String get addWithoutVerifying;
+
+  /// Title of a server's connection settings screen
+  ///
+  /// In en, this message translates to:
+  /// **'Server Connection'**
+  String get serverConnectionTitle;
+
+  /// Connection settings opened for a server that no longer exists
+  ///
+  /// In en, this message translates to:
+  /// **'No server found'**
+  String get noServerFound;
+
+  /// Badge: connected through the local network target
+  ///
+  /// In en, this message translates to:
+  /// **'Local LAN'**
+  String get localLanBadge;
+
+  /// Badge: connected through the server's remote URL
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get remoteBadge;
+
+  /// The URL requests currently go to
+  ///
+  /// In en, this message translates to:
+  /// **'Active URL: {url}'**
+  String activeUrl(String url);
+
+  /// The Wi-Fi network the device is on
+  ///
+  /// In en, this message translates to:
+  /// **'Connected Wi-Fi: {ssid}'**
+  String connectedWifi(String ssid);
+
+  /// Status: requests go straight to the local network target
+  ///
+  /// In en, this message translates to:
+  /// **'Connected directly via local network'**
+  String get statusConnectedLocal;
+
+  /// Status: as statusConnectedLocal, naming the Wi-Fi network
+  ///
+  /// In en, this message translates to:
+  /// **'Connected directly via local network ({ssid})'**
+  String statusConnectedLocalOn(String ssid);
+
+  /// Status: the local target did not answer, so requests use the remote URL
+  ///
+  /// In en, this message translates to:
+  /// **'Local endpoint unreachable. Routed via external URL.'**
+  String get statusLocalUnreachableFallback;
+
+  /// Status: the local target did not answer and failover is off
+  ///
+  /// In en, this message translates to:
+  /// **'Local endpoint unreachable'**
+  String get statusLocalUnreachable;
+
+  /// Section title for certificate settings
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get securitySection;
+
+  /// Switch: check the server's TLS certificate
+  ///
+  /// In en, this message translates to:
+  /// **'Verify Certificates'**
+  String get verifyCertificates;
+
+  /// What turning Verify Certificates off risks
+  ///
+  /// In en, this message translates to:
+  /// **'Turning this off lets anyone on the network between you and the server read your password and traffic. Only for a self-signed server.'**
+  String get verifyCertificatesSubtitle;
+
+  /// Feature name: connecting to the server by its LAN address on home Wi-Fi
+  ///
+  /// In en, this message translates to:
+  /// **'Local Network Target'**
+  String get localNetworkTarget;
+
+  /// Explains the Local Network Target
+  ///
+  /// In en, this message translates to:
+  /// **'Route requests directly to your server on your home Wi-Fi network. Bypasses hairpin NAT, CGNAT, and bandwidth limits.'**
+  String get localNetworkTargetDescription;
+
+  /// Switch: turn the Local Network Target on
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Local LAN Endpoint'**
+  String get enableLocalEndpoint;
+
+  /// Subtitle of enableLocalEndpoint
+  ///
+  /// In en, this message translates to:
+  /// **'Connect via local IP when on home Wi-Fi'**
+  String get enableLocalEndpointSubtitle;
+
+  /// Section title for the local target's address
+  ///
+  /// In en, this message translates to:
+  /// **'Local Endpoint Settings'**
+  String get localEndpointSettings;
+
+  /// Field label: the server's LAN address
+  ///
+  /// In en, this message translates to:
+  /// **'Local IP / Hostname'**
+  String get localHostLabel;
+
+  /// Field label: network port
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get portLabel;
+
+  /// The full local URL built from the fields above
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved Local URL: {url}'**
+  String resolvedLocalUrl(String url);
+
+  /// Button: try reaching the local target now
+  ///
+  /// In en, this message translates to:
+  /// **'Test Local Connection'**
+  String get testLocalConnection;
+
+  /// Connection test: the address field is empty
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a valid IP address or hostname'**
+  String get testEnterHost;
+
+  /// Connection test: the address could not be turned into a URL
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid endpoint configuration'**
+  String get testInvalidEndpoint;
+
+  /// Connection test succeeded, with the time it took
+  ///
+  /// In en, this message translates to:
+  /// **'Connected successfully ({ms} ms)'**
+  String testConnected(int ms);
+
+  /// Connection test failed
+  ///
+  /// In en, this message translates to:
+  /// **'Unreachable at {url}. Verify server IP, port, and Wi-Fi connection.'**
+  String testUnreachable(String url);
+
+  /// Section title: Wi-Fi networks where the local target is used
+  ///
+  /// In en, this message translates to:
+  /// **'Target Wi-Fi Networks (SSIDs)'**
+  String get targetWifiNetworks;
+
+  /// Explains the target Wi-Fi networks list
+  ///
+  /// In en, this message translates to:
+  /// **'Specify the Wi-Fi network names where this local IP is reachable. If empty, local target is automatically attempted on any Wi-Fi or Ethernet.'**
+  String get targetWifiNetworksDescription;
+
+  /// Chip: add the Wi-Fi network the device is on
+  ///
+  /// In en, this message translates to:
+  /// **'Add Current Wi-Fi: \"{ssid}\"'**
+  String addCurrentWifi(String ssid);
+
+  /// Button: read the Wi-Fi name again
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh Wi-Fi Name'**
+  String get refreshWifiName;
+
+  /// Button: find out which Wi-Fi network the device is on
+  ///
+  /// In en, this message translates to:
+  /// **'Detect Current Wi-Fi'**
+  String get detectCurrentWifi;
+
+  /// Shown when the target Wi-Fi list is empty
+  ///
+  /// In en, this message translates to:
+  /// **'No SSIDs configured. Direct local connection will be attempted on all Wi-Fi and Ethernet networks.'**
+  String get noSsidsConfigured;
+
+  /// Field label: type a Wi-Fi network name
+  ///
+  /// In en, this message translates to:
+  /// **'Add Wi-Fi SSID manually'**
+  String get addSsidManually;
+
+  /// Example Wi-Fi network name in the field above
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. MyHomeNetwork_5G'**
+  String get addSsidHint;
+
+  /// Tooltip: add the typed Wi-Fi network name
+  ///
+  /// In en, this message translates to:
+  /// **'Add SSID'**
+  String get addSsid;
+
+  /// Section title: falling back to the remote URL, and probe timing
+  ///
+  /// In en, this message translates to:
+  /// **'Failover & Probing'**
+  String get failoverAndProbing;
+
+  /// Switch: use the remote URL when the local target does not answer
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic Failover to External URL'**
+  String get automaticFailover;
+
+  /// Subtitle of automaticFailover
+  ///
+  /// In en, this message translates to:
+  /// **'If local endpoint is unreachable on matching Wi-Fi, seamlessly fallback to external server URL'**
+  String get automaticFailoverSubtitle;
+
+  /// Setting: how long to wait for the local target
+  ///
+  /// In en, this message translates to:
+  /// **'Probe Timeout'**
+  String get probeTimeout;
+
+  /// Subtitle of probeTimeout, with the current value
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum time to wait when verifying local endpoint: {ms} ms'**
+  String probeTimeoutSubtitle(int ms);
+
+  /// Settings section title
+  ///
+  /// In en, this message translates to:
+  /// **'Servers & Connection'**
+  String get serversAndConnection;
+
+  /// Server list subtitle: connected through the local target at this URL
+  ///
+  /// In en, this message translates to:
+  /// **'Local LAN ({url})'**
+  String serverOnLocalLan(String url);
+
+  /// Status: checking whether the local target answers
+  ///
+  /// In en, this message translates to:
+  /// **'Probing local endpoint...'**
+  String get probingLocalEndpoint;
+
+  /// Server list subtitle: local target did not answer, using the remote URL
+  ///
+  /// In en, this message translates to:
+  /// **'Local unreachable · Remote fallback'**
+  String get localUnreachableRemoteFallback;
+
+  /// Tooltip: open a server's connection settings
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Settings'**
+  String get connectionSettings;
+
+  /// Dialog title: confirm removing a server
+  ///
+  /// In en, this message translates to:
+  /// **'Remove server?'**
+  String get removeServerTitle;
+
+  /// Dialog body: confirm removing the named server
+  ///
+  /// In en, this message translates to:
+  /// **'Remove \"{name}\"?'**
+  String removeServerMessage(String name);
+
+  /// Button: remove the item
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
+
+  /// Button: add another server
+  ///
+  /// In en, this message translates to:
+  /// **'Add Server'**
+  String get addServer;
+
+  /// Local Network Target subtitle: turned off
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled · Connects via remote URL'**
+  String get localTargetDisabled;
+
+  /// Local Network Target subtitle: in use at this URL
+  ///
+  /// In en, this message translates to:
+  /// **'Active: {url}'**
+  String localTargetActive(String url);
+
+  /// Local Network Target subtitle: in use at this URL on this Wi-Fi network
+  ///
+  /// In en, this message translates to:
+  /// **'Active: {url} on \"{ssid}\"'**
+  String localTargetActiveOn(String url, String ssid);
+
+  /// Local Network Target subtitle: did not answer, using the remote URL
+  ///
+  /// In en, this message translates to:
+  /// **'Unreachable · Routed via remote'**
+  String get localTargetUnreachable;
+
+  /// As localTargetUnreachable, naming the Wi-Fi network
+  ///
+  /// In en, this message translates to:
+  /// **'Unreachable on \"{ssid}\" · Routed via remote'**
+  String localTargetUnreachableOn(String ssid);
+
+  /// Local Network Target subtitle: not on a target Wi-Fi network
+  ///
+  /// In en, this message translates to:
+  /// **'Remote: {url} · Away from home Wi-Fi'**
+  String localTargetAway(String url);
 }
 
 class _AppLocalizationsDelegate
