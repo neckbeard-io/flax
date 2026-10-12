@@ -25,6 +25,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - The offline pin now means the track is playing from its download.
 - Long artist names in Artists now end with "…" instead of wrapping.
 - Flax now checks server certificates; turn off "Verify Certificates" for a self-signed server.
+- Streamed music checks the server's certificate too, as the rest of flax does.
 - The local network target is never checked, so its Trust Self-Signed switch is gone.
 
 ### Fixed

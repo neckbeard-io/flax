@@ -22,6 +22,7 @@ import 'package:flax/domain/models/song.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/auto_cache.dart';
 import 'package:flax/features/player/gapless_probe.dart';
+import 'package:flax/features/player/stream_certificate_hook.dart';
 import 'package:flax/features/player/mpv_queue_map.dart';
 import 'package:flax/features/settings/audio_output_settings.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
@@ -221,6 +222,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     : _player = mpv.Player(),
       _nowPlaying = _ref.read(nowPlayingServiceProvider),
       super(const PlayerState()) {
+    _initCertificateChecks();
     _initProbe();
     _initStreams();
     _initAudioSessionListeners();
@@ -257,6 +259,24 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// the restore reload the queue under the track that had just started.
   Future<void> waitForRestore() =>
       _restored.timeout(const Duration(seconds: 2), onTimeout: () {});
+
+  late final _certificates = StreamCertificateHook(
+    server: () => _ref.read(activeServerProvider),
+    openFilename: () => _player.getRawProperty('stream-open-filename'),
+    skipCheck: () =>
+        _player.setRawProperty('file-local-options/tls-verify', 'no'),
+    resume: _player.continueHook,
+  );
+
+  /// Checks stream certificates, except where the server trusts the host.
+  ///
+  /// First of all, because the hook has to be registered before anything is
+  /// loaded. The timeout lets mpv carry on if an answer never comes.
+  void _initCertificateChecks() {
+    _player.setTlsVerify(true);
+    _player.registerHook(mpv.Hook.load, timeout: const Duration(seconds: 5));
+    _subs.add(_player.stream.hook.listen(_certificates.handle));
+  }
 
   /// Starts the track-boundary instrumentation, when asked for.
   ///
