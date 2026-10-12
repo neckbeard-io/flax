@@ -43,6 +43,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Music resumes after the Assistant or a call instead of staying paused.
 - Android Auto no longer pauses right after resuming when the server's queue arrives late.
 - Offline queues skip songs that aren't downloaded instead of stopping mid-queue.
+- Now Playing keeps its title and queue button in a narrow desktop window.
 
 ## v0.6.0 — 2026-10-05
 

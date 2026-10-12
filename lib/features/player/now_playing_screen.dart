@@ -107,6 +107,21 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   /// need on the trailing side.
   double get _phoneHeaderSideWidth => 48 + windowButtonsReservedWidth;
 
+  /// The least room the title keeps before the leading side gives way.
+  static const double _phoneHeaderMinTitleWidth = 120;
+
+  /// Width of the leading side of a [rowWidth]-wide phone header.
+  ///
+  /// [_phoneHeaderSideWidth] when the title still gets
+  /// [_phoneHeaderMinTitleWidth] between two full sides; otherwise the back
+  /// button alone, and the title sits off center. Only a narrow desktop window
+  /// gets there: two full sides there come to 504pt, more than the narrowest
+  /// window, so they once squeezed the title to nothing and overflowed.
+  double _phoneHeaderLeadingWidth(double rowWidth) =>
+      rowWidth >= 2 * _phoneHeaderSideWidth + _phoneHeaderMinTitleWidth
+      ? _phoneHeaderSideWidth
+      : 48;
+
   Widget _buildPhone(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(playerProvider);
@@ -145,68 +160,73 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
             // of the *window*. Spacers only center it in what the buttons
             // leave over, and the right side is heavier than the left by the
             // room reserved for the window controls — enough to push "Now
-            // Playing" visibly off center against the artwork below it.
+            // Playing" visibly off center against the artwork below it. In a
+            // narrow desktop window the left side gives way; the right side
+            // cannot without sliding the queue button under the window
+            // controls.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: _phoneHeaderSideWidth,
-                    child: const Align(
-                      alignment: Alignment.centerLeft,
-                      child: UpBackButton(
-                        fallbackLocation: '/albums',
-                        icon: Icons.keyboard_arrow_down,
-                        iconSize: 28,
+              child: LayoutBuilder(
+                builder: (context, constraints) => Row(
+                  children: [
+                    SizedBox(
+                      width: _phoneHeaderLeadingWidth(constraints.maxWidth),
+                      child: const Align(
+                        alignment: Alignment.centerLeft,
+                        child: UpBackButton(
+                          fallbackLocation: '/albums',
+                          icon: Icons.keyboard_arrow_down,
+                          iconSize: 28,
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          _showQueue ? 'Queue' : 'Now Playing',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            _showQueue ? 'Queue' : 'Now Playing',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          song.albumName ?? '',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
+                          Text(
+                            song.albumName ?? '',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    width: _phoneHeaderSideWidth,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            _showQueue ? Icons.music_note : Icons.queue_music,
-                            color: _showQueue
-                                ? theme.colorScheme.primary
-                                : null,
+                    SizedBox(
+                      width: _phoneHeaderSideWidth,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              _showQueue ? Icons.music_note : Icons.queue_music,
+                              color: _showQueue
+                                  ? theme.colorScheme.primary
+                                  : null,
+                            ),
+                            onPressed: () =>
+                                setState(() => _showQueue = !_showQueue),
                           ),
-                          onPressed: () =>
-                              setState(() => _showQueue = !_showQueue),
-                        ),
-                        // The window controls are drawn over this corner, so
-                        // the queue button steps aside or the two overlap.
-                        // Zero off desktop, where nothing is drawn there.
-                        SizedBox(width: windowButtonsReservedWidth),
-                      ],
+                          // The window controls are drawn over this corner, so
+                          // the queue button steps aside or the two overlap.
+                          // Zero off desktop, where nothing is drawn there.
+                          SizedBox(width: windowButtonsReservedWidth),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
