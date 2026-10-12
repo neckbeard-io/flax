@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flax/domain/enums.dart';
 import 'package:flax/features/settings/settings_screen.dart';
+import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
@@ -254,6 +256,43 @@ void main() {
       await pumpSettings(tester, const AndroidOfflinePolicy());
       expect(find.text('Auto-offline on Android Auto'), findsOneWidget);
     });
+  });
+
+  // The Theme row once sat beside its title and overflowed a phone in every
+  // Latin-script language; tests without the delegates showed "Auto" and fit.
+  group('Theme row on a phone', () {
+    for (final locale in AppLocalizations.supportedLocales) {
+      testWidgets('fits in ${locale.languageCode}', (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              locale: locale,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const SettingsScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        final segments = find.descendant(
+          of: find.byType(SegmentedButton<ThemeModeSetting>),
+          matching: find.byType(Text),
+        );
+        expect(segments, findsNWidgets(3));
+        for (final element in segments.evaluate()) {
+          expect(
+            tester.getRect(find.byWidget(element.widget)).right,
+            lessThanOrEqualTo(390),
+          );
+        }
+      });
+    }
   });
 }
 

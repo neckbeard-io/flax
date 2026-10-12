@@ -155,64 +155,91 @@ class SettingsScreen extends ConsumerWidget {
 
           // ── Appearance & Interface ──
           _SectionTitle(title: l10n?.appearance ?? 'Appearance & Interface'),
-          ListTile(
-            title: Text(l10n?.language ?? 'Language'),
-            subtitle: Text(
-              selectedLocale == null
-                  ? (l10n?.systemDefault ?? 'System Default')
-                  : kSupportedLanguageOptions
-                        .firstWhere(
-                          (o) => o.code == selectedLocale.languageCode,
-                          orElse: () => const LanguageOption(
-                            code: 'en',
-                            name: 'English',
-                            nativeName: 'English',
-                          ),
-                        )
-                        .nativeName,
-            ),
-            trailing: DropdownButtonHideUnderline(
-              child: DropdownButton<String?>(
-                value: selectedLocale?.languageCode,
-                items: kSupportedLanguageOptions.map((opt) {
-                  return DropdownMenuItem<String?>(
-                    value: opt.code,
-                    child: Text(
-                      opt.code == null
-                          ? (l10n?.systemDefault ?? 'System Default')
-                          : opt.nativeName,
-                    ),
-                  );
-                }).toList(),
-                onChanged: (code) {
-                  ref
-                      .read(localeProvider.notifier)
-                      .setLocale(code != null ? Locale(code) : null);
-                },
-              ),
-            ),
+          // As with Theme below: "Par défaut du système" beside the title
+          // overflows a phone, so narrow windows put the menu underneath,
+          // where it also shows the choice the subtitle repeats when wide.
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 520;
+              final menu = DropdownButtonHideUnderline(
+                child: DropdownButton<String?>(
+                  value: selectedLocale?.languageCode,
+                  isExpanded: !wide,
+                  items: kSupportedLanguageOptions.map((opt) {
+                    return DropdownMenuItem<String?>(
+                      value: opt.code,
+                      child: Text(
+                        opt.code == null
+                            ? (l10n?.systemDefault ?? 'System Default')
+                            : opt.nativeName,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (code) {
+                    ref
+                        .read(localeProvider.notifier)
+                        .setLocale(code != null ? Locale(code) : null);
+                  },
+                ),
+              );
+              final title = Text(l10n?.language ?? 'Language');
+              if (!wide) return ListTile(title: title, subtitle: menu);
+              return ListTile(
+                title: title,
+                subtitle: Text(
+                  selectedLocale == null
+                      ? (l10n?.systemDefault ?? 'System Default')
+                      : kSupportedLanguageOptions
+                            .firstWhere(
+                              (o) => o.code == selectedLocale.languageCode,
+                              orElse: () => const LanguageOption(
+                                code: 'en',
+                                name: 'English',
+                                nativeName: 'English',
+                              ),
+                            )
+                            .nativeName,
+                ),
+                trailing: menu,
+              );
+            },
           ),
-          ListTile(
-            title: Text(l10n?.theme ?? 'Theme'),
-            trailing: SegmentedButton<ThemeModeSetting>(
-              segments: [
-                ButtonSegment(
-                  value: ThemeModeSetting.system,
-                  label: Text(l10n?.themeSystem ?? 'Auto'),
+          // Beside the title it needs about 520pt, more than a phone has once
+          // the labels are translated, so narrow windows put it underneath.
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final choice = SegmentedButton<ThemeModeSetting>(
+                segments: [
+                  ButtonSegment(
+                    value: ThemeModeSetting.system,
+                    label: Text(l10n?.themeSystem ?? 'System'),
+                  ),
+                  ButtonSegment(
+                    value: ThemeModeSetting.light,
+                    label: Text(l10n?.themeLight ?? 'Light'),
+                  ),
+                  ButtonSegment(
+                    value: ThemeModeSetting.dark,
+                    label: Text(l10n?.themeDark ?? 'Dark'),
+                  ),
+                ],
+                selected: {themeMode},
+                onSelectionChanged: (s) =>
+                    ref.read(themeModeProvider.notifier).state = s.first,
+              );
+              final title = Text(l10n?.theme ?? 'Theme');
+              if (constraints.maxWidth >= 520) {
+                return ListTile(title: title, trailing: choice);
+              }
+              return ListTile(
+                title: title,
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Align(alignment: Alignment.centerLeft, child: choice),
                 ),
-                ButtonSegment(
-                  value: ThemeModeSetting.light,
-                  label: Text(l10n?.themeLight ?? 'Light'),
-                ),
-                ButtonSegment(
-                  value: ThemeModeSetting.dark,
-                  label: Text(l10n?.themeDark ?? 'Dark'),
-                ),
-              ],
-              selected: {themeMode},
-              onSelectionChanged: (s) =>
-                  ref.read(themeModeProvider.notifier).state = s.first,
-            ),
+              );
+            },
           ),
           SwitchListTile(
             title: Text(l10n?.amoledBlack ?? 'AMOLED Black'),
