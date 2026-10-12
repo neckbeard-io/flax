@@ -14,6 +14,7 @@ import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/country_chip.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 class _FakePlayerNotifier extends StateNotifier<PlayerState>
     implements PlayerNotifier {
@@ -256,6 +257,72 @@ void main() {
 
       expect(find.text('OPUS 256kbps'), findsOneWidget);
       expect(find.byIcon(Icons.offline_pin), findsNothing);
+    });
+  });
+
+  // Two full header sides need 504pt on desktop, and the narrowest window is
+  // 460pt: the title got nothing and the queue button slid under the window
+  // controls.
+  group('phone header', () {
+    Future<void> pumpAt(WidgetTester tester, ui.Size size) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        _harness(song: _testSong, mbInfoFuture: Future.value(null), size: size),
+      );
+      await tester.pump();
+    }
+
+    Rect queueButton(WidgetTester tester) => tester.getRect(
+      find.ancestor(
+        of: find.byIcon(Icons.queue_music),
+        matching: find.byType(IconButton),
+      ),
+    );
+
+    Rect title(WidgetTester tester) => tester.getRect(
+      find
+          .ancestor(
+            of: find.text('Now Playing'),
+            matching: find.byType(Expanded),
+          )
+          .first,
+    );
+
+    for (final width in [460.0, 511.0, 600.0]) {
+      testWidgets('keeps the title and queue button in a ${width.toInt()}pt '
+          'desktop window', (tester) async {
+        debugOverrideIsDesktopPlatform = true;
+        await pumpAt(tester, ui.Size(width, 900));
+
+        expect(tester.takeException(), isNull);
+        expect(
+          queueButton(tester).right,
+          lessThanOrEqualTo(width - windowButtonsReservedWidth),
+        );
+        expect(title(tester).width, greaterThanOrEqualTo(120));
+      });
+    }
+
+    testWidgets('centers the title in a wider desktop window', (tester) async {
+      debugOverrideIsDesktopPlatform = true;
+      await pumpAt(tester, const ui.Size(650, 900));
+
+      expect(tester.takeException(), isNull);
+      expect(title(tester).center.dx, moreOrLessEquals(325));
+      expect(
+        queueButton(tester).right,
+        lessThanOrEqualTo(650 - windowButtonsReservedWidth),
+      );
+    });
+
+    testWidgets('is unchanged on a phone', (tester) async {
+      await pumpAt(tester, const ui.Size(390, 844));
+
+      expect(tester.takeException(), isNull);
+      expect(title(tester).center.dx, moreOrLessEquals(195));
+      expect(queueButton(tester).right, moreOrLessEquals(386));
     });
   });
 }
