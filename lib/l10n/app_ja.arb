@@ -44,5 +44,7 @@
   "retry": "再試行",
   "error": "エラー",
   "trackCount": "{count}曲",
-  "albumCount": "{count}アルバム"
+  "albumCount": "{count}アルバム",
+  "untrustedCertificate": "サーバーの証明書は信頼されていません。自己署名証明書であるか、誰かが通信を傍受している可能性があります。このサーバーが自己署名証明書を使用していることが分かっている場合にのみ続行してください。",
+  "addWithoutVerifying": "検証せずに追加"
 }

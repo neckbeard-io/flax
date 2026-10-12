@@ -161,8 +161,8 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get untrustedCertificate =>
-      'The server\'s certificate isn\'t trusted. It may be self-signed, or someone may be intercepting the connection. Only continue if you know this server uses a self-signed certificate.';
+      'El certificado del servidor no es de confianza. Puede que sea autofirmado o que alguien esté interceptando la conexión. Continúa solo si sabes que este servidor usa un certificado autofirmado.';
 
   @override
-  String get addWithoutVerifying => 'Add without verifying';
+  String get addWithoutVerifying => 'Añadir sin verificar';
 }

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -77,6 +80,27 @@ void main() {
       expect(zh.connectToMusicServer, '连接到您的音乐服务器');
       expect(zh.connect, '连接');
       expect(zh.trackCount(4), '4 首曲目');
+    });
+
+    // A key missing from a locale silently falls back to English there.
+    test('every locale translates every message in the template', () {
+      Set<String> messages(String locale) =>
+          (jsonDecode(File('lib/l10n/app_$locale.arb').readAsStringSync())
+                  as Map<String, dynamic>)
+              .keys
+              .where((k) => !k.startsWith('@'))
+              .toSet();
+
+      final template = messages('en');
+      for (final locale in AppLocalizations.supportedLocales) {
+        final code = locale.languageCode;
+        if (code == 'en') continue;
+        expect(
+          template.difference(messages(code)),
+          isEmpty,
+          reason: 'app_$code.arb is missing these',
+        );
+      }
     });
   });
 }
