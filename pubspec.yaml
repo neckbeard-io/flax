@@ -42,6 +42,9 @@ dependencies:
   flutter_cache_manager: ^3.4.1
   # The art cache's FileSystem hands flutter_cache_manager this package's File.
   file: ^7.0.0
+  # The art cache's FileService fetches through an IOClient, so covers follow
+  # the per-server certificate rule.
+  http: ^1.6.0
   palette_generator: ^0.3.3+4
 
   # Auth
