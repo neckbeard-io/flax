@@ -16,6 +16,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Phones show album genres, and the playing song's genres in Now Playing.
 - A–Z index on long artist lists: tap or drag a letter to jump there.
 - The A–Z index on Albums (All, Downloaded), genre pages and Downloads too.
+- Adding a self-signed server offers to skip the certificate check.
 
 ### Changed
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
@@ -44,6 +45,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Android Auto no longer pauses right after resuming when the server's queue arrives late.
 - Offline queues skip songs that aren't downloaded instead of stopping mid-queue.
 - Now Playing keeps its title and queue button in a narrow desktop window.
+- A certificate problem says so instead of "Network error: unknown".
 
 ## v0.6.0 — 2026-10-05
 

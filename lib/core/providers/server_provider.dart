@@ -9,6 +9,15 @@ import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/network/network_target_resolver.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
+/// Adding a server failed because its certificate isn't trusted. Adding it
+/// again with `verifyCertificates: false` skips the check for that server.
+class UntrustedCertificateException implements Exception {
+  const UntrustedCertificateException();
+
+  @override
+  String toString() => SubsonicClient.untrustedCertificateMessage;
+}
+
 final serverListProvider =
     StateNotifierProvider<ServerListNotifier, List<Server>>((ref) {
       return ServerListNotifier();
@@ -87,6 +96,7 @@ class ServerListNotifier extends StateNotifier<List<Server>> {
     required String url,
     required String username,
     required String password,
+    bool verifyCertificates = true,
   }) async {
     final server = Server(
       id: _uuid.v4(),
@@ -96,11 +106,15 @@ class ServerListNotifier extends StateNotifier<List<Server>> {
       tokenHash: password,
       salt: '',
       isActive: state.isEmpty,
+      verifyCertificates: verifyCertificates,
     );
 
     // Test connection with descriptive error
     final client = SubsonicClient(server: server);
     final error = await client.tryPing();
+    if (error == SubsonicClient.untrustedCertificateMessage) {
+      throw const UntrustedCertificateException();
+    }
     if (error != null) {
       throw Exception(error);
     }

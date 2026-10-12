@@ -27,6 +27,10 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
   bool _loading = false;
   String? _error;
 
+  /// The last attempt failed on the server's certificate, so the form offers
+  /// to add it without checking. Cleared when the URL changes.
+  bool _untrustedCertificate = false;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -36,12 +40,13 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit({bool verifyCertificates = true}) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _loading = true;
       _error = null;
+      _untrustedCertificate = false;
     });
 
     try {
@@ -52,9 +57,12 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
             url: _urlController.text.trim(),
             username: _usernameController.text.trim(),
             password: _passwordController.text,
+            verifyCertificates: verifyCertificates,
           );
       TextInput.finishAutofillContext();
       if (mounted) context.go('/albums');
+    } on UntrustedCertificateException {
+      setState(() => _untrustedCertificate = true);
     } catch (e) {
       final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
       setState(() => _error = msg);
@@ -187,6 +195,11 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
                       ),
                       keyboardType: TextInputType.url,
                       autofillHints: const [AutofillHints.url],
+                      onChanged: (_) {
+                        if (_untrustedCertificate) {
+                          setState(() => _untrustedCertificate = false);
+                        }
+                      },
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
                           return l10n?.required ?? 'Required';
@@ -234,6 +247,39 @@ class _AddServerScreenState extends ConsumerState<AddServerScreen> {
                         _error!,
                         style: TextStyle(color: theme.colorScheme.error),
                         textAlign: TextAlign.center,
+                      ),
+                    ],
+                    if (_untrustedCertificate) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: theme.colorScheme.error,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n?.untrustedCertificate ??
+                                  "The server's certificate isn't trusted. It "
+                                      'may be self-signed, or someone may be '
+                                      'intercepting the connection. Only '
+                                      'continue if you know this server uses '
+                                      'a self-signed certificate.',
+                              style: TextStyle(color: theme.colorScheme.error),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: _loading
+                            ? null
+                            : () => _submit(verifyCertificates: false),
+                        child: Text(
+                          l10n?.addWithoutVerifying ?? 'Add without verifying',
+                        ),
                       ),
                     ],
                     const SizedBox(height: 24),
