@@ -31,6 +31,7 @@ import 'package:flax/services/updater/update_provider.dart';
 import 'package:flax/services/updater/update_service.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -48,7 +49,11 @@ class SettingsScreen extends ConsumerWidget {
     final syncQueueWithServer = ref.watch(syncQueueWithServerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n?.settingsTitle ?? 'Settings')),
+      appBar: AppBar(
+        // Keeps the title out from under the window controls.
+        actions: [SizedBox(width: WindowControlsInset.of(context))],
+        title: Text(l10n?.settingsTitle ?? 'Settings'),
+      ),
       body: ListView(
         children: [
           // ── Servers & Connection ──

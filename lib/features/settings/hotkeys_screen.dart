@@ -10,6 +10,7 @@ import 'package:flax/services/hotkeys/hotkey_service.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 class HotkeysScreen extends ConsumerWidget {
   const HotkeysScreen({super.key});
@@ -22,6 +23,8 @@ class HotkeysScreen extends ConsumerWidget {
     if (!isDesktop) {
       return Scaffold(
         appBar: AppBar(
+          // Keeps the title out from under the window controls.
+          actions: [SizedBox(width: WindowControlsInset.of(context))],
           leading: const UpBackButton(fallbackLocation: '/settings'),
           title: const Text('Keyboard Shortcuts'),
         ),
@@ -59,6 +62,8 @@ class HotkeysScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // Keeps the title out from under the window controls.
+        actions: [SizedBox(width: WindowControlsInset.of(context))],
         leading: const UpBackButton(fallbackLocation: '/settings'),
         title: const Text('Keyboard Shortcuts'),
       ),

@@ -68,7 +68,7 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen>
               padding: EdgeInsets.fromLTRB(
                 8,
                 4,
-                isDesktopPlatform ? windowButtonsReservedWidth + 12 : 16,
+                isDesktopPlatform ? WindowControlsInset.of(context) + 12 : 16,
                 4,
               ),
               child: Row(

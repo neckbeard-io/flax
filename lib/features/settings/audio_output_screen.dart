@@ -8,6 +8,7 @@ import 'package:flax/features/settings/audio_output_settings.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/shared/widgets/flax_dropdown.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 export 'package:flax/features/settings/audio_output_settings.dart';
 
@@ -34,6 +35,8 @@ class AudioOutputScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // Keeps the title out from under the window controls.
+        actions: [SizedBox(width: WindowControlsInset.of(context))],
         leading: const UpBackButton(fallbackLocation: '/settings'),
         title: const Text('Audio Output'),
       ),

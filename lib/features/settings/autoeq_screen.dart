@@ -5,6 +5,7 @@ import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/shared/widgets/eq_curve_chart.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 class AutoEqScreen extends ConsumerStatefulWidget {
   const AutoEqScreen({super.key});
@@ -42,10 +43,12 @@ class _AutoEqScreenState extends ConsumerState<AutoEqScreen> {
     final state = ref.watch(autoEqProvider);
 
     return Scaffold(
-      // No AppBar actions: ShellScaffold overlays the window buttons on this
-      // corner, so anything here is drawn underneath them. "Clear" lives in the
-      // active-profile banner instead, next to what it clears.
+      // No AppBar buttons: the window controls are drawn over this corner, so
+      // "Clear" lives in the active-profile banner instead, next to what it
+      // clears. The one action is a spacer that keeps the title out from
+      // under them.
       appBar: AppBar(
+        actions: [SizedBox(width: WindowControlsInset.of(context))],
         leading: const UpBackButton(fallbackLocation: '/settings/equalizer'),
         title: const Text('AutoEQ'),
       ),

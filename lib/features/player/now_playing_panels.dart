@@ -198,8 +198,8 @@ class _Header extends StatelessWidget {
   /// Width reserved at each end: a back button and the panel toggle on the
   /// leading side, the window controls on the trailing one. The larger of the
   /// two wins for both, so the middle is really the middle.
-  double get _sideWidth =>
-      math.max(2 * 48, windowButtonsReservedWidth + 48).toDouble();
+  double _sideWidth(BuildContext context) =>
+      math.max(2 * 48, WindowControlsInset.of(context) + 48).toDouble();
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +222,7 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: _sideWidth,
+            width: _sideWidth(context),
             child: Row(
               children: [
                 ?leading,
@@ -260,7 +260,7 @@ class _Header extends StatelessWidget {
             ),
           ),
           // The window controls are painted over this corner by AppChrome.
-          SizedBox(width: _sideWidth),
+          SizedBox(width: _sideWidth(context)),
         ],
       ),
     );

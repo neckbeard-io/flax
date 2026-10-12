@@ -17,6 +17,7 @@ import 'package:flax/services/platform/background_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 class MetadataCachingScreen extends ConsumerWidget {
   const MetadataCachingScreen({super.key});
@@ -38,6 +39,8 @@ class MetadataCachingScreen extends ConsumerWidget {
     if (server == null) {
       return Scaffold(
         appBar: AppBar(
+          // Keeps the title out from under the window controls.
+          actions: [SizedBox(width: WindowControlsInset.of(context))],
           leading: const UpBackButton(fallbackLocation: '/settings'),
           title: const Text('Caching'),
         ),
@@ -79,6 +82,8 @@ class MetadataCachingScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // Keeps the title out from under the window controls.
+        actions: [SizedBox(width: WindowControlsInset.of(context))],
         leading: const UpBackButton(fallbackLocation: '/settings'),
         title: const Text('Caching'),
       ),

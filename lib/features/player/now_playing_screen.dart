@@ -105,7 +105,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   /// Width of each side of the phone header, so the two balance and the title
   /// sits in the middle. One icon button, plus whatever the window controls
   /// need on the trailing side.
-  double get _phoneHeaderSideWidth => 48 + windowButtonsReservedWidth;
+  double _phoneHeaderSideWidth(double reserved) => 48 + reserved;
 
   /// The least room the title keeps before the leading side gives way.
   static const double _phoneHeaderMinTitleWidth = 120;
@@ -115,15 +115,18 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
   /// [_phoneHeaderSideWidth] when the title still gets
   /// [_phoneHeaderMinTitleWidth] between two full sides; otherwise the back
   /// button alone, and the title sits off center. Only a narrow desktop window
-  /// gets there: two full sides there come to 504pt, more than the narrowest
-  /// window, so they once squeezed the title to nothing and overflowed.
-  double _phoneHeaderLeadingWidth(double rowWidth) =>
-      rowWidth >= 2 * _phoneHeaderSideWidth + _phoneHeaderMinTitleWidth
-      ? _phoneHeaderSideWidth
+  /// gets there: with the window controls, two full sides come to over 530pt,
+  /// more than the narrowest window, so they once squeezed the title to
+  /// nothing and overflowed.
+  double _phoneHeaderLeadingWidth(double rowWidth, double reserved) =>
+      rowWidth >=
+          2 * _phoneHeaderSideWidth(reserved) + _phoneHeaderMinTitleWidth
+      ? _phoneHeaderSideWidth(reserved)
       : 48;
 
   Widget _buildPhone(BuildContext context) {
     final theme = Theme.of(context);
+    final reserved = WindowControlsInset.of(context);
     final state = ref.watch(playerProvider);
     final song = state.currentSong;
 
@@ -170,7 +173,10 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                 builder: (context, constraints) => Row(
                   children: [
                     SizedBox(
-                      width: _phoneHeaderLeadingWidth(constraints.maxWidth),
+                      width: _phoneHeaderLeadingWidth(
+                        constraints.maxWidth,
+                        reserved,
+                      ),
                       child: const Align(
                         alignment: Alignment.centerLeft,
                         child: UpBackButton(
@@ -204,7 +210,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                       ),
                     ),
                     SizedBox(
-                      width: _phoneHeaderSideWidth,
+                      width: _phoneHeaderSideWidth(reserved),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -221,7 +227,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen> {
                           // The window controls are drawn over this corner, so
                           // the queue button steps aside or the two overlap.
                           // Zero off desktop, where nothing is drawn there.
-                          SizedBox(width: windowButtonsReservedWidth),
+                          SizedBox(width: reserved),
                         ],
                       ),
                     ),

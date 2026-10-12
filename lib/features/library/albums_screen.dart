@@ -91,7 +91,7 @@ class AlbumsScreen extends ConsumerWidget {
               padding: EdgeInsets.fromLTRB(
                 16,
                 4,
-                isDesktopPlatform ? windowButtonsReservedWidth + 12 : 16,
+                isDesktopPlatform ? WindowControlsInset.of(context) + 12 : 16,
                 4,
               ),
               child: Row(

@@ -34,14 +34,43 @@ Future<void> _close() => (Platform.isWindows || Platform.isLinux)
     ? windowManager.close()
     : _channel.invokeMethod('close');
 
-/// Width the window buttons occupy in the top-right corner, plus the shell's
-/// inset and offline toggle — zero off desktop, where they are not drawn.
+/// An estimate of [WindowControlsInset]: the three window buttons, the gap,
+/// the Offline toggle and the inset, with no update available. Zero off
+/// desktop, where nothing is drawn there.
 ///
-/// ShellScaffold paints them in a Stack *over* the routed screen, so anything a
-/// screen puts in that corner is overlapped. An AppBar with `actions:` inside
-/// the shell must reserve this much trailing room, or move the action elsewhere.
+/// Only for when nothing has been measured — the first frame, and tests that
+/// build a screen without AppChrome. Screens read [WindowControlsInset.of].
 double get windowButtonsReservedWidth =>
-    isDesktopPlatform ? (3 * 32 + 8 + 100) : 0;
+    isDesktopPlatform ? (3 * 32 + 8 + 112 + 4) : 0;
+
+/// The room the controls in the window's top-right corner take, as AppChrome
+/// last laid them out: Offline toggle, update button, window buttons.
+///
+/// AppChrome paints them in a Stack *over* the routed screen, so anything a
+/// screen puts in that corner is covered. A fixed width was wrong twice: the
+/// Offline toggle is wider than it allowed for, and the update button, about
+/// 125pt more, was not counted at all.
+class WindowControlsInset extends InheritedWidget {
+  const WindowControlsInset({
+    super.key,
+    required this.width,
+    required super.child,
+  });
+
+  final double width;
+
+  /// What [context]'s screen has to keep clear on its trailing side, at the
+  /// top. Falls back to [windowButtonsReservedWidth] outside AppChrome.
+  static double of(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<WindowControlsInset>()
+          ?.width ??
+      windowButtonsReservedWidth;
+
+  @override
+  bool updateShouldNotify(WindowControlsInset oldWidget) =>
+      width != oldWidget.width;
+}
 
 /// Height of the draggable strip along the top of the window.
 ///

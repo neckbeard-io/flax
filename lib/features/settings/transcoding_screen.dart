@@ -6,6 +6,7 @@ import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 class TranscodingScreen extends ConsumerWidget {
   const TranscodingScreen({super.key});
@@ -18,6 +19,8 @@ class TranscodingScreen extends ConsumerWidget {
     if (server == null) {
       return Scaffold(
         appBar: AppBar(
+          // Keeps the title out from under the window controls.
+          actions: [SizedBox(width: WindowControlsInset.of(context))],
           leading: const UpBackButton(fallbackLocation: '/settings'),
           title: const Text('Transcoding'),
         ),
@@ -31,6 +34,8 @@ class TranscodingScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // Keeps the title out from under the window controls.
+        actions: [SizedBox(width: WindowControlsInset.of(context))],
         leading: const UpBackButton(fallbackLocation: '/settings'),
         title: const Text('Transcoding'),
       ),

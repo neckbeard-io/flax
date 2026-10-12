@@ -7,6 +7,7 @@ import 'package:flax/domain/models/server.dart';
 import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/services/network/network_target_resolver.dart';
 import 'package:flax/shared/widgets/up_back_button.dart';
+import 'package:flax/shared/widgets/window_buttons.dart';
 
 class ServerConnectionScreen extends ConsumerStatefulWidget {
   final String? serverId;
@@ -196,6 +197,8 @@ class _ServerConnectionScreenState
     if (server == null) {
       return Scaffold(
         appBar: AppBar(
+          // Keeps the title out from under the window controls.
+          actions: [SizedBox(width: WindowControlsInset.of(context))],
           leading: const UpBackButton(fallbackLocation: '/settings'),
           title: Text(l10n?.serverConnectionTitle ?? 'Server Connection'),
         ),
@@ -212,6 +215,8 @@ class _ServerConnectionScreenState
 
     return Scaffold(
       appBar: AppBar(
+        // Keeps the title out from under the window controls.
+        actions: [SizedBox(width: WindowControlsInset.of(context))],
         leading: const UpBackButton(fallbackLocation: '/settings'),
         title: Text(l10n?.serverConnectionTitle ?? 'Server Connection'),
       ),
