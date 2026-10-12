@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/network/certificate_trust.dart';
 import 'package:flax/services/network/network_target_resolver.dart';
@@ -246,6 +248,39 @@ void main() {
         await expectLater(client.ping(), throwsA(isA<DioException>()));
       },
     );
+
+    test('tryPing names an untrusted certificate', () async {
+      final client = SubsonicClient(
+        server: _server(url: 'https://localhost:$port'),
+      );
+      expect(
+        await client.tryPing(),
+        SubsonicClient.untrustedCertificateMessage,
+      );
+    });
+
+    test('a server is added without verifying only when asked', () async {
+      SharedPreferences.setMockInitialValues({});
+      final servers = ServerListNotifier(initialServers: []);
+      addTearDown(servers.dispose);
+      Future<Server> add({required bool verify}) => servers.addServer(
+        name: 'Home',
+        url: 'https://localhost:$port',
+        username: 'alice',
+        password: 'pw',
+        verifyCertificates: verify,
+      );
+
+      await expectLater(
+        add(verify: true),
+        throwsA(isA<UntrustedCertificateException>()),
+      );
+      expect(servers.state, isEmpty);
+
+      final added = await add(verify: false);
+      expect(added.verifyCertificates, isFalse);
+      expect(servers.state.single.verifyCertificates, isFalse);
+    });
 
     test('the local target probe trusts only the local target', () async {
       expect(

@@ -152,6 +152,22 @@ class SubsonicClient implements MusicBackend {
     return true;
   }
 
+  /// What [tryPing] reports when the server's certificate isn't trusted.
+  static const untrustedCertificateMessage =
+      "The server's certificate isn't trusted.";
+
+  /// Whether [e] failed because the server's certificate isn't trusted:
+  /// self-signed, expired, or issued for another name. Dio reports these as an
+  /// unknown error around the failed handshake, which once reached the user
+  /// as "Network error: unknown".
+  static bool isUntrustedCertificate(DioException e) {
+    final error = e.error;
+    return e.type == DioExceptionType.badCertificate ||
+        error is CertificateException ||
+        (error is HandshakeException &&
+            '${error.osError?.message}'.contains('CERTIFICATE_VERIFY_FAILED'));
+  }
+
   Future<String?> tryPing({Duration? timeout}) async {
     final effectiveTimeout = timeout ?? const Duration(seconds: 3);
     try {
@@ -170,6 +186,7 @@ class SubsonicClient implements MusicBackend {
       );
       return null;
     } on DioException catch (e) {
+      if (isUntrustedCertificate(e)) return untrustedCertificateMessage;
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.sendTimeout ||
           e.type == DioExceptionType.receiveTimeout) {

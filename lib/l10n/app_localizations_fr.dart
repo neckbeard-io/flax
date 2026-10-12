@@ -159,4 +159,11 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get untrustedCertificate =>
+      'The server\'s certificate isn\'t trusted. It may be self-signed, or someone may be intercepting the connection. Only continue if you know this server uses a self-signed certificate.';
+
+  @override
+  String get addWithoutVerifying => 'Add without verifying';
 }

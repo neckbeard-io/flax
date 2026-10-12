@@ -375,6 +375,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 album} other{{count} albums}}'**
   String albumCount(int count);
+
+  /// Shown when adding a server fails because its TLS certificate isn't trusted
+  ///
+  /// In en, this message translates to:
+  /// **'The server\'s certificate isn\'t trusted. It may be self-signed, or someone may be intercepting the connection. Only continue if you know this server uses a self-signed certificate.'**
+  String get untrustedCertificate;
+
+  /// Adds a server whose certificate isn't trusted, with certificate checks off for it
+  ///
+  /// In en, this message translates to:
+  /// **'Add without verifying'**
+  String get addWithoutVerifying;
 }
 
 class _AppLocalizationsDelegate
