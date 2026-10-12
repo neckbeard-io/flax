@@ -93,8 +93,58 @@ is the track's, the queue header's pair is the album's.
 ### US English
 
 User-facing strings and identifiers are US English: *color*, *center*,
-*favorite*. Internationalization is planned but not current — it is tracked as
-its own issue, so do not seed the codebase with mixed spellings in the meantime.
+*favorite*. English is also the template every translation is made from,
+`lib/l10n/app_en.arb`.
+
+### Every new GUI string is translated
+
+Flax ships in English, German, Spanish, French, Japanese and Chinese. Text
+added to the interface goes through Flutter's localization, in every language,
+in the same change. That covers labels, buttons, tooltips, hints, dialogs,
+snackbars, validation and error messages, and accessibility labels. Data from
+the server is never translated: titles, artist and album names, lyrics,
+biographies. Neither are log messages, the changelog or release notes.
+
+1. **Add the message to the template**, `lib/l10n/app_en.arb`, with an `@key`
+   entry describing where it appears. Counts and values use ICU syntax, as
+   `trackCount` does.
+2. **Translate it into every other locale file**, in the tone that file
+   already uses:
+
+   | File | Language | Tone |
+   | --- | --- | --- |
+   | `app_de.arb` | German | formal *Sie* |
+   | `app_es.arb` | Spanish (Spain) | informal *tú* |
+   | `app_fr.arb` | French | *vous* |
+   | `app_ja.arb` | Japanese | polite, 〜してください |
+   | `app_zh.arb` | Simplified Chinese | *您* |
+
+3. **Regenerate** with `flutter gen-l10n`, which any `flutter` build also runs,
+   and commit `lib/l10n/app_localizations*.dart` with the ARB files.
+4. **Read it in the widget** through `AppLocalizations.of(context)`, with the
+   English as a fallback, as the screens already do. The fallback keeps widget
+   tests that do not install the localization delegates working:
+
+   ```dart
+   final l10n = AppLocalizations.of(context);
+   Text(l10n?.addWithoutVerifying ?? 'Add without verifying')
+   ```
+
+A message missing from a locale file falls back to English there without any
+warning, which is how the add-server certificate warning first went out (#150).
+`test/localization_test.dart` now fails when any locale file lacks a message the
+template has, and names the missing keys.
+
+Translations run longer than English, German often by a third, so a layout that
+fits the English has to wrap rather than clip; see
+[Mobile & responsive UI/UX verification](#mobile--responsive-uiux-verification).
+
+Text built outside a widget, such as `SubsonicClient.tryPing`'s error messages,
+has no `BuildContext`. When new text like that is shown in the interface, return
+something the widget maps to a message — a type or an enum, as Add Server maps
+`UntrustedCertificateException` — rather than a finished English sentence.
+Screens that still hard-code English are converted when a change sets out to
+translate them, but text added to one of them is translated as above.
 
 ### Downloaded means fully available offline
 
