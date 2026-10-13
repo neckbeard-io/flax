@@ -101,5 +101,8 @@
   "localTargetActiveOn": "Activo: {url} en «{ssid}»",
   "localTargetUnreachable": "Inaccesible · Se usa la remota",
   "localTargetUnreachableOn": "Inaccesible en «{ssid}» · Se usa la remota",
-  "localTargetAway": "Remoto: {url} · Fuera de la red Wi-Fi de casa"
+  "localTargetAway": "Remoto: {url} · Fuera de la red Wi-Fi de casa",
+  "shareQueue": "Compartir la cola entre dispositivos",
+  "shareQueueOn": "La cola y la posición se guardan en el servidor y tus otros dispositivos las retoman",
+  "shareQueueOff": "La cola de este dispositivo nunca se guarda en el servidor ni se sustituye por la de otro dispositivo"
 }

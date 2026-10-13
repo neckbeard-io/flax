@@ -352,4 +352,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String localTargetAway(String url) {
     return 'リモート: $url・自宅のWi-Fi外';
   }
+
+  @override
+  String get shareQueue => 'デバイス間で再生キューを共有';
+
+  @override
+  String get shareQueueOn => '再生キューと再生位置をサーバーに保存し、他のデバイスに引き継ぎます';
+
+  @override
+  String get shareQueueOff =>
+      'このデバイスの再生キューはサーバーに保存されず、他のデバイスのキューに置き換えられることもありません';
 }

@@ -366,4 +366,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String localTargetAway(String url) {
     return 'Remote: $url · Away from home Wi-Fi';
   }
+
+  @override
+  String get shareQueue => 'Share queue between devices';
+
+  @override
+  String get shareQueueOn =>
+      'Queue and position are saved to the server and picked up by your other devices';
+
+  @override
+  String get shareQueueOff =>
+      'This device\'s queue is never saved to the server or replaced by another device\'s';
 }

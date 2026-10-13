@@ -350,4 +350,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String localTargetAway(String url) {
     return '远程：$url · 不在家庭 Wi-Fi 中';
   }
+
+  @override
+  String get shareQueue => '在设备间共享播放队列';
+
+  @override
+  String get shareQueueOn => '播放队列和播放位置会保存到服务器，并由您的其他设备接续';
+
+  @override
+  String get shareQueueOff => '此设备的播放队列不会保存到服务器，也不会被其他设备的队列替换';
 }

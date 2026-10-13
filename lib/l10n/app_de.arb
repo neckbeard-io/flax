@@ -101,5 +101,8 @@
   "localTargetActiveOn": "Aktiv: {url} im WLAN „{ssid}“",
   "localTargetUnreachable": "Nicht erreichbar · Verbindung über extern",
   "localTargetUnreachableOn": "In „{ssid}“ nicht erreichbar · Verbindung über extern",
-  "localTargetAway": "Extern: {url} · Nicht im heimischen WLAN"
+  "localTargetAway": "Extern: {url} · Nicht im heimischen WLAN",
+  "shareQueue": "Warteschlange zwischen Geräten teilen",
+  "shareQueueOn": "Warteschlange und Position werden auf dem Server gespeichert und von Ihren anderen Geräten übernommen",
+  "shareQueueOff": "Die Warteschlange dieses Geräts wird nie auf dem Server gespeichert oder durch die eines anderen Geräts ersetzt"
 }

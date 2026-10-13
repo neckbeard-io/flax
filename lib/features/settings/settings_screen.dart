@@ -268,11 +268,15 @@ class SettingsScreen extends ConsumerWidget {
                 ref.read(scrobbleEnabledProvider.notifier).setEnabled(v),
           ),
           SwitchListTile(
-            title: const Text('Sync Queue with Server'),
+            title: Text(l10n?.shareQueue ?? 'Share queue between devices'),
             subtitle: Text(
               syncQueueWithServer
-                  ? 'Sync active queue and playback position with the server across devices'
-                  : 'Keep active queue local to this device; prevents other devices from overwriting playback state',
+                  ? l10n?.shareQueueOn ??
+                        'Queue and position are saved to the server and '
+                            'picked up by your other devices'
+                  : l10n?.shareQueueOff ??
+                        "This device's queue is never saved to the server "
+                            "or replaced by another device's",
             ),
             value: syncQueueWithServer,
             onChanged: (v) =>
