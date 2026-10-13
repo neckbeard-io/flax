@@ -318,6 +318,28 @@ final hotKeyServiceProvider =
       return HotKeyNotifier(ref: ref);
     });
 
+/// Registers the saved global hotkeys with the system. main() calls this once
+/// at launch.
+///
+/// The service registers them when it is created, and nothing else creates it
+/// but Settings: until Settings was opened after a launch, no hotkey worked at
+/// all. On macOS, closing the window quits flax, so that was after nearly
+/// every session.
+Future<void> startGlobalHotKeys(ProviderContainer container) async {
+  final notifier = container.read(hotKeyServiceProvider.notifier);
+  if (!notifier.isDesktop) return;
+  try {
+    await notifier.init();
+  } catch (e, st) {
+    AppLogger.w(
+      'Hotkeys',
+      'Registering global hotkeys at launch failed',
+      error: e,
+      stackTrace: st,
+    );
+  }
+}
+
 /// Set to true while the user is in the recording hotkey dialog,
 /// preventing global AppChrome shortcuts from capturing keys like Space or '/'.
 final isRecordingHotKeyProvider = StateProvider<bool>((ref) => false);

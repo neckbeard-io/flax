@@ -53,6 +53,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Settings' Language and Theme choices fit on narrow phones in every language.
 - Covers load from a self-signed server or local network target.
 - Titles and buttons no longer slip under the window's top-right controls.
+- Global hotkeys work as soon as flax starts, not only after opening Settings.
 
 ## v0.6.0 — 2026-10-05
 
