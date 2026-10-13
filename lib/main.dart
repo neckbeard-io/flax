@@ -17,6 +17,7 @@ import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/audio/audio_handler_provider.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
+import 'package:flax/services/hotkeys/hotkey_service.dart';
 import 'package:flax/services/platform/background_sync_service.dart';
 import 'package:flax/services/platform/window_state.dart';
 import 'package:flax/core/providers/server_provider.dart';
@@ -134,6 +135,9 @@ Future<void> main() async {
     UncontrolledProviderScope(container: container, child: const FlaxApp()),
   );
   AppLogger.i('Startup', 'UI mounted');
+
+  // Desktop only; the service does nothing elsewhere.
+  unawaited(startGlobalHotKeys(container));
 
   // Reconcile local downloads in background to prune ghost downloads and heal paths
   unawaited(

@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -297,5 +300,51 @@ void main() {
         expect(mockClient.registered.first.modifiers, isNotNull);
       },
     );
+  });
+
+  /// The service registered hotkeys only when created, and only Settings
+  /// created it, so after every launch they stayed dead until Settings was
+  /// opened (#159).
+  group('At launch', () {
+    late MockHotKeyClient mockClient;
+    late ProviderContainer container;
+
+    setUp(() {
+      mockClient = MockHotKeyClient();
+      container = ProviderContainer(
+        overrides: [
+          hotKeyServiceProvider.overrideWith(
+            (ref) =>
+                HotKeyNotifier(ref: ref, client: mockClient, isDesktop: true),
+          ),
+        ],
+      );
+    });
+
+    tearDown(() => container.dispose());
+
+    test('saved hotkeys are registered before any screen reads them', () async {
+      final playPause = HotKeyAction.playPause.suggestedHotKey(isMacOS: true);
+      SharedPreferences.setMockInitialValues({
+        kGlobalHotkeysBindingsKey: jsonEncode({
+          'playPause': playPause.toJson(),
+        }),
+      });
+
+      await startGlobalHotKeys(container);
+
+      expect(mockClient.registered.map((k) => k.identifier), [
+        playPause.identifier,
+      ]);
+      expect(mockClient.handlers, contains(playPause.identifier));
+    });
+
+    test('main() starts them', () {
+      final code = File('lib/main.dart')
+          .readAsLinesSync()
+          .where((line) => !line.trimLeft().startsWith('//'))
+          .join('\n');
+      expect(code, contains('startGlobalHotKeys(container)'));
+    });
   });
 }
