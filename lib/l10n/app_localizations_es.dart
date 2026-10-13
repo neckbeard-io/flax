@@ -371,4 +371,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String localTargetAway(String url) {
     return 'Remoto: $url · Fuera de la red Wi-Fi de casa';
   }
+
+  @override
+  String get shareQueue => 'Compartir la cola entre dispositivos';
+
+  @override
+  String get shareQueueOn =>
+      'La cola y la posición se guardan en el servidor y tus otros dispositivos las retoman';
+
+  @override
+  String get shareQueueOff =>
+      'La cola de este dispositivo nunca se guarda en el servidor ni se sustituye por la de otro dispositivo';
 }

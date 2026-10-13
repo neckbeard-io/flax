@@ -101,5 +101,8 @@
   "localTargetActiveOn": "使用中: {url}（「{ssid}」）",
   "localTargetUnreachable": "接続不可・リモート経由",
   "localTargetUnreachableOn": "「{ssid}」では接続不可・リモート経由",
-  "localTargetAway": "リモート: {url}・自宅のWi-Fi外"
+  "localTargetAway": "リモート: {url}・自宅のWi-Fi外",
+  "shareQueue": "デバイス間で再生キューを共有",
+  "shareQueueOn": "再生キューと再生位置をサーバーに保存し、他のデバイスに引き継ぎます",
+  "shareQueueOff": "このデバイスの再生キューはサーバーに保存されず、他のデバイスのキューに置き換えられることもありません"
 }

@@ -370,4 +370,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String localTargetAway(String url) {
     return 'Extern: $url · Nicht im heimischen WLAN';
   }
+
+  @override
+  String get shareQueue => 'Warteschlange zwischen Geräten teilen';
+
+  @override
+  String get shareQueueOn =>
+      'Warteschlange und Position werden auf dem Server gespeichert und von Ihren anderen Geräten übernommen';
+
+  @override
+  String get shareQueueOff =>
+      'Die Warteschlange dieses Geräts wird nie auf dem Server gespeichert oder durch die eines anderen Geräts ersetzt';
 }

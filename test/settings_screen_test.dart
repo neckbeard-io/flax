@@ -66,7 +66,7 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('renders Sync Queue with Server switch tile and toggles state', (
+    testWidgets('renders Share queue switch tile and toggles state', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(390, 844);
@@ -85,27 +85,29 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
-        find.text('Sync Queue with Server'),
+        find.text('Share queue between devices'),
         500,
         scrollable: find.byType(Scrollable),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Sync Queue with Server'), findsOneWidget);
+      expect(find.text('Share queue between devices'), findsOneWidget);
       expect(
         find.text(
-          'Sync active queue and playback position with the server across devices',
+          'Queue and position are saved to the server and '
+          'picked up by your other devices',
         ),
         findsOneWidget,
       );
 
       // Tap the switch to disable
-      await tester.tap(find.text('Sync Queue with Server'));
+      await tester.tap(find.text('Share queue between devices'));
       await tester.pumpAndSettle();
 
       expect(
         find.text(
-          'Keep active queue local to this device; prevents other devices from overwriting playback state',
+          "This device's queue is never saved to the server "
+          "or replaced by another device's",
         ),
         findsOneWidget,
       );
@@ -291,6 +293,47 @@ void main() {
             lessThanOrEqualTo(390),
           );
         }
+      });
+    }
+  });
+
+  group('Share queue switch on a phone', () {
+    for (final locale in AppLocalizations.supportedLocales) {
+      testWidgets('is translated and fits in ${locale.languageCode}', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              locale: locale,
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: const SettingsScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final l10n = lookupAppLocalizations(locale);
+
+        final title = find.text(l10n.shareQueue);
+        await tester.scrollUntilVisible(
+          title,
+          500,
+          scrollable: find.byType(Scrollable),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text(l10n.shareQueueOn), findsOneWidget);
+
+        await tester.tap(title);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        final off = find.text(l10n.shareQueueOff);
+        expect(off, findsOneWidget);
+        expect(tester.getRect(off).right, lessThanOrEqualTo(390));
       });
     }
   });

@@ -717,6 +717,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remote: {url} · Away from home Wi-Fi'**
   String localTargetAway(String url);
+
+  /// Audio & Playback settings switch: share the play queue with other devices through the server
+  ///
+  /// In en, this message translates to:
+  /// **'Share queue between devices'**
+  String get shareQueue;
+
+  /// Subtitle of the Share queue between devices switch while it is on
+  ///
+  /// In en, this message translates to:
+  /// **'Queue and position are saved to the server and picked up by your other devices'**
+  String get shareQueueOn;
+
+  /// Subtitle of the Share queue between devices switch while it is off: the queue is isolated in both directions
+  ///
+  /// In en, this message translates to:
+  /// **'This device\'s queue is never saved to the server or replaced by another device\'s'**
+  String get shareQueueOff;
 }
 
 class _AppLocalizationsDelegate

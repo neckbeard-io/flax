@@ -27,6 +27,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Flax now checks server certificates; turn off "Verify Certificates" for a self-signed server.
 - Streamed music checks the server's certificate too, as the rest of flax does.
 - The local network target is never checked, so its Trust Self-Signed switch is gone.
+- "Sync Queue with Server" is now "Share queue between devices".
 
 ### Fixed
 - Albums' All tab shows the whole library, not just the first 500 albums.
@@ -38,6 +39,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Cancel stops a metadata sync, from the app or its notification, and clears it.
 - Metadata sync no longer hangs forever if its downloader can't start.
 - Cache Status and Sync start in seconds on large libraries instead of stalling.
+- With queue sharing off, another device's queue no longer replaces yours at launch.
 - Covers fetched by the nightly background sync now show up in the app.
 - Update dialog no longer shows an earlier check's error beside the update.
 - Failed update checks give up after 15 seconds and say why in plain words.

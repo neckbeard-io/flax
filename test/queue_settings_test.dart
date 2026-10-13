@@ -40,4 +40,40 @@ void main() {
 
     expect(notifier.state, isFalse);
   });
+
+  // The queue restore read the setting the moment it was created, got the
+  // default, and fetched the server's queue on a device where sharing was off.
+  test('loaded waits for the saved choice on a first read', () async {
+    SharedPreferences.setMockInitialValues({
+      SyncQueueWithServerNotifier.storageKey: false,
+    });
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    final notifier = container.read(syncQueueWithServerProvider.notifier);
+    expect(container.read(syncQueueWithServerProvider), isTrue);
+    expect(await notifier.loaded, isFalse);
+  });
+
+  test('loaded is the default when nothing is saved', () async {
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    expect(
+      await container.read(syncQueueWithServerProvider.notifier).loaded,
+      isTrue,
+    );
+  });
+
+  test('loaded follows a later change', () async {
+    SharedPreferences.setMockInitialValues({});
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    final notifier = container.read(syncQueueWithServerProvider.notifier);
+    await notifier.loaded;
+    await notifier.setEnabled(false);
+    expect(await notifier.loaded, isFalse);
+  });
 }

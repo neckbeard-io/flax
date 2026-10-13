@@ -369,4 +369,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String localTargetAway(String url) {
     return 'Distant : $url · Hors du Wi-Fi du domicile';
   }
+
+  @override
+  String get shareQueue => 'Partager la file d\'attente entre appareils';
+
+  @override
+  String get shareQueueOn =>
+      'La file d\'attente et la position sont enregistrées sur le serveur et reprises par vos autres appareils';
+
+  @override
+  String get shareQueueOff =>
+      'La file d\'attente de cet appareil n\'est jamais enregistrée sur le serveur ni remplacée par celle d\'un autre appareil';
 }

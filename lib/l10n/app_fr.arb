@@ -101,5 +101,8 @@
   "localTargetActiveOn": "Actif : {url} sur « {ssid} »",
   "localTargetUnreachable": "Injoignable · Connexion via l'URL distante",
   "localTargetUnreachableOn": "Injoignable sur « {ssid} » · Connexion via l'URL distante",
-  "localTargetAway": "Distant : {url} · Hors du Wi-Fi du domicile"
+  "localTargetAway": "Distant : {url} · Hors du Wi-Fi du domicile",
+  "shareQueue": "Partager la file d'attente entre appareils",
+  "shareQueueOn": "La file d'attente et la position sont enregistrées sur le serveur et reprises par vos autres appareils",
+  "shareQueueOff": "La file d'attente de cet appareil n'est jamais enregistrée sur le serveur ni remplacée par celle d'un autre appareil"
 }

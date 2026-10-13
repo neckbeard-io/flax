@@ -1558,7 +1558,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // This immediately populates the currentSong, queue, and position (within milliseconds)
     // so MediaSession, Android Auto, and Now Playing are ready without waiting for network I/O.
     final restoredLocally = await _restoreFromLocal();
-    final syncQueue = _ref.read(syncQueueWithServerProvider);
+    final syncQueue = await _ref
+        .read(syncQueueWithServerProvider.notifier)
+        .loaded;
     if (syncQueue) {
       // In background, sync with server queue if enabled
       unawaited(_restoreFromServer());
@@ -1714,25 +1716,29 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<void> _saveQueue() async {
     final song = state.currentSong;
-    if (song == null || state.queue.isEmpty) return;
+    final queue = state.queue;
+    final positionMs = state.position.inMilliseconds;
+    if (song == null || queue.isEmpty) return;
 
     // Always save locally
-    _saveLocal(state.queue, song.id, state.position.inMilliseconds);
+    _saveLocal(queue, song.id, positionMs);
 
     // Only save to server if server queue sync is enabled, and never while
     // offline — the local copy above is what the next launch restores.
-    final syncQueue = _ref.read(syncQueueWithServerProvider);
-    if (!syncQueue || _ref.read(isOfflineModeProvider)) return;
+    // Providers are read before waiting on the setting, since this also runs
+    // as the player is disposed.
+    final syncQueue = _ref.read(syncQueueWithServerProvider.notifier).loaded;
+    if (_ref.read(isOfflineModeProvider)) return;
 
     // Try to save to server
     try {
       final client = _ref.read(subsonicClientProvider);
-      if (client == null) return;
+      if (client == null || !await syncQueue) return;
 
       await client.savePlayQueue(
-        state.queue.map((s) => s.id).toList(),
+        queue.map((s) => s.id).toList(),
         song.id,
-        state.position.inMilliseconds,
+        positionMs,
       );
     } catch (e) {
       AppLogger.w('Player', 'Failed to save play queue to server: $e');
