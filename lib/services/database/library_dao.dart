@@ -504,6 +504,48 @@ class LibraryDao {
     });
   }
 
+  /// Whether any of an artist's cached albums has unknown release types.
+  ///
+  /// The release-type backfill's test, read before an artist refresh skips a
+  /// fetch. One `getArtist` returns every album's types, and
+  /// [settleArtistReleaseTypes] then marks what it left unknown, so this turns
+  /// false after one refresh and stays false.
+  Future<bool> artistReleaseTypesUnknown(
+    String serverId,
+    String artistId,
+  ) async {
+    final album =
+        await (_db.selectOnly(_db.albums)
+              ..addColumns([_db.albums.id])
+              ..where(
+                _db.albums.serverId.equals(serverId) &
+                    _db.albums.artistId.equals(artistId) &
+                    _db.albums.releaseTypesJson.isNull(),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return album != null;
+  }
+
+  /// Record the release types still unknown on an artist's albums as none.
+  ///
+  /// Only after a full `getArtist`: whatever that left unknown, the server has
+  /// no types for — a server without OpenSubsonic never sends them. Left
+  /// unknown, [artistReleaseTypesUnknown] would refetch the artist on every
+  /// visit.
+  Future<void> settleArtistReleaseTypes(
+    String serverId,
+    String artistId,
+  ) async {
+    await (_db.update(_db.albums)..where(
+          (t) =>
+              t.serverId.equals(serverId) &
+              t.artistId.equals(artistId) &
+              t.releaseTypesJson.isNull(),
+        ))
+        .write(const AlbumsCompanion(releaseTypesJson: Value('[]')));
+  }
+
   /// Downloaded albums whose genres are still unknown.
   ///
   /// Downloaded means available offline, genres included, and an album opened

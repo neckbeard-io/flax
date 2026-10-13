@@ -9,6 +9,7 @@ import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/shared/widgets/country_chip.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
+import 'package:flax/shared/widgets/similar_artist_tile.dart';
 
 /// The artist column: who is playing, and what the server knows about them.
 ///
@@ -44,7 +45,7 @@ class ArtistPanel extends ConsumerWidget {
       imageUrl: info?.bestImageUrl ?? artist?.imageUrl,
       coverArtId: artist?.coverArtId,
       biography: info?.biography ?? artist?.biography,
-      similarArtists: info?.similarArtists ?? const [],
+      similarArtists: info?.similarInLibrary ?? const [],
       countryCode: countryCode,
       countryLabel: countryLabel,
       isFlagLoading: isFlagLoading,
@@ -176,7 +177,7 @@ class ArtistPanelView extends StatelessWidget {
               separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
                 final similar = similarArtists[index];
-                return _SimilarArtistItem(
+                return SimilarArtistTile(
                   artist: similar,
                   onTap: onArtistTap != null
                       ? () => onArtistTap!(similar.id)
@@ -236,61 +237,5 @@ class _ArtistPlaceholder extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _SimilarArtistItem extends StatelessWidget {
-  final SimilarArtist artist;
-  final VoidCallback? onTap;
-
-  const _SimilarArtistItem({required this.artist, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return SizedBox(
-      width: 80,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 80,
-            height: 80,
-            child: HoverArtwork(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(8),
-              child: _buildArtwork(artist.coverArtId),
-            ),
-          ),
-          const SizedBox(height: 6),
-          HoverLink(
-            text: artist.name,
-            maxLines: 2,
-            onTap: onTap,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontSize: 12,
-              height: 1.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildArtwork(String? coverArtId) {
-    if (coverArtId == null || coverArtId.isEmpty) {
-      return const CoverArtImage(size: 80);
-    }
-    if (coverArtId.startsWith('http://') || coverArtId.startsWith('https://')) {
-      return CachedNetworkImage(
-        imageUrl: coverArtId,
-        fit: BoxFit.cover,
-        placeholder: (_, _) => const CoverArtImage(size: 80),
-        errorWidget: (_, _, _) => const CoverArtImage(size: 80),
-      );
-    }
-    return CoverArtImage(coverArtId: coverArtId, size: 80);
   }
 }

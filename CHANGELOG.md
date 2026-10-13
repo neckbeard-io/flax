@@ -18,6 +18,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - The A–Z index on Albums (All, Downloaded), genre pages and Downloads too.
 - Adding a self-signed server offers to skip the certificate check.
 - Server connection settings follow your chosen language.
+- Desktop artist pages show a discography grid, grouped into albums, EPs, live and compilations.
+- Play and Shuffle buttons on desktop artist pages.
+- Popular songs and similar artists beside the discography in wide windows.
 
 ### Changed
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
@@ -28,6 +31,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Streamed music checks the server's certificate too, as the rest of flax does.
 - The local network target is never checked, so its Trust Self-Signed switch is gone.
 - "Sync Queue with Server" is now "Share queue between devices".
+- Artist bios sit beside the photo; Read more opens the full text.
+- Artist pages show library genres instead of MusicBrainz tags; tap one to browse.
 
 ### Fixed
 - Albums' All tab shows the whole library, not just the first 500 albums.
@@ -54,6 +59,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Covers load from a self-signed server or local network target.
 - Titles and buttons no longer slip under the window's top-right controls.
 - Global hotkeys work as soon as flax starts, not only after opening Settings.
+- Play Artist no longer skips albums you haven't opened yet.
+- Similar artists no longer lists artists with no albums in your library.
 
 ## v0.6.0 — 2026-10-05
 

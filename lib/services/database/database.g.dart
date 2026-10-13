@@ -1210,6 +1210,31 @@ class $AlbumsTable extends Albums with TableInfo<$AlbumsTable, AlbumRow> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _releaseTypesJsonMeta = const VerificationMeta(
+    'releaseTypesJson',
+  );
+  @override
+  late final GeneratedColumn<String> releaseTypesJson = GeneratedColumn<String>(
+    'release_types_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isCompilationMeta = const VerificationMeta(
+    'isCompilation',
+  );
+  @override
+  late final GeneratedColumn<bool> isCompilation = GeneratedColumn<bool>(
+    'is_compilation',
+    aliasedName,
+    true,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_compilation" IN (0, 1))',
+    ),
+  );
   static const VerificationMeta _starredMeta = const VerificationMeta(
     'starred',
   );
@@ -1317,6 +1342,8 @@ class $AlbumsTable extends Albums with TableInfo<$AlbumsTable, AlbumRow> {
     year,
     genre,
     genresJson,
+    releaseTypesJson,
+    isCompilation,
     starred,
     starredAt,
     userRating,
@@ -1408,6 +1435,24 @@ class $AlbumsTable extends Albums with TableInfo<$AlbumsTable, AlbumRow> {
       context.handle(
         _genresJsonMeta,
         genresJson.isAcceptableOrUnknown(data['genres_json']!, _genresJsonMeta),
+      );
+    }
+    if (data.containsKey('release_types_json')) {
+      context.handle(
+        _releaseTypesJsonMeta,
+        releaseTypesJson.isAcceptableOrUnknown(
+          data['release_types_json']!,
+          _releaseTypesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_compilation')) {
+      context.handle(
+        _isCompilationMeta,
+        isCompilation.isAcceptableOrUnknown(
+          data['is_compilation']!,
+          _isCompilationMeta,
+        ),
       );
     }
     if (data.containsKey('starred')) {
@@ -1521,6 +1566,14 @@ class $AlbumsTable extends Albums with TableInfo<$AlbumsTable, AlbumRow> {
         DriftSqlType.string,
         data['${effectivePrefix}genres_json'],
       ),
+      releaseTypesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}release_types_json'],
+      ),
+      isCompilation: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_compilation'],
+      ),
       starred: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}starred'],
@@ -1578,6 +1631,13 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
   /// row predates it or no response has said, which is what tells a backfill
   /// apart from an album that has no genres. Schema v4.
   final String? genresJson;
+
+  /// OpenSubsonic release types, as a JSON array. Null means unknown, which
+  /// is what the artist refresh looks for to backfill rows from before v5.
+  final String? releaseTypesJson;
+
+  /// OpenSubsonic `isCompilation`. Null when no response has said. Schema v5.
+  final bool? isCompilation;
   final bool starred;
   final DateTime? starredAt;
   final int? userRating;
@@ -1598,6 +1658,8 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     this.year,
     this.genre,
     this.genresJson,
+    this.releaseTypesJson,
+    this.isCompilation,
     required this.starred,
     this.starredAt,
     this.userRating,
@@ -1632,6 +1694,12 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     }
     if (!nullToAbsent || genresJson != null) {
       map['genres_json'] = Variable<String>(genresJson);
+    }
+    if (!nullToAbsent || releaseTypesJson != null) {
+      map['release_types_json'] = Variable<String>(releaseTypesJson);
+    }
+    if (!nullToAbsent || isCompilation != null) {
+      map['is_compilation'] = Variable<bool>(isCompilation);
     }
     map['starred'] = Variable<bool>(starred);
     if (!nullToAbsent || starredAt != null) {
@@ -1675,6 +1743,12 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
       genresJson: genresJson == null && nullToAbsent
           ? const Value.absent()
           : Value(genresJson),
+      releaseTypesJson: releaseTypesJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(releaseTypesJson),
+      isCompilation: isCompilation == null && nullToAbsent
+          ? const Value.absent()
+          : Value(isCompilation),
       starred: Value(starred),
       starredAt: starredAt == null && nullToAbsent
           ? const Value.absent()
@@ -1711,6 +1785,8 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
       year: serializer.fromJson<int?>(json['year']),
       genre: serializer.fromJson<String?>(json['genre']),
       genresJson: serializer.fromJson<String?>(json['genresJson']),
+      releaseTypesJson: serializer.fromJson<String?>(json['releaseTypesJson']),
+      isCompilation: serializer.fromJson<bool?>(json['isCompilation']),
       starred: serializer.fromJson<bool>(json['starred']),
       starredAt: serializer.fromJson<DateTime?>(json['starredAt']),
       userRating: serializer.fromJson<int?>(json['userRating']),
@@ -1736,6 +1812,8 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
       'year': serializer.toJson<int?>(year),
       'genre': serializer.toJson<String?>(genre),
       'genresJson': serializer.toJson<String?>(genresJson),
+      'releaseTypesJson': serializer.toJson<String?>(releaseTypesJson),
+      'isCompilation': serializer.toJson<bool?>(isCompilation),
       'starred': serializer.toJson<bool>(starred),
       'starredAt': serializer.toJson<DateTime?>(starredAt),
       'userRating': serializer.toJson<int?>(userRating),
@@ -1759,6 +1837,8 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     Value<int?> year = const Value.absent(),
     Value<String?> genre = const Value.absent(),
     Value<String?> genresJson = const Value.absent(),
+    Value<String?> releaseTypesJson = const Value.absent(),
+    Value<bool?> isCompilation = const Value.absent(),
     bool? starred,
     Value<DateTime?> starredAt = const Value.absent(),
     Value<int?> userRating = const Value.absent(),
@@ -1779,6 +1859,12 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     year: year.present ? year.value : this.year,
     genre: genre.present ? genre.value : this.genre,
     genresJson: genresJson.present ? genresJson.value : this.genresJson,
+    releaseTypesJson: releaseTypesJson.present
+        ? releaseTypesJson.value
+        : this.releaseTypesJson,
+    isCompilation: isCompilation.present
+        ? isCompilation.value
+        : this.isCompilation,
     starred: starred ?? this.starred,
     starredAt: starredAt.present ? starredAt.value : this.starredAt,
     userRating: userRating.present ? userRating.value : this.userRating,
@@ -1809,6 +1895,12 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
       genresJson: data.genresJson.present
           ? data.genresJson.value
           : this.genresJson,
+      releaseTypesJson: data.releaseTypesJson.present
+          ? data.releaseTypesJson.value
+          : this.releaseTypesJson,
+      isCompilation: data.isCompilation.present
+          ? data.isCompilation.value
+          : this.isCompilation,
       starred: data.starred.present ? data.starred.value : this.starred,
       starredAt: data.starredAt.present ? data.starredAt.value : this.starredAt,
       userRating: data.userRating.present
@@ -1840,6 +1932,8 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
           ..write('year: $year, ')
           ..write('genre: $genre, ')
           ..write('genresJson: $genresJson, ')
+          ..write('releaseTypesJson: $releaseTypesJson, ')
+          ..write('isCompilation: $isCompilation, ')
           ..write('starred: $starred, ')
           ..write('starredAt: $starredAt, ')
           ..write('userRating: $userRating, ')
@@ -1853,7 +1947,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     serverId,
     id,
     artistId,
@@ -1865,6 +1959,8 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     year,
     genre,
     genresJson,
+    releaseTypesJson,
+    isCompilation,
     starred,
     starredAt,
     userRating,
@@ -1873,7 +1969,7 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
     fetchedAt,
     lastSeenAt,
     dirty,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1889,6 +1985,8 @@ class AlbumRow extends DataClass implements Insertable<AlbumRow> {
           other.year == this.year &&
           other.genre == this.genre &&
           other.genresJson == this.genresJson &&
+          other.releaseTypesJson == this.releaseTypesJson &&
+          other.isCompilation == this.isCompilation &&
           other.starred == this.starred &&
           other.starredAt == this.starredAt &&
           other.userRating == this.userRating &&
@@ -1911,6 +2009,8 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
   final Value<int?> year;
   final Value<String?> genre;
   final Value<String?> genresJson;
+  final Value<String?> releaseTypesJson;
+  final Value<bool?> isCompilation;
   final Value<bool> starred;
   final Value<DateTime?> starredAt;
   final Value<int?> userRating;
@@ -1932,6 +2032,8 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     this.year = const Value.absent(),
     this.genre = const Value.absent(),
     this.genresJson = const Value.absent(),
+    this.releaseTypesJson = const Value.absent(),
+    this.isCompilation = const Value.absent(),
     this.starred = const Value.absent(),
     this.starredAt = const Value.absent(),
     this.userRating = const Value.absent(),
@@ -1954,6 +2056,8 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     this.year = const Value.absent(),
     this.genre = const Value.absent(),
     this.genresJson = const Value.absent(),
+    this.releaseTypesJson = const Value.absent(),
+    this.isCompilation = const Value.absent(),
     this.starred = const Value.absent(),
     this.starredAt = const Value.absent(),
     this.userRating = const Value.absent(),
@@ -1980,6 +2084,8 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     Expression<int>? year,
     Expression<String>? genre,
     Expression<String>? genresJson,
+    Expression<String>? releaseTypesJson,
+    Expression<bool>? isCompilation,
     Expression<bool>? starred,
     Expression<DateTime>? starredAt,
     Expression<int>? userRating,
@@ -2002,6 +2108,8 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
       if (year != null) 'year': year,
       if (genre != null) 'genre': genre,
       if (genresJson != null) 'genres_json': genresJson,
+      if (releaseTypesJson != null) 'release_types_json': releaseTypesJson,
+      if (isCompilation != null) 'is_compilation': isCompilation,
       if (starred != null) 'starred': starred,
       if (starredAt != null) 'starred_at': starredAt,
       if (userRating != null) 'user_rating': userRating,
@@ -2026,6 +2134,8 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     Value<int?>? year,
     Value<String?>? genre,
     Value<String?>? genresJson,
+    Value<String?>? releaseTypesJson,
+    Value<bool?>? isCompilation,
     Value<bool>? starred,
     Value<DateTime?>? starredAt,
     Value<int?>? userRating,
@@ -2048,6 +2158,8 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
       year: year ?? this.year,
       genre: genre ?? this.genre,
       genresJson: genresJson ?? this.genresJson,
+      releaseTypesJson: releaseTypesJson ?? this.releaseTypesJson,
+      isCompilation: isCompilation ?? this.isCompilation,
       starred: starred ?? this.starred,
       starredAt: starredAt ?? this.starredAt,
       userRating: userRating ?? this.userRating,
@@ -2096,6 +2208,12 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
     if (genresJson.present) {
       map['genres_json'] = Variable<String>(genresJson.value);
     }
+    if (releaseTypesJson.present) {
+      map['release_types_json'] = Variable<String>(releaseTypesJson.value);
+    }
+    if (isCompilation.present) {
+      map['is_compilation'] = Variable<bool>(isCompilation.value);
+    }
     if (starred.present) {
       map['starred'] = Variable<bool>(starred.value);
     }
@@ -2140,6 +2258,8 @@ class AlbumsCompanion extends UpdateCompanion<AlbumRow> {
           ..write('year: $year, ')
           ..write('genre: $genre, ')
           ..write('genresJson: $genresJson, ')
+          ..write('releaseTypesJson: $releaseTypesJson, ')
+          ..write('isCompilation: $isCompilation, ')
           ..write('starred: $starred, ')
           ..write('starredAt: $starredAt, ')
           ..write('userRating: $userRating, ')
@@ -6816,6 +6936,8 @@ typedef $$AlbumsTableCreateCompanionBuilder =
       Value<int?> year,
       Value<String?> genre,
       Value<String?> genresJson,
+      Value<String?> releaseTypesJson,
+      Value<bool?> isCompilation,
       Value<bool> starred,
       Value<DateTime?> starredAt,
       Value<int?> userRating,
@@ -6839,6 +6961,8 @@ typedef $$AlbumsTableUpdateCompanionBuilder =
       Value<int?> year,
       Value<String?> genre,
       Value<String?> genresJson,
+      Value<String?> releaseTypesJson,
+      Value<bool?> isCompilation,
       Value<bool> starred,
       Value<DateTime?> starredAt,
       Value<int?> userRating,
@@ -6911,6 +7035,16 @@ class $$AlbumsTableFilterComposer
 
   ColumnFilters<String> get genresJson => $composableBuilder(
     column: $table.genresJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get releaseTypesJson => $composableBuilder(
+    column: $table.releaseTypesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCompilation => $composableBuilder(
+    column: $table.isCompilation,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7019,6 +7153,16 @@ class $$AlbumsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get releaseTypesJson => $composableBuilder(
+    column: $table.releaseTypesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCompilation => $composableBuilder(
+    column: $table.isCompilation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get starred => $composableBuilder(
     column: $table.starred,
     builder: (column) => ColumnOrderings(column),
@@ -7108,6 +7252,16 @@ class $$AlbumsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get releaseTypesJson => $composableBuilder(
+    column: $table.releaseTypesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isCompilation => $composableBuilder(
+    column: $table.isCompilation,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get starred =>
       $composableBuilder(column: $table.starred, builder: (column) => column);
 
@@ -7178,6 +7332,8 @@ class $$AlbumsTableTableManager
                 Value<int?> year = const Value.absent(),
                 Value<String?> genre = const Value.absent(),
                 Value<String?> genresJson = const Value.absent(),
+                Value<String?> releaseTypesJson = const Value.absent(),
+                Value<bool?> isCompilation = const Value.absent(),
                 Value<bool> starred = const Value.absent(),
                 Value<DateTime?> starredAt = const Value.absent(),
                 Value<int?> userRating = const Value.absent(),
@@ -7199,6 +7355,8 @@ class $$AlbumsTableTableManager
                 year: year,
                 genre: genre,
                 genresJson: genresJson,
+                releaseTypesJson: releaseTypesJson,
+                isCompilation: isCompilation,
                 starred: starred,
                 starredAt: starredAt,
                 userRating: userRating,
@@ -7222,6 +7380,8 @@ class $$AlbumsTableTableManager
                 Value<int?> year = const Value.absent(),
                 Value<String?> genre = const Value.absent(),
                 Value<String?> genresJson = const Value.absent(),
+                Value<String?> releaseTypesJson = const Value.absent(),
+                Value<bool?> isCompilation = const Value.absent(),
                 Value<bool> starred = const Value.absent(),
                 Value<DateTime?> starredAt = const Value.absent(),
                 Value<int?> userRating = const Value.absent(),
@@ -7243,6 +7403,8 @@ class $$AlbumsTableTableManager
                 year: year,
                 genre: genre,
                 genresJson: genresJson,
+                releaseTypesJson: releaseTypesJson,
+                isCompilation: isCompilation,
                 starred: starred,
                 starredAt: starredAt,
                 userRating: userRating,

@@ -38,7 +38,7 @@ class FlaxDatabase extends _$FlaxDatabase {
   FlaxDatabase.open() : super(_openOnDisk());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -60,6 +60,12 @@ class FlaxDatabase extends _$FlaxDatabase {
         // song row on the first launch after the update.
         await m.addColumn(albums, albums.genresJson);
         await m.addColumn(songs, songs.genresJson);
+      }
+      if (from < 5) {
+        // Columns only, as for v4: rows keep a null list, which the artist
+        // refresh reads as unknown and fills in.
+        await m.addColumn(albums, albums.releaseTypesJson);
+        await m.addColumn(albums, albums.isCompilation);
       }
     },
     beforeOpen: (details) async {

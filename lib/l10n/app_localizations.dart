@@ -735,6 +735,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This device\'s queue is never saved to the server or replaced by another device\'s'**
   String get shareQueueOff;
+
+  /// Small capitalized label above the artist name in the desktop artist page header
+  ///
+  /// In en, this message translates to:
+  /// **'ARTIST'**
+  String get artistEyebrow;
+
+  /// Button on the artist page that plays all of the artist's songs in random order
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle'**
+  String get shuffle;
+
+  /// Heading above the list of an artist's releases on the desktop artist page
+  ///
+  /// In en, this message translates to:
+  /// **'Discography'**
+  String get discography;
+
+  /// Heading for an artist's studio albums in the discography
+  ///
+  /// In en, this message translates to:
+  /// **'Albums'**
+  String get releaseGroupAlbums;
+
+  /// Heading for an artist's EPs and singles in the discography
+  ///
+  /// In en, this message translates to:
+  /// **'EPs & Singles'**
+  String get releaseGroupEpsSingles;
+
+  /// Heading for an artist's live albums in the discography
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get releaseGroupLive;
+
+  /// Heading for an artist's compilations in the discography
+  ///
+  /// In en, this message translates to:
+  /// **'Compilations'**
+  String get releaseGroupCompilations;
+
+  /// Heading for an artist's soundtracks, remixes, demos and other releases in the discography
+  ///
+  /// In en, this message translates to:
+  /// **'Other releases'**
+  String get releaseGroupOther;
+
+  /// How many releases an artist has, in the artist page header
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 release} other{{count} releases}}'**
+  String releaseCount(int count);
+
+  /// Artist page header while offline: how many of the artist's releases are downloaded
+  ///
+  /// In en, this message translates to:
+  /// **'{total, plural, =1{{downloaded} of 1 release downloaded} other{{downloaded} of {total} releases downloaded}}'**
+  String releasesDownloaded(int downloaded, int total);
+
+  /// Heading for an artist's most popular songs on the artist page
+  ///
+  /// In en, this message translates to:
+  /// **'Popular'**
+  String get popular;
+
+  /// Heading for artists similar to this one on the artist page
+  ///
+  /// In en, this message translates to:
+  /// **'Similar artists'**
+  String get similarArtists;
+
+  /// Link under a shortened artist biography that opens the whole text
+  ///
+  /// In en, this message translates to:
+  /// **'Read more'**
+  String get readMore;
+
+  /// Small capitalized label above the artist name in the full biography dialog
+  ///
+  /// In en, this message translates to:
+  /// **'ABOUT'**
+  String get aboutEyebrow;
+
+  /// Tooltip of the button that shows an artist's releases as a grid of covers
+  ///
+  /// In en, this message translates to:
+  /// **'Grid'**
+  String get viewGrid;
+
+  /// Tooltip of the button that shows an artist's releases as a list
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get viewList;
+
+  /// Column heading in the artist page's release list: the release name
+  ///
+  /// In en, this message translates to:
+  /// **'TITLE'**
+  String get columnTitle;
+
+  /// Column heading in the artist page's release list: release year
+  ///
+  /// In en, this message translates to:
+  /// **'YEAR'**
+  String get columnYear;
+
+  /// Column heading in the artist page's release list: number of tracks
+  ///
+  /// In en, this message translates to:
+  /// **'TRACKS'**
+  String get columnTracks;
+
+  /// Column heading in the artist page's release list: total running time
+  ///
+  /// In en, this message translates to:
+  /// **'LENGTH'**
+  String get columnLength;
+
+  /// Column heading in the artist page's release list: the release's star rating
+  ///
+  /// In en, this message translates to:
+  /// **'RATING'**
+  String get columnRating;
 }
 
 class _AppLocalizationsDelegate

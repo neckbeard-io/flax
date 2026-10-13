@@ -24,6 +24,17 @@ class Album {
   final DateTime? created;
   final String? musicBrainzId;
 
+  /// OpenSubsonic `releaseTypes`, trimmed and lowercased: MusicBrainz's
+  /// primary and secondary types, such as `album`, `ep` or `live`. The server
+  /// sends them alphabetized, so the first is not the primary type.
+  ///
+  /// Null means unknown — a row cached before these were stored. An empty list
+  /// means the server has none for it. Screens group by [releaseGroupOf].
+  final List<String>? releaseTypes;
+
+  /// OpenSubsonic `isCompilation`. Null when the response did not say.
+  final bool? isCompilation;
+
   const Album({
     required this.id,
     required this.serverId,
@@ -41,6 +52,8 @@ class Album {
     this.userRating,
     this.created,
     this.musicBrainzId,
+    this.releaseTypes,
+    this.isCompilation,
   });
 
   /// [genres], or the single [genre] while the full list is unknown.
@@ -63,6 +76,8 @@ class Album {
     int? userRating,
     DateTime? created,
     String? musicBrainzId,
+    List<String>? releaseTypes,
+    bool? isCompilation,
   }) {
     return Album(
       id: id ?? this.id,
@@ -81,6 +96,8 @@ class Album {
       userRating: userRating ?? this.userRating,
       created: created ?? this.created,
       musicBrainzId: musicBrainzId ?? this.musicBrainzId,
+      releaseTypes: releaseTypes ?? this.releaseTypes,
+      isCompilation: isCompilation ?? this.isCompilation,
     );
   }
 }

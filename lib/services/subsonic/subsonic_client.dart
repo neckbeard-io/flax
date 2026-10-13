@@ -628,7 +628,7 @@ class SubsonicClient implements MusicBackend {
   @override
   Future<Map<String, dynamic>?> getArtistInfo(String id) async {
     try {
-      final data = await _get('getArtistInfo2', {'id': id, 'count': 10});
+      final data = await _get('getArtistInfo2', {'id': id, 'count': 12});
       return data['artistInfo2'] as Map<String, dynamic>?;
     } catch (_) {
       return null;
@@ -649,6 +649,7 @@ class SubsonicClient implements MusicBackend {
           name: m['name'] as String? ?? '',
           coverArtId:
               m['coverArt'] as String? ?? m['artistImageUrl'] as String?,
+          albumCount: m['albumCount'] as int?,
         ),
       );
     }
@@ -676,11 +677,20 @@ class SubsonicClient implements MusicBackend {
     return songs.map((s) => _parseSong(s as Map<String, dynamic>)).toList();
   }
 
+  /// Sends [artistId] as `id` beside the name when given. Navidrome's
+  /// `topSongsByArtistId` extension matches on it, so artists sharing a name
+  /// are not mixed together; other servers ignore the parameter and match on
+  /// the name as before.
   @override
-  Future<List<Song>> getTopSongs(String artistName, {int count = 50}) async {
+  Future<List<Song>> getTopSongs(
+    String artistName, {
+    int count = 50,
+    String? artistId,
+  }) async {
     final data = await _get('getTopSongs', {
       'artist': artistName,
       'count': count,
+      'id': ?artistId,
     });
     final songs =
         (data['topSongs'] as Map<String, dynamic>)['song'] as List<dynamic>? ??
@@ -762,6 +772,8 @@ class SubsonicClient implements MusicBackend {
           ? DateTime.tryParse(json['created'] as String)
           : null,
       musicBrainzId: json['musicBrainzId'] as String?,
+      releaseTypes: parseReleaseTypes(json),
+      isCompilation: json['isCompilation'] as bool?,
     );
   }
 
@@ -826,6 +838,21 @@ class SubsonicClient implements MusicBackend {
     final single = json['genre'];
     if (single is String) return genresFromSingle(single);
     return null;
+  }
+
+  /// An album's OpenSubsonic `releaseTypes`, trimmed, lowercased and without
+  /// duplicates or empty entries. Null when the response has none to give, so
+  /// a server without the field leaves the types unknown rather than empty.
+  @visibleForTesting
+  static List<String>? parseReleaseTypes(Map<String, dynamic> json) {
+    final list = json['releaseTypes'];
+    if (list is! List) return null;
+    final types = <String>[];
+    for (final entry in list.whereType<String>()) {
+      final type = entry.trim().toLowerCase();
+      if (type.isNotEmpty && !types.contains(type)) types.add(type);
+    }
+    return types;
   }
 
   static double? _toDouble(dynamic value) {
