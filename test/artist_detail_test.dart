@@ -99,7 +99,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('ARTIST'), findsOneWidget);
     expect(find.text('3 Inches of Blood'), findsOneWidget);
-    expect(find.text('2 albums'), findsOneWidget);
+    expect(find.text('2 releases'), findsOneWidget);
 
     // The image is a bounded square, not a full-width crop. A banner was the
     // whole problem: it cropped a square publicity photo to a strip and put

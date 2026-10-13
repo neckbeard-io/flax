@@ -381,4 +381,83 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get shareQueueOff =>
       'Die Warteschlange dieses Geräts wird nie auf dem Server gespeichert oder durch die eines anderen Geräts ersetzt';
+
+  @override
+  String get artistEyebrow => 'KÜNSTLER';
+
+  @override
+  String get shuffle => 'Zufallswiedergabe';
+
+  @override
+  String get discography => 'Diskografie';
+
+  @override
+  String get releaseGroupAlbums => 'Alben';
+
+  @override
+  String get releaseGroupEpsSingles => 'EPs & Singles';
+
+  @override
+  String get releaseGroupLive => 'Live';
+
+  @override
+  String get releaseGroupCompilations => 'Kompilationen';
+
+  @override
+  String get releaseGroupOther => 'Weitere Veröffentlichungen';
+
+  @override
+  String releaseCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Veröffentlichungen',
+      one: '1 Veröffentlichung',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String releasesDownloaded(int downloaded, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$downloaded von $total Veröffentlichungen heruntergeladen',
+      one: '$downloaded von 1 Veröffentlichung heruntergeladen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get popular => 'Beliebt';
+
+  @override
+  String get similarArtists => 'Ähnliche Künstler';
+
+  @override
+  String get readMore => 'Mehr lesen';
+
+  @override
+  String get aboutEyebrow => 'ÜBER';
+
+  @override
+  String get viewGrid => 'Raster';
+
+  @override
+  String get viewList => 'Liste';
+
+  @override
+  String get columnTitle => 'TITEL';
+
+  @override
+  String get columnYear => 'JAHR';
+
+  @override
+  String get columnTracks => 'STÜCKE';
+
+  @override
+  String get columnLength => 'DAUER';
+
+  @override
+  String get columnRating => 'BEWERTUNG';
 }

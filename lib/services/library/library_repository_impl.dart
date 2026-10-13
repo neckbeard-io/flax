@@ -159,7 +159,9 @@ class LibraryRepositoryImpl implements LibraryRepository {
   Future<void> refreshArtist(String artistId, {bool force = false}) {
     return _once('artist:$artistId', () async {
       try {
-        if (!force && !await _artistAlbumsIncomplete(artistId)) {
+        if (!force &&
+            !await _artistAlbumsIncomplete(artistId) &&
+            !await _dao.artistReleaseTypesUnknown(_serverId, artistId)) {
           final fetchedAt = await _dao.artistAlbumsFetchedAt(
             _serverId,
             artistId,
@@ -174,6 +176,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
         final now = _clock();
         await _dao.upsertArtists([artist], now);
         await _dao.upsertAlbums(albums, now);
+        await _dao.settleArtistReleaseTypes(_serverId, artistId);
       } catch (e) {
         AppLogger.w('Library', 'refreshArtist($artistId) failed: $e');
         _reportIfNetworkError(e);

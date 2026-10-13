@@ -460,7 +460,8 @@ void main() {
       final file = File('${dir.path}/library.sqlite');
 
       // Build today's schema, store rows, then take the database back to v3:
-      // the genre columns dropped and the version number rewound.
+      // the genre columns and everything newer dropped, and the version
+      // number rewound.
       final current = FlaxDatabase(NativeDatabase(file));
       await LibraryDao(
         current,
@@ -477,6 +478,8 @@ void main() {
             downgraded = true;
             raw.execute('ALTER TABLE albums DROP COLUMN genres_json');
             raw.execute('ALTER TABLE songs DROP COLUMN genres_json');
+            raw.execute('ALTER TABLE albums DROP COLUMN release_types_json');
+            raw.execute('ALTER TABLE albums DROP COLUMN is_compilation');
             raw.execute('PRAGMA user_version = 3');
           },
         ),

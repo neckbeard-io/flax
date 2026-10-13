@@ -377,4 +377,83 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get shareQueueOff =>
       'This device\'s queue is never saved to the server or replaced by another device\'s';
+
+  @override
+  String get artistEyebrow => 'ARTIST';
+
+  @override
+  String get shuffle => 'Shuffle';
+
+  @override
+  String get discography => 'Discography';
+
+  @override
+  String get releaseGroupAlbums => 'Albums';
+
+  @override
+  String get releaseGroupEpsSingles => 'EPs & Singles';
+
+  @override
+  String get releaseGroupLive => 'Live';
+
+  @override
+  String get releaseGroupCompilations => 'Compilations';
+
+  @override
+  String get releaseGroupOther => 'Other releases';
+
+  @override
+  String releaseCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count releases',
+      one: '1 release',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String releasesDownloaded(int downloaded, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$downloaded of $total releases downloaded',
+      one: '$downloaded of 1 release downloaded',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get popular => 'Popular';
+
+  @override
+  String get similarArtists => 'Similar artists';
+
+  @override
+  String get readMore => 'Read more';
+
+  @override
+  String get aboutEyebrow => 'ABOUT';
+
+  @override
+  String get viewGrid => 'Grid';
+
+  @override
+  String get viewList => 'List';
+
+  @override
+  String get columnTitle => 'TITLE';
+
+  @override
+  String get columnYear => 'YEAR';
+
+  @override
+  String get columnTracks => 'TRACKS';
+
+  @override
+  String get columnLength => 'LENGTH';
+
+  @override
+  String get columnRating => 'RATING';
 }

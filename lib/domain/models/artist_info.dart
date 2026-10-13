@@ -20,6 +20,11 @@ class ArtistInfo {
   });
 
   String? get bestImageUrl => largeImageUrl ?? mediumImageUrl ?? smallImageUrl;
+
+  /// [similarArtists] without the ones with no albums here. Navidrome lists
+  /// artists that only appear as track contributors, and their page is empty.
+  List<SimilarArtist> get similarInLibrary =>
+      similarArtists.where((a) => a.albumCount != 0).toList();
 }
 
 class SimilarArtist {
@@ -27,7 +32,17 @@ class SimilarArtist {
   final String name;
   final String? coverArtId;
 
-  const SimilarArtist({required this.id, required this.name, this.coverArtId});
+  /// How many albums the server has for the artist, when it says. Navidrome
+  /// lists artists that appear only as track contributors, with 0 here; their
+  /// page has no albums on it.
+  final int? albumCount;
+
+  const SimilarArtist({
+    required this.id,
+    required this.name,
+    this.coverArtId,
+    this.albumCount,
+  });
 }
 
 class MusicBrainzArtistInfo {

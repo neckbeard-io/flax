@@ -654,9 +654,14 @@ class MockSubsonicClient extends _i1.Mock implements _i3.SubsonicClient {
   _i8.Future<List<_i2.Song>> getTopSongs(
     String? artistName, {
     int? count = 50,
+    String? artistId,
   }) =>
       (super.noSuchMethod(
-            Invocation.method(#getTopSongs, [artistName], {#count: count}),
+            Invocation.method(
+              #getTopSongs,
+              [artistName],
+              {#count: count, #artistId: artistId},
+            ),
             returnValue: _i8.Future<List<_i2.Song>>.value(<_i2.Song>[]),
             returnValueForMissingStub: _i8.Future<List<_i2.Song>>.value(
               <_i2.Song>[],
@@ -890,6 +895,18 @@ class MockLibraryDao extends _i1.Mock implements _i10.LibraryDao {
           as _i8.Future<void>);
 
   @override
+  _i8.Future<int> albumListLength(
+    String? serverId,
+    _i11.AlbumListQuery? query,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#albumListLength, [serverId, query]),
+            returnValue: _i8.Future<int>.value(0),
+            returnValueForMissingStub: _i8.Future<int>.value(0),
+          )
+          as _i8.Future<int>);
+
+  @override
   _i8.Future<DateTime?> albumListFetchedAt(
     String? serverId,
     _i11.AlbumListQuery? query,
@@ -1024,6 +1041,30 @@ class MockLibraryDao extends _i1.Mock implements _i10.LibraryDao {
   _i8.Future<void> settleAlbumGenres(String? serverId, String? albumId) =>
       (super.noSuchMethod(
             Invocation.method(#settleAlbumGenres, [serverId, albumId]),
+            returnValue: _i8.Future<void>.value(),
+            returnValueForMissingStub: _i8.Future<void>.value(),
+          )
+          as _i8.Future<void>);
+
+  @override
+  _i8.Future<bool> artistReleaseTypesUnknown(
+    String? serverId,
+    String? artistId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#artistReleaseTypesUnknown, [serverId, artistId]),
+            returnValue: _i8.Future<bool>.value(false),
+            returnValueForMissingStub: _i8.Future<bool>.value(false),
+          )
+          as _i8.Future<bool>);
+
+  @override
+  _i8.Future<void> settleArtistReleaseTypes(
+    String? serverId,
+    String? artistId,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#settleArtistReleaseTypes, [serverId, artistId]),
             returnValue: _i8.Future<void>.value(),
             returnValueForMissingStub: _i8.Future<void>.value(),
           )

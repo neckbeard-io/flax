@@ -700,9 +700,10 @@ void main() {
         'scanning': false,
       };
       await dao.upsertArtists([artist('ar1', albumCount: 2)], now);
+      // Cached by a current flax, release types and all.
       await dao.upsertAlbums([
-        album('a', artistId: 'ar1'),
-        album('b', artistId: 'ar1'),
+        album('a', artistId: 'ar1').copyWith(releaseTypes: const ['album']),
+        album('b', artistId: 'ar1').copyWith(releaseTypes: const ['album']),
       ], now);
       backend.artist = artist('ar1', albumCount: 2);
       backend.artistAlbums = const [];

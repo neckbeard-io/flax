@@ -76,6 +76,13 @@ class Albums extends Table {
   /// apart from an album that has no genres. Schema v4.
   TextColumn get genresJson => text().nullable()();
 
+  /// OpenSubsonic release types, as a JSON array. Null means unknown, which
+  /// is what the artist refresh looks for to backfill rows from before v5.
+  TextColumn get releaseTypesJson => text().nullable()();
+
+  /// OpenSubsonic `isCompilation`. Null when no response has said. Schema v5.
+  BoolColumn get isCompilation => boolean().nullable()();
+
   BoolColumn get starred => boolean().withDefault(const Constant(false))();
   DateTimeColumn get starredAt => dateTime().nullable()();
   IntColumn get userRating => integer().nullable()();

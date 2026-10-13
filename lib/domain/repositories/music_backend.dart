@@ -102,7 +102,11 @@ abstract class MusicBackend {
 
   // Similar songs
   Future<List<Song>> getSimilarSongs(String id, {int count = 50});
-  Future<List<Song>> getTopSongs(String artistName, {int count = 50});
+  Future<List<Song>> getTopSongs(
+    String artistName, {
+    int count = 50,
+    String? artistId,
+  });
 
   // Random
   Future<List<Song>> getRandomSongs({int count = 20, String? genre});

@@ -362,4 +362,71 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get shareQueueOff =>
       'このデバイスの再生キューはサーバーに保存されず、他のデバイスのキューに置き換えられることもありません';
+
+  @override
+  String get artistEyebrow => 'アーティスト';
+
+  @override
+  String get shuffle => 'シャッフル';
+
+  @override
+  String get discography => 'ディスコグラフィー';
+
+  @override
+  String get releaseGroupAlbums => 'アルバム';
+
+  @override
+  String get releaseGroupEpsSingles => 'EP・シングル';
+
+  @override
+  String get releaseGroupLive => 'ライブ';
+
+  @override
+  String get releaseGroupCompilations => 'コンピレーション';
+
+  @override
+  String get releaseGroupOther => 'その他のリリース';
+
+  @override
+  String releaseCount(int count) {
+    return '$count作品';
+  }
+
+  @override
+  String releasesDownloaded(int downloaded, int total) {
+    return '$total作品中$downloaded作品をダウンロード済み';
+  }
+
+  @override
+  String get popular => '人気曲';
+
+  @override
+  String get similarArtists => '類似アーティスト';
+
+  @override
+  String get readMore => '続きを読む';
+
+  @override
+  String get aboutEyebrow => '概要';
+
+  @override
+  String get viewGrid => 'グリッド';
+
+  @override
+  String get viewList => 'リスト';
+
+  @override
+  String get columnTitle => 'タイトル';
+
+  @override
+  String get columnYear => '年';
+
+  @override
+  String get columnTracks => '曲数';
+
+  @override
+  String get columnLength => '時間';
+
+  @override
+  String get columnRating => '評価';
 }

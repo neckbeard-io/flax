@@ -2,16 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/library/album_filter.dart';
-import 'package:flax/shared/widgets/album_context_menu.dart';
+import 'package:flax/shared/widgets/album_grid_tile.dart';
 import 'package:flax/shared/widgets/alphabet_scroller.dart';
-import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
 import 'package:flax/shared/widgets/mobile_downloads_pill.dart';
@@ -325,7 +323,6 @@ class _AlbumGridState extends ConsumerState<AlbumGrid> {
   @override
   Widget build(BuildContext context) {
     final albums = widget.albums;
-    final theme = Theme.of(context);
     final maxExtent = artGridExtent(context);
     final labelExtent = artGridLabelExtent(context);
     final downloadedAlbumIds =
@@ -365,78 +362,11 @@ class _AlbumGridState extends ConsumerState<AlbumGrid> {
           itemBuilder: (context, index) {
             final album = albums[index];
             final isFullyCached = downloadedAlbumIds.contains(album.id);
-            final isPartiallyCached =
-                anyDownloadedAlbumIds.contains(album.id) && !isFullyCached;
-            return AlbumContextMenu(
+            return AlbumGridTile(
               album: album,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AspectRatio(
-                    aspectRatio: 1,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned.fill(
-                          child: HoverArtwork(
-                            onTap: () => context.push('/albums/${album.id}'),
-                            // No explicit size: CoverArtImage measures its own box and
-                            // fetches to match, so a wider desktop tile pulls a
-                            // correspondingly larger image.
-                            child: CoverArtImage(coverArtId: album.coverArtId),
-                          ),
-                        ),
-                        if (isFullyCached || isPartiallyCached)
-                          Positioned(
-                            top: -6,
-                            right: -6,
-                            child: Container(
-                              padding: const EdgeInsets.all(2.5),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surface,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.5),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                isFullyCached
-                                    ? Icons.offline_pin
-                                    : Icons.offline_pin_outlined,
-                                size: 14,
-                                color: isFullyCached
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.secondary,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  HoverLink(
-                    text: album.name,
-                    onTap: () => context.push('/albums/${album.id}'),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  HoverLink(
-                    text: album.artistName ?? '',
-                    onTap: album.artistId != null
-                        ? () => context.push('/artists/${album.artistId}')
-                        : null,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
+              fullyCached: isFullyCached,
+              partiallyCached:
+                  anyDownloadedAlbumIds.contains(album.id) && !isFullyCached,
             );
           },
         );

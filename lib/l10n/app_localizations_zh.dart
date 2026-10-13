@@ -359,4 +359,71 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shareQueueOff => '此设备的播放队列不会保存到服务器，也不会被其他设备的队列替换';
+
+  @override
+  String get artistEyebrow => '艺术家';
+
+  @override
+  String get shuffle => '随机播放';
+
+  @override
+  String get discography => '唱片目录';
+
+  @override
+  String get releaseGroupAlbums => '专辑';
+
+  @override
+  String get releaseGroupEpsSingles => 'EP 和单曲';
+
+  @override
+  String get releaseGroupLive => '现场';
+
+  @override
+  String get releaseGroupCompilations => '合辑';
+
+  @override
+  String get releaseGroupOther => '其他发行';
+
+  @override
+  String releaseCount(int count) {
+    return '$count 张唱片';
+  }
+
+  @override
+  String releasesDownloaded(int downloaded, int total) {
+    return '已下载 $downloaded/$total 张唱片';
+  }
+
+  @override
+  String get popular => '热门歌曲';
+
+  @override
+  String get similarArtists => '相似艺术家';
+
+  @override
+  String get readMore => '阅读更多';
+
+  @override
+  String get aboutEyebrow => '简介';
+
+  @override
+  String get viewGrid => '网格';
+
+  @override
+  String get viewList => '列表';
+
+  @override
+  String get columnTitle => '标题';
+
+  @override
+  String get columnYear => '年份';
+
+  @override
+  String get columnTracks => '曲目';
+
+  @override
+  String get columnLength => '时长';
+
+  @override
+  String get columnRating => '评分';
 }

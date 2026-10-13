@@ -502,5 +502,102 @@
   "shareQueueOff": "This device's queue is never saved to the server or replaced by another device's",
   "@shareQueueOff": {
     "description": "Subtitle of the Share queue between devices switch while it is off: the queue is isolated in both directions"
+  },
+  "artistEyebrow": "ARTIST",
+  "@artistEyebrow": {
+    "description": "Small capitalized label above the artist name in the desktop artist page header"
+  },
+  "shuffle": "Shuffle",
+  "@shuffle": {
+    "description": "Button on the artist page that plays all of the artist's songs in random order"
+  },
+  "discography": "Discography",
+  "@discography": {
+    "description": "Heading above the list of an artist's releases on the desktop artist page"
+  },
+  "releaseGroupAlbums": "Albums",
+  "@releaseGroupAlbums": {
+    "description": "Heading for an artist's studio albums in the discography"
+  },
+  "releaseGroupEpsSingles": "EPs & Singles",
+  "@releaseGroupEpsSingles": {
+    "description": "Heading for an artist's EPs and singles in the discography"
+  },
+  "releaseGroupLive": "Live",
+  "@releaseGroupLive": {
+    "description": "Heading for an artist's live albums in the discography"
+  },
+  "releaseGroupCompilations": "Compilations",
+  "@releaseGroupCompilations": {
+    "description": "Heading for an artist's compilations in the discography"
+  },
+  "releaseGroupOther": "Other releases",
+  "@releaseGroupOther": {
+    "description": "Heading for an artist's soundtracks, remixes, demos and other releases in the discography"
+  },
+  "releaseCount": "{count, plural, =1{1 release} other{{count} releases}}",
+  "@releaseCount": {
+    "description": "How many releases an artist has, in the artist page header",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "releasesDownloaded": "{total, plural, =1{{downloaded} of 1 release downloaded} other{{downloaded} of {total} releases downloaded}}",
+  "@releasesDownloaded": {
+    "description": "Artist page header while offline: how many of the artist's releases are downloaded",
+    "placeholders": {
+      "downloaded": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "popular": "Popular",
+  "@popular": {
+    "description": "Heading for an artist's most popular songs on the artist page"
+  },
+  "similarArtists": "Similar artists",
+  "@similarArtists": {
+    "description": "Heading for artists similar to this one on the artist page"
+  },
+  "readMore": "Read more",
+  "@readMore": {
+    "description": "Link under a shortened artist biography that opens the whole text"
+  },
+  "aboutEyebrow": "ABOUT",
+  "@aboutEyebrow": {
+    "description": "Small capitalized label above the artist name in the full biography dialog"
+  },
+  "viewGrid": "Grid",
+  "@viewGrid": {
+    "description": "Tooltip of the button that shows an artist's releases as a grid of covers"
+  },
+  "viewList": "List",
+  "@viewList": {
+    "description": "Tooltip of the button that shows an artist's releases as a list"
+  },
+  "columnTitle": "TITLE",
+  "@columnTitle": {
+    "description": "Column heading in the artist page's release list: the release name"
+  },
+  "columnYear": "YEAR",
+  "@columnYear": {
+    "description": "Column heading in the artist page's release list: release year"
+  },
+  "columnTracks": "TRACKS",
+  "@columnTracks": {
+    "description": "Column heading in the artist page's release list: number of tracks"
+  },
+  "columnLength": "LENGTH",
+  "@columnLength": {
+    "description": "Column heading in the artist page's release list: total running time"
+  },
+  "columnRating": "RATING",
+  "@columnRating": {
+    "description": "Column heading in the artist page's release list: the release's star rating"
   }
 }

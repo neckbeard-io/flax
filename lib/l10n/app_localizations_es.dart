@@ -382,4 +382,83 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get shareQueueOff =>
       'La cola de este dispositivo nunca se guarda en el servidor ni se sustituye por la de otro dispositivo';
+
+  @override
+  String get artistEyebrow => 'ARTISTA';
+
+  @override
+  String get shuffle => 'Aleatorio';
+
+  @override
+  String get discography => 'Discografía';
+
+  @override
+  String get releaseGroupAlbums => 'Álbumes';
+
+  @override
+  String get releaseGroupEpsSingles => 'EP y sencillos';
+
+  @override
+  String get releaseGroupLive => 'En directo';
+
+  @override
+  String get releaseGroupCompilations => 'Recopilatorios';
+
+  @override
+  String get releaseGroupOther => 'Otros lanzamientos';
+
+  @override
+  String releaseCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lanzamientos',
+      one: '1 lanzamiento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String releasesDownloaded(int downloaded, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$downloaded de $total lanzamientos descargados',
+      one: '$downloaded de 1 lanzamiento descargado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get popular => 'Populares';
+
+  @override
+  String get similarArtists => 'Artistas similares';
+
+  @override
+  String get readMore => 'Leer más';
+
+  @override
+  String get aboutEyebrow => 'ACERCA DE';
+
+  @override
+  String get viewGrid => 'Cuadrícula';
+
+  @override
+  String get viewList => 'Lista';
+
+  @override
+  String get columnTitle => 'TÍTULO';
+
+  @override
+  String get columnYear => 'AÑO';
+
+  @override
+  String get columnTracks => 'PISTAS';
+
+  @override
+  String get columnLength => 'DURACIÓN';
+
+  @override
+  String get columnRating => 'VALORACIÓN';
 }

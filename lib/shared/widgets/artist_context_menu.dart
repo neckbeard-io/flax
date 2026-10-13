@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/features/library/album_sort.dart';
+import 'package:flax/features/library/artist_songs.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
@@ -138,13 +141,15 @@ class ArtistContextMenu extends ConsumerWidget {
   Future<void> _loadAndPlay(WidgetRef ref, {required bool replace}) async {
     final repo = ref.read(libraryRepositoryProvider);
     if (repo == null) return;
+    final sortMode = ref.read(albumSortProvider);
+    final offline = ref.read(isOfflineModeProvider);
 
-    final albums = await repo.watchArtistAlbums(artist.id).first;
-    final allSongs = <Song>[];
-    for (final album in albums) {
-      final songs = await repo.watchAlbumSongs(album.id).first;
-      allSongs.addAll(songs);
-    }
+    // The artist page's order, so Play Artist plays what the page shows.
+    final albums = discographyOrder(
+      await repo.watchArtistAlbums(artist.id).first,
+      sortMode,
+    );
+    final allSongs = await loadArtistSongs(repo, albums, offline: offline);
 
     if (allSongs.isEmpty) return;
 
