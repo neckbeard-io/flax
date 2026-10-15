@@ -18,6 +18,10 @@ class SubsonicClient implements MusicBackend {
   final String? customBaseUrl;
   final Dio _dio;
 
+  /// Whether [_dio] was made here rather than passed in, so that [tryPing]
+  /// can make another like it.
+  final bool _ownsDio;
+
   /// Called with the endpoint name before every API request. The app uses it to
   /// log requests made while offline is forced, which should never happen.
   final void Function(String endpoint)? onRequest;
@@ -30,7 +34,8 @@ class SubsonicClient implements MusicBackend {
     this.customBaseUrl,
     Dio? dio,
     this.onRequest,
-  }) : _dio = dio ?? _createDefaultDio(server);
+  }) : _dio = dio ?? _createDefaultDio(server),
+       _ownsDio = dio == null;
 
   String get baseUrl {
     final base = customBaseUrl ?? server.baseUrl;
@@ -100,6 +105,7 @@ class SubsonicClient implements MusicBackend {
     String endpoint, [
     Map<String, dynamic>? extra,
     Options? options,
+    Dio? via,
   ]) async {
     final params = <String, dynamic>{..._authParams()};
     if (extra != null) params.addAll(extra);
@@ -111,7 +117,7 @@ class SubsonicClient implements MusicBackend {
         options?.receiveTimeout ??
         options?.connectTimeout ??
         const Duration(seconds: 15);
-    final response = await _dio
+    final response = await (via ?? _dio)
         .get<Map<String, dynamic>>(
           '$baseUrl/rest/$endpoint',
           queryParameters: params,
@@ -168,15 +174,23 @@ class SubsonicClient implements MusicBackend {
             '${error.osError?.message}'.contains('CERTIFICATE_VERIFY_FAILED'));
   }
 
+  /// Asks the server whether it is there, on a connection of its own.
+  ///
+  /// Not one from the pool: a pooled connection that the server or the
+  /// network has quietly dropped fails whatever is sent on it, which says
+  /// nothing about the server. That is the question a ping is asked whenever
+  /// a request has failed, so it cannot be answered on the connections the
+  /// failure came from.
   Future<String?> tryPing({Duration? timeout}) async {
     final effectiveTimeout = timeout ?? const Duration(seconds: 3);
+    final dio = _ownsDio ? _createDefaultDio(server) : _dio;
     try {
       final options = Options(
         connectTimeout: effectiveTimeout,
         sendTimeout: effectiveTimeout,
         receiveTimeout: effectiveTimeout,
       );
-      await _get('ping', null, options).timeout(
+      await _get('ping', null, options, dio).timeout(
         effectiveTimeout,
         onTimeout: () => throw DioException(
           requestOptions: RequestOptions(path: '$baseUrl/rest/ping'),
@@ -220,6 +234,8 @@ class SubsonicClient implements MusicBackend {
       return 'Unexpected response format. Is this a Subsonic-compatible server?';
     } catch (e) {
       return 'Unexpected error: $e';
+    } finally {
+      if (!identical(dio, _dio)) dio.close(force: true);
     }
   }
 

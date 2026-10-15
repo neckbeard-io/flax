@@ -61,6 +61,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Global hotkeys work as soon as flax starts, not only after opening Settings.
 - Play Artist no longer skips albums you haven't opened yet.
 - Similar artists no longer lists artists with no albums in your library.
+- Android no longer flips to offline and back when one request is slow.
 
 ## v0.6.0 — 2026-10-05
 

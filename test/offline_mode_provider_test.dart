@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +21,22 @@ class _FakeSubsonicClient extends Fake implements SubsonicClient {
   Future<String?> tryPing({Duration? timeout}) async {
     if (shouldSucceed) return null;
     return 'Connection timed out';
+  }
+}
+
+/// Counts pings, and can hold one open to see what arrives meanwhile.
+class _CountingPingClient extends Fake implements SubsonicClient {
+  _CountingPingClient({this.answers = true});
+
+  final bool answers;
+  Completer<void>? hold;
+  int pings = 0;
+
+  @override
+  Future<String?> tryPing({Duration? timeout}) async {
+    pings++;
+    await hold?.future;
+    return answers ? null : 'Connection timed out';
   }
 }
 
@@ -425,6 +443,120 @@ void main() {
 
       expect(container.read(isOfflineModeProvider), isFalse);
       expect(container.read(offlineReasonProvider), OfflineReason.none);
+    });
+  });
+
+  // #167: one library request timing out at launch put Android offline, toast
+  // and all, while the server answered everything else.
+  group('A failed request', () {
+    const server = Server(
+      id: 'srv-1',
+      name: 'Test Server',
+      url: 'http://localhost:4533',
+      username: 'admin',
+      tokenHash: 'secret',
+      salt: 'salt123',
+    );
+
+    ProviderContainer containerWith(
+      SubsonicClient client,
+      PlatformOfflinePolicy policy,
+    ) {
+      final container = ProviderContainer(
+        overrides: [
+          platformOfflinePolicyProvider.overrideWithValue(policy),
+          activeServerProvider.overrideWithValue(server),
+          subsonicClientProvider.overrideWithValue(client),
+          connectivityStreamProvider.overrideWith(
+            (ref) => Stream.value([ConnectivityResult.wifi]),
+          ),
+          connectivityProvider.overrideWith(
+            (ref) => Future.value([ConnectivityResult.wifi]),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    test('stays online on Android when the server answers a ping', () async {
+      final client = _CountingPingClient();
+      final container = containerWith(client, const AndroidOfflinePolicy());
+
+      container
+          .read(serverReachabilityProvider.notifier)
+          .reportRequestFailure('Connection timed out');
+      await pumpEventQueue();
+
+      expect(client.pings, 1);
+      expect(container.read(isOfflineModeProvider), isFalse);
+      expect(container.read(offlineReasonProvider), OfflineReason.none);
+      expect(container.read(offlineToastMessageProvider), isNull);
+    });
+
+    test('goes offline on Android when the ping fails too', () async {
+      final client = _CountingPingClient(answers: false);
+      final container = containerWith(client, const AndroidOfflinePolicy());
+
+      container
+          .read(serverReachabilityProvider.notifier)
+          .reportRequestFailure('Connection timed out');
+      await pumpEventQueue();
+
+      expect(container.read(isOfflineModeProvider), isTrue);
+      expect(
+        container.read(offlineReasonProvider),
+        OfflineReason.serverUnreachable,
+      );
+      expect(
+        container.read(offlineToastMessageProvider),
+        contains('Server unreachable'),
+      );
+    });
+
+    test('several at once send one ping', () async {
+      final client = _CountingPingClient()..hold = Completer<void>();
+      final container = containerWith(client, const AndroidOfflinePolicy());
+      final notifier = container.read(serverReachabilityProvider.notifier);
+
+      notifier.reportRequestFailure('Connection timed out');
+      notifier.reportRequestFailure('Cannot reach server');
+      notifier.reportRequestFailure('Connection timed out');
+      client.hold!.complete();
+      await pumpEventQueue();
+
+      expect(client.pings, 1);
+      expect(container.read(isOfflineModeProvider), isFalse);
+    });
+
+    test('sends no ping once the server is known to be unreachable', () async {
+      final client = _CountingPingClient(answers: false);
+      final container = containerWith(client, const AndroidOfflinePolicy());
+      final notifier = container.read(serverReachabilityProvider.notifier);
+
+      notifier.reportRequestFailure('Connection timed out');
+      await pumpEventQueue();
+      notifier.reportRequestFailure('Connection timed out');
+      await pumpEventQueue();
+
+      expect(client.pings, 1);
+      expect(container.read(isOfflineModeProvider), isTrue);
+    });
+
+    test('never takes desktop offline, even when the ping fails', () async {
+      final client = _CountingPingClient(answers: false);
+      final container = containerWith(client, const MacOsOfflinePolicy());
+
+      container
+          .read(serverReachabilityProvider.notifier)
+          .reportRequestFailure('Connection timed out');
+      await pumpEventQueue();
+
+      expect(client.pings, 1);
+      // One failed ping is below the desktop threshold.
+      expect(container.read(serverReachabilityProvider).isReachable, isTrue);
+      expect(container.read(isOfflineModeProvider), isFalse);
+      expect(container.read(offlineToastMessageProvider), isNull);
     });
   });
 }
