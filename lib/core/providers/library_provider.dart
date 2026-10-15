@@ -36,7 +36,9 @@ final libraryRepositoryProvider = Provider<LibraryRepository?>((ref) {
     client,
     server.id,
     onNetworkError: (reason) {
-      ref.read(serverReachabilityProvider.notifier).markUnreachable(reason);
+      ref
+          .read(serverReachabilityProvider.notifier)
+          .reportRequestFailure(reason);
     },
     onNetworkSuccess: () {
       ref.read(serverReachabilityProvider.notifier).markReachable();

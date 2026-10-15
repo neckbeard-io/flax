@@ -508,6 +508,34 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
     _persistReachability(true);
   }
 
+  /// A request to the server failed with a timeout or a connection error.
+  ///
+  /// One request failing does not mean the server is gone: a slow answer can
+  /// run out its time while the requests beside it succeed. Taken as proof,
+  /// that put Android offline, toast and all, until the next request got
+  /// through (#167). So while the server counts as reachable a failure only
+  /// starts a ping, and the ping decides. Failures during one change nothing.
+  void reportRequestFailure(String reason) {
+    if (!state.isReachable) {
+      markUnreachable(reason);
+      return;
+    }
+    if (state.isProbing) return;
+    AppLogger.w('Reachability', 'Request failed ($reason); pinging the server');
+    // Not the result: below a desktop's failure threshold a failed ping still
+    // leaves the server reachable.
+    probeServer().then((_) {
+      if (!mounted) return;
+      final error = state.lastError;
+      AppLogger.w(
+        'Reachability',
+        error == null
+            ? 'Server answered the ping; staying online'
+            : 'Server did not answer the ping: $error',
+      );
+    });
+  }
+
   void markUnreachable(String reason) {
     final wasReachable = state.isReachable;
     state = state.copyWith(
