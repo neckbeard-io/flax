@@ -157,6 +157,7 @@ void main() {
       expect(isValidRoute('/settings/metadata-cache'), isTrue);
       expect(isValidRoute('/settings/server-connection?id=srv-1'), isTrue);
       expect(isValidRoute('/settings/hotkeys'), isTrue);
+      expect(isValidRoute('/settings/android-auto'), isTrue);
     });
 
     test('rejects incomplete parameterized routes and unknown routes', () {

@@ -45,6 +45,10 @@ final savedRouteProvider = StateProvider<String?>((ref) => null);
 ///
 /// Prevents blank screens and navigation traps caused by invalid or empty routes (e.g. '/'),
 /// which can be delivered by background services or stale preferences.
+///
+/// The router's redirect sends anything this rejects to /albums, so a screen
+/// added to [routerProvider] but not here opens Albums instead of itself.
+/// `test/router_routes_test.dart` fails when the two disagree.
 bool isValidRoute(String location) {
   if (location.isEmpty || location == '/') return false;
   final uri = Uri.tryParse(location);
@@ -68,6 +72,7 @@ bool isValidRoute(String location) {
     '/settings/metadata-cache',
     '/settings/server-connection',
     '/settings/hotkeys',
+    '/settings/android-auto',
   };
 
   if (validExactRoutes.contains(path)) return true;
