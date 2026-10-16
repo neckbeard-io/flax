@@ -219,6 +219,22 @@ AppChrome is `MaterialApp.router`'s *builder*, which sits above the
 `InheritedGoRouter` — `GoRouter.of(context)` finds nothing there. Read the
 router from `routerProvider` instead.
 
+### A new screen is registered twice
+
+`lib/app/router.dart` names every screen in two places: its `GoRoute`, and the
+allowlist in `isValidRoute`. The router's redirect sends any location the
+allowlist rejects to `/albums`, and a saved or `FLAX_ROUTE` start route is
+checked against it too. A route added only to the route table opens Albums
+instead of itself. That is how Settings › Android Auto first shipped (#174):
+its widget test built the screen directly, never went through the router, and
+passed.
+
+- Add the path to `isValidRoute` in the same change as the `GoRoute`.
+- `test/router_routes_test.dart` builds the real router and fails on any
+  registered route the allowlist rejects.
+- When a screen is reached by navigating, test the navigation as well as the
+  widget, as `test/now_playing_nav_test.dart` does.
+
 ### Nothing before runApp may wait on an Activity
 
 On Android, `FlaxApplication` starts the Flutter engine on every process start,
