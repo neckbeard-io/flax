@@ -47,6 +47,8 @@ void main() {
     coverDir = io.Directory.systemTemp.createTempSync('metadata_sync_covers');
     SharedPreferences.setMockInitialValues({});
     mockClient = MockSubsonicClient();
+    // The sync runs on the background client; here that is the same mock.
+    when(mockClient.withoutRequestLimit()).thenReturn(mockClient);
     mockDao = MockLibraryDao();
     mockCache = MockBaseCacheManager();
     container = ProviderContainer();

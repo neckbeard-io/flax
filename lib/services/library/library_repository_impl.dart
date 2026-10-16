@@ -21,13 +21,20 @@ class LibraryRepositoryImpl implements LibraryRepository {
     this._dao,
     this._backend,
     this._serverId, {
+    MusicBackend? background,
     DateTime Function()? clock,
     this.onNetworkError,
     this.onNetworkSuccess,
-  }) : _clock = clock ?? DateTime.now;
+  }) : _background = background ?? _backend,
+       _clock = clock ?? DateTime.now;
 
   final LibraryDao _dao;
   final MusicBackend _backend;
+
+  /// The backend for work nothing waits on: syncs, the full artist index, and
+  /// list pages after the first. The app's has no total limit per request, so
+  /// a large response still arriving is not cut off (#169).
+  final MusicBackend _background;
   final String _serverId;
   final DateTime Function() _clock;
   final void Function(String reason)? onNetworkError;
@@ -137,7 +144,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
           final fetchedAt = await _dao.artistsFetchedAt(_serverId);
           if (!await _shouldFetch(SyncPolicy.stableList, fetchedAt)) return;
         }
-        final artists = await _backend.getArtists();
+        final artists = await _background.getArtists();
         onNetworkSuccess?.call();
         final now = _clock();
         if (artists.isNotEmpty) {
@@ -214,7 +221,16 @@ class LibraryRepositoryImpl implements LibraryRepository {
   }
 
   @override
-  Future<void> refreshAlbumList(AlbumListQuery query, {bool force = false}) {
+  Future<void> refreshAlbumList(AlbumListQuery query, {bool force = false}) =>
+      _refreshAlbumList(query, force: force, via: _backend);
+
+  /// [via] fetches the first page: [_backend] when a screen waits for it,
+  /// [_background] for a re-crawl. Later pages always use [_background].
+  Future<void> _refreshAlbumList(
+    AlbumListQuery query, {
+    required bool force,
+    required MusicBackend via,
+  }) {
     return _once('list:${query.type.name}:${query.filterKey}', () async {
       try {
         if (!force && query.isCacheable) {
@@ -224,16 +240,17 @@ class LibraryRepositoryImpl implements LibraryRepository {
           }
         }
 
-        Future<List<Album>> page(int offset) => _backend.getAlbumList(
-          query.type,
-          count: _albumListPageSize,
-          offset: offset,
-          genre: query.genre,
-          fromYear: query.fromYear,
-          toYear: query.toYear,
-        );
+        Future<List<Album>> page(MusicBackend backend, int offset) =>
+            backend.getAlbumList(
+              query.type,
+              count: _albumListPageSize,
+              offset: offset,
+              genre: query.genre,
+              fromYear: query.fromYear,
+              toYear: query.toYear,
+            );
 
-        final albums = await page(0);
+        final albums = await page(via, 0);
         onNetworkSuccess?.call();
 
         final now = _clock();
@@ -270,7 +287,11 @@ class LibraryRepositoryImpl implements LibraryRepository {
           unawaited(
             _once(
               'list-rest:${query.type.name}:${query.filterKey}',
-              () => _fetchRestOfList(query, albums, page),
+              () => _fetchRestOfList(
+                query,
+                albums,
+                (offset) => page(_background, offset),
+              ),
             ),
           );
         }
@@ -418,9 +439,10 @@ class LibraryRepositoryImpl implements LibraryRepository {
         (t) => t.name == listType,
         orElse: () => AlbumListType.newest,
       );
-      await refreshAlbumList(
+      await _refreshAlbumList(
         AlbumListQuery.fromFilterKey(type, filterKey),
         force: true,
+        via: _background,
       );
     }
     return true;
@@ -445,7 +467,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
           if (!SyncPolicy.isStale(at, SyncPolicy.starred, _clock())) return;
         }
 
-        final starred = await _backend.getStarred();
+        final starred = await _background.getStarred();
         onNetworkSuccess?.call();
         final now = _clock();
         // Upsert first so favorites on entities never seen before have rows to
@@ -589,9 +611,10 @@ class LibraryRepositoryImpl implements LibraryRepository {
               (t) => t.name == listType,
               orElse: () => AlbumListType.newest,
             );
-            await refreshAlbumList(
+            await _refreshAlbumList(
               AlbumListQuery.fromFilterKey(type, filterKey),
               force: true,
+              via: _background,
             );
           }
         })
