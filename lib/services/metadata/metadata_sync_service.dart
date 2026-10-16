@@ -274,6 +274,9 @@ class MetadataSyncService {
     required LibraryDao dao,
   }) async {
     if (isRunning) return;
+    // Nothing waits on the sync, so its requests run without a total limit:
+    // large index and list responses still arriving were cut off (#169).
+    client = client.withoutRequestLimit();
 
     if (NativeDownloader.isSupported) {
       await NativeDownloader.requestNotificationPermission();

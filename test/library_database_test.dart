@@ -178,6 +178,46 @@ void main() {
 
   tearDown(() => db.close());
 
+  group('background requests (#169)', () {
+    // The background backend has no total limit per request. Syncs and full
+    // indexes use it; what a screen waits for stays on the limited one.
+    late _FakeBackend background;
+
+    LibraryRepositoryImpl split() => LibraryRepositoryImpl(
+      dao,
+      backend,
+      sid,
+      background: background,
+      clock: () => now,
+    );
+
+    setUp(() => background = _FakeBackend());
+
+    test(
+      'the starred sync and the artist index go to the background',
+      () async {
+        final r = split();
+        await r.syncAnnotations(force: true);
+        await r.refreshArtists(force: true);
+
+        expect(background.getStarredCalls, 1);
+        expect(background.getArtistsCalls, 1);
+        expect(backend.getStarredCalls, 0);
+        expect(backend.getArtistsCalls, 0);
+      },
+    );
+
+    test('a list a screen asks for fetches its first page directly', () async {
+      await split().refreshAlbumList(
+        const AlbumListQuery(AlbumListType.newest),
+        force: true,
+      );
+
+      expect(backend.getAlbumListCalls, 1);
+      expect(background.getAlbumListCalls, 0);
+    });
+  });
+
   group('upsert merges rather than replaces', () {
     test('is idempotent', () async {
       await dao.upsertArtists([artist('a1')], now);

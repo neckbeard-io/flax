@@ -26,6 +26,14 @@ class SubsonicClient implements MusicBackend {
   /// log requests made while offline is forced, which should never happen.
   final void Function(String endpoint)? onRequest;
 
+  /// How long a request may take in total, unless its options say otherwise.
+  /// Null for [withoutRequestLimit]'s client.
+  final Duration? requestLimit;
+
+  /// The total limit for requests something waits on: a screen, startup, the
+  /// player. It keeps a hung request from holding any of them up.
+  static const defaultRequestLimit = Duration(seconds: 15);
+
   static const String _apiVersion = '1.16.1';
   static const String _clientName = 'flax';
 
@@ -34,8 +42,26 @@ class SubsonicClient implements MusicBackend {
     this.customBaseUrl,
     Dio? dio,
     this.onRequest,
+    this.requestLimit = defaultRequestLimit,
   }) : _dio = dio ?? _createDefaultDio(server),
        _ownsDio = dio == null;
+
+  SubsonicClient._sharing(SubsonicClient source, {required this.requestLimit})
+    : server = source.server,
+      customBaseUrl = source.customBaseUrl,
+      onRequest = source.onRequest,
+      _dio = source._dio,
+      _ownsDio = source._ownsDio;
+
+  /// A client for background work, which nothing waits on: the same server,
+  /// connections and certificate rule, but no total limit per request.
+  ///
+  /// A large response that is still arriving is left to finish. The 15s limit
+  /// cut off the starred sync at launch while the server was answering (#169).
+  /// dio's connect and receive timeouts still end a request that cannot
+  /// connect, or that stops sending.
+  SubsonicClient withoutRequestLimit() =>
+      SubsonicClient._sharing(this, requestLimit: null);
 
   String get baseUrl {
     final base = customBaseUrl ?? server.baseUrl;
@@ -101,6 +127,15 @@ class SubsonicClient implements MusicBackend {
     return List.generate(16, (_) => rand.nextInt(36).toRadixString(36)).join();
   }
 
+  /// [limit] as a log reads it: whole seconds, or milliseconds below one.
+  @visibleForTesting
+  static String describeLimit(Duration? limit) {
+    if (limit == null) return 'no limit';
+    return limit.inMilliseconds % 1000 == 0
+        ? '${limit.inSeconds}s'
+        : '${limit.inMilliseconds}ms';
+  }
+
   Future<Map<String, dynamic>> _get(
     String endpoint, [
     Map<String, dynamic>? extra,
@@ -113,24 +148,42 @@ class SubsonicClient implements MusicBackend {
     onRequest?.call(endpoint);
     AppLogger.d('Subsonic', () => 'GET $endpoint: ${extra ?? const {}}');
 
-    final effectiveTimeout =
-        options?.receiveTimeout ??
-        options?.connectTimeout ??
-        const Duration(seconds: 15);
-    final response = await (via ?? _dio)
-        .get<Map<String, dynamic>>(
-          '$baseUrl/rest/$endpoint',
-          queryParameters: params,
-          options: options,
-        )
-        .timeout(
-          effectiveTimeout,
-          onTimeout: () => throw DioException(
-            requestOptions: RequestOptions(path: '$baseUrl/rest/$endpoint'),
-            type: DioExceptionType.connectionTimeout,
-            error: 'Connection timed out',
-          ),
-        );
+    final limit =
+        options?.receiveTimeout ?? options?.connectTimeout ?? requestLimit;
+    var request = (via ?? _dio).get<Map<String, dynamic>>(
+      '$baseUrl/rest/$endpoint',
+      queryParameters: params,
+      options: options,
+    );
+    if (limit != null) {
+      request = request.timeout(
+        limit,
+        onTimeout: () => throw DioException(
+          requestOptions: RequestOptions(path: '$baseUrl/rest/$endpoint'),
+          type: DioExceptionType.connectionTimeout,
+          error: 'Connection timed out',
+          message: '$endpoint took longer than ${describeLimit(limit)}',
+        ),
+      );
+    }
+    final Response<Map<String, dynamic>> response;
+    try {
+      response = await request;
+    } on DioException catch (e) {
+      // dio's own timeouts say neither the endpoint nor the limit, and the
+      // log kept only "DioException [connection timeout]: null".
+      final timedOut = switch (e.type) {
+        DioExceptionType.connectionTimeout when e.message == null =>
+          'no connection within ${describeLimit(e.requestOptions.connectTimeout)}',
+        DioExceptionType.receiveTimeout =>
+          'no data for ${describeLimit(e.requestOptions.receiveTimeout)}',
+        DioExceptionType.sendTimeout =>
+          'send took longer than ${describeLimit(e.requestOptions.sendTimeout)}',
+        _ => null,
+      };
+      if (timedOut == null) rethrow;
+      throw e.copyWith(message: '$endpoint: $timedOut');
+    }
 
     final body = response.data!;
     final subResponse = body['subsonic-response'] as Map<String, dynamic>;

@@ -35,6 +35,7 @@ final libraryRepositoryProvider = Provider<LibraryRepository?>((ref) {
     ref.watch(libraryDaoProvider),
     client,
     server.id,
+    background: client.withoutRequestLimit(),
     onNetworkError: (reason) {
       ref
           .read(serverReachabilityProvider.notifier)
