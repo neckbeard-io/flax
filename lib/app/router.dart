@@ -22,6 +22,7 @@ import 'package:flax/features/settings/autoeq_screen.dart';
 import 'package:flax/features/settings/hotkeys_screen.dart';
 import 'package:flax/features/settings/metadata_caching_screen.dart';
 import 'package:flax/features/settings/server_connection_screen.dart';
+import 'package:flax/features/settings/android_auto_screen.dart';
 import 'package:flax/features/player/now_playing_screen.dart';
 import 'package:flax/shared/widgets/shell_scaffold.dart';
 
@@ -262,6 +263,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'hotkeys',
                 builder: (context, state) => const HotkeysScreen(),
+              ),
+              GoRoute(
+                path: 'android-auto',
+                builder: (context, state) => const AndroidAutoScreen(),
               ),
             ],
           ),

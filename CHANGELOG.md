@@ -21,6 +21,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Desktop artist pages show a discography grid, grouped into albums, EPs, live and compilations.
 - Play and Shuffle buttons on desktop artist pages.
 - Popular songs and similar artists beside the discography in wide windows.
+- Choose which four tabs Android Auto shows, in Settings › Android Auto.
 
 ### Changed
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
@@ -65,6 +66,10 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - The first song played after launch is no longer cached with Auto-Cache off.
 - Android Auto no longer leaves music paused a few seconds after connecting.
 - Play and Pause buttons in the car no longer toggle; Play always plays.
+- Android Auto's tabs show real icons instead of blank squares.
+
+### Removed
+- The Online/Offline switch in Android Auto; the phone's offline settings still apply in the car.
 
 ## v0.6.0 — 2026-10-05
 

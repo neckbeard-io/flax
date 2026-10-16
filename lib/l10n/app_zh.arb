@@ -125,5 +125,10 @@
   "columnYear": "年份",
   "columnTracks": "曲目",
   "columnLength": "时长",
-  "columnRating": "评分"
+  "columnRating": "评分",
+  "androidAutoSettings": "Android Auto",
+  "androidAutoTabs": "标签页",
+  "androidAutoTabsHint": "您最多可以选择 4 个。车机会按此顺序显示。",
+  "androidAutoTabRecentlyAdded": "最近添加",
+  "androidAutoTabFavorites": "收藏"
 }

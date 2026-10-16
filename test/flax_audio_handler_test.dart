@@ -13,6 +13,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/settings/android_auto_settings.dart';
 import 'package:flax/services/audio/flax_audio_handler.dart';
 import 'package:flax/services/audio/media_session_art.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
@@ -362,21 +363,116 @@ void main() {
   });
 
   group('FlaxAudioHandler Android Auto Browse Tree', () {
-    test('returns root navigation categories including mode toggle', () async {
+    test('the root is the default four tabs, with no mode toggle', () async {
       final root = await handler.getChildren(AudioService.browsableRootId);
-      expect(root.length, equals(6));
+      expect(root.map((e) => e.id), [
+        FlaxAudioHandler.kRecentNode,
+        FlaxAudioHandler.kArtistsNode,
+        FlaxAudioHandler.kAlbumsNode,
+        FlaxAudioHandler.kPlaylistsNode,
+      ]);
+      expect(root.first.title, equals('Recently Added'));
+      // Android Auto shows only browsable root items as tabs.
+      expect(root.every((e) => e.playable == false), isTrue);
+    });
+
+    test('the root tabs use the monochrome tab icons', () async {
+      await container
+          .read(androidAutoTabsProvider.notifier)
+          .setSelected(AutoTab.playlists, false);
+      await container
+          .read(androidAutoTabsProvider.notifier)
+          .setSelected(AutoTab.favorites, true);
+
+      final root = await handler.getChildren(AudioService.browsableRootId);
+      expect(root.map((e) => e.artUri.toString()), [
+        'android.resource://com.flaxplayer.flax/drawable/ic_tab_recently_added',
+        'android.resource://com.flaxplayer.flax/drawable/ic_tab_artists',
+        'android.resource://com.flaxplayer.flax/drawable/ic_tab_albums',
+        'android.resource://com.flaxplayer.flax/drawable/ic_tab_favorites',
+      ]);
+    });
+
+    test('the root follows the chosen tabs, in their fixed order', () async {
+      final tabs = container.read(androidAutoTabsProvider.notifier);
+      await tabs.setSelected(AutoTab.recentlyAdded, false);
+      await tabs.setSelected(AutoTab.albums, false);
+      await tabs.setSelected(AutoTab.favorites, true);
+
+      final root = await handler.getChildren(AudioService.browsableRootId);
+      expect(root.map((e) => e.id), [
+        FlaxAudioHandler.kArtistsNode,
+        FlaxAudioHandler.kPlaylistsNode,
+        FlaxAudioHandler.kFavoritesNode,
+      ]);
+    });
+
+    test('the root never has more than four tabs', () async {
+      SharedPreferences.setMockInitialValues({
+        AndroidAutoTabsNotifier.storageKey: [
+          for (final tab in AutoTab.values) tab.name,
+        ],
+      });
+      final fresh = ProviderContainer(
+        overrides: [
+          libraryRepositoryProvider.overrideWithValue(mockRepo),
+          subsonicClientProvider.overrideWithValue(mockClient),
+        ],
+      );
+      addTearDown(fresh.dispose);
+
+      final root = await FlaxAudioHandler(
+        fresh,
+      ).getChildren(AudioService.browsableRootId);
+      expect(root, hasLength(4));
       expect(
         root.map((e) => e.id),
-        containsAll([
-          FlaxAudioHandler.kRecentNode,
-          FlaxAudioHandler.kArtistsNode,
-          FlaxAudioHandler.kAlbumsNode,
-          FlaxAudioHandler.kPlaylistsNode,
-          FlaxAudioHandler.kFavoritesNode,
-          'toggle_offline_mode',
-        ]),
+        isNot(contains(FlaxAudioHandler.kFavoritesNode)),
       );
-      expect(root.first.title, equals('Recently Added'));
+    });
+
+    test('the first browse waits for the saved tabs', () async {
+      // What a headless start looks like: the car browses the root the moment
+      // the handler exists, before the saved choice has been read.
+      SharedPreferences.setMockInitialValues({
+        AndroidAutoTabsNotifier.storageKey: ['favorites', 'artists'],
+      });
+      final fresh = ProviderContainer(
+        overrides: [
+          libraryRepositoryProvider.overrideWithValue(mockRepo),
+          subsonicClientProvider.overrideWithValue(mockClient),
+        ],
+      );
+      addTearDown(fresh.dispose);
+
+      final root = await FlaxAudioHandler(
+        fresh,
+      ).getChildren(AudioService.browsableRootId);
+      expect(root.map((e) => e.id), [
+        FlaxAudioHandler.kArtistsNode,
+        FlaxAudioHandler.kFavoritesNode,
+      ]);
+    });
+
+    test('choosing tabs on the phone refreshes the car', () async {
+      var refreshes = 0;
+      final sub = handler
+          .subscribeToChildren(AudioService.browsableRootId)
+          .listen((_) => refreshes++);
+      addTearDown(sub.cancel);
+      await pumpEventQueue();
+      final baseline = refreshes;
+
+      await container
+          .read(androidAutoTabsProvider.notifier)
+          .setSelected(AutoTab.playlists, false);
+      await pumpEventQueue();
+      expect(refreshes, greaterThan(baseline));
+    });
+
+    test('the old mode toggle id no longer switches offline mode', () async {
+      await handler.playFromMediaId('toggle_offline_mode');
+      expect(container.read(offlineManualOverrideProvider), isFalse);
     });
 
     test('fetches recently added albums', () async {
@@ -484,10 +580,10 @@ void main() {
         container.read(offlineManualOverrideProvider.notifier).set(true);
 
         final root = await handler.getChildren(AudioService.browsableRootId);
-        final toggleItem = root.firstWhere(
-          (e) => e.id == 'toggle_offline_mode',
+        final artistsTab = root.firstWhere(
+          (e) => e.id == FlaxAudioHandler.kArtistsNode,
         );
-        expect(toggleItem.title, contains('Offline'));
+        expect(artistsTab.displaySubtitle, equals('Downloaded artists'));
 
         final albums = await handler.getChildren(FlaxAudioHandler.kAlbumsNode);
         expect(
@@ -515,8 +611,10 @@ void main() {
       container.read(offlineOnAndroidAutoSettingProvider.notifier).set(true);
 
       final root = await handler.getChildren(AudioService.browsableRootId);
-      final toggleItem = root.firstWhere((e) => e.id == 'toggle_offline_mode');
-      expect(toggleItem.title, contains('Offline'));
+      final artistsTab = root.firstWhere(
+        (e) => e.id == FlaxAudioHandler.kArtistsNode,
+      );
+      expect(artistsTab.displaySubtitle, equals('Downloaded artists'));
 
       final tracks = await handler.getChildren('album_alb_1');
       expect(tracks.first.title, equals('Get Lucky · Daft Punk'));
@@ -706,7 +804,7 @@ void main() {
       final root = await uninitializedHandler.getChildren(
         AudioService.browsableRootId,
       );
-      expect(root.length, equals(6));
+      expect(root.length, equals(4));
       expect(root.first.id, equals(FlaxAudioHandler.kRecentNode));
     });
   });

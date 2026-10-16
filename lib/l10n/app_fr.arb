@@ -125,5 +125,10 @@
   "columnYear": "ANNÉE",
   "columnTracks": "MORCEAUX",
   "columnLength": "DURÉE",
-  "columnRating": "NOTE"
+  "columnRating": "NOTE",
+  "androidAutoSettings": "Android Auto",
+  "androidAutoTabs": "Onglets",
+  "androidAutoTabsHint": "Choisissez-en jusqu'à 4. La voiture les affiche dans cet ordre.",
+  "androidAutoTabRecentlyAdded": "Ajouts récents",
+  "androidAutoTabFavorites": "Favoris"
 }

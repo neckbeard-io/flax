@@ -456,4 +456,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get columnRating => 'RATING';
+
+  @override
+  String get androidAutoSettings => 'Android Auto';
+
+  @override
+  String get androidAutoTabs => 'Tabs';
+
+  @override
+  String get androidAutoTabsHint =>
+      'Choose up to 4. The car shows them in this order.';
+
+  @override
+  String get androidAutoTabRecentlyAdded => 'Recently Added';
+
+  @override
+  String get androidAutoTabFavorites => 'Favorites';
 }

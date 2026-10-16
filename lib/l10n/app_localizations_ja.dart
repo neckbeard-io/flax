@@ -429,4 +429,19 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get columnRating => '評価';
+
+  @override
+  String get androidAutoSettings => 'Android Auto';
+
+  @override
+  String get androidAutoTabs => 'タブ';
+
+  @override
+  String get androidAutoTabsHint => '最大 4 つまで選択してください。車にはこの順番で表示されます。';
+
+  @override
+  String get androidAutoTabRecentlyAdded => '最近追加した項目';
+
+  @override
+  String get androidAutoTabFavorites => 'お気に入り';
 }

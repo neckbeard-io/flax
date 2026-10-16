@@ -426,4 +426,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get columnRating => '评分';
+
+  @override
+  String get androidAutoSettings => 'Android Auto';
+
+  @override
+  String get androidAutoTabs => '标签页';
+
+  @override
+  String get androidAutoTabsHint => '您最多可以选择 4 个。车机会按此顺序显示。';
+
+  @override
+  String get androidAutoTabRecentlyAdded => '最近添加';
+
+  @override
+  String get androidAutoTabFavorites => '收藏';
 }

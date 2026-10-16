@@ -15,6 +15,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/features/player/player_provider.dart';
+import 'package:flax/features/settings/android_auto_settings.dart';
 import 'package:flax/services/audio/media_session_art.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
@@ -23,8 +24,9 @@ import 'package:flax/shared/widgets/cover_art_cache.dart';
 /// Android Auto & background media session handler for Flax.
 ///
 /// Implements Android `MediaBrowserServiceCompat` to provide the vehicle
-/// dashboard with a browse tree (Recent, Artists, Albums, Playlists, Favorites,
-/// Offline) and integrates transport controls with [PlayerNotifier].
+/// dashboard with a browse tree (up to four of Recently Added, Artists, Albums,
+/// Playlists and Favorites, as chosen in [androidAutoTabsProvider]) and
+/// integrates transport controls with [PlayerNotifier].
 class FlaxAudioHandler extends BaseAudioHandler {
   final ProviderContainer _container;
   final bool _android;
@@ -45,8 +47,24 @@ class FlaxAudioHandler extends BaseAudioHandler {
   static final Uri _icArtistAvatar = Uri.parse(
     'android.resource://com.flaxplayer.flax/drawable/ic_artist_avatar',
   );
-  static final Uri _icOfflineMode = Uri.parse(
-    'android.resource://com.flaxplayer.flax/drawable/ic_offline_mode',
+
+  // The root's tab icons. Android Auto draws a tab's icon in a single color,
+  // so these are white glyphs on nothing: the colored tiles above, drawn that
+  // way, came out as solid squares.
+  static final Uri _icTabRecentlyAdded = Uri.parse(
+    'android.resource://com.flaxplayer.flax/drawable/ic_tab_recently_added',
+  );
+  static final Uri _icTabArtists = Uri.parse(
+    'android.resource://com.flaxplayer.flax/drawable/ic_tab_artists',
+  );
+  static final Uri _icTabAlbums = Uri.parse(
+    'android.resource://com.flaxplayer.flax/drawable/ic_tab_albums',
+  );
+  static final Uri _icTabPlaylists = Uri.parse(
+    'android.resource://com.flaxplayer.flax/drawable/ic_tab_playlists',
+  );
+  static final Uri _icTabFavorites = Uri.parse(
+    'android.resource://com.flaxplayer.flax/drawable/ic_tab_favorites',
   );
 
   bool get _isOffline {
@@ -111,6 +129,13 @@ class FlaxAudioHandler extends BaseAudioHandler {
       serverReachabilityProvider.select((r) => r.isReachable),
       (_, _) => _onModeInput(),
     );
+    // Listening also starts the saved tab choice loading, before the car's
+    // first browse asks for it. A change chosen on the phone reaches a car
+    // that is already connected.
+    _container.listen<List<AutoTab>>(androidAutoTabsProvider, (_, _) {
+      notifyChildrenChanged(AudioService.browsableRootId);
+      notifyChildrenChanged(kRootId);
+    });
   }
 
   late bool _browseOffline;
@@ -545,7 +570,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
         parentMediaId == kRootId ||
         parentMediaId == '/' ||
         parentMediaId.isEmpty) {
-      return _getRootCategories();
+      return _getRootCategories(await _rootTabs());
     }
 
     final library = _library;
@@ -1464,83 +1489,81 @@ class FlaxAudioHandler extends BaseAudioHandler {
     return albums.take(50).map((a) => albumToMediaItem(a, client)).toList();
   }
 
-  List<MediaItem> _getRootCategories() {
+  /// The tabs chosen on the phone, once the saved choice has loaded.
+  ///
+  /// A headless start brings the handler up for the car's first browse, before
+  /// the saved choice has been read; answering then would show the default
+  /// tabs first. Bounded so a stuck read can never leave the car without tabs.
+  Future<List<AutoTab>> _rootTabs() {
+    return _container
+        .read(androidAutoTabsProvider.notifier)
+        .loaded
+        .timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => _container.read(androidAutoTabsProvider),
+        );
+  }
+
+  /// The root, shown by Android Auto as tabs across the top of its large view
+  /// (left). It shows four root children at most, and only browsable ones, so
+  /// [tabs] is capped at four and nothing playable belongs here.
+  List<MediaItem> _getRootCategories(List<AutoTab> tabs) {
     final offline = _isOffline;
+    MediaItem tab(
+      String id,
+      String title,
+      Uri icon,
+      String offlineSubtitle,
+      int style,
+    ) => MediaItem(
+      id: id,
+      title: title,
+      displayTitle: title,
+      displaySubtitle: offline ? offlineSubtitle : null,
+      artUri: icon,
+      playable: false,
+      extras: {AndroidContentStyle.browsableHintKey: style},
+    );
+
     return [
-      MediaItem(
-        id: kRecentNode,
-        title: 'Recently Added',
-        displayTitle: 'Recently Added',
-        displaySubtitle: offline ? 'Downloaded · Newest additions' : null,
-        artUri: _icMusicNote,
-        playable: false,
-        extras: const {
-          AndroidContentStyle.browsableHintKey:
-              AndroidContentStyle.gridItemHintValue,
+      for (final t in AndroidAutoTabsNotifier.normalize(tabs))
+        switch (t) {
+          AutoTab.recentlyAdded => tab(
+            kRecentNode,
+            'Recently Added',
+            _icTabRecentlyAdded,
+            'Downloaded · Newest additions',
+            AndroidContentStyle.gridItemHintValue,
+          ),
+          AutoTab.artists => tab(
+            kArtistsNode,
+            'Artists',
+            _icTabArtists,
+            'Downloaded artists',
+            AndroidContentStyle.gridItemHintValue,
+          ),
+          AutoTab.albums => tab(
+            kAlbumsNode,
+            'Albums',
+            _icTabAlbums,
+            'Downloaded albums & filters',
+            AndroidContentStyle.gridItemHintValue,
+          ),
+          AutoTab.playlists => tab(
+            kPlaylistsNode,
+            'Playlists',
+            _icTabPlaylists,
+            'Downloaded tracks & playlists',
+            AndroidContentStyle.listItemHintValue,
+          ),
+          AutoTab.favorites => tab(
+            kFavoritesNode,
+            'Favorites',
+            _icTabFavorites,
+            'Downloaded favorites',
+            AndroidContentStyle.gridItemHintValue,
+          ),
         },
-      ),
-      MediaItem(
-        id: kArtistsNode,
-        title: 'Artists',
-        displayTitle: 'Artists',
-        displaySubtitle: offline ? 'Downloaded artists' : null,
-        artUri: _icArtistAvatar,
-        playable: false,
-        extras: const {
-          AndroidContentStyle.browsableHintKey:
-              AndroidContentStyle.gridItemHintValue,
-        },
-      ),
-      MediaItem(
-        id: kAlbumsNode,
-        title: 'Albums',
-        displayTitle: 'Albums',
-        displaySubtitle: offline ? 'Downloaded albums & filters' : null,
-        artUri: _icAlbumCollection,
-        playable: false,
-        extras: const {
-          AndroidContentStyle.browsableHintKey:
-              AndroidContentStyle.gridItemHintValue,
-        },
-      ),
-      MediaItem(
-        id: kPlaylistsNode,
-        title: 'Playlists',
-        displayTitle: 'Playlists',
-        displaySubtitle: offline ? 'Downloaded tracks & playlists' : null,
-        artUri: _icMusicNote,
-        playable: false,
-        extras: const {
-          AndroidContentStyle.browsableHintKey:
-              AndroidContentStyle.listItemHintValue,
-        },
-      ),
-      MediaItem(
-        id: kFavoritesNode,
-        title: 'Favorites',
-        displayTitle: 'Favorites',
-        displaySubtitle: offline ? 'Downloaded favorites' : null,
-        artUri: _icFavoriteHeart,
-        playable: false,
-        extras: const {
-          AndroidContentStyle.browsableHintKey:
-              AndroidContentStyle.gridItemHintValue,
-        },
-      ),
-      MediaItem(
-        id: 'toggle_offline_mode',
-        title: offline ? '⚡ Mode: Offline' : '🌐 Mode: Online',
-        displayTitle: offline ? '⚡ Mode: Offline' : '🌐 Mode: Online',
-        displaySubtitle: offline
-            ? 'Filtered to downloaded music · Tap to toggle'
-            : 'Streaming all music · Tap for Offline only',
-        artUri: _icOfflineMode,
-        playable: true,
-        extras: const {
-          AndroidContentStyle.browsableHintKey:
-              AndroidContentStyle.listItemHintValue,
-        },
-      ),
     ];
   }
 
@@ -1565,25 +1588,6 @@ class FlaxAudioHandler extends BaseAudioHandler {
     if (library == null) return;
 
     try {
-      if (mediaId == 'toggle_offline_mode') {
-        final current = _isOffline;
-        await _container
-            .read(offlineManualOverrideProvider.notifier)
-            .set(!current);
-        notifyChildrenChanged(AudioService.browsableRootId);
-        notifyChildrenChanged(kRootId);
-        notifyChildrenChanged(kRecentNode);
-        notifyChildrenChanged(kArtistsNode);
-        notifyChildrenChanged(kAlbumsNode);
-        notifyChildrenChanged(kPlaylistsNode);
-        notifyChildrenChanged(kFavoritesNode);
-        AppLogger.i(
-          'AudioHandler',
-          'Toggled offline mode from Android Auto. Now: ${!current}',
-        );
-        return;
-      }
-
       if (mediaId.startsWith('song_')) {
         final songId = mediaId.substring(5);
         // Asked for the track the queue is already on — what a resumption

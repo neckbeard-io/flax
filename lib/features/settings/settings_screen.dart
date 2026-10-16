@@ -15,6 +15,7 @@ import 'package:flax/domain/models/server.dart';
 import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/core/tasks/task.dart';
+import 'package:flax/features/settings/android_auto_settings.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
 import 'package:flax/features/settings/diagnostics_dialog.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
@@ -252,6 +253,19 @@ class SettingsScreen extends ConsumerWidget {
             value: amoled,
             onChanged: (v) => ref.read(amoledProvider.notifier).state = v,
           ),
+          // Android Auto exists only on phones; desktops never connect to a car.
+          if (ref.watch(platformOfflinePolicyProvider).supportsCarConnection)
+            ListTile(
+              title: Text(l10n?.androidAutoSettings ?? 'Android Auto'),
+              subtitle: Text(
+                ref
+                    .watch(androidAutoTabsProvider)
+                    .map((tab) => tab.label(l10n))
+                    .join(' · '),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/android-auto'),
+            ),
           const SizedBox(height: 8),
           const _LyricsSettingsSection(),
           const Divider(),

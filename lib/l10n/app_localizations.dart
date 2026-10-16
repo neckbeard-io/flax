@@ -861,6 +861,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'RATING'**
   String get columnRating;
+
+  /// Settings tile in Appearance & Interface, and the title of its page: Android Auto's options (phones only)
+  ///
+  /// In en, this message translates to:
+  /// **'Android Auto'**
+  String get androidAutoSettings;
+
+  /// Section heading on the Android Auto settings page: which tabs the car shows across the top of its screen
+  ///
+  /// In en, this message translates to:
+  /// **'Tabs'**
+  String get androidAutoTabs;
+
+  /// Hint under the Tabs heading on the Android Auto settings page
+  ///
+  /// In en, this message translates to:
+  /// **'Choose up to 4. The car shows them in this order.'**
+  String get androidAutoTabsHint;
+
+  /// Android Auto tab choice: the newest albums
+  ///
+  /// In en, this message translates to:
+  /// **'Recently Added'**
+  String get androidAutoTabRecentlyAdded;
+
+  /// Android Auto tab choice: the albums marked as favorites (hearts)
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get androidAutoTabFavorites;
 }
 
 class _AppLocalizationsDelegate

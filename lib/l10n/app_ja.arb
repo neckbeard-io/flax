@@ -125,5 +125,10 @@
   "columnYear": "年",
   "columnTracks": "曲数",
   "columnLength": "時間",
-  "columnRating": "評価"
+  "columnRating": "評価",
+  "androidAutoSettings": "Android Auto",
+  "androidAutoTabs": "タブ",
+  "androidAutoTabsHint": "最大 4 つまで選択してください。車にはこの順番で表示されます。",
+  "androidAutoTabRecentlyAdded": "最近追加した項目",
+  "androidAutoTabFavorites": "お気に入り"
 }

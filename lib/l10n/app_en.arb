@@ -599,5 +599,25 @@
   "columnRating": "RATING",
   "@columnRating": {
     "description": "Column heading in the artist page's release list: the release's star rating"
+  },
+  "androidAutoSettings": "Android Auto",
+  "@androidAutoSettings": {
+    "description": "Settings tile in Appearance & Interface, and the title of its page: Android Auto's options (phones only)"
+  },
+  "androidAutoTabs": "Tabs",
+  "@androidAutoTabs": {
+    "description": "Section heading on the Android Auto settings page: which tabs the car shows across the top of its screen"
+  },
+  "androidAutoTabsHint": "Choose up to 4. The car shows them in this order.",
+  "@androidAutoTabsHint": {
+    "description": "Hint under the Tabs heading on the Android Auto settings page"
+  },
+  "androidAutoTabRecentlyAdded": "Recently Added",
+  "@androidAutoTabRecentlyAdded": {
+    "description": "Android Auto tab choice: the newest albums"
+  },
+  "androidAutoTabFavorites": "Favorites",
+  "@androidAutoTabFavorites": {
+    "description": "Android Auto tab choice: the albums marked as favorites (hearts)"
   }
 }
