@@ -95,7 +95,20 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
   static const _locationPathKey = 'flax_audio_cache_custom_path';
 
   AudioCacheConfigNotifier() : super(const AudioCacheConfig()) {
-    _load();
+    _loading = _load();
+  }
+
+  late final Future<void> _loading;
+
+  /// The configuration, once the saved one has been read.
+  ///
+  /// [state] starts at the defaults, Auto-Cache on among them, and the saved
+  /// configuration replaces it a moment later. Anything that acts on it as
+  /// soon as the app starts has to wait for it: the first track played after
+  /// each launch read the default and was cached with Auto-Cache off.
+  Future<AudioCacheConfig> get loaded async {
+    await _loading;
+    return state;
   }
 
   Future<void> _load() async {

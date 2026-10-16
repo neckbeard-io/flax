@@ -16,8 +16,12 @@ class AutoCacheTrigger {
     required this.cache,
   });
 
-  /// Whether Auto-Cache Streamed Music is on.
-  final bool Function() enabled;
+  /// Whether Auto-Cache Streamed Music is on, once the saved choice is known.
+  ///
+  /// A future because the setting is read from disk after launch, and the
+  /// first track can start playing before that finishes. Reading it then gave
+  /// the default, which is on.
+  final Future<bool> Function() enabled;
 
   /// Whether [song] is already on disk.
   final bool Function(Song song) isCached;
@@ -36,10 +40,19 @@ class AutoCacheTrigger {
     if (playingId == _lastPlayingId) return;
     _lastPlayingId = playingId;
     if (current == null || playingId == null) return;
-    if (_inFlight.contains(current.id) || !enabled() || isCached(current)) {
-      return;
-    }
+    if (_inFlight.contains(current.id) || isCached(current)) return;
+    // Claimed before waiting on the setting, so another state for this track
+    // arriving meanwhile cannot start a second download.
     _inFlight.add(current.id);
-    cache(current).whenComplete(() => _inFlight.remove(current.id)).ignore();
+    _cacheIfEnabled(current).ignore();
+  }
+
+  Future<void> _cacheIfEnabled(Song song) async {
+    try {
+      if (!await enabled() || isCached(song)) return;
+      await cache(song);
+    } finally {
+      _inFlight.remove(song.id);
+    }
   }
 }
