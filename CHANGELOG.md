@@ -62,6 +62,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Play Artist no longer skips albums you haven't opened yet.
 - Similar artists no longer lists artists with no albums in your library.
 - Android no longer flips to offline and back when one request is slow.
+- The first song played after launch is no longer cached with Auto-Cache off.
 
 ## v0.6.0 — 2026-10-05
 

@@ -243,7 +243,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   /// Saves streamed tracks to the rolling cache once they actually play.
   late final _autoCache = AutoCacheTrigger(
-    enabled: () => _ref.read(audioCacheConfigProvider).autoCacheStreamed,
+    enabled: () async =>
+        (await _ref.read(audioCacheConfigProvider.notifier).loaded)
+            .autoCacheStreamed,
     isCached: _isSongCached,
     cache: (song) =>
         _ref.read(audioCacheServiceProvider).cacheSong(song, isPinned: false),
