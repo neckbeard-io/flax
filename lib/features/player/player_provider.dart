@@ -24,6 +24,7 @@ import 'package:flax/features/player/auto_cache.dart';
 import 'package:flax/features/player/gapless_probe.dart';
 import 'package:flax/features/player/stream_certificate_hook.dart';
 import 'package:flax/features/player/mpv_queue_map.dart';
+import 'package:flax/features/player/transport_intent.dart';
 import 'package:flax/features/settings/audio_output_settings.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/playback_settings.dart';
@@ -207,6 +208,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   MpvQueueMap _mpvMap = MpvQueueMap.empty;
   final _audioFocus = AudioFocusPolicy();
 
+  /// The latest play or pause asked for, so a queue opened paused can tell
+  /// whether a play arrived while it loaded. See [_openAt].
+  final _intent = TransportIntent();
+
   /// Counts requests to play or to load a queue. The server's queue arrives
   /// late, and if this moved while it was on its way it stands down rather
   /// than reload mpv paused under music that just started.
@@ -259,8 +264,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   /// arrive while the restore is still running. Acting on it then either
   /// started something else, because there was nothing to resume yet, or had
   /// the restore reload the queue under the track that had just started.
-  Future<void> waitForRestore() =>
-      _restored.timeout(const Duration(seconds: 2), onTimeout: () {});
+  Future<void> waitForRestore() => _restored.timeout(
+    const Duration(seconds: 2),
+    onTimeout: () =>
+        PlaybackTrace.record('waited 2s for the restore; going ahead'),
+  );
 
   late final _certificates = StreamCertificateHook(
     server: () => _ref.read(activeServerProvider),
@@ -305,6 +313,8 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   void _initStreams() {
     _subs.add(
       _player.stream.playing.listen((playing) {
+        // The trace records what was asked for; this is whether it took.
+        PlaybackTrace.record(playing ? 'mpv playing' : 'mpv paused');
         if (mounted) {
           state = state.copyWith(
             isPlaying: playing,
@@ -693,6 +703,13 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // Loading replaces the whole playlist, so it waits for any edit of the
     // old one to finish rather than land in the middle of it.
     final loaded = await _editPlaylist(() async {
+      // Before [_mpvMap] changes: it describes what mpv was given. Set first,
+      // a stood-down server queue left it naming a queue mpv never got, and
+      // the next play unpaused the old queue under the new one's title.
+      if (standDown?.call() ?? false) {
+        PlaybackTrace.record('server queue stood down: playback was requested');
+        return false;
+      }
       _mpvMap = MpvQueueMap.of(songs, positions, files);
 
       if (mounted) {
@@ -708,10 +725,6 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       // An mpv slot, not a queue index: songs that could not be handed to mpv
       // leave gaps, so the two diverge after the first one.
       final targetIndex = _mpvMap.startIndexFor(index);
-      if (standDown?.call() ?? false) {
-        PlaybackTrace.record('server queue stood down: playback was requested');
-        return false;
-      }
       await _player.openAll(medias, play: play, index: targetIndex);
       return true;
     });
@@ -738,6 +751,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     required bool play,
     bool Function()? standDown,
   }) async {
+    // A load opens paused and writes mpv's pause only once every entry is in,
+    // so a play that arrives meanwhile is undone by it. Played after the load
+    // instead — see [TransportIntent].
+    final intentMark = _intent.mark();
     // mpv's start-file sets buffering and file-loaded clears it, so the first
     // "not buffering" after the load is issued means the file is open. That
     // holds even when the same track is reopened, where the duration does not
@@ -760,6 +777,10 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await _player.seek(position);
     }
     if (play) {
+      await _activateAudioSession();
+      await _player.play();
+    } else if (_intent.playRequestedSince(intentMark)) {
+      PlaybackTrace.record('play requested during load; starting now');
       await _activateAudioSession();
       await _player.play();
     }
@@ -1775,6 +1796,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<void> _play(String source) async {
     PlaybackTrace.record('play ($source)');
+    _intent.play();
     await waitForRestore();
     if (mounted) {
       state = state.copyWith(clearPlaybackError: true);
@@ -1795,6 +1817,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<void> _pause(String source) async {
     PlaybackTrace.record('pause ($source)');
+    _intent.pause();
     await _player.pause();
     _saveQueue();
   }

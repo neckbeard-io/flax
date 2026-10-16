@@ -25,6 +25,11 @@
 # Play Core deferred components
 -dontwarn com.google.android.play.core.**
 
+# FlaxMediaSessionHelper and PlaybackTrace reach into AudioService's private
+# fields (instance, mediaSession, listener, mediaSessionCallback, contentIntent)
+# by name.
+-keepclassmembers class com.ryanheise.audioservice.AudioService { *; }
+
 # Keep R.drawable identifiers for dynamic lookup via getIdentifier (AudioService / MediaSession)
 -keepclassmembers class **.R$* {
     public static <fields>;
