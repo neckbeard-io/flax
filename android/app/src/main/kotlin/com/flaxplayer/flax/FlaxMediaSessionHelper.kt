@@ -85,10 +85,33 @@ object FlaxMediaSessionHelper {
             // Wrap listener if not already wrapped
             wrapServiceListener(context)
 
+            installMediaKeyCallback(service, mediaSession)
+
             return true
         } catch (e: Exception) {
             Log.w(TAG, "Failed to activate MediaSession: ${e.message}", e)
             return false
+        }
+    }
+
+    /**
+     * Swaps audio_service's session callback for [FlaxMediaSessionCallback], so
+     * the Play and Pause keys stop toggling. Once per session: a recreated
+     * service brings a new session and callback, and gets it again.
+     */
+    private fun installMediaKeyCallback(service: AudioService, mediaSession: MediaSessionCompat) {
+        try {
+            val field = AudioService::class.java.getDeclaredField("mediaSessionCallback")
+            field.isAccessible = true
+            if (field.get(service) is FlaxMediaSessionCallback) return
+            val callback = FlaxMediaSessionCallback(service)
+            mediaSession.setCallback(callback)
+            // audio_service also calls the callback directly, for Android
+            // Auto's play-item requests.
+            field.set(service, callback)
+            Log.i(TAG, "Media session callback replaced with FlaxMediaSessionCallback")
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not replace the media session callback: ${e.message}")
         }
     }
 
@@ -150,7 +173,9 @@ class FlaxServiceListenerWrapper(
         delegate.onStop()
     }
 
-    // A headset or car button: audio_service toggles play and pause.
+    // A headset or car play/pause button, which toggles. The Play and Pause
+    // keys never get here: FlaxMediaSessionCallback sends them to onPlay and
+    // onPause.
     override fun onClick(mediaButton: MediaButton?) {
         PlaybackTrace.record(context, "media button ${mediaButton?.name}")
         delegate.onClick(mediaButton)

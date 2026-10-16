@@ -63,6 +63,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Similar artists no longer lists artists with no albums in your library.
 - Android no longer flips to offline and back when one request is slow.
 - The first song played after launch is no longer cached with Auto-Cache off.
+- Android Auto no longer leaves music paused a few seconds after connecting.
+- Play and Pause buttons in the car no longer toggle; Play always plays.
 
 ## v0.6.0 — 2026-10-05
 
