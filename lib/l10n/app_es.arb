@@ -125,5 +125,10 @@
   "columnYear": "AÑO",
   "columnTracks": "PISTAS",
   "columnLength": "DURACIÓN",
-  "columnRating": "VALORACIÓN"
+  "columnRating": "VALORACIÓN",
+  "androidAutoSettings": "Android Auto",
+  "androidAutoTabs": "Pestañas",
+  "androidAutoTabsHint": "Elige hasta 4. El coche las muestra en este orden.",
+  "androidAutoTabRecentlyAdded": "Añadidos recientemente",
+  "androidAutoTabFavorites": "Favoritos"
 }

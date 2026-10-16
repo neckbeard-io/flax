@@ -125,5 +125,10 @@
   "columnYear": "JAHR",
   "columnTracks": "STÜCKE",
   "columnLength": "DAUER",
-  "columnRating": "BEWERTUNG"
+  "columnRating": "BEWERTUNG",
+  "androidAutoSettings": "Android Auto",
+  "androidAutoTabs": "Tabs",
+  "androidAutoTabsHint": "Wählen Sie bis zu 4 aus. Das Auto zeigt sie in dieser Reihenfolge.",
+  "androidAutoTabRecentlyAdded": "Zuletzt hinzugefügt",
+  "androidAutoTabFavorites": "Favoriten"
 }

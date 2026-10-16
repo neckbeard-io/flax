@@ -20,10 +20,14 @@ class FlaxApplication : Application() {
             R.drawable.ic_favorite_heart,
             R.drawable.ic_album_collection,
             R.drawable.ic_artist_avatar,
-            R.drawable.ic_offline_mode,
             R.drawable.ic_star_rating,
             R.drawable.ic_download_notification,
             R.drawable.ic_flax_logo_mono,
+            R.drawable.ic_tab_recently_added,
+            R.drawable.ic_tab_artists,
+            R.drawable.ic_tab_albums,
+            R.drawable.ic_tab_playlists,
+            R.drawable.ic_tab_favorites,
         )
     }
 
