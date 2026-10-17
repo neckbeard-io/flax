@@ -62,7 +62,7 @@ At all
       expect(config.rollingCacheLimitMb, equals(5120));
       expect(config.rollingCacheLimitGb, equals(5));
       expect(config.limitDisplayString, equals('5 GB'));
-      expect(config.autoCacheStreamed, isTrue);
+      expect(config.autoCacheStreamed, isFalse);
       expect(config.offlineOnlyMode, isFalse);
       expect(config.downloadConcurrency, equals(4));
       expect(config.storageLocationId, equals('internal_app'));
