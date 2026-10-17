@@ -158,6 +158,7 @@ void main() {
       expect(isValidRoute('/settings/server-connection?id=srv-1'), isTrue);
       expect(isValidRoute('/settings/hotkeys'), isTrue);
       expect(isValidRoute('/settings/android-auto'), isTrue);
+      expect(isValidRoute('/genres/Drum%2FBass'), isTrue);
     });
 
     test('rejects incomplete parameterized routes and unknown routes', () {
@@ -165,6 +166,8 @@ void main() {
       expect(isValidRoute('/albums/'), isFalse);
       expect(isValidRoute('/unknown'), isFalse);
       expect(isValidRoute('/settings/unknown'), isFalse);
+      expect(isValidRoute('/albums/alb-1/extra'), isFalse);
+      expect(isValidRoute('/genres/'), isFalse);
     });
   });
 }
