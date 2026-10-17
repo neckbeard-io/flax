@@ -13,6 +13,9 @@ import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
 class _FakeSubsonicClient extends Fake implements SubsonicClient {
+  @override
+  Future<void> whenTargetChosen() async {}
+
   final bool shouldSucceed;
 
   _FakeSubsonicClient({this.shouldSucceed = true});
@@ -26,6 +29,9 @@ class _FakeSubsonicClient extends Fake implements SubsonicClient {
 
 /// Counts pings, and can hold one open to see what arrives meanwhile.
 class _CountingPingClient extends Fake implements SubsonicClient {
+  @override
+  Future<void> whenTargetChosen() async {}
+
   _CountingPingClient({this.answers = true});
 
   final bool answers;

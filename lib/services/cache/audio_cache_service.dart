@@ -1425,6 +1425,9 @@ class AudioCacheService {
     if (_isResuming) return;
     _isResuming = true;
     try {
+      // Download URLs are built from the client, so wait for launch's choice
+      // of address and use the client built on it (#170).
+      await _ref.read(subsonicClientProvider)?.whenTargetChosen();
       final server = _ref.read(activeServerProvider);
       final dao = _ref.read(libraryDaoProvider);
       final client = _ref.read(subsonicClientProvider);

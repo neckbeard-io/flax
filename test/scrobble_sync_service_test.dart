@@ -10,6 +10,9 @@ import 'package:flax/services/scrobble/scrobble_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
 class _FakeSubsonicClient implements SubsonicClient {
+  @override
+  Future<void> whenTargetChosen() async {}
+
   final List<({String id, bool submission, DateTime? time})> scrobbles = [];
   bool failNext = false;
 

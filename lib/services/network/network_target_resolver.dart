@@ -34,6 +34,9 @@ enum NetworkTargetStatus {
 }
 
 class NetworkTargetState {
+  /// The server this decision is for; null when there is none. A client only
+  /// takes [effectiveBaseUrl] from a state for its own server.
+  final String? serverId;
   final EndpointTargetType activeTarget;
   final String effectiveBaseUrl;
   final String? currentSsid;
@@ -44,6 +47,7 @@ class NetworkTargetState {
   final NetworkTargetStatus? status;
 
   const NetworkTargetState({
+    this.serverId,
     required this.activeTarget,
     required this.effectiveBaseUrl,
     this.currentSsid,
@@ -57,6 +61,7 @@ class NetworkTargetState {
   bool get isUsingLocal => activeTarget == EndpointTargetType.local;
 
   NetworkTargetState copyWith({
+    String? serverId,
     EndpointTargetType? activeTarget,
     String? effectiveBaseUrl,
     String? currentSsid,
@@ -68,6 +73,7 @@ class NetworkTargetState {
     bool clearStatus = false,
   }) {
     return NetworkTargetState(
+      serverId: serverId ?? this.serverId,
       activeTarget: activeTarget ?? this.activeTarget,
       effectiveBaseUrl: effectiveBaseUrl ?? this.effectiveBaseUrl,
       currentSsid: currentSsid ?? this.currentSsid,
@@ -102,6 +108,51 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
   final NetworkInfo _networkInfo;
   Timer? _debounceTimer;
 
+  final _firstDecision = Completer<void>();
+  final _sinceLaunch = Stopwatch()..start();
+  Timer? _firstDecisionBound;
+
+  /// The longest launch requests wait for the first decision. The probe
+  /// timeout can be set as high as 5000ms; Android Auto's own 3s timeouts must
+  /// not expire first.
+  static const firstDecisionCap = Duration(milliseconds: 2500);
+
+  /// Completes once the first evaluation has chosen an address, or once
+  /// [firstDecisionCap] (or the probe timeout plus 500ms, if shorter) has
+  /// passed, or on dispose.
+  ///
+  /// The resolver starts on the remote address, and requests sent before the
+  /// local one was chosen stayed on the remote one: through hairpin NAT at
+  /// best, failing outright at worst (#170). Every request waits for this.
+  Future<void> get firstEvaluation => _firstDecision.future;
+
+  /// The address chosen for [serverId], or null when the current decision is
+  /// for another server or none has been made.
+  String? chosenBaseUrlFor(String serverId) =>
+      state.serverId == serverId && state.effectiveBaseUrl.isNotEmpty
+      ? state.effectiveBaseUrl
+      : null;
+
+  void _completeFirstDecision({bool timedOut = false}) {
+    if (_firstDecision.isCompleted) return;
+    _firstDecisionBound?.cancel();
+    final ms = _sinceLaunch.elapsedMilliseconds;
+    if (timedOut) {
+      AppLogger.w(
+        'NetworkTarget',
+        'First target decision took over ${ms}ms; starting on '
+            '${state.effectiveBaseUrl}',
+      );
+    } else {
+      AppLogger.i(
+        'NetworkTarget',
+        'Network target chosen in ${ms}ms: '
+            '${state.isUsingLocal ? 'local' : 'remote'}',
+      );
+    }
+    _firstDecision.complete();
+  }
+
   NetworkTargetResolver(this._ref, {NetworkInfo? networkInfo})
     : _networkInfo = networkInfo ?? _ref.read(networkInfoProvider),
       super(
@@ -124,8 +175,18 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
   void _init() {
     // Initial evaluation
     final initialServer = _ref.read(activeServerProvider);
-    if (initialServer != null) {
+    if (initialServer == null) {
+      _completeFirstDecision();
+    } else {
+      final probe = Duration(
+        milliseconds: initialServer.localNetworkConfig.probeTimeoutMs + 500,
+      );
+      _firstDecisionBound = Timer(
+        probe < firstDecisionCap ? probe : firstDecisionCap,
+        () => _completeFirstDecision(timedOut: true),
+      );
       state = state.copyWith(
+        serverId: initialServer.id,
         effectiveBaseUrl: initialServer.baseUrl,
         isLocalConfigured:
             initialServer.localNetworkConfig.enabled &&
@@ -153,8 +214,11 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       },
     );
 
-    // Initial evaluation
-    _scheduleEvaluation();
+    // The first evaluation skips the debounce: launch requests wait for it.
+    // A microtask, so state is never set while the provider is being built.
+    scheduleMicrotask(() {
+      if (mounted) evaluate();
+    });
   }
 
   void _scheduleEvaluation() {
@@ -168,6 +232,14 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
 
   /// Evaluates current network connectivity and SSID against the active server configuration.
   Future<void> evaluate({bool force = false}) async {
+    try {
+      await _evaluate();
+    } finally {
+      if (mounted) _completeFirstDecision();
+    }
+  }
+
+  Future<void> _evaluate() async {
     final server = _ref.read(activeServerProvider);
     if (server == null) {
       state = const NetworkTargetState(
@@ -184,6 +256,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
     if (!isConfigured) {
       state = state.copyWith(
         activeTarget: EndpointTargetType.external,
+        serverId: server.id,
         effectiveBaseUrl: server.baseUrl,
         isLocalConfigured: false,
         clearStatus: true,
@@ -198,6 +271,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
     } catch (_) {
       connectivity = [ConnectivityResult.none];
     }
+    if (!mounted) return;
 
     final hasWifi = connectivity.contains(ConnectivityResult.wifi);
     final hasEthernet = connectivity.contains(ConnectivityResult.ethernet);
@@ -206,6 +280,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       // Cellular or offline -> use external
       state = state.copyWith(
         activeTarget: EndpointTargetType.external,
+        serverId: server.id,
         effectiveBaseUrl: server.baseUrl,
         isLocalConfigured: true,
         currentSsid: null,
@@ -218,6 +293,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
     String? currentSsid;
     if (hasWifi) {
       currentSsid = await getCurrentSsid();
+      if (!mounted) return;
     }
 
     // Offline by choice: probing the LAN address is a server request too.
@@ -230,6 +306,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       );
       state = state.copyWith(
         activeTarget: EndpointTargetType.external,
+        serverId: server.id,
         effectiveBaseUrl: server.baseUrl,
         isLocalConfigured: true,
         currentSsid: currentSsid,
@@ -264,6 +341,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       );
       state = state.copyWith(
         activeTarget: EndpointTargetType.external,
+        serverId: server.id,
         effectiveBaseUrl: server.baseUrl,
         isLocalConfigured: true,
         currentSsid: currentSsid,
@@ -286,6 +364,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       timeout: Duration(milliseconds: config.probeTimeoutMs),
     );
     stopwatch.stop();
+    if (!mounted) return;
 
     if (reachable) {
       AppLogger.i(
@@ -294,6 +373,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       );
       state = state.copyWith(
         activeTarget: EndpointTargetType.local,
+        serverId: server.id,
         effectiveBaseUrl: localBaseUrl,
         isProbing: false,
         isLocalReachable: true,
@@ -308,6 +388,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       if (config.fallbackToExternal) {
         state = state.copyWith(
           activeTarget: EndpointTargetType.external,
+          serverId: server.id,
           effectiveBaseUrl: server.baseUrl,
           isProbing: false,
           isLocalReachable: false,
@@ -316,6 +397,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
       } else {
         state = state.copyWith(
           activeTarget: EndpointTargetType.local,
+          serverId: server.id,
           effectiveBaseUrl: localBaseUrl,
           isProbing: false,
           isLocalReachable: false,
@@ -406,6 +488,7 @@ class NetworkTargetResolver extends StateNotifier<NetworkTargetState> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _completeFirstDecision();
     super.dispose();
   }
 }
