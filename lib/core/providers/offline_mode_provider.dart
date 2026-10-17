@@ -434,6 +434,11 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
             : const Duration(seconds: 8));
 
     state = state.copyWith(isProbing: true);
+    // The launch ping waits for the choice of address first; that wait must
+    // not come out of the ping's own time, or a slow choice reads as offline.
+    // After isProbing, so failures meanwhile still start no second ping.
+    await client.whenTargetChosen();
+    if (!mounted) return state.isReachable;
     String? error;
     try {
       error = await client

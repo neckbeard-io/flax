@@ -24,6 +24,9 @@ import 'package:flax/shared/widgets/server_migration_banner.dart';
 
 class _FakeSubsonicClient extends Fake implements SubsonicClient {
   @override
+  Future<void> whenTargetChosen() async {}
+
+  @override
   final Server server;
   final Future<void> Function(String songId)? onScrobble;
 

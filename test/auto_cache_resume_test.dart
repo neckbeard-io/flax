@@ -15,7 +15,10 @@ import 'package:flax/services/database/database.dart';
 import 'package:flax/services/database/library_dao.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
-class _Client extends Fake implements SubsonicClient {}
+class _Client extends Fake implements SubsonicClient {
+  @override
+  Future<void> whenTargetChosen() async {}
+}
 
 /// Auto-caches are recorded as downloading while they run, the same as a
 /// download, and resuming downloads used to pick them up as pinned ones — a

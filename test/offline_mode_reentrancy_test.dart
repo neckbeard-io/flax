@@ -18,6 +18,9 @@ import 'package:flax/services/scrobble/scrobble_sync_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 
 class _FakeClient implements SubsonicClient {
+  @override
+  Future<void> whenTargetChosen() async {}
+
   _FakeClient(this.server, this.scrobbled, this.pings);
 
   @override

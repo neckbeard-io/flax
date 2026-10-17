@@ -252,6 +252,9 @@ class MockLibraryRepository extends Mock implements LibraryRepository {
 
 class MockSubsonicClient extends Mock implements SubsonicClient {
   @override
+  Future<void> whenTargetChosen() async {}
+
+  @override
   Future<String?> tryPing({Duration? timeout}) async => null;
 
   @override

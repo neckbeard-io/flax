@@ -36,9 +36,16 @@ final subsonicClientProvider = Provider<SubsonicClient?>((ref) {
   final server = ref.watch(activeServerProvider);
   if (server == null) return null;
   final effectiveUrl = ref.watch(effectiveBaseUrlProvider);
+  final resolver = ref.read(networkTargetResolverProvider.notifier);
   return SubsonicClient(
     server: server,
     customBaseUrl: effectiveUrl,
+    targetChosen: () => resolver.firstEvaluation,
+    // Read from the resolver, not a provider, so this never reads a provider
+    // from inside a listener. A decision for another server falls back to this
+    // server's own address: its credentials must never go to another's.
+    currentBaseUrl: () =>
+        resolver.chosenBaseUrlFor(server.id) ?? server.baseUrl,
     // Nothing should reach the server while offline is forced; this is how a
     // path that still does shows up in the diagnostics export.
     onRequest: (endpoint) {

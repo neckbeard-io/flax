@@ -26,6 +26,15 @@ class SubsonicClient implements MusicBackend {
   /// log requests made while offline is forced, which should never happen.
   final void Function(String endpoint)? onRequest;
 
+  /// Completes once launch has chosen between the local and remote address.
+  /// Every request waits for it (#170).
+  final Future<void> Function()? targetChosen;
+
+  /// The address to send a request to right now, read as it is sent; null
+  /// for this instance's own. Work started before a switch, such as a sync at
+  /// launch, then moves to the chosen address instead of staying behind.
+  final String? Function()? currentBaseUrl;
+
   /// How long a request may take in total, unless its options say otherwise.
   /// Null for [withoutRequestLimit]'s client.
   final Duration? requestLimit;
@@ -43,6 +52,8 @@ class SubsonicClient implements MusicBackend {
     Dio? dio,
     this.onRequest,
     this.requestLimit = defaultRequestLimit,
+    this.targetChosen,
+    this.currentBaseUrl,
   }) : _dio = dio ?? _createDefaultDio(server),
        _ownsDio = dio == null;
 
@@ -50,6 +61,8 @@ class SubsonicClient implements MusicBackend {
     : server = source.server,
       customBaseUrl = source.customBaseUrl,
       onRequest = source.onRequest,
+      targetChosen = source.targetChosen,
+      currentBaseUrl = source.currentBaseUrl,
       _dio = source._dio,
       _ownsDio = source._ownsDio;
 
@@ -63,10 +76,14 @@ class SubsonicClient implements MusicBackend {
   SubsonicClient withoutRequestLimit() =>
       SubsonicClient._sharing(this, requestLimit: null);
 
-  String get baseUrl {
-    final base = customBaseUrl ?? server.baseUrl;
-    return base.endsWith('/') ? base.substring(0, base.length - 1) : base;
-  }
+  String get baseUrl => _trimmed(customBaseUrl ?? server.baseUrl);
+
+  static String _trimmed(String base) =>
+      base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+
+  /// Waits for launch's choice of address. Callers that time a request
+  /// themselves start their clock after this, so the wait never counts.
+  Future<void> whenTargetChosen() => targetChosen?.call() ?? Future.value();
 
   static Dio _createDefaultDio(Server server) {
     final dio = Dio(
@@ -142,6 +159,9 @@ class SubsonicClient implements MusicBackend {
     Options? options,
     Dio? via,
   ]) async {
+    await whenTargetChosen();
+    final current = currentBaseUrl?.call();
+    final base = current == null ? baseUrl : _trimmed(current);
     final params = <String, dynamic>{..._authParams()};
     if (extra != null) params.addAll(extra);
 
@@ -151,7 +171,7 @@ class SubsonicClient implements MusicBackend {
     final limit =
         options?.receiveTimeout ?? options?.connectTimeout ?? requestLimit;
     var request = (via ?? _dio).get<Map<String, dynamic>>(
-      '$baseUrl/rest/$endpoint',
+      '$base/rest/$endpoint',
       queryParameters: params,
       options: options,
     );
@@ -159,7 +179,7 @@ class SubsonicClient implements MusicBackend {
       request = request.timeout(
         limit,
         onTimeout: () => throw DioException(
-          requestOptions: RequestOptions(path: '$baseUrl/rest/$endpoint'),
+          requestOptions: RequestOptions(path: '$base/rest/$endpoint'),
           type: DioExceptionType.connectionTimeout,
           error: 'Connection timed out',
           message: '$endpoint took longer than ${describeLimit(limit)}',
@@ -236,6 +256,7 @@ class SubsonicClient implements MusicBackend {
   /// failure came from.
   Future<String?> tryPing({Duration? timeout}) async {
     final effectiveTimeout = timeout ?? const Duration(seconds: 3);
+    await whenTargetChosen();
     final dio = _ownsDio ? _createDefaultDio(server) : _dio;
     try {
       final options = Options(

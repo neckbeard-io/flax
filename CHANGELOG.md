@@ -65,6 +65,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Android no longer flips to offline and back when one request is slow.
 - The first song played after launch is no longer cached with Auto-Cache off.
 - Large library syncs no longer fail after 15 seconds on a slow connection.
+- At home, flax uses your server's local address from the very first request.
 - Android Auto no longer leaves music paused a few seconds after connecting.
 - Play and Pause buttons in the car no longer toggle; Play always plays.
 - Android Auto's tabs show real icons instead of blank squares.
