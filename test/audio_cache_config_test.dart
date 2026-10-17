@@ -7,25 +7,25 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('loaded gives the saved auto-cache choice, not the default', () async {
-    SharedPreferences.setMockInitialValues({'flax_auto_cache_streamed': false});
+    SharedPreferences.setMockInitialValues({'flax_auto_cache_streamed': true});
 
     final notifier = AudioCacheConfigNotifier();
     addTearDown(notifier.dispose);
 
     // What the player read the moment the first track played.
-    expect(notifier.state.autoCacheStreamed, isTrue);
+    expect(notifier.state.autoCacheStreamed, isFalse);
 
     final config = await notifier.loaded;
-    expect(config.autoCacheStreamed, isFalse);
-    expect(notifier.state.autoCacheStreamed, isFalse);
+    expect(config.autoCacheStreamed, isTrue);
+    expect(notifier.state.autoCacheStreamed, isTrue);
   });
 
-  test('loaded keeps the default when nothing was saved', () async {
+  test('auto-cache is off when nothing was saved', () async {
     SharedPreferences.setMockInitialValues({});
 
     final notifier = AudioCacheConfigNotifier();
     addTearDown(notifier.dispose);
 
-    expect((await notifier.loaded).autoCacheStreamed, isTrue);
+    expect((await notifier.loaded).autoCacheStreamed, isFalse);
   });
 }

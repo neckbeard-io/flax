@@ -54,7 +54,7 @@ class AudioCacheConfig {
 
   const AudioCacheConfig({
     this.rollingCacheLimitMb = 5120, // 5 GB default
-    this.autoCacheStreamed = true,
+    this.autoCacheStreamed = false,
     this.offlineOnlyMode = false,
     this.downloadConcurrency = 4,
     this.storageLocationId = 'internal_app',
@@ -102,10 +102,10 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
 
   /// The configuration, once the saved one has been read.
   ///
-  /// [state] starts at the defaults, Auto-Cache on among them, and the saved
-  /// configuration replaces it a moment later. Anything that acts on it as
-  /// soon as the app starts has to wait for it: the first track played after
-  /// each launch read the default and was cached with Auto-Cache off.
+  /// [state] starts at the defaults, and the saved configuration replaces it a
+  /// moment later. Anything that acts on it as soon as the app starts has to
+  /// wait for it: the first track played after each launch read the default
+  /// rather than the saved Auto-Cache choice, and was cached against it.
   Future<AudioCacheConfig> get loaded async {
     await _loading;
     return state;
@@ -116,7 +116,7 @@ class AudioCacheConfigNotifier extends StateNotifier<AudioCacheConfig> {
       final prefs = await SharedPreferences.getInstance();
       state = AudioCacheConfig(
         rollingCacheLimitMb: prefs.getInt(_limitKey) ?? 5120,
-        autoCacheStreamed: prefs.getBool(_autoCacheKey) ?? true,
+        autoCacheStreamed: prefs.getBool(_autoCacheKey) ?? false,
         offlineOnlyMode: prefs.getBool(_offlineOnlyKey) ?? false,
         downloadConcurrency: prefs.getInt(_concurrencyKey) ?? 4,
         storageLocationId: prefs.getString(_locationIdKey) ?? 'internal_app',

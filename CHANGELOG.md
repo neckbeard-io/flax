@@ -24,6 +24,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Choose which four tabs Android Auto shows, in Settings › Android Auto.
 
 ### Changed
+- Auto-Cache Streamed Music is now off unless you turn it on.
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
 - Album genres are now tags under the artist instead of the end of the details line.
 - The offline pin now means the track is playing from its download.
