@@ -36,6 +36,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Artist pages show library genres instead of MusicBrainz tags; tap one to browse.
 
 ### Fixed
+- Metadata sync no longer stops after biographies on Android, leaving covers unsaved.
 - Albums' All tab shows the whole library, not just the first 500 albums.
 - Downloaded tracks no longer show the streaming format (e.g. → OPUS 256kbps).
 - Queued songs that finish downloading play from the download instead of streaming.
