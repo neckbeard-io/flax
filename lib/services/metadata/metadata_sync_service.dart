@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/logging/crash_log.dart';
 
 import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
@@ -17,6 +18,7 @@ import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/services/database/library_dao.dart';
 import 'package:flax/services/database/tables/orderings.dart';
+import 'package:flax/services/metadata/native_art_batch.dart';
 import 'package:flax/services/network/certificate_trust.dart';
 import 'package:flax/services/platform/native_downloader.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
@@ -637,13 +639,24 @@ class MetadataSyncService {
           taskMetaMap[cacheKey] = (uri.toString(), desc);
         }
 
+        final batch = NativeArtBatch(
+          taskMetaMap.keys,
+          length: nativeTasks.length,
+        );
         final batchDone = Completer<void>();
+        void settle(NativeDownloadEvent event) {
+          if (batch.add(event) && !batchDone.isCompleted) {
+            batchDone.complete();
+          }
+        }
+
         final sub = NativeDownloader.eventStream.listen((event) async {
           switch (event) {
             case NativeTaskStartedEvent():
               if (taskMetaMap.containsKey(event.songId)) {
                 handle.note(event.title);
               }
+              settle(event);
             case NativeTaskCompletedEvent():
               final meta = taskMetaMap[event.songId];
               if (meta != null) {
@@ -668,23 +681,17 @@ class MetadataSyncService {
                 }
                 itemsDone++;
                 handle.progress(items: itemsDone, bytes: bytesDone);
-                if (itemsDone >= nativeTasks.length && !batchDone.isCompleted) {
-                  batchDone.complete();
-                }
               }
+              settle(event);
             case NativeTaskFailedEvent():
               if (taskMetaMap.containsKey(event.songId)) {
                 itemsDone++;
                 handle.itemFailed(1);
                 handle.progress(items: itemsDone, bytes: bytesDone);
-                if (itemsDone >= nativeTasks.length && !batchDone.isCompleted) {
-                  batchDone.complete();
-                }
               }
+              settle(event);
             case NativeQueueCompletedEvent():
-              if (!batchDone.isCompleted) {
-                batchDone.complete();
-              }
+              settle(event);
             case NativeCanceledEvent():
               // Canceled outside this screen: the notification's Cancel, or
               // cancelling every download. The whole sync stops; it used to
@@ -776,8 +783,18 @@ class MetadataSyncService {
         handle.note(null);
         handle.complete();
       }
-    } catch (e) {
+    } catch (e, st) {
       if (!_isCanceled && !handle.isCanceled) {
+        // On the error log as well as the task: the Caching screen drops a
+        // failed sync's progress without a word, and the warnings leading up
+        // to it are only kept in memory.
+        AppLogger.e(
+          'Sync',
+          'Metadata sync failed: $e',
+          error: e,
+          stackTrace: st,
+        );
+        CrashLog.record('Sync', e, st);
         handle.fail(e);
       }
     } finally {
