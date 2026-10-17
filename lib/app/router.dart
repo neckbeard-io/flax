@@ -44,50 +44,61 @@ final savedRouteProvider = StateProvider<String?>((ref) => null);
 /// Validates whether a location string corresponds to a known valid route in the app.
 ///
 /// Prevents blank screens and navigation traps caused by invalid or empty routes (e.g. '/'),
-/// which can be delivered by background services or stale preferences.
+/// which can be delivered by background services or stale preferences. The
+/// router's redirect sends anything this rejects to /albums.
 ///
-/// The router's redirect sends anything this rejects to /albums, so a screen
-/// added to [routerProvider] but not here opens Albums instead of itself.
-/// `test/router_routes_test.dart` fails when the two disagree.
+/// Derived from [appRoutes]: a literal segment must match exactly, and a
+/// `:param` segment matches any non-empty one. It used to be a hand-kept list,
+/// and a screen added to the routes but not to it opened Albums (#176).
 bool isValidRoute(String location) {
   if (location.isEmpty || location == '/') return false;
   final uri = Uri.tryParse(location);
   if (uri == null) return false;
-  final path = uri.path;
+  final segments = _segments(uri.path);
+  if (segments == null) return false;
+  return _routePatterns.any((pattern) => _matches(pattern, segments));
+}
 
-  const validExactRoutes = {
-    '/add-server',
-    '/now-playing',
-    '/artists',
-    '/albums',
-    '/songs',
-    '/downloads',
-    '/search',
-    '/settings',
-    '/settings/audio',
-    '/settings/equalizer',
-    '/settings/equalizer/autoeq',
-    '/settings/autoeq',
-    '/settings/transcoding',
-    '/settings/metadata-cache',
-    '/settings/server-connection',
-    '/settings/hotkeys',
-    '/settings/android-auto',
-  };
+/// Every path [routes] register, joined onto their parents' paths. Path-less
+/// routes such as the shell only contribute their children.
+@visibleForTesting
+List<String> routePaths(List<RouteBase> routes, [String parent = '']) => [
+  for (final route in routes)
+    ...switch (route) {
+      GoRoute(:final path) when path.startsWith('/') => [
+        path,
+        ...routePaths(route.routes, path),
+      ],
+      GoRoute(:final path) => [
+        '$parent/$path',
+        ...routePaths(route.routes, '$parent/$path'),
+      ],
+      _ => routePaths(route.routes, parent),
+    },
+];
 
-  if (validExactRoutes.contains(path)) return true;
+/// [appRoutes] as segments. '/' is left out: it only redirects to /albums.
+final List<List<String>> _routePatterns = [
+  for (final path in routePaths(appRoutes))
+    if (path != '/') _segments(path)!,
+];
 
-  if (path.startsWith('/artists/') && path.length > '/artists/'.length) {
-    return true;
+/// [path]'s segments, keeping empty ones so '/albums/' never reads as
+/// '/albums'; null when it is not an absolute path.
+List<String>? _segments(String path) {
+  if (!path.startsWith('/') || path.length < 2) return null;
+  return path.substring(1).split('/');
+}
+
+bool _matches(List<String> pattern, List<String> segments) {
+  if (pattern.length != segments.length) return false;
+  for (var i = 0; i < pattern.length; i++) {
+    final literal = !pattern[i].startsWith(':');
+    if (literal ? pattern[i] != segments[i] : segments[i].isEmpty) {
+      return false;
+    }
   }
-  if (path.startsWith('/genres/') && path.length > '/genres/'.length) {
-    return true;
-  }
-  if (path.startsWith('/albums/') && path.length > '/albums/'.length) {
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 /// Where the app opens.
@@ -172,111 +183,115 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       return null;
     },
+    routes: appRoutes,
+  );
+});
+
+/// Every screen in the app. [isValidRoute] is derived from this list, so a
+/// route added here is accepted everywhere with no other change.
+final List<RouteBase> appRoutes = [
+  GoRoute(path: '/', redirect: (context, state) => '/albums'),
+  GoRoute(
+    path: '/add-server',
+    builder: (context, state) => const AddServerScreen(),
+  ),
+  ShellRoute(
+    builder: (context, state, child) => ShellScaffold(child: child),
     routes: [
-      GoRoute(path: '/', redirect: (context, state) => '/albums'),
+      // Inside the shell, not beside it. The desktop layout wants the
+      // sidebar and the mini player's transport, and a second ShellScaffold
+      // of its own meant two sidebars alive at once — two text fields
+      // sharing one FocusNode, which broke the "/" shortcut entirely.
+      // ShellScaffold drops its own chrome at phone widths, so the phone
+      // now-playing screen still fills the window.
       GoRoute(
-        path: '/add-server',
-        builder: (context, state) => const AddServerScreen(),
+        path: '/now-playing',
+        builder: (context, state) => const NowPlayingScreen(),
       ),
-      ShellRoute(
-        builder: (context, state, child) => ShellScaffold(child: child),
+      GoRoute(
+        path: '/artists',
+        builder: (context, state) => const ArtistsScreen(),
+      ),
+      GoRoute(
+        path: '/artists/:id',
+        builder: (context, state) =>
+            ArtistDetailScreen(artistId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/albums',
+        builder: (context, state) => const AlbumsScreen(),
+      ),
+      GoRoute(
+        path: '/albums/:id',
+        builder: (context, state) =>
+            AlbumDetailScreen(albumId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/genres/:name',
+        builder: (context, state) =>
+            GenreScreen(genre: state.pathParameters['name']!),
+      ),
+      GoRoute(path: '/songs', redirect: (context, state) => '/albums'),
+      GoRoute(
+        path: '/downloads',
+        builder: (context, state) => const DownloadsScreen(),
+      ),
+      GoRoute(
+        path: '/search',
+        builder: (context, state) => SearchScreen(
+          // Keyed on the query so arriving from quick search a second
+          // time, with different words, rebuilds the screen rather than
+          // reusing the old state and showing the old query.
+          key: ValueKey(state.uri.queryParameters['q'] ?? ''),
+          initialQuery: state.uri.queryParameters['q'],
+        ),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
         routes: [
-          // Inside the shell, not beside it. The desktop layout wants the
-          // sidebar and the mini player's transport, and a second ShellScaffold
-          // of its own meant two sidebars alive at once — two text fields
-          // sharing one FocusNode, which broke the "/" shortcut entirely.
-          // ShellScaffold drops its own chrome at phone widths, so the phone
-          // now-playing screen still fills the window.
           GoRoute(
-            path: '/now-playing',
-            builder: (context, state) => const NowPlayingScreen(),
+            path: 'audio',
+            builder: (context, state) => const AudioOutputScreen(),
           ),
           GoRoute(
-            path: '/artists',
-            builder: (context, state) => const ArtistsScreen(),
+            path: 'equalizer',
+            builder: (context, state) => const EqualizerScreen(),
+            routes: [
+              GoRoute(
+                path: 'autoeq',
+                builder: (context, state) => const AutoEqScreen(),
+              ),
+            ],
           ),
           GoRoute(
-            path: '/artists/:id',
-            builder: (context, state) =>
-                ArtistDetailScreen(artistId: state.pathParameters['id']!),
+            path: 'autoeq',
+            redirect: (context, state) => '/settings/equalizer/autoeq',
           ),
           GoRoute(
-            path: '/albums',
-            builder: (context, state) => const AlbumsScreen(),
+            path: 'transcoding',
+            builder: (context, state) => const TranscodingScreen(),
           ),
           GoRoute(
-            path: '/albums/:id',
-            builder: (context, state) =>
-                AlbumDetailScreen(albumId: state.pathParameters['id']!),
+            path: 'metadata-cache',
+            builder: (context, state) => const MetadataCachingScreen(),
           ),
           GoRoute(
-            path: '/genres/:name',
-            builder: (context, state) =>
-                GenreScreen(genre: state.pathParameters['name']!),
-          ),
-          GoRoute(path: '/songs', redirect: (context, state) => '/albums'),
-          GoRoute(
-            path: '/downloads',
-            builder: (context, state) => const DownloadsScreen(),
-          ),
-          GoRoute(
-            path: '/search',
-            builder: (context, state) => SearchScreen(
-              // Keyed on the query so arriving from quick search a second
-              // time, with different words, rebuilds the screen rather than
-              // reusing the old state and showing the old query.
-              key: ValueKey(state.uri.queryParameters['q'] ?? ''),
-              initialQuery: state.uri.queryParameters['q'],
+            path: 'server-connection',
+            builder: (context, state) => ServerConnectionScreen(
+              serverId: state.uri.queryParameters['id'],
             ),
           ),
           GoRoute(
-            path: '/settings',
-            builder: (context, state) => const SettingsScreen(),
-            routes: [
-              GoRoute(
-                path: 'audio',
-                builder: (context, state) => const AudioOutputScreen(),
-              ),
-              GoRoute(
-                path: 'equalizer',
-                builder: (context, state) => const EqualizerScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'autoeq',
-                    builder: (context, state) => const AutoEqScreen(),
-                  ),
-                ],
-              ),
-              GoRoute(
-                path: 'autoeq',
-                redirect: (context, state) => '/settings/equalizer/autoeq',
-              ),
-              GoRoute(
-                path: 'transcoding',
-                builder: (context, state) => const TranscodingScreen(),
-              ),
-              GoRoute(
-                path: 'metadata-cache',
-                builder: (context, state) => const MetadataCachingScreen(),
-              ),
-              GoRoute(
-                path: 'server-connection',
-                builder: (context, state) => ServerConnectionScreen(
-                  serverId: state.uri.queryParameters['id'],
-                ),
-              ),
-              GoRoute(
-                path: 'hotkeys',
-                builder: (context, state) => const HotkeysScreen(),
-              ),
-              GoRoute(
-                path: 'android-auto',
-                builder: (context, state) => const AndroidAutoScreen(),
-              ),
-            ],
+            path: 'hotkeys',
+            builder: (context, state) => const HotkeysScreen(),
+          ),
+          GoRoute(
+            path: 'android-auto',
+            builder: (context, state) => const AndroidAutoScreen(),
           ),
         ],
       ),
     ],
-  );
-});
+  ),
+];
