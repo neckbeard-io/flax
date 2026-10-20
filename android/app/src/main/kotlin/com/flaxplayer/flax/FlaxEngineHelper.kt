@@ -44,6 +44,7 @@ object FlaxEngineHelper {
     private var defaultNetworkCallback: ConnectivityManager.NetworkCallback? = null
     private var carConnection: CarConnection? = null
     private var carObserver: Observer<Int>? = null
+    private var lastCarType: Int? = null
     private var carEventSink: EventChannel.EventSink? = null
     private var installerEventSink: EventChannel.EventSink? = null
     private var apkDownloadCall: okhttp3.Call? = null
@@ -353,6 +354,7 @@ object FlaxEngineHelper {
                 carConnection = conn
                 val observer = Observer<Int> { type ->
                     val isConnected = (type == CarConnection.CONNECTION_TYPE_PROJECTION || type == CarConnection.CONNECTION_TYPE_NATIVE)
+                    traceCarConnection(appContext, type)
                     if (isConnected) {
                         FlaxMediaSessionHelper.activateMediaSession(appContext)
                     }
@@ -451,6 +453,27 @@ object FlaxEngineHelper {
                 }
             }
         )
+    }
+
+    /**
+     * Writes Android Auto connecting and disconnecting to the playback trace,
+     * with what it needs to list flax as found at that moment, before flax
+     * activates its session in response.
+     *
+     * Not connected at process start is the usual case and is left out.
+     */
+    private fun traceCarConnection(context: Context, type: Int) {
+        val previous = lastCarType
+        lastCarType = type
+        if (previous == type || (previous == null && !isConnectedType(type))) return
+        val event = when (type) {
+            CarConnection.CONNECTION_TYPE_PROJECTION ->
+                "car connected (Android Auto): ${FlaxMediaSessionHelper.describeForCar(context)}"
+            CarConnection.CONNECTION_TYPE_NATIVE ->
+                "car connected (Automotive): ${FlaxMediaSessionHelper.describeForCar(context)}"
+            else -> "car disconnected"
+        }
+        PlaybackTrace.note(context, event)
     }
 
     private fun isConnectedType(type: Int?): Boolean =

@@ -3,6 +3,7 @@ package com.flaxplayer.flax
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -115,6 +116,57 @@ object FlaxMediaSessionHelper {
         }
     }
 
+    /**
+     * What Android Auto needs to list flax and show its card, for the playback
+     * trace: whether Android still resolves flax's browse service, and the
+     * media session's state.
+     */
+    fun describeForCar(context: Context): String {
+        val browse = try {
+            val pm = context.packageManager
+            val intent = Intent(MediaBrowserServiceCompat.SERVICE_INTERFACE).setPackage(context.packageName)
+            val services = if (Build.VERSION.SDK_INT >= 33) {
+                pm.queryIntentServices(intent, PackageManager.ResolveInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.queryIntentServices(intent, 0)
+            }
+            if (services.isEmpty()) "browse service NOT found" else "browse service found"
+        } catch (e: Exception) {
+            "browse service unknown (${e.javaClass.simpleName})"
+        }
+        val session = try {
+            val instanceField = AudioService::class.java.getDeclaredField("instance")
+            instanceField.isAccessible = true
+            val service = instanceField.get(null) as? AudioService
+            val sessionField = AudioService::class.java.getDeclaredField("mediaSession")
+            sessionField.isAccessible = true
+            val mediaSession = service?.let { sessionField.get(it) as? MediaSessionCompat }
+            when {
+                service == null -> "audio service not running"
+                mediaSession == null -> "no media session"
+                else -> {
+                    val state = mediaSession.controller.playbackState?.state
+                    "session ${if (mediaSession.isActive) "active" else "inactive"}, ${stateName(state)}"
+                }
+            }
+        } catch (e: Exception) {
+            "session unknown (${e.javaClass.simpleName})"
+        }
+        return "$browse, $session"
+    }
+
+    private fun stateName(state: Int?): String = when (state) {
+        null, PlaybackStateCompat.STATE_NONE -> "no state"
+        PlaybackStateCompat.STATE_STOPPED -> "stopped"
+        PlaybackStateCompat.STATE_PAUSED -> "paused"
+        PlaybackStateCompat.STATE_PLAYING -> "playing"
+        PlaybackStateCompat.STATE_BUFFERING -> "buffering"
+        PlaybackStateCompat.STATE_CONNECTING -> "connecting"
+        PlaybackStateCompat.STATE_ERROR -> "error"
+        else -> "state $state"
+    }
+
     fun wrapServiceListener(context: Context? = null) {
         try {
             val listenerField = AudioService::class.java.getDeclaredField("listener")
@@ -141,6 +193,9 @@ class FlaxServiceListenerWrapper(
         result: MediaBrowserServiceCompat.Result<MutableList<MediaBrowserCompat.MediaItem>>?,
         options: Bundle?
     ) {
+        if (parentMediaId == "root" || parentMediaId == "recent") {
+            PlaybackTrace.recordBrowse(context, parentMediaId)
+        }
         FlaxMediaSessionHelper.activateMediaSession(context)
         delegate.onLoadChildren(parentMediaId, result, options)
     }
