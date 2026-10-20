@@ -45,27 +45,33 @@ class FlaxDatabase extends _$FlaxDatabase {
     onCreate: (m) async {
       await m.createAll();
     },
+    // Every step must be safe to run again. Drift runs these outside a
+    // transaction and stores the new version only after all of them, so a
+    // launch killed partway leaves columns added at the old version, and the
+    // next launch repeats the step. A plain ALTER then fails on the duplicate
+    // column, and the database never opens again.
     onUpgrade: (m, from, to) async {
       if (from < 2) {
-        await m.addColumn(artists, artists.country);
-        await m.addColumn(artists, artists.countryCode);
-        await m.addColumn(artists, artists.activeYears);
+        await _addColumnIfMissing(m, artists, artists.country);
+        await _addColumnIfMissing(m, artists, artists.countryCode);
+        await _addColumnIfMissing(m, artists, artists.activeYears);
       }
       if (from < 3) {
+        // CREATE TABLE IF NOT EXISTS, so already safe to repeat.
         await m.createTable(pendingScrobbles);
       }
       if (from < 4) {
         // Columns only. Existing rows keep a null list, which is what the
         // genre backfill looks for; rewriting them here would touch every
         // song row on the first launch after the update.
-        await m.addColumn(albums, albums.genresJson);
-        await m.addColumn(songs, songs.genresJson);
+        await _addColumnIfMissing(m, albums, albums.genresJson);
+        await _addColumnIfMissing(m, songs, songs.genresJson);
       }
       if (from < 5) {
         // Columns only, as for v4: rows keep a null list, which the artist
         // refresh reads as unknown and fills in.
-        await m.addColumn(albums, albums.releaseTypesJson);
-        await m.addColumn(albums, albums.isCompilation);
+        await _addColumnIfMissing(m, albums, albums.releaseTypesJson);
+        await _addColumnIfMissing(m, albums, albums.isCompilation);
       }
     },
     beforeOpen: (details) async {
@@ -74,6 +80,21 @@ class FlaxDatabase extends _$FlaxDatabase {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  Future<void> _addColumnIfMissing(
+    Migrator m,
+    TableInfo<Table, dynamic> table,
+    GeneratedColumn<Object> column,
+  ) async {
+    final existing = await customSelect(
+      'SELECT name FROM pragma_table_info(?)',
+      variables: [Variable.withString(table.actualTableName)],
+    ).get();
+    if (existing.any((row) => row.read<String>('name') == column.name)) {
+      return;
+    }
+    await m.addColumn(table, column);
+  }
 }
 
 LazyDatabase _openOnDisk() {
