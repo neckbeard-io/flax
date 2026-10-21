@@ -55,36 +55,46 @@ class ShellScaffold extends ConsumerWidget {
       ],
     );
 
+    final bottomBar = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const MiniPlayer(),
+        // With the sidebar showing, the destinations live there; keeping the
+        // bottom bar too would duplicate them.
+        if (!useSidebar)
+          NavigationBar(
+            height: 56,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            selectedIndex: index,
+            destinations: [
+              for (final d in mobileNavDestinations)
+                NavigationDestination(
+                  icon: (d.path == '/settings' && isUpdateAvailable)
+                      ? Badge(child: Icon(d.icon))
+                      : Icon(d.icon),
+                  selectedIcon: (d.path == '/settings' && isUpdateAvailable)
+                      ? Badge(child: Icon(d.selectedIcon))
+                      : Icon(d.selectedIcon),
+                  label: d.localizedLabel(context),
+                ),
+            ],
+            onDestinationSelected: (i) =>
+                context.go(mobileNavDestinations[i].path),
+          ),
+      ],
+    );
+
+    // An Android tablet is wide enough for the sidebar, and there nothing
+    // keeps clear of the system bars on its own: the NavigationBar that pads
+    // for the gesture bar on a phone is gone, and Scaffold strips the bottom
+    // inset from the body. Settings and the mini player sat under the
+    // navigation bar. Desktop windows have no insets, so this costs them
+    // nothing.
     return Scaffold(
-      body: content,
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const MiniPlayer(),
-          // With the sidebar showing, the destinations live there; keeping the
-          // bottom bar too would duplicate them.
-          if (!useSidebar)
-            NavigationBar(
-              height: 56,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              selectedIndex: index,
-              destinations: [
-                for (final d in mobileNavDestinations)
-                  NavigationDestination(
-                    icon: (d.path == '/settings' && isUpdateAvailable)
-                        ? Badge(child: Icon(d.icon))
-                        : Icon(d.icon),
-                    selectedIcon: (d.path == '/settings' && isUpdateAvailable)
-                        ? Badge(child: Icon(d.selectedIcon))
-                        : Icon(d.selectedIcon),
-                    label: d.localizedLabel(context),
-                  ),
-              ],
-              onDestinationSelected: (i) =>
-                  context.go(mobileNavDestinations[i].path),
-            ),
-        ],
-      ),
+      body: useSidebar ? SafeArea(bottom: false, child: content) : content,
+      bottomNavigationBar: useSidebar
+          ? SafeArea(top: false, child: bottomBar)
+          : bottomBar,
     );
   }
 }
