@@ -145,6 +145,57 @@ void main() {
     );
   });
 
+  testWidgets('tablet header keeps the play buttons legible beside a sidebar', (
+    tester,
+  ) async {
+    // A portrait tablet: wide enough for the desktop header, but the sidebar
+    // takes 220 of it. The buttons once shared a row with the stars and were
+    // squeezed until each label broke a letter or two per line.
+    tester.view.physicalSize = const ui.Size(800, 1280);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          albumDetailProvider(
+            _albumId,
+          ).overrideWith((ref) => Stream.value(_album)),
+          albumSongsProvider(
+            _albumId,
+          ).overrideWith((ref) => Stream.value(_songs())),
+        ],
+        child: MaterialApp(
+          theme: ThemeData.dark(useMaterial3: true),
+          home: const MediaQuery(
+            data: MediaQueryData(size: Size(800, 1280)),
+            child: Row(
+              children: [
+                SizedBox(width: 220),
+                Expanded(child: AlbumDetailScreen(albumId: _albumId)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('ALBUM'), findsOneWidget, reason: 'desktop header');
+    // One line each: a squeezed label grows the button taller instead. The
+    // test font is wider than the real one, so where they wrap is not checked.
+    for (final button in [
+      find.widgetWithText(FilledButton, 'Play'),
+      find.widgetWithText(OutlinedButton, 'Next'),
+      find.widgetWithText(OutlinedButton, 'Last'),
+    ]) {
+      final rect = tester.getRect(button);
+      expect(rect.height, lessThanOrEqualTo(48));
+      expect(rect.right, lessThanOrEqualTo(800));
+    }
+  });
+
   testWidgets('phone layout keeps favorites but drops per-track stars', (
     tester,
   ) async {

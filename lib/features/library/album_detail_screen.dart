@@ -350,7 +350,6 @@ class _DesktopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 24, 16),
       child: Column(
@@ -367,83 +366,100 @@ class _DesktopHeader extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.only(left: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 240,
-                  height: 240,
-                  child: CoverArtImage(
-                    coverArtId: album.coverArtId,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ALBUM',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          letterSpacing: 1.2,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        album.name,
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          height: 1.1,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        [
-                          if (album.year != null) '${album.year}',
-                          '${album.songCount} '
-                              '${album.songCount == 1 ? "track" : "tracks"}',
-                          formatDuration(album.duration),
-                        ].join(' · '),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      if (album.artistName != null)
-                        HoverLink(
-                          text: album.artistName!,
-                          onTap: album.artistId != null
-                              ? () => context.push('/artists/${album.artistId}')
-                              : null,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      // Every genre: a desktop header has the room, and this
-                      // is the one place that lists them all.
-                      if (album.displayGenres.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        GenreChips(genres: album.displayGenres),
-                      ],
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(child: _AlbumPlayActions(albumId: albumId)),
-                          _AlbumActions(album: album, albumId: albumId),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) => _details(
+                context,
+                // Full size wherever it fits. Beside the sidebar on a portrait
+                // tablet a 240px cover left the details too narrow for the
+                // play buttons.
+                coverSize: (constraints.maxWidth * 0.3).clamp(160.0, 240.0),
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _details(BuildContext context, {required double coverSize}) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: coverSize,
+          height: coverSize,
+          child: CoverArtImage(
+            coverArtId: album.coverArtId,
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        const SizedBox(width: 24),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ALBUM',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                album.name,
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                [
+                  if (album.year != null) '${album.year}',
+                  '${album.songCount} '
+                      '${album.songCount == 1 ? "track" : "tracks"}',
+                  formatDuration(album.duration),
+                ].join(' · '),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (album.artistName != null)
+                HoverLink(
+                  text: album.artistName!,
+                  onTap: album.artistId != null
+                      ? () => context.push('/artists/${album.artistId}')
+                      : null,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              // Every genre: a desktop header has the room, and this
+              // is the one place that lists them all.
+              if (album.displayGenres.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                GenreChips(genres: album.displayGenres),
+              ],
+              const SizedBox(height: 16),
+              // Each group wraps whole, so a narrow header moves the
+              // rating below the buttons rather than squeezing them.
+              Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _AlbumPlayActions(albumId: albumId),
+                  _AlbumActions(album: album, albumId: albumId),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
