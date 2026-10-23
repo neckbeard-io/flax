@@ -6,11 +6,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/app/router.dart';
 import 'package:flax/app/screen_recovery.dart';
+import 'package:flax/app/theme/theme_palette.dart';
+import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/core/providers/locale_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/core/providers/server_provider.dart';
+import 'package:flax/domain/enums.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
@@ -105,6 +108,9 @@ class StartupState {
     this.savedRoute,
     this.servers = const [],
     this.locale,
+    this.themeMode,
+    this.themePalette,
+    this.amoled,
     this.offlineManual = false,
     this.offlineOnCellular = false,
     this.offlineOnAndroidAuto = false,
@@ -134,6 +140,9 @@ class StartupState {
       savedRoute: savedRoute,
       servers: ServerListNotifier.loadServersFromPrefs(prefs),
       locale: LocaleNotifier.loadLocaleFromPrefs(prefs),
+      themeMode: ThemeModeNotifier.loadFromPrefs(prefs),
+      themePalette: ThemePaletteNotifier.loadFromPrefs(prefs),
+      amoled: AmoledNotifier.loadFromPrefs(prefs),
       offlineManual: OfflineManualNotifier.loadFromPrefs(prefs),
       offlineOnCellular: OfflineOnCellularNotifier.loadFromPrefs(prefs),
       offlineOnAndroidAuto: OfflineOnAndroidAutoNotifier.loadFromPrefs(prefs),
@@ -149,6 +158,9 @@ class StartupState {
   final String? savedRoute;
   final List<Server> servers;
   final Locale? locale;
+  final ThemeModeSetting? themeMode;
+  final ThemePalette? themePalette;
+  final bool? amoled;
   final bool offlineManual;
   final bool offlineOnCellular;
   final bool offlineOnAndroidAuto;
@@ -185,6 +197,15 @@ class StartupState {
         ),
       if (locale != null)
         localeProvider.overrideWith((ref) => LocaleNotifier(locale)),
+      themeModeProvider.overrideWith(
+        (ref) => ThemeModeNotifier(initialValue: themeMode),
+      ),
+      themePaletteProvider.overrideWith(
+        (ref) => ThemePaletteNotifier(initialValue: themePalette),
+      ),
+      amoledProvider.overrideWith(
+        (ref) => AmoledNotifier(initialValue: amoled),
+      ),
       offlineManualOverrideProvider.overrideWith(
         (ref) => OfflineManualNotifier(initialValue: offlineManual),
       ),

@@ -90,6 +90,75 @@ class AppLocalizationsDe extends AppLocalizations {
   String get amoledBlack => 'AMOLED Tiefschwarz';
 
   @override
+  String get amoledBlackSubtitle =>
+      'Reines Schwarz hinter jedem dunklen Design, für OLED-Bildschirme';
+
+  @override
+  String get colorTheme => 'Farbdesign';
+
+  @override
+  String get colorThemeHint =>
+      'Jedes Design gibt es in einer hellen und einer dunklen Version';
+
+  @override
+  String get themePaletteDevice => 'Gerät';
+
+  @override
+  String get themePaletteDeviceDescription =>
+      'Ihr Hintergrundbild oder Ihre Akzentfarbe';
+
+  @override
+  String get themePaletteFlax => 'Flax';
+
+  @override
+  String get themePaletteFlaxDescription => 'Klassisches Violett';
+
+  @override
+  String get themePaletteAlbum => 'Album';
+
+  @override
+  String get themePaletteAlbumDescription =>
+      'Farben folgen dem aktuellen Cover';
+
+  @override
+  String get themePaletteEvergreen => 'Immergrün';
+
+  @override
+  String get themePaletteEvergreenDescription =>
+      'Waldgrün, bei Nacht und bei Tag';
+
+  @override
+  String get themePaletteNord => 'Nord';
+
+  @override
+  String get themePaletteNordDescription => 'Arktische, gedämpfte Blautöne';
+
+  @override
+  String get themePaletteCatppuccin => 'Catppuccin';
+
+  @override
+  String get themePaletteCatppuccinDescription => 'Sanfte Pastelltöne';
+
+  @override
+  String get themePaletteDracula => 'Dracula';
+
+  @override
+  String get themePaletteDraculaDescription => 'Lila und Pink auf Anthrazit';
+
+  @override
+  String get themePaletteGruvbox => 'Gruvbox';
+
+  @override
+  String get themePaletteGruvboxDescription =>
+      'Warme Retro-Brauntöne und Orange';
+
+  @override
+  String get themePaletteSynthwave => 'Synthwave';
+
+  @override
+  String get themePaletteSynthwaveDescription => 'Neon-Magenta und Cyan';
+
+  @override
   String get audioAndPlayback => 'Audio & Wiedergabe';
 
   @override

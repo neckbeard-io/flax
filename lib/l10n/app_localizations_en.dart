@@ -90,6 +90,70 @@ class AppLocalizationsEn extends AppLocalizations {
   String get amoledBlack => 'AMOLED Pure Black';
 
   @override
+  String get amoledBlackSubtitle =>
+      'Pure black behind every dark theme, for OLED screens';
+
+  @override
+  String get colorTheme => 'Color theme';
+
+  @override
+  String get colorThemeHint => 'Every theme has a light and a dark version';
+
+  @override
+  String get themePaletteDevice => 'Device';
+
+  @override
+  String get themePaletteDeviceDescription => 'Your wallpaper or accent color';
+
+  @override
+  String get themePaletteFlax => 'Flax';
+
+  @override
+  String get themePaletteFlaxDescription => 'Classic violet';
+
+  @override
+  String get themePaletteAlbum => 'Album';
+
+  @override
+  String get themePaletteAlbumDescription => 'Colors follow the playing cover';
+
+  @override
+  String get themePaletteEvergreen => 'Evergreen';
+
+  @override
+  String get themePaletteEvergreenDescription => 'Forest greens, night and day';
+
+  @override
+  String get themePaletteNord => 'Nord';
+
+  @override
+  String get themePaletteNordDescription => 'Arctic, muted blues';
+
+  @override
+  String get themePaletteCatppuccin => 'Catppuccin';
+
+  @override
+  String get themePaletteCatppuccinDescription => 'Soft pastels';
+
+  @override
+  String get themePaletteDracula => 'Dracula';
+
+  @override
+  String get themePaletteDraculaDescription => 'Purple and pink on charcoal';
+
+  @override
+  String get themePaletteGruvbox => 'Gruvbox';
+
+  @override
+  String get themePaletteGruvboxDescription => 'Retro warm browns and orange';
+
+  @override
+  String get themePaletteSynthwave => 'Synthwave';
+
+  @override
+  String get themePaletteSynthwaveDescription => 'Neon magenta and cyan';
+
+  @override
   String get audioAndPlayback => 'Audio & Playback';
 
   @override

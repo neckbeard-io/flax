@@ -108,6 +108,90 @@
   "@amoledBlack": {
     "description": "AMOLED pure black theme option"
   },
+  "amoledBlackSubtitle": "Pure black behind every dark theme, for OLED screens",
+  "@amoledBlackSubtitle": {
+    "description": "Subtitle of the AMOLED pure black switch in Settings"
+  },
+  "colorTheme": "Color theme",
+  "@colorTheme": {
+    "description": "Title of the color theme picker in Settings"
+  },
+  "colorThemeHint": "Every theme has a light and a dark version",
+  "@colorThemeHint": {
+    "description": "Hint under the color theme picker title in Settings"
+  },
+  "themePaletteDevice": "Device",
+  "@themePaletteDevice": {
+    "description": "Name of the Device color theme swatch in Settings"
+  },
+  "themePaletteDeviceDescription": "Your wallpaper or accent color",
+  "@themePaletteDeviceDescription": {
+    "description": "Description under the Device color theme swatch in Settings"
+  },
+  "themePaletteFlax": "Flax",
+  "@themePaletteFlax": {
+    "description": "Name of the Flax color theme swatch in Settings"
+  },
+  "themePaletteFlaxDescription": "Classic violet",
+  "@themePaletteFlaxDescription": {
+    "description": "Description under the Flax color theme swatch in Settings"
+  },
+  "themePaletteAlbum": "Album",
+  "@themePaletteAlbum": {
+    "description": "Name of the Album color theme swatch in Settings"
+  },
+  "themePaletteAlbumDescription": "Colors follow the playing cover",
+  "@themePaletteAlbumDescription": {
+    "description": "Description under the Album color theme swatch in Settings"
+  },
+  "themePaletteEvergreen": "Evergreen",
+  "@themePaletteEvergreen": {
+    "description": "Name of the Evergreen color theme swatch in Settings"
+  },
+  "themePaletteEvergreenDescription": "Forest greens, night and day",
+  "@themePaletteEvergreenDescription": {
+    "description": "Description under the Evergreen color theme swatch in Settings"
+  },
+  "themePaletteNord": "Nord",
+  "@themePaletteNord": {
+    "description": "Name of the Nord color theme swatch in Settings"
+  },
+  "themePaletteNordDescription": "Arctic, muted blues",
+  "@themePaletteNordDescription": {
+    "description": "Description under the Nord color theme swatch in Settings"
+  },
+  "themePaletteCatppuccin": "Catppuccin",
+  "@themePaletteCatppuccin": {
+    "description": "Name of the Catppuccin color theme swatch in Settings"
+  },
+  "themePaletteCatppuccinDescription": "Soft pastels",
+  "@themePaletteCatppuccinDescription": {
+    "description": "Description under the Catppuccin color theme swatch in Settings"
+  },
+  "themePaletteDracula": "Dracula",
+  "@themePaletteDracula": {
+    "description": "Name of the Dracula color theme swatch in Settings"
+  },
+  "themePaletteDraculaDescription": "Purple and pink on charcoal",
+  "@themePaletteDraculaDescription": {
+    "description": "Description under the Dracula color theme swatch in Settings"
+  },
+  "themePaletteGruvbox": "Gruvbox",
+  "@themePaletteGruvbox": {
+    "description": "Name of the Gruvbox color theme swatch in Settings"
+  },
+  "themePaletteGruvboxDescription": "Retro warm browns and orange",
+  "@themePaletteGruvboxDescription": {
+    "description": "Description under the Gruvbox color theme swatch in Settings"
+  },
+  "themePaletteSynthwave": "Synthwave",
+  "@themePaletteSynthwave": {
+    "description": "Name of the Synthwave color theme swatch in Settings"
+  },
+  "themePaletteSynthwaveDescription": "Neon magenta and cyan",
+  "@themePaletteSynthwaveDescription": {
+    "description": "Description under the Synthwave color theme swatch in Settings"
+  },
   "audioAndPlayback": "Audio & Playback",
   "@audioAndPlayback": {
     "description": "Settings section for audio"

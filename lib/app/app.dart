@@ -1,4 +1,3 @@
-import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/app/router.dart';
@@ -15,29 +14,32 @@ class FlaxApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final themeModeSetting = ref.watch(themeModeProvider);
+    final palette = ref.watch(themePaletteProvider);
     final amoled = ref.watch(amoledProvider);
-    final customDynamic = ref.watch(dynamicColorSchemesProvider);
+    // valueOrNull keeps the last colors while the next ones load, so the
+    // Album theme never blinks back to violet between songs.
+    final device = ref.watch(platformColorSchemesProvider).valueOrNull;
+    final album = ref.watch(albumColorSchemesProvider).valueOrNull;
     final selectedLocale = ref.watch(localeProvider);
 
-    return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        final lightScheme = customDynamic?.light ?? lightDynamic;
-        final darkScheme = customDynamic?.dark ?? darkDynamic;
+    ColorScheme scheme(Brightness brightness) =>
+        resolvePaletteScheme(palette, brightness, device: device, album: album);
 
-        return MaterialApp.router(
-          title: 'Flax',
-          debugShowCheckedModeBanner: false,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: selectedLocale,
-          theme: FlaxTheme.light(dynamicScheme: lightScheme),
-          darkTheme: FlaxTheme.dark(dynamicScheme: darkScheme, amoled: amoled),
-          themeMode: resolveThemeMode(themeModeSetting),
-          routerConfig: router,
-          builder: (context, child) =>
-              AppChrome(child: child ?? const SizedBox.shrink()),
-        );
-      },
+    return MaterialApp.router(
+      title: 'Flax',
+      debugShowCheckedModeBanner: false,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: selectedLocale,
+      theme: FlaxTheme.light(dynamicScheme: scheme(Brightness.light)),
+      darkTheme: FlaxTheme.dark(
+        dynamicScheme: scheme(Brightness.dark),
+        amoled: amoled,
+      ),
+      themeMode: resolveThemeMode(themeModeSetting),
+      routerConfig: router,
+      builder: (context, child) =>
+          AppChrome(child: child ?? const SizedBox.shrink()),
     );
   }
 }
