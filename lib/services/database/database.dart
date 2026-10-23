@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:flax/services/database/tables/audio_devices.dart';
 import 'package:flax/services/database/tables/entities.dart';
 import 'package:flax/services/database/tables/orderings.dart';
 
@@ -27,6 +28,8 @@ part 'database.g.dart';
     PlaylistEntries,
     SyncStates,
     PendingScrobbles,
+    AudioDevices,
+    DeviceEqProfiles,
   ],
 )
 class FlaxDatabase extends _$FlaxDatabase {
@@ -38,7 +41,7 @@ class FlaxDatabase extends _$FlaxDatabase {
   FlaxDatabase.open() : super(_openOnDisk());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -72,6 +75,16 @@ class FlaxDatabase extends _$FlaxDatabase {
         // refresh reads as unknown and fills in.
         await _addColumnIfMissing(m, albums, albums.releaseTypesJson);
         await _addColumnIfMissing(m, albums, albums.isCompilation);
+      }
+      if (from < 6) {
+        // CREATE TABLE IF NOT EXISTS, as for v3. The generated index
+        // statement has no IF NOT EXISTS, so it is written out here instead.
+        await m.createTable(audioDevices);
+        await m.createTable(deviceEqProfiles);
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS device_eq_profile_device '
+          'ON device_eq_profiles (device_id)',
+        );
       }
     },
     beforeOpen: (details) async {

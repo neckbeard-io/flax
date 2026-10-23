@@ -703,5 +703,171 @@
   "androidAutoTabFavorites": "Favorites",
   "@androidAutoTabFavorites": {
     "description": "Android Auto tab choice: the albums marked as favorites (hearts)"
+  },
+  "audioDevices": "Audio Devices",
+  "@audioDevices": {
+    "description": "Settings tile in Audio & Playback, and the title of its page: every output device flax has played through, with their EQ profiles"
+  },
+  "audioDevicesCount": "{count, plural, =0{No devices yet} =1{1 device} other{{count} devices}}",
+  "@audioDevicesCount": {
+    "description": "Subtitle of the Audio Devices settings tile when no device is in use yet: how many devices have been recorded",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "audioDevicesEmpty": "No devices yet. The output in use is added here once flax plays through it.",
+  "@audioDevicesEmpty": {
+    "description": "Shown on the Audio Devices page before any device has been recorded"
+  },
+  "audioDeviceConnected": "Connected now",
+  "@audioDeviceConnected": {
+    "description": "Audio Devices page: shown under the device audio is going to right now"
+  },
+  "audioDeviceLastUsed": "Last used {date}",
+  "@audioDeviceLastUsed": {
+    "description": "Audio Devices page: when a device that is not connected was last the output",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "eqProfileCount": "{count, plural, =1{1 profile} other{{count} profiles}}",
+  "@eqProfileCount": {
+    "description": "Audio Devices page: how many EQ profiles a device has",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "audioDeviceAutoSwitch": "Switch EQ automatically",
+  "@audioDeviceAutoSwitch": {
+    "description": "Audio Devices page: switch that makes a device restore its default EQ profile when it connects"
+  },
+  "audioDeviceAutoSwitchSubtitle": "Restores the default profile when this device becomes the output",
+  "@audioDeviceAutoSwitchSubtitle": {
+    "description": "Audio Devices page: explains the Switch EQ automatically switch"
+  },
+  "audioDeviceDefaultProfile": "Default profile",
+  "@audioDeviceDefaultProfile": {
+    "description": "Audio Devices page: heading over a device's profiles, where one is chosen as the default"
+  },
+  "audioDeviceRename": "Rename device",
+  "@audioDeviceRename": {
+    "description": "Audio Devices page: button and dialog title for giving a device its own name"
+  },
+  "deviceNameLabel": "Name",
+  "@deviceNameLabel": {
+    "description": "Label of the name field in the Rename device dialog"
+  },
+  "audioDeviceRenameHelper": "Leave empty to use the system's name",
+  "@audioDeviceRenameHelper": {
+    "description": "Helper text under the name field in the Rename device dialog"
+  },
+  "audioDeviceForget": "Forget device",
+  "@audioDeviceForget": {
+    "description": "Audio Devices page: button that deletes a device and its EQ profiles"
+  },
+  "audioDeviceForgetTitle": "Forget {name}?",
+  "@audioDeviceForgetTitle": {
+    "description": "Title of the dialog confirming Forget device",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "audioDeviceForgetMessage": "Its EQ profiles are deleted too. It is added again, with no EQ, the next time it is used.",
+  "@audioDeviceForgetMessage": {
+    "description": "Body of the dialog confirming Forget device"
+  },
+  "audioDeviceForgetInUse": "The device in use can't be forgotten",
+  "@audioDeviceForgetInUse": {
+    "description": "Tooltip on the disabled Forget device button of the device audio is going to"
+  },
+  "forget": "Forget",
+  "@forget": {
+    "description": "Confirm button of the Forget device dialog"
+  },
+  "rename": "Rename",
+  "@rename": {
+    "description": "Confirm button of a rename dialog"
+  },
+  "eqOutputDevice": "Output device",
+  "@eqOutputDevice": {
+    "description": "Equalizer screen: caption under the name of the device audio is going to"
+  },
+  "eqProfile": "Profile",
+  "@eqProfile": {
+    "description": "Equalizer screen: label of the menu that picks one of the output device's EQ profiles"
+  },
+  "eqProfileDefaultName": "{name} (default)",
+  "@eqProfileDefaultName": {
+    "description": "A profile's name marked as its device's default, in the profile menu and the device list",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eqNoProfile": "No profile",
+  "@eqNoProfile": {
+    "description": "Equalizer screen: the profile menu when the equalizer is not following any of the device's profiles"
+  },
+  "eqAutoSwitch": "Auto-switch",
+  "@eqAutoSwitch": {
+    "description": "Equalizer screen: short label of the switch that restores the device's default profile when it connects"
+  },
+  "eqAutoSwitchTooltip": "Switch to this device's default profile whenever it becomes the output",
+  "@eqAutoSwitchTooltip": {
+    "description": "Tooltip of the Auto-switch switch on the Equalizer screen"
+  },
+  "eqProfileActions": "Profile actions",
+  "@eqProfileActions": {
+    "description": "Tooltip of the menu button beside the profile menu on the Equalizer screen"
+  },
+  "eqProfileNew": "New profile…",
+  "@eqProfileNew": {
+    "description": "Profile actions menu item, and the title of its dialog: save the current EQ as a new profile of the device"
+  },
+  "eqProfileNewHelper": "Starts as a copy of the current settings. Changes are saved to the profile in use as you make them.",
+  "@eqProfileNewHelper": {
+    "description": "Helper text in the New profile dialog"
+  },
+  "eqProfileRename": "Rename profile…",
+  "@eqProfileRename": {
+    "description": "Profile actions menu item, and the title of its dialog"
+  },
+  "eqProfileMakeDefault": "Make default",
+  "@eqProfileMakeDefault": {
+    "description": "Profile actions menu item: make the profile in use the one the device restores when it connects"
+  },
+  "eqProfileDelete": "Delete profile",
+  "@eqProfileDelete": {
+    "description": "Profile actions menu item, and the tooltip of a profile's delete button on the Audio Devices page"
+  },
+  "eqProfileDeleteTitle": "Delete {name}?",
+  "@eqProfileDeleteTitle": {
+    "description": "Title of the dialog confirming a profile's deletion",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "eqProfileNameLabel": "Profile name",
+  "@eqProfileNameLabel": {
+    "description": "Label of the name field in the New profile and Rename profile dialogs"
+  },
+  "eqProfileKeepOne": "A device keeps at least one profile",
+  "@eqProfileKeepOne": {
+    "description": "Tooltip of a disabled delete button: a device's only profile cannot be deleted"
+  },
+  "audioDevicesManage": "Manage devices",
+  "@audioDevicesManage": {
+    "description": "Profile actions menu item on the Equalizer screen: opens the Audio Devices page"
   }
 }

@@ -1017,6 +1017,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Favorites'**
   String get androidAutoTabFavorites;
+
+  /// Settings tile in Audio & Playback, and the title of its page: every output device flax has played through, with their EQ profiles
+  ///
+  /// In en, this message translates to:
+  /// **'Audio Devices'**
+  String get audioDevices;
+
+  /// Subtitle of the Audio Devices settings tile when no device is in use yet: how many devices have been recorded
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No devices yet} =1{1 device} other{{count} devices}}'**
+  String audioDevicesCount(int count);
+
+  /// Shown on the Audio Devices page before any device has been recorded
+  ///
+  /// In en, this message translates to:
+  /// **'No devices yet. The output in use is added here once flax plays through it.'**
+  String get audioDevicesEmpty;
+
+  /// Audio Devices page: shown under the device audio is going to right now
+  ///
+  /// In en, this message translates to:
+  /// **'Connected now'**
+  String get audioDeviceConnected;
+
+  /// Audio Devices page: when a device that is not connected was last the output
+  ///
+  /// In en, this message translates to:
+  /// **'Last used {date}'**
+  String audioDeviceLastUsed(String date);
+
+  /// Audio Devices page: how many EQ profiles a device has
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 profile} other{{count} profiles}}'**
+  String eqProfileCount(int count);
+
+  /// Audio Devices page: switch that makes a device restore its default EQ profile when it connects
+  ///
+  /// In en, this message translates to:
+  /// **'Switch EQ automatically'**
+  String get audioDeviceAutoSwitch;
+
+  /// Audio Devices page: explains the Switch EQ automatically switch
+  ///
+  /// In en, this message translates to:
+  /// **'Restores the default profile when this device becomes the output'**
+  String get audioDeviceAutoSwitchSubtitle;
+
+  /// Audio Devices page: heading over a device's profiles, where one is chosen as the default
+  ///
+  /// In en, this message translates to:
+  /// **'Default profile'**
+  String get audioDeviceDefaultProfile;
+
+  /// Audio Devices page: button and dialog title for giving a device its own name
+  ///
+  /// In en, this message translates to:
+  /// **'Rename device'**
+  String get audioDeviceRename;
+
+  /// Label of the name field in the Rename device dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get deviceNameLabel;
+
+  /// Helper text under the name field in the Rename device dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to use the system\'s name'**
+  String get audioDeviceRenameHelper;
+
+  /// Audio Devices page: button that deletes a device and its EQ profiles
+  ///
+  /// In en, this message translates to:
+  /// **'Forget device'**
+  String get audioDeviceForget;
+
+  /// Title of the dialog confirming Forget device
+  ///
+  /// In en, this message translates to:
+  /// **'Forget {name}?'**
+  String audioDeviceForgetTitle(String name);
+
+  /// Body of the dialog confirming Forget device
+  ///
+  /// In en, this message translates to:
+  /// **'Its EQ profiles are deleted too. It is added again, with no EQ, the next time it is used.'**
+  String get audioDeviceForgetMessage;
+
+  /// Tooltip on the disabled Forget device button of the device audio is going to
+  ///
+  /// In en, this message translates to:
+  /// **'The device in use can\'t be forgotten'**
+  String get audioDeviceForgetInUse;
+
+  /// Confirm button of the Forget device dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Forget'**
+  String get forget;
+
+  /// Confirm button of a rename dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get rename;
+
+  /// Equalizer screen: caption under the name of the device audio is going to
+  ///
+  /// In en, this message translates to:
+  /// **'Output device'**
+  String get eqOutputDevice;
+
+  /// Equalizer screen: label of the menu that picks one of the output device's EQ profiles
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get eqProfile;
+
+  /// A profile's name marked as its device's default, in the profile menu and the device list
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (default)'**
+  String eqProfileDefaultName(String name);
+
+  /// Equalizer screen: the profile menu when the equalizer is not following any of the device's profiles
+  ///
+  /// In en, this message translates to:
+  /// **'No profile'**
+  String get eqNoProfile;
+
+  /// Equalizer screen: short label of the switch that restores the device's default profile when it connects
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-switch'**
+  String get eqAutoSwitch;
+
+  /// Tooltip of the Auto-switch switch on the Equalizer screen
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to this device\'s default profile whenever it becomes the output'**
+  String get eqAutoSwitchTooltip;
+
+  /// Tooltip of the menu button beside the profile menu on the Equalizer screen
+  ///
+  /// In en, this message translates to:
+  /// **'Profile actions'**
+  String get eqProfileActions;
+
+  /// Profile actions menu item, and the title of its dialog: save the current EQ as a new profile of the device
+  ///
+  /// In en, this message translates to:
+  /// **'New profile…'**
+  String get eqProfileNew;
+
+  /// Helper text in the New profile dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Starts as a copy of the current settings. Changes are saved to the profile in use as you make them.'**
+  String get eqProfileNewHelper;
+
+  /// Profile actions menu item, and the title of its dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Rename profile…'**
+  String get eqProfileRename;
+
+  /// Profile actions menu item: make the profile in use the one the device restores when it connects
+  ///
+  /// In en, this message translates to:
+  /// **'Make default'**
+  String get eqProfileMakeDefault;
+
+  /// Profile actions menu item, and the tooltip of a profile's delete button on the Audio Devices page
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profile'**
+  String get eqProfileDelete;
+
+  /// Title of the dialog confirming a profile's deletion
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}?'**
+  String eqProfileDeleteTitle(String name);
+
+  /// Label of the name field in the New profile and Rename profile dialogs
+  ///
+  /// In en, this message translates to:
+  /// **'Profile name'**
+  String get eqProfileNameLabel;
+
+  /// Tooltip of a disabled delete button: a device's only profile cannot be deleted
+  ///
+  /// In en, this message translates to:
+  /// **'A device keeps at least one profile'**
+  String get eqProfileKeepOne;
+
+  /// Profile actions menu item on the Equalizer screen: opens the Audio Devices page
+  ///
+  /// In en, this message translates to:
+  /// **'Manage devices'**
+  String get audioDevicesManage;
 }
 
 class _AppLocalizationsDelegate
