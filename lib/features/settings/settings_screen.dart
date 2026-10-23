@@ -23,6 +23,7 @@ import 'package:flax/features/settings/lyrics_settings.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/queue_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
+import 'package:flax/features/settings/theme_palette_picker.dart';
 import 'package:flax/features/updater/update_dialog.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/hotkeys/hotkey_service.dart';
@@ -232,7 +233,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
                 selected: {themeMode},
                 onSelectionChanged: (s) =>
-                    ref.read(themeModeProvider.notifier).state = s.first,
+                    ref.read(themeModeProvider.notifier).set(s.first),
               );
               final title = Text(l10n?.theme ?? 'Theme');
               if (constraints.maxWidth >= 520) {
@@ -247,11 +248,15 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
+          const ThemePaletteSettings(),
           SwitchListTile(
             title: Text(l10n?.amoledBlack ?? 'AMOLED Black'),
-            subtitle: const Text('Pure black background for OLED screens'),
+            subtitle: Text(
+              l10n?.amoledBlackSubtitle ??
+                  'Pure black behind every dark theme, for OLED screens',
+            ),
             value: amoled,
-            onChanged: (v) => ref.read(amoledProvider.notifier).state = v,
+            onChanged: (v) => ref.read(amoledProvider.notifier).set(v),
           ),
           // Android Auto exists only on phones; desktops never connect to a car.
           if (ref.watch(platformOfflinePolicyProvider).supportsCarConnection)

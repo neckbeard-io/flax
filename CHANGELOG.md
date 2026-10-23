@@ -22,6 +22,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Play and Shuffle buttons on desktop artist pages.
 - Popular songs and similar artists beside the discography in wide windows.
 - Choose which four tabs Android Auto shows, in Settings › Android Auto.
+- Color themes in Settings: Album, Evergreen, Nord, Catppuccin, Dracula, Gruvbox, Synthwave and more.
+- The Album theme recolors flax from the playing cover.
 
 ### Changed
 - Auto-Cache Streamed Music is now off unless you turn it on.
@@ -35,6 +37,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - "Sync Queue with Server" is now "Share queue between devices".
 - Artist bios sit beside the photo; Read more opens the full text.
 - Artist pages show library genres instead of MusicBrainz tags; tap one to browse.
+- AMOLED black now works with every dark theme.
 
 ### Fixed
 - Tablets: album Play, Next and Last labels no longer break mid-word.
@@ -75,6 +78,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Android Auto no longer leaves music paused a few seconds after connecting.
 - Play and Pause buttons in the car no longer toggle; Play always plays.
 - Android Auto's tabs show real icons instead of blank squares.
+- Light/dark mode and AMOLED black are remembered after restarting.
 
 ### Removed
 - The Online/Offline switch in Android Auto; the phone's offline settings still apply in the car.

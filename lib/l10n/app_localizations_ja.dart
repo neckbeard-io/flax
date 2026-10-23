@@ -90,6 +90,69 @@ class AppLocalizationsJa extends AppLocalizations {
   String get amoledBlack => 'AMOLED ピュアブラック';
 
   @override
+  String get amoledBlackSubtitle => 'すべてのダークテーマの背景を純黒にします（OLED 画面向け）';
+
+  @override
+  String get colorTheme => 'カラーテーマ';
+
+  @override
+  String get colorThemeHint => 'どのテーマにもライト版とダーク版があります';
+
+  @override
+  String get themePaletteDevice => 'デバイス';
+
+  @override
+  String get themePaletteDeviceDescription => '壁紙またはアクセントカラー';
+
+  @override
+  String get themePaletteFlax => 'Flax';
+
+  @override
+  String get themePaletteFlaxDescription => 'クラシックなバイオレット';
+
+  @override
+  String get themePaletteAlbum => 'アルバム';
+
+  @override
+  String get themePaletteAlbumDescription => '再生中のジャケットに合わせた色';
+
+  @override
+  String get themePaletteEvergreen => 'エバーグリーン';
+
+  @override
+  String get themePaletteEvergreenDescription => '森の緑、夜も昼も';
+
+  @override
+  String get themePaletteNord => 'Nord';
+
+  @override
+  String get themePaletteNordDescription => '北極のような落ち着いたブルー';
+
+  @override
+  String get themePaletteCatppuccin => 'Catppuccin';
+
+  @override
+  String get themePaletteCatppuccinDescription => 'やわらかなパステル';
+
+  @override
+  String get themePaletteDracula => 'Dracula';
+
+  @override
+  String get themePaletteDraculaDescription => 'チャコールに紫とピンク';
+
+  @override
+  String get themePaletteGruvbox => 'Gruvbox';
+
+  @override
+  String get themePaletteGruvboxDescription => 'レトロで温かみのあるブラウンとオレンジ';
+
+  @override
+  String get themePaletteSynthwave => 'Synthwave';
+
+  @override
+  String get themePaletteSynthwaveDescription => 'ネオンのマゼンタとシアン';
+
+  @override
   String get audioAndPlayback => 'オーディオと再生';
 
   @override

@@ -90,6 +90,69 @@ class AppLocalizationsZh extends AppLocalizations {
   String get amoledBlack => 'AMOLED 纯黑';
 
   @override
+  String get amoledBlackSubtitle => '为所有深色主题使用纯黑背景，适合 OLED 屏幕';
+
+  @override
+  String get colorTheme => '颜色主题';
+
+  @override
+  String get colorThemeHint => '每个主题都有浅色和深色版本';
+
+  @override
+  String get themePaletteDevice => '设备';
+
+  @override
+  String get themePaletteDeviceDescription => '您的壁纸或强调色';
+
+  @override
+  String get themePaletteFlax => 'Flax';
+
+  @override
+  String get themePaletteFlaxDescription => '经典紫罗兰';
+
+  @override
+  String get themePaletteAlbum => '专辑';
+
+  @override
+  String get themePaletteAlbumDescription => '颜色随正在播放的封面变化';
+
+  @override
+  String get themePaletteEvergreen => '常青';
+
+  @override
+  String get themePaletteEvergreenDescription => '森林绿，昼夜皆宜';
+
+  @override
+  String get themePaletteNord => 'Nord';
+
+  @override
+  String get themePaletteNordDescription => '北极般柔和的蓝色';
+
+  @override
+  String get themePaletteCatppuccin => 'Catppuccin';
+
+  @override
+  String get themePaletteCatppuccinDescription => '柔和的粉彩';
+
+  @override
+  String get themePaletteDracula => 'Dracula';
+
+  @override
+  String get themePaletteDraculaDescription => '炭灰上的紫与粉';
+
+  @override
+  String get themePaletteGruvbox => 'Gruvbox';
+
+  @override
+  String get themePaletteGruvboxDescription => '复古暖棕与橙色';
+
+  @override
+  String get themePaletteSynthwave => 'Synthwave';
+
+  @override
+  String get themePaletteSynthwaveDescription => '霓虹洋红与青色';
+
+  @override
   String get audioAndPlayback => '音频与播放';
 
   @override

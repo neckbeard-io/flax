@@ -268,6 +268,132 @@ abstract class AppLocalizations {
   /// **'AMOLED Pure Black'**
   String get amoledBlack;
 
+  /// Subtitle of the AMOLED pure black switch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Pure black behind every dark theme, for OLED screens'**
+  String get amoledBlackSubtitle;
+
+  /// Title of the color theme picker in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Color theme'**
+  String get colorTheme;
+
+  /// Hint under the color theme picker title in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Every theme has a light and a dark version'**
+  String get colorThemeHint;
+
+  /// Name of the Device color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get themePaletteDevice;
+
+  /// Description under the Device color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Your wallpaper or accent color'**
+  String get themePaletteDeviceDescription;
+
+  /// Name of the Flax color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Flax'**
+  String get themePaletteFlax;
+
+  /// Description under the Flax color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Classic violet'**
+  String get themePaletteFlaxDescription;
+
+  /// Name of the Album color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Album'**
+  String get themePaletteAlbum;
+
+  /// Description under the Album color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Colors follow the playing cover'**
+  String get themePaletteAlbumDescription;
+
+  /// Name of the Evergreen color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Evergreen'**
+  String get themePaletteEvergreen;
+
+  /// Description under the Evergreen color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Forest greens, night and day'**
+  String get themePaletteEvergreenDescription;
+
+  /// Name of the Nord color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Nord'**
+  String get themePaletteNord;
+
+  /// Description under the Nord color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Arctic, muted blues'**
+  String get themePaletteNordDescription;
+
+  /// Name of the Catppuccin color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Catppuccin'**
+  String get themePaletteCatppuccin;
+
+  /// Description under the Catppuccin color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Soft pastels'**
+  String get themePaletteCatppuccinDescription;
+
+  /// Name of the Dracula color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Dracula'**
+  String get themePaletteDracula;
+
+  /// Description under the Dracula color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Purple and pink on charcoal'**
+  String get themePaletteDraculaDescription;
+
+  /// Name of the Gruvbox color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Gruvbox'**
+  String get themePaletteGruvbox;
+
+  /// Description under the Gruvbox color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Retro warm browns and orange'**
+  String get themePaletteGruvboxDescription;
+
+  /// Name of the Synthwave color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Synthwave'**
+  String get themePaletteSynthwave;
+
+  /// Description under the Synthwave color theme swatch in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Neon magenta and cyan'**
+  String get themePaletteSynthwaveDescription;
+
   /// Settings section for audio
   ///
   /// In en, this message translates to:
