@@ -56,7 +56,7 @@ void main() {
     await db.select(db.songs).get();
 
     final version = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(version.data.values.single, 5);
+    expect(version.data.values.single, 6);
     expect(
       await columnsOf(db, 'albums'),
       containsAll(['genres_json', 'release_types_json', 'is_compilation']),
@@ -70,6 +70,32 @@ void main() {
     final db = FlaxDatabase(NativeDatabase(file));
     await db.select(db.artists).get();
     await db.select(db.pendingScrobbles).get();
+    await db.select(db.audioDevices).get();
     await db.close();
+  });
+
+  test('adds the audio device tables to a v5 database', () async {
+    await createCurrentSchema([
+      'DROP TABLE device_eq_profiles',
+      'DROP TABLE audio_devices',
+      'PRAGMA user_version = 5',
+    ]);
+
+    final db = FlaxDatabase(NativeDatabase(file));
+    addTearDown(db.close);
+    await db.select(db.audioDevices).get();
+    await db.select(db.deviceEqProfiles).get();
+
+    expect(
+      await columnsOf(db, 'audio_devices'),
+      containsAll([
+        'device_id',
+        'device_name',
+        'device_type',
+        'first_seen_at',
+        'last_seen_at',
+        'default_profile_id',
+      ]),
+    );
   });
 }

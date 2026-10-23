@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flax/features/settings/device_profile_bar.dart';
 import 'package:flax/services/autoeq/autoeq_provider.dart';
 import 'package:flax/services/autoeq/autoeq_profile.dart';
 import 'package:flax/shared/audio/eq_filter.dart';
@@ -163,8 +164,13 @@ class EqNotifier extends StateNotifier<EqState> {
   static const _storageKey = 'flax_eq_settings';
 
   EqNotifier() : super(EqState(bands: List.of(_defaultBands))) {
-    _load();
+    ready = _load();
   }
+
+  /// Completes once the saved settings have loaded. Anything that snapshots
+  /// the curve — a device's first profile — has to wait for it, or it
+  /// captures the defaults.
+  late final Future<void> ready;
 
   Future<void> _load() async {
     try {
@@ -244,6 +250,25 @@ class EqNotifier extends StateNotifier<EqState> {
     _save();
   }
 
+  /// Puts a saved device profile's curve in place. Issue #69.
+  void loadChain({
+    required bool enabled,
+    required List<double> gains,
+    required double preamp,
+    required String presetName,
+  }) {
+    state = EqState(
+      enabled: enabled,
+      bands: _bandsFromGains([
+        for (var i = 0; i < _bandFrequencies.length; i++)
+          i < gains.length ? gains[i].clamp(-eqGainLimit, eqGainLimit) : 0.0,
+      ]),
+      preamp: preamp.clamp(-eqGainLimit, eqGainLimit),
+      presetName: presetName,
+    );
+    _save();
+  }
+
   void reset() {
     state = state.copyWith(
       bands: List.of(_defaultBands),
@@ -278,6 +303,9 @@ class EqualizerScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // ── Output device and its profiles ──
+            const DeviceProfileBar(),
+
             // ── Enable + Preset + Reset ──
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),

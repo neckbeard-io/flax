@@ -112,8 +112,11 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
   final TaskRegistry? _tasks;
 
   AutoEqNotifier(this._db, [this._tasks]) : super(const AutoEqState()) {
-    _checkAvailability();
+    ready = _checkAvailability();
   }
+
+  /// Completes once the saved profile has been restored, or found missing.
+  late final Future<void> ready;
 
   Future<void> _checkAvailability() async {
     final available = await _db.isAvailable;
@@ -303,6 +306,29 @@ class AutoEqNotifier extends StateNotifier<AutoEqState> {
         );
       }
     }
+  }
+
+  /// Makes [profile] the active correction, or clears it, without reporting
+  /// an error. Used when a device profile is applied (#69): a correction whose
+  /// curve is not on this machine is left out rather than kept from the
+  /// device before.
+  Future<void> restoreProfile(AutoEqProfile? profile) async {
+    AutoEqProfile? loaded;
+    if (profile != null) {
+      try {
+        // A copy, since loading fills in the curve on the instance.
+        loaded = await _db.loadProfile(
+          AutoEqProfile.fromJson(profile.toJson()),
+        );
+      } catch (_) {
+        loaded = null;
+      }
+    }
+    if (!mounted) return;
+    state = loaded == null
+        ? state.copyWith(clearActiveProfile: true)
+        : state.copyWith(activeProfile: loaded);
+    await _saveProfile(loaded);
   }
 
   /// Clear the active profile.

@@ -504,4 +504,129 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get androidAutoTabFavorites => '收藏';
+
+  @override
+  String get audioDevices => '音频设备';
+
+  @override
+  String audioDevicesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个设备',
+      zero: '暂无设备',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get audioDevicesEmpty => '暂无设备。Flax 通过某个输出设备播放后，该设备会显示在这里。';
+
+  @override
+  String get audioDeviceConnected => '当前已连接';
+
+  @override
+  String audioDeviceLastUsed(String date) {
+    return '上次使用：$date';
+  }
+
+  @override
+  String eqProfileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个配置',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get audioDeviceAutoSwitch => '自动切换均衡器';
+
+  @override
+  String get audioDeviceAutoSwitchSubtitle => '当此设备成为输出设备时，恢复其默认配置';
+
+  @override
+  String get audioDeviceDefaultProfile => '默认配置';
+
+  @override
+  String get audioDeviceRename => '重命名设备';
+
+  @override
+  String get deviceNameLabel => '名称';
+
+  @override
+  String get audioDeviceRenameHelper => '留空则使用系统提供的名称';
+
+  @override
+  String get audioDeviceForget => '移除设备';
+
+  @override
+  String audioDeviceForgetTitle(String name) {
+    return '移除 $name？';
+  }
+
+  @override
+  String get audioDeviceForgetMessage => '其均衡器配置也会一并删除。下次使用时会重新添加，且不应用均衡器。';
+
+  @override
+  String get audioDeviceForgetInUse => '无法移除正在使用的设备';
+
+  @override
+  String get forget => '移除';
+
+  @override
+  String get rename => '重命名';
+
+  @override
+  String get eqOutputDevice => '输出设备';
+
+  @override
+  String get eqProfile => '配置';
+
+  @override
+  String eqProfileDefaultName(String name) {
+    return '$name（默认）';
+  }
+
+  @override
+  String get eqNoProfile => '无配置';
+
+  @override
+  String get eqAutoSwitch => '自动切换';
+
+  @override
+  String get eqAutoSwitchTooltip => '当此设备成为输出设备时，切换到其默认配置';
+
+  @override
+  String get eqProfileActions => '配置操作';
+
+  @override
+  String get eqProfileNew => '新建配置…';
+
+  @override
+  String get eqProfileNewHelper => '以当前设置的副本开始。您所做的更改会随时保存到正在使用的配置中。';
+
+  @override
+  String get eqProfileRename => '重命名配置…';
+
+  @override
+  String get eqProfileMakeDefault => '设为默认';
+
+  @override
+  String get eqProfileDelete => '删除配置';
+
+  @override
+  String eqProfileDeleteTitle(String name) {
+    return '删除 $name？';
+  }
+
+  @override
+  String get eqProfileNameLabel => '配置名称';
+
+  @override
+  String get eqProfileKeepOne => '每个设备至少保留一个配置';
+
+  @override
+  String get audioDevicesManage => '管理设备';
 }
