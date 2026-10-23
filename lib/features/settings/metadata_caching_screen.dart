@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -1214,7 +1215,7 @@ class _StorageLocationTileState extends ConsumerState<_StorageLocationTile> {
 
       final migrate = action == 'migrate';
       if (migrate) {
-        _showMigrationProgressDialog(targetVolume);
+        await _showMigrationProgressDialog(targetVolume);
       } else {
         await audioService.switchStorageLocation(
           targetVolume,
@@ -1238,62 +1239,63 @@ class _StorageLocationTileState extends ConsumerState<_StorageLocationTile> {
     }
   }
 
-  void _showMigrationProgressDialog(StorageVolume targetVolume) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (dialogCtx, setDialogState) {
-            var fraction = 0.0;
-            var statusText = 'Preparing migration...';
+  /// Runs the migration behind a progress dialog.
+  ///
+  /// The migration starts here, once. Started from the dialog's builder, it
+  /// began again on every rebuild, and each rebuild reset the progress shown.
+  Future<void> _showMigrationProgressDialog(StorageVolume targetVolume) async {
+    final progress = ValueNotifier<(double, String)>((
+      0.0,
+      'Preparing migration...',
+    ));
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
 
-            ref
-                .read(audioCacheServiceProvider)
-                .switchStorageLocation(
-                  targetVolume,
-                  migrateData: true,
-                  onProgress: (f, s) {
-                    setDialogState(() {
-                      fraction = f;
-                      statusText = s;
-                    });
-                  },
-                )
-                .then((success) {
-                  if (dialogCtx.mounted) {
-                    Navigator.pop(dialogCtx);
-                    ref.invalidate(audioCacheSummaryProvider(widget.server.id));
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            success
-                                ? 'Successfully migrated cache to ${targetVolume.label}'
-                                : 'Migration failed. Reverted to previous storage.',
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                });
-
-            return AlertDialog(
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => PopScope(
+          canPop: false,
+          child: ValueListenableBuilder<(double, String)>(
+            valueListenable: progress,
+            builder: (_, value, _) => AlertDialog(
               title: const Text('Migrating Cache Files'),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   LinearProgressIndicator(
-                    value: fraction > 0 ? fraction : null,
+                    value: value.$1 > 0 ? value.$1 : null,
                   ),
                   const SizedBox(height: 16),
-                  Text(statusText),
+                  Text(value.$2),
                 ],
               ),
-            );
-          },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final success = await ref
+        .read(audioCacheServiceProvider)
+        .switchStorageLocation(
+          targetVolume,
+          migrateData: true,
+          onProgress: (f, s) => progress.value = (f, s),
         );
-      },
+
+    navigator.pop();
+    progress.dispose();
+    if (mounted) ref.invalidate(audioCacheSummaryProvider(widget.server.id));
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Successfully migrated cache to ${targetVolume.label}'
+              : 'Migration failed. Reverted to previous storage.',
+        ),
+      ),
     );
   }
 }
