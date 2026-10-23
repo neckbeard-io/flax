@@ -71,6 +71,10 @@ class MainFlutterWindow: NSWindow {
        appDelegate.nowPlayingBridge == nil {
       appDelegate.nowPlayingBridge = NowPlayingBridge(messenger: flutterViewController.engine.binaryMessenger)
     }
+    if let appDelegate = NSApplication.shared.delegate as? AppDelegate,
+       appDelegate.audioRouteBridge == nil {
+      appDelegate.audioRouteBridge = AudioRouteBridge(messenger: flutterViewController.engine.binaryMessenger)
+    }
 
     super.awakeFromNib()
   }

@@ -6389,6 +6389,1207 @@ class PendingScrobblesCompanion extends UpdateCompanion<PendingScrobbleRow> {
   }
 }
 
+class $AudioDevicesTable extends AudioDevices
+    with TableInfo<$AudioDevicesTable, AudioDeviceRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AudioDevicesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deviceNameMeta = const VerificationMeta(
+    'deviceName',
+  );
+  @override
+  late final GeneratedColumn<String> deviceName = GeneratedColumn<String>(
+    'device_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _customNameMeta = const VerificationMeta(
+    'customName',
+  );
+  @override
+  late final GeneratedColumn<String> customName = GeneratedColumn<String>(
+    'custom_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deviceTypeMeta = const VerificationMeta(
+    'deviceType',
+  );
+  @override
+  late final GeneratedColumn<String> deviceType = GeneratedColumn<String>(
+    'device_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstSeenAtMeta = const VerificationMeta(
+    'firstSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstSeenAt = GeneratedColumn<DateTime>(
+    'first_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastSeenAtMeta = const VerificationMeta(
+    'lastSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSeenAt = GeneratedColumn<DateTime>(
+    'last_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _defaultProfileIdMeta = const VerificationMeta(
+    'defaultProfileId',
+  );
+  @override
+  late final GeneratedColumn<String> defaultProfileId = GeneratedColumn<String>(
+    'default_profile_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _autoSwitchMeta = const VerificationMeta(
+    'autoSwitch',
+  );
+  @override
+  late final GeneratedColumn<bool> autoSwitch = GeneratedColumn<bool>(
+    'auto_switch',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_switch" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    deviceId,
+    deviceName,
+    customName,
+    deviceType,
+    firstSeenAt,
+    lastSeenAt,
+    defaultProfileId,
+    autoSwitch,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'audio_devices';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AudioDeviceRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('device_name')) {
+      context.handle(
+        _deviceNameMeta,
+        deviceName.isAcceptableOrUnknown(data['device_name']!, _deviceNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceNameMeta);
+    }
+    if (data.containsKey('custom_name')) {
+      context.handle(
+        _customNameMeta,
+        customName.isAcceptableOrUnknown(data['custom_name']!, _customNameMeta),
+      );
+    }
+    if (data.containsKey('device_type')) {
+      context.handle(
+        _deviceTypeMeta,
+        deviceType.isAcceptableOrUnknown(data['device_type']!, _deviceTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceTypeMeta);
+    }
+    if (data.containsKey('first_seen_at')) {
+      context.handle(
+        _firstSeenAtMeta,
+        firstSeenAt.isAcceptableOrUnknown(
+          data['first_seen_at']!,
+          _firstSeenAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstSeenAtMeta);
+    }
+    if (data.containsKey('last_seen_at')) {
+      context.handle(
+        _lastSeenAtMeta,
+        lastSeenAt.isAcceptableOrUnknown(
+          data['last_seen_at']!,
+          _lastSeenAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSeenAtMeta);
+    }
+    if (data.containsKey('default_profile_id')) {
+      context.handle(
+        _defaultProfileIdMeta,
+        defaultProfileId.isAcceptableOrUnknown(
+          data['default_profile_id']!,
+          _defaultProfileIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('auto_switch')) {
+      context.handle(
+        _autoSwitchMeta,
+        autoSwitch.isAcceptableOrUnknown(data['auto_switch']!, _autoSwitchMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {deviceId};
+  @override
+  AudioDeviceRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AudioDeviceRow(
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+      deviceName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_name'],
+      )!,
+      customName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custom_name'],
+      ),
+      deviceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_type'],
+      )!,
+      firstSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_seen_at'],
+      )!,
+      lastSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_seen_at'],
+      )!,
+      defaultProfileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_profile_id'],
+      ),
+      autoSwitch: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_switch'],
+      )!,
+    );
+  }
+
+  @override
+  $AudioDevicesTable createAlias(String alias) {
+    return $AudioDevicesTable(attachedDatabase, alias);
+  }
+}
+
+class AudioDeviceRow extends DataClass implements Insertable<AudioDeviceRow> {
+  /// Stable platform identifier: mpv's device name (`coreaudio/<UID>`,
+  /// `wasapi/{…}`, `pulse/<sink>`) on desktop, type plus address on Android.
+  final String deviceId;
+
+  /// The name the platform last reported. Updated on every sighting, so a
+  /// device renamed in the system settings follows along.
+  final String deviceName;
+
+  /// The name the user gave it in flax, which wins over [deviceName].
+  final String? customName;
+
+  /// One of `AudioDeviceType`'s stored names: `bluetooth`, `usb_dac`, …
+  final String deviceType;
+  final DateTime firstSeenAt;
+  final DateTime lastSeenAt;
+
+  /// The profile restored when this device becomes the output. Kept here
+  /// rather than as a flag on each profile, so a device cannot end up with two
+  /// defaults.
+  final String? defaultProfileId;
+
+  /// Whether connecting this device restores its default profile.
+  final bool autoSwitch;
+  const AudioDeviceRow({
+    required this.deviceId,
+    required this.deviceName,
+    this.customName,
+    required this.deviceType,
+    required this.firstSeenAt,
+    required this.lastSeenAt,
+    this.defaultProfileId,
+    required this.autoSwitch,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['device_id'] = Variable<String>(deviceId);
+    map['device_name'] = Variable<String>(deviceName);
+    if (!nullToAbsent || customName != null) {
+      map['custom_name'] = Variable<String>(customName);
+    }
+    map['device_type'] = Variable<String>(deviceType);
+    map['first_seen_at'] = Variable<DateTime>(firstSeenAt);
+    map['last_seen_at'] = Variable<DateTime>(lastSeenAt);
+    if (!nullToAbsent || defaultProfileId != null) {
+      map['default_profile_id'] = Variable<String>(defaultProfileId);
+    }
+    map['auto_switch'] = Variable<bool>(autoSwitch);
+    return map;
+  }
+
+  AudioDevicesCompanion toCompanion(bool nullToAbsent) {
+    return AudioDevicesCompanion(
+      deviceId: Value(deviceId),
+      deviceName: Value(deviceName),
+      customName: customName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customName),
+      deviceType: Value(deviceType),
+      firstSeenAt: Value(firstSeenAt),
+      lastSeenAt: Value(lastSeenAt),
+      defaultProfileId: defaultProfileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultProfileId),
+      autoSwitch: Value(autoSwitch),
+    );
+  }
+
+  factory AudioDeviceRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AudioDeviceRow(
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      deviceName: serializer.fromJson<String>(json['deviceName']),
+      customName: serializer.fromJson<String?>(json['customName']),
+      deviceType: serializer.fromJson<String>(json['deviceType']),
+      firstSeenAt: serializer.fromJson<DateTime>(json['firstSeenAt']),
+      lastSeenAt: serializer.fromJson<DateTime>(json['lastSeenAt']),
+      defaultProfileId: serializer.fromJson<String?>(json['defaultProfileId']),
+      autoSwitch: serializer.fromJson<bool>(json['autoSwitch']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'deviceId': serializer.toJson<String>(deviceId),
+      'deviceName': serializer.toJson<String>(deviceName),
+      'customName': serializer.toJson<String?>(customName),
+      'deviceType': serializer.toJson<String>(deviceType),
+      'firstSeenAt': serializer.toJson<DateTime>(firstSeenAt),
+      'lastSeenAt': serializer.toJson<DateTime>(lastSeenAt),
+      'defaultProfileId': serializer.toJson<String?>(defaultProfileId),
+      'autoSwitch': serializer.toJson<bool>(autoSwitch),
+    };
+  }
+
+  AudioDeviceRow copyWith({
+    String? deviceId,
+    String? deviceName,
+    Value<String?> customName = const Value.absent(),
+    String? deviceType,
+    DateTime? firstSeenAt,
+    DateTime? lastSeenAt,
+    Value<String?> defaultProfileId = const Value.absent(),
+    bool? autoSwitch,
+  }) => AudioDeviceRow(
+    deviceId: deviceId ?? this.deviceId,
+    deviceName: deviceName ?? this.deviceName,
+    customName: customName.present ? customName.value : this.customName,
+    deviceType: deviceType ?? this.deviceType,
+    firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+    lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+    defaultProfileId: defaultProfileId.present
+        ? defaultProfileId.value
+        : this.defaultProfileId,
+    autoSwitch: autoSwitch ?? this.autoSwitch,
+  );
+  AudioDeviceRow copyWithCompanion(AudioDevicesCompanion data) {
+    return AudioDeviceRow(
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      deviceName: data.deviceName.present
+          ? data.deviceName.value
+          : this.deviceName,
+      customName: data.customName.present
+          ? data.customName.value
+          : this.customName,
+      deviceType: data.deviceType.present
+          ? data.deviceType.value
+          : this.deviceType,
+      firstSeenAt: data.firstSeenAt.present
+          ? data.firstSeenAt.value
+          : this.firstSeenAt,
+      lastSeenAt: data.lastSeenAt.present
+          ? data.lastSeenAt.value
+          : this.lastSeenAt,
+      defaultProfileId: data.defaultProfileId.present
+          ? data.defaultProfileId.value
+          : this.defaultProfileId,
+      autoSwitch: data.autoSwitch.present
+          ? data.autoSwitch.value
+          : this.autoSwitch,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AudioDeviceRow(')
+          ..write('deviceId: $deviceId, ')
+          ..write('deviceName: $deviceName, ')
+          ..write('customName: $customName, ')
+          ..write('deviceType: $deviceType, ')
+          ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('defaultProfileId: $defaultProfileId, ')
+          ..write('autoSwitch: $autoSwitch')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    deviceId,
+    deviceName,
+    customName,
+    deviceType,
+    firstSeenAt,
+    lastSeenAt,
+    defaultProfileId,
+    autoSwitch,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AudioDeviceRow &&
+          other.deviceId == this.deviceId &&
+          other.deviceName == this.deviceName &&
+          other.customName == this.customName &&
+          other.deviceType == this.deviceType &&
+          other.firstSeenAt == this.firstSeenAt &&
+          other.lastSeenAt == this.lastSeenAt &&
+          other.defaultProfileId == this.defaultProfileId &&
+          other.autoSwitch == this.autoSwitch);
+}
+
+class AudioDevicesCompanion extends UpdateCompanion<AudioDeviceRow> {
+  final Value<String> deviceId;
+  final Value<String> deviceName;
+  final Value<String?> customName;
+  final Value<String> deviceType;
+  final Value<DateTime> firstSeenAt;
+  final Value<DateTime> lastSeenAt;
+  final Value<String?> defaultProfileId;
+  final Value<bool> autoSwitch;
+  final Value<int> rowid;
+  const AudioDevicesCompanion({
+    this.deviceId = const Value.absent(),
+    this.deviceName = const Value.absent(),
+    this.customName = const Value.absent(),
+    this.deviceType = const Value.absent(),
+    this.firstSeenAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.defaultProfileId = const Value.absent(),
+    this.autoSwitch = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AudioDevicesCompanion.insert({
+    required String deviceId,
+    required String deviceName,
+    this.customName = const Value.absent(),
+    required String deviceType,
+    required DateTime firstSeenAt,
+    required DateTime lastSeenAt,
+    this.defaultProfileId = const Value.absent(),
+    this.autoSwitch = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : deviceId = Value(deviceId),
+       deviceName = Value(deviceName),
+       deviceType = Value(deviceType),
+       firstSeenAt = Value(firstSeenAt),
+       lastSeenAt = Value(lastSeenAt);
+  static Insertable<AudioDeviceRow> custom({
+    Expression<String>? deviceId,
+    Expression<String>? deviceName,
+    Expression<String>? customName,
+    Expression<String>? deviceType,
+    Expression<DateTime>? firstSeenAt,
+    Expression<DateTime>? lastSeenAt,
+    Expression<String>? defaultProfileId,
+    Expression<bool>? autoSwitch,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (deviceId != null) 'device_id': deviceId,
+      if (deviceName != null) 'device_name': deviceName,
+      if (customName != null) 'custom_name': customName,
+      if (deviceType != null) 'device_type': deviceType,
+      if (firstSeenAt != null) 'first_seen_at': firstSeenAt,
+      if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
+      if (defaultProfileId != null) 'default_profile_id': defaultProfileId,
+      if (autoSwitch != null) 'auto_switch': autoSwitch,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AudioDevicesCompanion copyWith({
+    Value<String>? deviceId,
+    Value<String>? deviceName,
+    Value<String?>? customName,
+    Value<String>? deviceType,
+    Value<DateTime>? firstSeenAt,
+    Value<DateTime>? lastSeenAt,
+    Value<String?>? defaultProfileId,
+    Value<bool>? autoSwitch,
+    Value<int>? rowid,
+  }) {
+    return AudioDevicesCompanion(
+      deviceId: deviceId ?? this.deviceId,
+      deviceName: deviceName ?? this.deviceName,
+      customName: customName ?? this.customName,
+      deviceType: deviceType ?? this.deviceType,
+      firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      defaultProfileId: defaultProfileId ?? this.defaultProfileId,
+      autoSwitch: autoSwitch ?? this.autoSwitch,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (deviceName.present) {
+      map['device_name'] = Variable<String>(deviceName.value);
+    }
+    if (customName.present) {
+      map['custom_name'] = Variable<String>(customName.value);
+    }
+    if (deviceType.present) {
+      map['device_type'] = Variable<String>(deviceType.value);
+    }
+    if (firstSeenAt.present) {
+      map['first_seen_at'] = Variable<DateTime>(firstSeenAt.value);
+    }
+    if (lastSeenAt.present) {
+      map['last_seen_at'] = Variable<DateTime>(lastSeenAt.value);
+    }
+    if (defaultProfileId.present) {
+      map['default_profile_id'] = Variable<String>(defaultProfileId.value);
+    }
+    if (autoSwitch.present) {
+      map['auto_switch'] = Variable<bool>(autoSwitch.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AudioDevicesCompanion(')
+          ..write('deviceId: $deviceId, ')
+          ..write('deviceName: $deviceName, ')
+          ..write('customName: $customName, ')
+          ..write('deviceType: $deviceType, ')
+          ..write('firstSeenAt: $firstSeenAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('defaultProfileId: $defaultProfileId, ')
+          ..write('autoSwitch: $autoSwitch, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DeviceEqProfilesTable extends DeviceEqProfiles
+    with TableInfo<$DeviceEqProfilesTable, DeviceEqProfileRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DeviceEqProfilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES audio_devices (device_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _profileNameMeta = const VerificationMeta(
+    'profileName',
+  );
+  @override
+  late final GeneratedColumn<String> profileName = GeneratedColumn<String>(
+    'profile_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _engineMeta = const VerificationMeta('engine');
+  @override
+  late final GeneratedColumn<String> engine = GeneratedColumn<String>(
+    'engine',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _presetNameMeta = const VerificationMeta(
+    'presetName',
+  );
+  @override
+  late final GeneratedColumn<String> presetName = GeneratedColumn<String>(
+    'preset_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bandGainsJsonMeta = const VerificationMeta(
+    'bandGainsJson',
+  );
+  @override
+  late final GeneratedColumn<String> bandGainsJson = GeneratedColumn<String>(
+    'band_gains_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _autoEqProfileJsonMeta = const VerificationMeta(
+    'autoEqProfileJson',
+  );
+  @override
+  late final GeneratedColumn<String> autoEqProfileJson =
+      GeneratedColumn<String>(
+        'auto_eq_profile_json',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _preampGainMeta = const VerificationMeta(
+    'preampGain',
+  );
+  @override
+  late final GeneratedColumn<double> preampGain = GeneratedColumn<double>(
+    'preamp_gain',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _eqEnabledMeta = const VerificationMeta(
+    'eqEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> eqEnabled = GeneratedColumn<bool>(
+    'eq_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("eq_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    deviceId,
+    profileName,
+    engine,
+    presetName,
+    bandGainsJson,
+    autoEqProfileJson,
+    preampGain,
+    eqEnabled,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'device_eq_profiles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DeviceEqProfileRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('profile_name')) {
+      context.handle(
+        _profileNameMeta,
+        profileName.isAcceptableOrUnknown(
+          data['profile_name']!,
+          _profileNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_profileNameMeta);
+    }
+    if (data.containsKey('engine')) {
+      context.handle(
+        _engineMeta,
+        engine.isAcceptableOrUnknown(data['engine']!, _engineMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_engineMeta);
+    }
+    if (data.containsKey('preset_name')) {
+      context.handle(
+        _presetNameMeta,
+        presetName.isAcceptableOrUnknown(data['preset_name']!, _presetNameMeta),
+      );
+    }
+    if (data.containsKey('band_gains_json')) {
+      context.handle(
+        _bandGainsJsonMeta,
+        bandGainsJson.isAcceptableOrUnknown(
+          data['band_gains_json']!,
+          _bandGainsJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_bandGainsJsonMeta);
+    }
+    if (data.containsKey('auto_eq_profile_json')) {
+      context.handle(
+        _autoEqProfileJsonMeta,
+        autoEqProfileJson.isAcceptableOrUnknown(
+          data['auto_eq_profile_json']!,
+          _autoEqProfileJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('preamp_gain')) {
+      context.handle(
+        _preampGainMeta,
+        preampGain.isAcceptableOrUnknown(data['preamp_gain']!, _preampGainMeta),
+      );
+    }
+    if (data.containsKey('eq_enabled')) {
+      context.handle(
+        _eqEnabledMeta,
+        eqEnabled.isAcceptableOrUnknown(data['eq_enabled']!, _eqEnabledMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DeviceEqProfileRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DeviceEqProfileRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+      profileName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile_name'],
+      )!,
+      engine: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}engine'],
+      )!,
+      presetName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}preset_name'],
+      ),
+      bandGainsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}band_gains_json'],
+      )!,
+      autoEqProfileJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}auto_eq_profile_json'],
+      ),
+      preampGain: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}preamp_gain'],
+      )!,
+      eqEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}eq_enabled'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DeviceEqProfilesTable createAlias(String alias) {
+    return $DeviceEqProfilesTable(attachedDatabase, alias);
+  }
+}
+
+class DeviceEqProfileRow extends DataClass
+    implements Insertable<DeviceEqProfileRow> {
+  final String id;
+  final String deviceId;
+  final String profileName;
+
+  /// `EqEngine.name`.
+  final String engine;
+  final String? presetName;
+
+  /// JSON array of the 18 band gains in dB.
+  final String bandGainsJson;
+
+  /// `AutoEqProfile.toJson()` — enough to find its curve again.
+  final String? autoEqProfileJson;
+  final double preampGain;
+  final bool eqEnabled;
+  final DateTime createdAt;
+  const DeviceEqProfileRow({
+    required this.id,
+    required this.deviceId,
+    required this.profileName,
+    required this.engine,
+    this.presetName,
+    required this.bandGainsJson,
+    this.autoEqProfileJson,
+    required this.preampGain,
+    required this.eqEnabled,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['device_id'] = Variable<String>(deviceId);
+    map['profile_name'] = Variable<String>(profileName);
+    map['engine'] = Variable<String>(engine);
+    if (!nullToAbsent || presetName != null) {
+      map['preset_name'] = Variable<String>(presetName);
+    }
+    map['band_gains_json'] = Variable<String>(bandGainsJson);
+    if (!nullToAbsent || autoEqProfileJson != null) {
+      map['auto_eq_profile_json'] = Variable<String>(autoEqProfileJson);
+    }
+    map['preamp_gain'] = Variable<double>(preampGain);
+    map['eq_enabled'] = Variable<bool>(eqEnabled);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DeviceEqProfilesCompanion toCompanion(bool nullToAbsent) {
+    return DeviceEqProfilesCompanion(
+      id: Value(id),
+      deviceId: Value(deviceId),
+      profileName: Value(profileName),
+      engine: Value(engine),
+      presetName: presetName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(presetName),
+      bandGainsJson: Value(bandGainsJson),
+      autoEqProfileJson: autoEqProfileJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(autoEqProfileJson),
+      preampGain: Value(preampGain),
+      eqEnabled: Value(eqEnabled),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DeviceEqProfileRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DeviceEqProfileRow(
+      id: serializer.fromJson<String>(json['id']),
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      profileName: serializer.fromJson<String>(json['profileName']),
+      engine: serializer.fromJson<String>(json['engine']),
+      presetName: serializer.fromJson<String?>(json['presetName']),
+      bandGainsJson: serializer.fromJson<String>(json['bandGainsJson']),
+      autoEqProfileJson: serializer.fromJson<String?>(
+        json['autoEqProfileJson'],
+      ),
+      preampGain: serializer.fromJson<double>(json['preampGain']),
+      eqEnabled: serializer.fromJson<bool>(json['eqEnabled']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'deviceId': serializer.toJson<String>(deviceId),
+      'profileName': serializer.toJson<String>(profileName),
+      'engine': serializer.toJson<String>(engine),
+      'presetName': serializer.toJson<String?>(presetName),
+      'bandGainsJson': serializer.toJson<String>(bandGainsJson),
+      'autoEqProfileJson': serializer.toJson<String?>(autoEqProfileJson),
+      'preampGain': serializer.toJson<double>(preampGain),
+      'eqEnabled': serializer.toJson<bool>(eqEnabled),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DeviceEqProfileRow copyWith({
+    String? id,
+    String? deviceId,
+    String? profileName,
+    String? engine,
+    Value<String?> presetName = const Value.absent(),
+    String? bandGainsJson,
+    Value<String?> autoEqProfileJson = const Value.absent(),
+    double? preampGain,
+    bool? eqEnabled,
+    DateTime? createdAt,
+  }) => DeviceEqProfileRow(
+    id: id ?? this.id,
+    deviceId: deviceId ?? this.deviceId,
+    profileName: profileName ?? this.profileName,
+    engine: engine ?? this.engine,
+    presetName: presetName.present ? presetName.value : this.presetName,
+    bandGainsJson: bandGainsJson ?? this.bandGainsJson,
+    autoEqProfileJson: autoEqProfileJson.present
+        ? autoEqProfileJson.value
+        : this.autoEqProfileJson,
+    preampGain: preampGain ?? this.preampGain,
+    eqEnabled: eqEnabled ?? this.eqEnabled,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DeviceEqProfileRow copyWithCompanion(DeviceEqProfilesCompanion data) {
+    return DeviceEqProfileRow(
+      id: data.id.present ? data.id.value : this.id,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      profileName: data.profileName.present
+          ? data.profileName.value
+          : this.profileName,
+      engine: data.engine.present ? data.engine.value : this.engine,
+      presetName: data.presetName.present
+          ? data.presetName.value
+          : this.presetName,
+      bandGainsJson: data.bandGainsJson.present
+          ? data.bandGainsJson.value
+          : this.bandGainsJson,
+      autoEqProfileJson: data.autoEqProfileJson.present
+          ? data.autoEqProfileJson.value
+          : this.autoEqProfileJson,
+      preampGain: data.preampGain.present
+          ? data.preampGain.value
+          : this.preampGain,
+      eqEnabled: data.eqEnabled.present ? data.eqEnabled.value : this.eqEnabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceEqProfileRow(')
+          ..write('id: $id, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('profileName: $profileName, ')
+          ..write('engine: $engine, ')
+          ..write('presetName: $presetName, ')
+          ..write('bandGainsJson: $bandGainsJson, ')
+          ..write('autoEqProfileJson: $autoEqProfileJson, ')
+          ..write('preampGain: $preampGain, ')
+          ..write('eqEnabled: $eqEnabled, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    deviceId,
+    profileName,
+    engine,
+    presetName,
+    bandGainsJson,
+    autoEqProfileJson,
+    preampGain,
+    eqEnabled,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DeviceEqProfileRow &&
+          other.id == this.id &&
+          other.deviceId == this.deviceId &&
+          other.profileName == this.profileName &&
+          other.engine == this.engine &&
+          other.presetName == this.presetName &&
+          other.bandGainsJson == this.bandGainsJson &&
+          other.autoEqProfileJson == this.autoEqProfileJson &&
+          other.preampGain == this.preampGain &&
+          other.eqEnabled == this.eqEnabled &&
+          other.createdAt == this.createdAt);
+}
+
+class DeviceEqProfilesCompanion extends UpdateCompanion<DeviceEqProfileRow> {
+  final Value<String> id;
+  final Value<String> deviceId;
+  final Value<String> profileName;
+  final Value<String> engine;
+  final Value<String?> presetName;
+  final Value<String> bandGainsJson;
+  final Value<String?> autoEqProfileJson;
+  final Value<double> preampGain;
+  final Value<bool> eqEnabled;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const DeviceEqProfilesCompanion({
+    this.id = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.profileName = const Value.absent(),
+    this.engine = const Value.absent(),
+    this.presetName = const Value.absent(),
+    this.bandGainsJson = const Value.absent(),
+    this.autoEqProfileJson = const Value.absent(),
+    this.preampGain = const Value.absent(),
+    this.eqEnabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DeviceEqProfilesCompanion.insert({
+    required String id,
+    required String deviceId,
+    required String profileName,
+    required String engine,
+    this.presetName = const Value.absent(),
+    required String bandGainsJson,
+    this.autoEqProfileJson = const Value.absent(),
+    this.preampGain = const Value.absent(),
+    this.eqEnabled = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       deviceId = Value(deviceId),
+       profileName = Value(profileName),
+       engine = Value(engine),
+       bandGainsJson = Value(bandGainsJson),
+       createdAt = Value(createdAt);
+  static Insertable<DeviceEqProfileRow> custom({
+    Expression<String>? id,
+    Expression<String>? deviceId,
+    Expression<String>? profileName,
+    Expression<String>? engine,
+    Expression<String>? presetName,
+    Expression<String>? bandGainsJson,
+    Expression<String>? autoEqProfileJson,
+    Expression<double>? preampGain,
+    Expression<bool>? eqEnabled,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (deviceId != null) 'device_id': deviceId,
+      if (profileName != null) 'profile_name': profileName,
+      if (engine != null) 'engine': engine,
+      if (presetName != null) 'preset_name': presetName,
+      if (bandGainsJson != null) 'band_gains_json': bandGainsJson,
+      if (autoEqProfileJson != null) 'auto_eq_profile_json': autoEqProfileJson,
+      if (preampGain != null) 'preamp_gain': preampGain,
+      if (eqEnabled != null) 'eq_enabled': eqEnabled,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DeviceEqProfilesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? deviceId,
+    Value<String>? profileName,
+    Value<String>? engine,
+    Value<String?>? presetName,
+    Value<String>? bandGainsJson,
+    Value<String?>? autoEqProfileJson,
+    Value<double>? preampGain,
+    Value<bool>? eqEnabled,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return DeviceEqProfilesCompanion(
+      id: id ?? this.id,
+      deviceId: deviceId ?? this.deviceId,
+      profileName: profileName ?? this.profileName,
+      engine: engine ?? this.engine,
+      presetName: presetName ?? this.presetName,
+      bandGainsJson: bandGainsJson ?? this.bandGainsJson,
+      autoEqProfileJson: autoEqProfileJson ?? this.autoEqProfileJson,
+      preampGain: preampGain ?? this.preampGain,
+      eqEnabled: eqEnabled ?? this.eqEnabled,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (profileName.present) {
+      map['profile_name'] = Variable<String>(profileName.value);
+    }
+    if (engine.present) {
+      map['engine'] = Variable<String>(engine.value);
+    }
+    if (presetName.present) {
+      map['preset_name'] = Variable<String>(presetName.value);
+    }
+    if (bandGainsJson.present) {
+      map['band_gains_json'] = Variable<String>(bandGainsJson.value);
+    }
+    if (autoEqProfileJson.present) {
+      map['auto_eq_profile_json'] = Variable<String>(autoEqProfileJson.value);
+    }
+    if (preampGain.present) {
+      map['preamp_gain'] = Variable<double>(preampGain.value);
+    }
+    if (eqEnabled.present) {
+      map['eq_enabled'] = Variable<bool>(eqEnabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DeviceEqProfilesCompanion(')
+          ..write('id: $id, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('profileName: $profileName, ')
+          ..write('engine: $engine, ')
+          ..write('presetName: $presetName, ')
+          ..write('bandGainsJson: $bandGainsJson, ')
+          ..write('autoEqProfileJson: $autoEqProfileJson, ')
+          ..write('preampGain: $preampGain, ')
+          ..write('eqEnabled: $eqEnabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$FlaxDatabase extends GeneratedDatabase {
   _$FlaxDatabase(QueryExecutor e) : super(e);
   $FlaxDatabaseManager get managers => $FlaxDatabaseManager(this);
@@ -6404,6 +7605,10 @@ abstract class _$FlaxDatabase extends GeneratedDatabase {
   );
   late final $SyncStatesTable syncStates = $SyncStatesTable(this);
   late final $PendingScrobblesTable pendingScrobbles = $PendingScrobblesTable(
+    this,
+  );
+  late final $AudioDevicesTable audioDevices = $AudioDevicesTable(this);
+  late final $DeviceEqProfilesTable deviceEqProfiles = $DeviceEqProfilesTable(
     this,
   );
   late final Index artistSort = Index(
@@ -6426,6 +7631,10 @@ abstract class _$FlaxDatabase extends GeneratedDatabase {
     'song_title',
     'CREATE INDEX song_title ON songs (server_id, title)',
   );
+  late final Index deviceEqProfileDevice = Index(
+    'device_eq_profile_device',
+    'CREATE INDEX device_eq_profile_device ON device_eq_profiles (device_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6439,12 +7648,25 @@ abstract class _$FlaxDatabase extends GeneratedDatabase {
     playlistEntries,
     syncStates,
     pendingScrobbles,
+    audioDevices,
+    deviceEqProfiles,
     artistSort,
     albumArtist,
     albumName,
     songAlbum,
     songTitle,
+    deviceEqProfileDevice,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'audio_devices',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('device_eq_profiles', kind: UpdateKind.delete)],
+    ),
+  ]);
 }
 
 typedef $$ArtistsTableCreateCompanionBuilder =
@@ -9408,6 +10630,821 @@ typedef $$PendingScrobblesTableProcessedTableManager =
       PendingScrobbleRow,
       PrefetchHooks Function()
     >;
+typedef $$AudioDevicesTableCreateCompanionBuilder =
+    AudioDevicesCompanion Function({
+      required String deviceId,
+      required String deviceName,
+      Value<String?> customName,
+      required String deviceType,
+      required DateTime firstSeenAt,
+      required DateTime lastSeenAt,
+      Value<String?> defaultProfileId,
+      Value<bool> autoSwitch,
+      Value<int> rowid,
+    });
+typedef $$AudioDevicesTableUpdateCompanionBuilder =
+    AudioDevicesCompanion Function({
+      Value<String> deviceId,
+      Value<String> deviceName,
+      Value<String?> customName,
+      Value<String> deviceType,
+      Value<DateTime> firstSeenAt,
+      Value<DateTime> lastSeenAt,
+      Value<String?> defaultProfileId,
+      Value<bool> autoSwitch,
+      Value<int> rowid,
+    });
+
+final class $$AudioDevicesTableReferences
+    extends BaseReferences<_$FlaxDatabase, $AudioDevicesTable, AudioDeviceRow> {
+  $$AudioDevicesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$DeviceEqProfilesTable, List<DeviceEqProfileRow>>
+  _deviceEqProfilesRefsTable(_$FlaxDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.deviceEqProfiles,
+        aliasName: 'audio_devices__device_id__device_eq_profiles__device_id',
+      );
+
+  $$DeviceEqProfilesTableProcessedTableManager get deviceEqProfilesRefs {
+    final manager =
+        $$DeviceEqProfilesTableTableManager($_db, $_db.deviceEqProfiles).filter(
+          (f) =>
+              f.deviceId.deviceId.sqlEquals($_itemColumn<String>('device_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _deviceEqProfilesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$AudioDevicesTableFilterComposer
+    extends Composer<_$FlaxDatabase, $AudioDevicesTable> {
+  $$AudioDevicesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceName => $composableBuilder(
+    column: $table.deviceName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customName => $composableBuilder(
+    column: $table.customName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceType => $composableBuilder(
+    column: $table.deviceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultProfileId => $composableBuilder(
+    column: $table.defaultProfileId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoSwitch => $composableBuilder(
+    column: $table.autoSwitch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> deviceEqProfilesRefs(
+    Expression<bool> Function($$DeviceEqProfilesTableFilterComposer f) f,
+  ) {
+    final $$DeviceEqProfilesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.deviceId,
+      referencedTable: $db.deviceEqProfiles,
+      getReferencedColumn: (t) => t.deviceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DeviceEqProfilesTableFilterComposer(
+            $db: $db,
+            $table: $db.deviceEqProfiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$AudioDevicesTableOrderingComposer
+    extends Composer<_$FlaxDatabase, $AudioDevicesTable> {
+  $$AudioDevicesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceName => $composableBuilder(
+    column: $table.deviceName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customName => $composableBuilder(
+    column: $table.customName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceType => $composableBuilder(
+    column: $table.deviceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultProfileId => $composableBuilder(
+    column: $table.defaultProfileId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get autoSwitch => $composableBuilder(
+    column: $table.autoSwitch,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AudioDevicesTableAnnotationComposer
+    extends Composer<_$FlaxDatabase, $AudioDevicesTable> {
+  $$AudioDevicesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceName => $composableBuilder(
+    column: $table.deviceName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customName => $composableBuilder(
+    column: $table.customName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get deviceType => $composableBuilder(
+    column: $table.deviceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get defaultProfileId => $composableBuilder(
+    column: $table.defaultProfileId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get autoSwitch => $composableBuilder(
+    column: $table.autoSwitch,
+    builder: (column) => column,
+  );
+
+  Expression<T> deviceEqProfilesRefs<T extends Object>(
+    Expression<T> Function($$DeviceEqProfilesTableAnnotationComposer a) f,
+  ) {
+    final $$DeviceEqProfilesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.deviceId,
+      referencedTable: $db.deviceEqProfiles,
+      getReferencedColumn: (t) => t.deviceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DeviceEqProfilesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.deviceEqProfiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$AudioDevicesTableTableManager
+    extends
+        RootTableManager<
+          _$FlaxDatabase,
+          $AudioDevicesTable,
+          AudioDeviceRow,
+          $$AudioDevicesTableFilterComposer,
+          $$AudioDevicesTableOrderingComposer,
+          $$AudioDevicesTableAnnotationComposer,
+          $$AudioDevicesTableCreateCompanionBuilder,
+          $$AudioDevicesTableUpdateCompanionBuilder,
+          (AudioDeviceRow, $$AudioDevicesTableReferences),
+          AudioDeviceRow,
+          PrefetchHooks Function({bool deviceEqProfilesRefs})
+        > {
+  $$AudioDevicesTableTableManager(_$FlaxDatabase db, $AudioDevicesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AudioDevicesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AudioDevicesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AudioDevicesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> deviceId = const Value.absent(),
+                Value<String> deviceName = const Value.absent(),
+                Value<String?> customName = const Value.absent(),
+                Value<String> deviceType = const Value.absent(),
+                Value<DateTime> firstSeenAt = const Value.absent(),
+                Value<DateTime> lastSeenAt = const Value.absent(),
+                Value<String?> defaultProfileId = const Value.absent(),
+                Value<bool> autoSwitch = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AudioDevicesCompanion(
+                deviceId: deviceId,
+                deviceName: deviceName,
+                customName: customName,
+                deviceType: deviceType,
+                firstSeenAt: firstSeenAt,
+                lastSeenAt: lastSeenAt,
+                defaultProfileId: defaultProfileId,
+                autoSwitch: autoSwitch,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String deviceId,
+                required String deviceName,
+                Value<String?> customName = const Value.absent(),
+                required String deviceType,
+                required DateTime firstSeenAt,
+                required DateTime lastSeenAt,
+                Value<String?> defaultProfileId = const Value.absent(),
+                Value<bool> autoSwitch = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AudioDevicesCompanion.insert(
+                deviceId: deviceId,
+                deviceName: deviceName,
+                customName: customName,
+                deviceType: deviceType,
+                firstSeenAt: firstSeenAt,
+                lastSeenAt: lastSeenAt,
+                defaultProfileId: defaultProfileId,
+                autoSwitch: autoSwitch,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$AudioDevicesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({deviceEqProfilesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (deviceEqProfilesRefs) db.deviceEqProfiles,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (deviceEqProfilesRefs)
+                    await $_getPrefetchedData<
+                      AudioDeviceRow,
+                      $AudioDevicesTable,
+                      DeviceEqProfileRow
+                    >(
+                      currentTable: table,
+                      referencedTable: $$AudioDevicesTableReferences
+                          ._deviceEqProfilesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$AudioDevicesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).deviceEqProfilesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.deviceId == item.deviceId,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$AudioDevicesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$FlaxDatabase,
+      $AudioDevicesTable,
+      AudioDeviceRow,
+      $$AudioDevicesTableFilterComposer,
+      $$AudioDevicesTableOrderingComposer,
+      $$AudioDevicesTableAnnotationComposer,
+      $$AudioDevicesTableCreateCompanionBuilder,
+      $$AudioDevicesTableUpdateCompanionBuilder,
+      (AudioDeviceRow, $$AudioDevicesTableReferences),
+      AudioDeviceRow,
+      PrefetchHooks Function({bool deviceEqProfilesRefs})
+    >;
+typedef $$DeviceEqProfilesTableCreateCompanionBuilder =
+    DeviceEqProfilesCompanion Function({
+      required String id,
+      required String deviceId,
+      required String profileName,
+      required String engine,
+      Value<String?> presetName,
+      required String bandGainsJson,
+      Value<String?> autoEqProfileJson,
+      Value<double> preampGain,
+      Value<bool> eqEnabled,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$DeviceEqProfilesTableUpdateCompanionBuilder =
+    DeviceEqProfilesCompanion Function({
+      Value<String> id,
+      Value<String> deviceId,
+      Value<String> profileName,
+      Value<String> engine,
+      Value<String?> presetName,
+      Value<String> bandGainsJson,
+      Value<String?> autoEqProfileJson,
+      Value<double> preampGain,
+      Value<bool> eqEnabled,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+final class $$DeviceEqProfilesTableReferences
+    extends
+        BaseReferences<
+          _$FlaxDatabase,
+          $DeviceEqProfilesTable,
+          DeviceEqProfileRow
+        > {
+  $$DeviceEqProfilesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $AudioDevicesTable _deviceIdTable(_$FlaxDatabase db) => db.audioDevices
+      .createAlias('device_eq_profiles__device_id__audio_devices__device_id');
+
+  $$AudioDevicesTableProcessedTableManager get deviceId {
+    final $_column = $_itemColumn<String>('device_id')!;
+
+    final manager = $$AudioDevicesTableTableManager(
+      $_db,
+      $_db.audioDevices,
+    ).filter((f) => f.deviceId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_deviceIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DeviceEqProfilesTableFilterComposer
+    extends Composer<_$FlaxDatabase, $DeviceEqProfilesTable> {
+  $$DeviceEqProfilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get profileName => $composableBuilder(
+    column: $table.profileName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get engine => $composableBuilder(
+    column: $table.engine,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get presetName => $composableBuilder(
+    column: $table.presetName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bandGainsJson => $composableBuilder(
+    column: $table.bandGainsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get autoEqProfileJson => $composableBuilder(
+    column: $table.autoEqProfileJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get preampGain => $composableBuilder(
+    column: $table.preampGain,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get eqEnabled => $composableBuilder(
+    column: $table.eqEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$AudioDevicesTableFilterComposer get deviceId {
+    final $$AudioDevicesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.deviceId,
+      referencedTable: $db.audioDevices,
+      getReferencedColumn: (t) => t.deviceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AudioDevicesTableFilterComposer(
+            $db: $db,
+            $table: $db.audioDevices,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DeviceEqProfilesTableOrderingComposer
+    extends Composer<_$FlaxDatabase, $DeviceEqProfilesTable> {
+  $$DeviceEqProfilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get profileName => $composableBuilder(
+    column: $table.profileName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get engine => $composableBuilder(
+    column: $table.engine,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get presetName => $composableBuilder(
+    column: $table.presetName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bandGainsJson => $composableBuilder(
+    column: $table.bandGainsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get autoEqProfileJson => $composableBuilder(
+    column: $table.autoEqProfileJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get preampGain => $composableBuilder(
+    column: $table.preampGain,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get eqEnabled => $composableBuilder(
+    column: $table.eqEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$AudioDevicesTableOrderingComposer get deviceId {
+    final $$AudioDevicesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.deviceId,
+      referencedTable: $db.audioDevices,
+      getReferencedColumn: (t) => t.deviceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AudioDevicesTableOrderingComposer(
+            $db: $db,
+            $table: $db.audioDevices,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DeviceEqProfilesTableAnnotationComposer
+    extends Composer<_$FlaxDatabase, $DeviceEqProfilesTable> {
+  $$DeviceEqProfilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get profileName => $composableBuilder(
+    column: $table.profileName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get engine =>
+      $composableBuilder(column: $table.engine, builder: (column) => column);
+
+  GeneratedColumn<String> get presetName => $composableBuilder(
+    column: $table.presetName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get bandGainsJson => $composableBuilder(
+    column: $table.bandGainsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get autoEqProfileJson => $composableBuilder(
+    column: $table.autoEqProfileJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get preampGain => $composableBuilder(
+    column: $table.preampGain,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get eqEnabled =>
+      $composableBuilder(column: $table.eqEnabled, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$AudioDevicesTableAnnotationComposer get deviceId {
+    final $$AudioDevicesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.deviceId,
+      referencedTable: $db.audioDevices,
+      getReferencedColumn: (t) => t.deviceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AudioDevicesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.audioDevices,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DeviceEqProfilesTableTableManager
+    extends
+        RootTableManager<
+          _$FlaxDatabase,
+          $DeviceEqProfilesTable,
+          DeviceEqProfileRow,
+          $$DeviceEqProfilesTableFilterComposer,
+          $$DeviceEqProfilesTableOrderingComposer,
+          $$DeviceEqProfilesTableAnnotationComposer,
+          $$DeviceEqProfilesTableCreateCompanionBuilder,
+          $$DeviceEqProfilesTableUpdateCompanionBuilder,
+          (DeviceEqProfileRow, $$DeviceEqProfilesTableReferences),
+          DeviceEqProfileRow,
+          PrefetchHooks Function({bool deviceId})
+        > {
+  $$DeviceEqProfilesTableTableManager(
+    _$FlaxDatabase db,
+    $DeviceEqProfilesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DeviceEqProfilesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DeviceEqProfilesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DeviceEqProfilesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> deviceId = const Value.absent(),
+                Value<String> profileName = const Value.absent(),
+                Value<String> engine = const Value.absent(),
+                Value<String?> presetName = const Value.absent(),
+                Value<String> bandGainsJson = const Value.absent(),
+                Value<String?> autoEqProfileJson = const Value.absent(),
+                Value<double> preampGain = const Value.absent(),
+                Value<bool> eqEnabled = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceEqProfilesCompanion(
+                id: id,
+                deviceId: deviceId,
+                profileName: profileName,
+                engine: engine,
+                presetName: presetName,
+                bandGainsJson: bandGainsJson,
+                autoEqProfileJson: autoEqProfileJson,
+                preampGain: preampGain,
+                eqEnabled: eqEnabled,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String deviceId,
+                required String profileName,
+                required String engine,
+                Value<String?> presetName = const Value.absent(),
+                required String bandGainsJson,
+                Value<String?> autoEqProfileJson = const Value.absent(),
+                Value<double> preampGain = const Value.absent(),
+                Value<bool> eqEnabled = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DeviceEqProfilesCompanion.insert(
+                id: id,
+                deviceId: deviceId,
+                profileName: profileName,
+                engine: engine,
+                presetName: presetName,
+                bandGainsJson: bandGainsJson,
+                autoEqProfileJson: autoEqProfileJson,
+                preampGain: preampGain,
+                eqEnabled: eqEnabled,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DeviceEqProfilesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({deviceId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (deviceId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.deviceId,
+                                referencedTable:
+                                    $$DeviceEqProfilesTableReferences
+                                        ._deviceIdTable(db),
+                                referencedColumn:
+                                    $$DeviceEqProfilesTableReferences
+                                        ._deviceIdTable(db)
+                                        .deviceId,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DeviceEqProfilesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$FlaxDatabase,
+      $DeviceEqProfilesTable,
+      DeviceEqProfileRow,
+      $$DeviceEqProfilesTableFilterComposer,
+      $$DeviceEqProfilesTableOrderingComposer,
+      $$DeviceEqProfilesTableAnnotationComposer,
+      $$DeviceEqProfilesTableCreateCompanionBuilder,
+      $$DeviceEqProfilesTableUpdateCompanionBuilder,
+      (DeviceEqProfileRow, $$DeviceEqProfilesTableReferences),
+      DeviceEqProfileRow,
+      PrefetchHooks Function({bool deviceId})
+    >;
 
 class $FlaxDatabaseManager {
   final _$FlaxDatabase _db;
@@ -9428,4 +11465,8 @@ class $FlaxDatabaseManager {
       $$SyncStatesTableTableManager(_db, _db.syncStates);
   $$PendingScrobblesTableTableManager get pendingScrobbles =>
       $$PendingScrobblesTableTableManager(_db, _db.pendingScrobbles);
+  $$AudioDevicesTableTableManager get audioDevices =>
+      $$AudioDevicesTableTableManager(_db, _db.audioDevices);
+  $$DeviceEqProfilesTableTableManager get deviceEqProfiles =>
+      $$DeviceEqProfilesTableTableManager(_db, _db.deviceEqProfiles);
 }

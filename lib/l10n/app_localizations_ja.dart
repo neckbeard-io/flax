@@ -507,4 +507,130 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get androidAutoTabFavorites => 'お気に入り';
+
+  @override
+  String get audioDevices => 'オーディオデバイス';
+
+  @override
+  String audioDevicesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 台のデバイス',
+      zero: 'デバイスはまだありません',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get audioDevicesEmpty => 'デバイスはまだありません。Flax で再生すると、使用中の出力先がここに追加されます。';
+
+  @override
+  String get audioDeviceConnected => '接続中';
+
+  @override
+  String audioDeviceLastUsed(String date) {
+    return '最終使用: $date';
+  }
+
+  @override
+  String eqProfileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 個のプロファイル',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get audioDeviceAutoSwitch => 'EQ を自動で切り替える';
+
+  @override
+  String get audioDeviceAutoSwitchSubtitle => 'このデバイスが出力先になると既定のプロファイルを復元します';
+
+  @override
+  String get audioDeviceDefaultProfile => '既定のプロファイル';
+
+  @override
+  String get audioDeviceRename => 'デバイス名を変更';
+
+  @override
+  String get deviceNameLabel => '名前';
+
+  @override
+  String get audioDeviceRenameHelper => 'システムの名前を使う場合は空欄にしてください';
+
+  @override
+  String get audioDeviceForget => 'デバイスを削除';
+
+  @override
+  String audioDeviceForgetTitle(String name) {
+    return '$name を削除しますか？';
+  }
+
+  @override
+  String get audioDeviceForgetMessage =>
+      'EQ プロファイルも削除されます。次回使用時に、EQ なしの状態で再び追加されます。';
+
+  @override
+  String get audioDeviceForgetInUse => '使用中のデバイスは削除できません';
+
+  @override
+  String get forget => '削除';
+
+  @override
+  String get rename => '名前を変更';
+
+  @override
+  String get eqOutputDevice => '出力デバイス';
+
+  @override
+  String get eqProfile => 'プロファイル';
+
+  @override
+  String eqProfileDefaultName(String name) {
+    return '$name（既定）';
+  }
+
+  @override
+  String get eqNoProfile => 'プロファイルなし';
+
+  @override
+  String get eqAutoSwitch => '自動切り替え';
+
+  @override
+  String get eqAutoSwitchTooltip => 'このデバイスが出力先になったら既定のプロファイルに切り替えます';
+
+  @override
+  String get eqProfileActions => 'プロファイルの操作';
+
+  @override
+  String get eqProfileNew => '新しいプロファイル…';
+
+  @override
+  String get eqProfileNewHelper => '現在の設定のコピーから始まります。変更は使用中のプロファイルにその都度保存されます。';
+
+  @override
+  String get eqProfileRename => 'プロファイル名を変更…';
+
+  @override
+  String get eqProfileMakeDefault => '既定に設定';
+
+  @override
+  String get eqProfileDelete => 'プロファイルを削除';
+
+  @override
+  String eqProfileDeleteTitle(String name) {
+    return '$name を削除しますか？';
+  }
+
+  @override
+  String get eqProfileNameLabel => 'プロファイル名';
+
+  @override
+  String get eqProfileKeepOne => 'デバイスには少なくとも 1 つのプロファイルが必要です';
+
+  @override
+  String get audioDevicesManage => 'デバイスを管理';
 }
