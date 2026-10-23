@@ -294,27 +294,48 @@ class StorageManager {
     }
   }
 
-  /// Migrates all cache files from [sourcePath] to [targetPath].
+  /// Copies all cache files from [sourcePath] to [targetPath], leaving the
+  /// source untouched.
+  ///
+  /// The caller deletes the source only once the new location is recorded, so
+  /// a migration cut short — the app killed, the card pulled — loses nothing:
+  /// the old location is still complete and still the one in use. Moving the
+  /// files one by one instead once stranded every file moved before the
+  /// interruption on a location flax no longer looked at.
+  ///
+  /// Every copy is asynchronous. Synchronous copies held the UI isolate for
+  /// the whole migration, which froze the progress dialog for minutes on a
+  /// slow SD card, long enough for Android to report flax as not responding.
+  /// Each file is written under a `.part` name and renamed when complete, so a
+  /// file at its real name in the target is never a partial copy.
   static Future<bool> migrateCacheDirectory({
     required String sourcePath,
     required String targetPath,
     void Function(double fraction, String status)? onProgress,
   }) async {
     final sourceDir = Directory(sourcePath);
-    if (!sourceDir.existsSync()) return true;
-
-    final targetDir = Directory(targetPath);
-    if (!targetDir.existsSync()) {
-      await targetDir.create(recursive: true);
-    }
+    if (!await sourceDir.exists()) return true;
 
     try {
       final allFiles = <File>[];
-      for (final entity in sourceDir.listSync(
+      var totalBytes = 0;
+      await for (final entity in sourceDir.list(
         recursive: true,
         followLinks: false,
       )) {
-        if (entity is File) allFiles.add(entity);
+        if (entity is File) {
+          allFiles.add(entity);
+          totalBytes += await entity.length();
+        }
+      }
+
+      await Directory(targetPath).create(recursive: true);
+      if (!isDiskSpaceSafe(targetPath, additionalBytes: totalBytes)) {
+        AppLogger.w(
+          'Storage',
+          'Not enough space at $targetPath for $totalBytes bytes of cache',
+        );
+        return false;
       }
 
       final total = allFiles.length;
@@ -322,19 +343,11 @@ class StorageManager {
 
       for (final file in allFiles) {
         final relPath = p.relative(file.path, from: sourcePath);
-        final destFile = File(p.join(targetPath, relPath));
-        final destDir = destFile.parent;
-        if (!destDir.existsSync()) {
-          destDir.createSync(recursive: true);
-        }
+        final destPath = p.join(targetPath, relPath);
+        await Directory(p.dirname(destPath)).create(recursive: true);
 
-        try {
-          // Attempt fast atomic rename on same volume, fallback to copy
-          file.renameSync(destFile.path);
-        } catch (_) {
-          file.copySync(destFile.path);
-          file.deleteSync();
-        }
+        final partial = await file.copy('$destPath.part');
+        await partial.rename(destPath);
 
         copied++;
         onProgress?.call(
@@ -342,11 +355,6 @@ class StorageManager {
           'Migrating track $copied of $total...',
         );
       }
-
-      // Cleanup remaining empty directories
-      try {
-        sourceDir.deleteSync(recursive: true);
-      } catch (_) {}
 
       return true;
     } catch (e) {

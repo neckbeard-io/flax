@@ -1880,14 +1880,6 @@ class AudioCacheService {
       await _ref
           .read(libraryDaoProvider)
           .migrateLocalPaths(oldBasePath, newBasePath);
-    } else {
-      // Clear old directory if not migrating
-      try {
-        final oldDir = Directory(oldBasePath);
-        if (oldDir.existsSync()) {
-          oldDir.deleteSync(recursive: true);
-        }
-      } catch (_) {}
     }
 
     _cachedBasePath = newBasePath;
@@ -1895,6 +1887,14 @@ class AudioCacheService {
     await _ref
         .read(audioCacheConfigProvider.notifier)
         .setStorageLocation(targetVolume.id, newBasePath);
+
+    // Only now that the new location is recorded is the old copy disposable.
+    try {
+      final oldDir = Directory(oldBasePath);
+      if (await oldDir.exists()) {
+        await oldDir.delete(recursive: true);
+      }
+    } catch (_) {}
 
     return true;
   }

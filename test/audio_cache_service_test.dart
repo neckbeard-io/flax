@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -163,8 +164,48 @@ At all
           equals('[00:01.00]test lyrics'),
         );
 
-        // Source is cleared
-        expect(track1.existsSync(), isFalse);
+        // The source stays until the caller records the new location, so an
+        // interrupted migration leaves the old location whole.
+        expect(track1.existsSync(), isTrue);
+        expect(
+          dstDir
+              .listSync(recursive: true)
+              .where((e) => e.path.endsWith('.part')),
+          isEmpty,
+        );
+      } finally {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    test('lets the UI isolate run while it copies', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'flax_test_storage_',
+      );
+      try {
+        final srcDir = Directory(p.join(tempDir.path, 'source'));
+        final dstDir = Directory(p.join(tempDir.path, 'destination'));
+        // An existing target: the old code then copied every file without
+        // ever returning to the event loop.
+        await dstDir.create(recursive: true);
+        for (var i = 0; i < 5; i++) {
+          final f = File(p.join(srcDir.path, 'music', 'song$i.mp3'));
+          await f.parent.create(recursive: true);
+          await f.writeAsString('audio $i');
+        }
+
+        var frames = 0;
+        final ticker = Timer.periodic(Duration.zero, (_) => frames++);
+        final framesAtProgress = <int>[];
+        await StorageManager.migrateCacheDirectory(
+          sourcePath: srcDir.path,
+          targetPath: dstDir.path,
+          onProgress: (_, _) => framesAtProgress.add(frames),
+        );
+        ticker.cancel();
+
+        expect(framesAtProgress, hasLength(5));
+        expect(framesAtProgress.last, greaterThan(framesAtProgress.first));
       } finally {
         await tempDir.delete(recursive: true);
       }
