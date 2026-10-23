@@ -373,7 +373,10 @@ jobs:
     name: Linux (.deb / .rpm / .tar.gz)
     needs: [setup]
     if: needs.setup.outputs.linux == 'true'
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: the packages link against the build host's
+    # glibc, so a newer image stops them running on older distros. 26.04's
+    # clang also fails hotkey_manager_linux under the app's -Werror.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
