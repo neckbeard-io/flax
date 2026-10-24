@@ -244,6 +244,12 @@ abstract class AppLocalizations {
   /// **'Theme'**
   String get theme;
 
+  /// Row on Settings › Theme choosing System, Light or Dark
+  ///
+  /// In en, this message translates to:
+  /// **'Light or dark'**
+  String get themeMode;
+
   /// System theme option
   ///
   /// In en, this message translates to:

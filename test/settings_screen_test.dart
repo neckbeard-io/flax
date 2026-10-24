@@ -4,8 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:go_router/go_router.dart';
+
+import 'package:flax/app/theme/theme_palette.dart';
+import 'package:flax/app/theme/theme_provider.dart';
 import 'package:flax/domain/enums.dart';
 import 'package:flax/features/settings/settings_screen.dart';
+import 'package:flax/features/settings/theme_settings_screen.dart';
 import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
@@ -262,7 +267,7 @@ void main() {
 
   // The Theme row once sat beside its title and overflowed a phone in every
   // Latin-script language; tests without the delegates showed "Auto" and fit.
-  group('Theme row on a phone', () {
+  group('Theme page on a phone', () {
     for (final locale in AppLocalizations.supportedLocales) {
       testWidgets('fits in ${locale.languageCode}', (tester) async {
         tester.view.physicalSize = const Size(390, 844);
@@ -275,7 +280,7 @@ void main() {
               locale: locale,
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: const SettingsScreen(),
+              home: const ThemeSettingsScreen(),
             ),
           ),
         );
@@ -293,8 +298,84 @@ void main() {
             lessThanOrEqualTo(390),
           );
         }
+        final l10n = lookupAppLocalizations(locale);
+        expect(
+          tester.getRect(find.text(l10n.amoledBlack)).right,
+          lessThanOrEqualTo(390),
+        );
+        for (final palette in ThemePalette.values) {
+          final swatch = find.byKey(ValueKey('theme-palette-${palette.name}'));
+          await tester.scrollUntilVisible(
+            swatch,
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          expect(tester.getRect(swatch).right, lessThanOrEqualTo(390));
+        }
       });
     }
+  });
+
+  testWidgets('Settings keeps theme choices on their own page', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({
+      kThemeModePrefKey: 'dark',
+      kThemePalettePrefKey: 'nord',
+      kAmoledPrefKey: true,
+    });
+
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const SettingsScreen(),
+          routes: [
+            GoRoute(
+              path: 'settings/theme',
+              builder: (context, state) => const ThemeSettingsScreen(),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(child: MaterialApp.router(routerConfig: router)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SegmentedButton<ThemeModeSetting>), findsNothing);
+    expect(find.byKey(const ValueKey('theme-palette-nord')), findsNothing);
+    expect(find.text('AMOLED Pure Black'), findsNothing);
+
+    await tester.tap(find.text('Theme'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ThemeSettingsScreen), findsOneWidget);
+    expect(find.byType(SegmentedButton<ThemeModeSetting>), findsOneWidget);
+    expect(find.text('AMOLED Pure Black'), findsOneWidget);
+  });
+
+  test('the Theme row sums up the choices', () {
+    expect(
+      themeSummary(
+        null,
+        mode: ThemeModeSetting.dark,
+        palette: ThemePalette.nord,
+        amoled: true,
+      ),
+      'Dark · Nord · AMOLED Pure Black',
+    );
+    expect(
+      themeSummary(
+        lookupAppLocalizations(const Locale('de')),
+        mode: ThemeModeSetting.light,
+        palette: ThemePalette.device,
+        amoled: false,
+      ),
+      'Hell · Gerät',
+    );
   });
 
   group('Share queue switch on a phone', () {

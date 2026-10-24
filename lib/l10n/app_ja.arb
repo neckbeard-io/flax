@@ -23,6 +23,7 @@
   "settingsTitle": "設定",
   "appearance": "外観とインターフェース",
   "theme": "テーマ",
+  "themeMode": "ライトまたはダーク",
   "themeSystem": "システム",
   "themeLight": "ライト",
   "themeDark": "ダーク",

@@ -17,6 +17,7 @@ import 'package:flax/features/search/search_screen.dart';
 import 'package:flax/features/settings/settings_screen.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
+import 'package:flax/features/settings/theme_settings_screen.dart';
 import 'package:flax/features/settings/transcoding_screen.dart';
 import 'package:flax/features/settings/autoeq_screen.dart';
 import 'package:flax/features/settings/hotkeys_screen.dart';
@@ -285,6 +286,10 @@ final List<RouteBase> appRoutes = [
           GoRoute(
             path: 'hotkeys',
             builder: (context, state) => const HotkeysScreen(),
+          ),
+          GoRoute(
+            path: 'theme',
+            builder: (context, state) => const ThemeSettingsScreen(),
           ),
           GoRoute(
             path: 'android-auto',
