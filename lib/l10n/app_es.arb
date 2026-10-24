@@ -23,6 +23,7 @@
   "settingsTitle": "Ajustes",
   "appearance": "Apariencia e interfaz",
   "theme": "Tema",
+  "themeMode": "Claro u oscuro",
   "themeSystem": "Sistema",
   "themeLight": "Claro",
   "themeDark": "Oscuro",

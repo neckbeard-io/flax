@@ -92,6 +92,10 @@
   "@theme": {
     "description": "Theme label"
   },
+  "themeMode": "Light or dark",
+  "@themeMode": {
+    "description": "Row on Settings › Theme choosing System, Light or Dark"
+  },
   "themeSystem": "System",
   "@themeSystem": {
     "description": "System theme option"

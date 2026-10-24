@@ -22,7 +22,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Play and Shuffle buttons on desktop artist pages.
 - Popular songs and similar artists beside the discography in wide windows.
 - Choose which four tabs Android Auto shows, in Settings › Android Auto.
-- Color themes in Settings: Album, Evergreen, Nord, Catppuccin, Dracula, Gruvbox, Synthwave and more.
+- Color themes in Settings › Theme: Album, Evergreen, Nord, Catppuccin, Dracula, Gruvbox, Synthwave and more.
 - The Album theme recolors flax from the playing cover.
 
 ### Changed
