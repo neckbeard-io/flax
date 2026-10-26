@@ -26,6 +26,7 @@ import 'package:flax/features/player/stream_certificate_hook.dart';
 import 'package:flax/features/player/mpv_queue_map.dart';
 import 'package:flax/features/player/transport_intent.dart';
 import 'package:flax/features/settings/audio_output_settings.dart';
+import 'package:flax/features/settings/device_eq_provider.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/queue_settings.dart';
@@ -1020,6 +1021,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     });
     // Apply initial state
     _applyEq();
+    // Starts following the output device, which swaps in each device's own
+    // EQ profile (#69). It changes the providers above; the listeners apply.
+    _ref.read(deviceEqControllerProvider);
   }
 
   /// Per-band gain in dB for the manual curve plus any AutoEQ correction.

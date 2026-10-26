@@ -24,9 +24,13 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Choose which four tabs Android Auto shows, in Settings › Android Auto.
 - Color themes in Settings › Theme: Album, Evergreen, Nord, Catppuccin, Dracula, Gruvbox, Synthwave and more.
 - The Album theme recolors flax from the playing cover.
+- The equalizer remembers its settings per output device and switches when you change device.
+- Several EQ profiles per device; pick one from the Equalizer screen.
+- Settings › Audio Devices: rename devices, choose default profiles, forget old devices.
 
 ### Changed
 - Auto-Cache Streamed Music is now off unless you turn it on.
+- New output devices start with the EQ off; your current EQ is kept for the device in use.
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
 - Album genres are now tags under the artist instead of the end of the details line.
 - The offline pin now means the track is playing from its download.

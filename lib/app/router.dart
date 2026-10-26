@@ -16,6 +16,7 @@ import 'package:flax/features/library/genre_screen.dart';
 import 'package:flax/features/search/search_screen.dart';
 import 'package:flax/features/settings/settings_screen.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
+import 'package:flax/features/settings/audio_devices_screen.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/theme_settings_screen.dart';
 import 'package:flax/features/settings/transcoding_screen.dart';
@@ -254,6 +255,10 @@ final List<RouteBase> appRoutes = [
           GoRoute(
             path: 'audio',
             builder: (context, state) => const AudioOutputScreen(),
+          ),
+          GoRoute(
+            path: 'audio-devices',
+            builder: (context, state) => const AudioDevicesScreen(),
           ),
           GoRoute(
             path: 'equalizer',

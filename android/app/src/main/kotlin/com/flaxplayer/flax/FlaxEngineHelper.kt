@@ -100,6 +100,9 @@ object FlaxEngineHelper {
         FlaxMediaSessionHelper.wrapServiceListener(appContext)
         FlaxMediaSessionHelper.activateMediaSession(appContext)
 
+        // Which device media plays through, for per-device EQ profiles.
+        FlaxAudioRoute.register(flutterEngine.dartExecutor.binaryMessenger, appContext)
+
         // Package installer event channel
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, INSTALLER_EVENTS).setStreamHandler(
             object : EventChannel.StreamHandler {

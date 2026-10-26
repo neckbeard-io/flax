@@ -546,4 +546,138 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get androidAutoTabFavorites => 'Favoris';
+
+  @override
+  String get audioDevices => 'Appareils audio';
+
+  @override
+  String audioDevicesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count appareils',
+      one: '1 appareil',
+      zero: 'Aucun appareil pour l\'instant',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get audioDevicesEmpty =>
+      'Aucun appareil pour l\'instant. La sortie utilisée apparaît ici dès que Flax lit de la musique dessus.';
+
+  @override
+  String get audioDeviceConnected => 'Connecté maintenant';
+
+  @override
+  String audioDeviceLastUsed(String date) {
+    return 'Dernière utilisation : $date';
+  }
+
+  @override
+  String eqProfileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count profils',
+      one: '1 profil',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get audioDeviceAutoSwitch => 'Changer l\'égaliseur automatiquement';
+
+  @override
+  String get audioDeviceAutoSwitchSubtitle =>
+      'Rétablit le profil par défaut lorsque cet appareil devient la sortie';
+
+  @override
+  String get audioDeviceDefaultProfile => 'Profil par défaut';
+
+  @override
+  String get audioDeviceRename => 'Renommer l\'appareil';
+
+  @override
+  String get deviceNameLabel => 'Nom';
+
+  @override
+  String get audioDeviceRenameHelper =>
+      'Laissez vide pour utiliser le nom du système';
+
+  @override
+  String get audioDeviceForget => 'Oublier l\'appareil';
+
+  @override
+  String audioDeviceForgetTitle(String name) {
+    return 'Oublier $name ?';
+  }
+
+  @override
+  String get audioDeviceForgetMessage =>
+      'Ses profils d\'égaliseur sont également supprimés. Il sera ajouté à nouveau, sans égalisation, lors de sa prochaine utilisation.';
+
+  @override
+  String get audioDeviceForgetInUse =>
+      'L\'appareil utilisé ne peut pas être oublié';
+
+  @override
+  String get forget => 'Oublier';
+
+  @override
+  String get rename => 'Renommer';
+
+  @override
+  String get eqOutputDevice => 'Appareil de sortie';
+
+  @override
+  String get eqProfile => 'Profil';
+
+  @override
+  String eqProfileDefaultName(String name) {
+    return '$name (par défaut)';
+  }
+
+  @override
+  String get eqNoProfile => 'Aucun profil';
+
+  @override
+  String get eqAutoSwitch => 'Changement auto';
+
+  @override
+  String get eqAutoSwitchTooltip =>
+      'Passer au profil par défaut de cet appareil dès qu\'il devient la sortie';
+
+  @override
+  String get eqProfileActions => 'Actions du profil';
+
+  @override
+  String get eqProfileNew => 'Nouveau profil…';
+
+  @override
+  String get eqProfileNewHelper =>
+      'Commence comme une copie des réglages actuels. Les modifications sont enregistrées dans le profil utilisé au fur et à mesure.';
+
+  @override
+  String get eqProfileRename => 'Renommer le profil…';
+
+  @override
+  String get eqProfileMakeDefault => 'Définir par défaut';
+
+  @override
+  String get eqProfileDelete => 'Supprimer le profil';
+
+  @override
+  String eqProfileDeleteTitle(String name) {
+    return 'Supprimer $name ?';
+  }
+
+  @override
+  String get eqProfileNameLabel => 'Nom du profil';
+
+  @override
+  String get eqProfileKeepOne => 'Un appareil conserve au moins un profil';
+
+  @override
+  String get audioDevicesManage => 'Gérer les appareils';
 }

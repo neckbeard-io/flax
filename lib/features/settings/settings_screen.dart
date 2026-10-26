@@ -16,6 +16,8 @@ import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/features/settings/android_auto_settings.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
+import 'package:flax/features/settings/device_eq_provider.dart';
+import 'package:flax/features/settings/device_profile_bar.dart';
 import 'package:flax/features/settings/diagnostics_dialog.dart';
 import 'package:flax/features/settings/equalizer_screen.dart';
 import 'package:flax/features/settings/lyrics_settings.dart';
@@ -294,6 +296,14 @@ class SettingsScreen extends ConsumerWidget {
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/settings/equalizer'),
+          ),
+          ListTile(
+            title: Text(l10n?.audioDevices ?? 'Audio Devices'),
+            subtitle: Text(
+              _audioDevicesSubtitle(context, ref.watch(deviceEqStateProvider)),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/audio-devices'),
           ),
           if (isDesktopPlatform)
             Consumer(
@@ -688,6 +698,18 @@ class _SectionTitle extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The device in use and its profile, or how many devices are recorded.
+String _audioDevicesSubtitle(BuildContext context, DeviceEqState state) {
+  final device = state.device;
+  if (device == null) {
+    return AppLocalizations.of(context)?.audioDevicesCount(state.deviceCount) ??
+        '${state.deviceCount} devices';
+  }
+  final name = audioDeviceLabel(context, device);
+  final profile = state.activeProfile;
+  return profile == null ? name : '$name · ${profile.profileName}';
 }
 
 String _audioOutputSubtitle(AudioOutputSettings settings) {

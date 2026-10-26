@@ -148,8 +148,11 @@ class EqEngineNotifier extends StateNotifier<EqEngine> {
   static const storageKey = 'flax_eq_engine';
 
   EqEngineNotifier() : super(EqEngine.defaultEngine) {
-    _load();
+    ready = _load();
   }
+
+  /// Completes once the saved choice has loaded.
+  late final Future<void> ready;
 
   Future<void> _load() async {
     try {
