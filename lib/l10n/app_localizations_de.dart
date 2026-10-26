@@ -78,6 +78,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get theme => 'Design';
 
   @override
+  String get themeMode => 'Hell oder dunkel';
+
+  @override
   String get themeSystem => 'System';
 
   @override

@@ -13,7 +13,6 @@ import 'package:flax/core/providers/platform_offline_policy.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/l10n/app_localizations.dart';
-import 'package:flax/domain/enums.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/features/settings/android_auto_settings.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
@@ -23,7 +22,7 @@ import 'package:flax/features/settings/lyrics_settings.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/features/settings/queue_settings.dart';
 import 'package:flax/features/settings/scrobble_settings.dart';
-import 'package:flax/features/settings/theme_palette_picker.dart';
+import 'package:flax/features/settings/theme_settings_screen.dart';
 import 'package:flax/features/updater/update_dialog.dart';
 import 'package:flax/services/cache/audio_cache_service.dart';
 import 'package:flax/services/hotkeys/hotkey_service.dart';
@@ -162,9 +161,9 @@ class SettingsScreen extends ConsumerWidget {
 
           // ── Appearance & Interface ──
           _SectionTitle(title: l10n?.appearance ?? 'Appearance & Interface'),
-          // As with Theme below: "Par défaut du système" beside the title
-          // overflows a phone, so narrow windows put the menu underneath,
-          // where it also shows the choice the subtitle repeats when wide.
+          // "Par défaut du système" beside the title overflows a phone, so
+          // narrow windows put the menu underneath, where it also shows the
+          // choice the subtitle repeats when wide.
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 520;
@@ -212,51 +211,18 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
-          // Beside the title it needs about 520pt, more than a phone has once
-          // the labels are translated, so narrow windows put it underneath.
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final choice = SegmentedButton<ThemeModeSetting>(
-                segments: [
-                  ButtonSegment(
-                    value: ThemeModeSetting.system,
-                    label: Text(l10n?.themeSystem ?? 'System'),
-                  ),
-                  ButtonSegment(
-                    value: ThemeModeSetting.light,
-                    label: Text(l10n?.themeLight ?? 'Light'),
-                  ),
-                  ButtonSegment(
-                    value: ThemeModeSetting.dark,
-                    label: Text(l10n?.themeDark ?? 'Dark'),
-                  ),
-                ],
-                selected: {themeMode},
-                onSelectionChanged: (s) =>
-                    ref.read(themeModeProvider.notifier).set(s.first),
-              );
-              final title = Text(l10n?.theme ?? 'Theme');
-              if (constraints.maxWidth >= 520) {
-                return ListTile(title: title, trailing: choice);
-              }
-              return ListTile(
-                title: title,
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Align(alignment: Alignment.centerLeft, child: choice),
-                ),
-              );
-            },
-          ),
-          const ThemePaletteSettings(),
-          SwitchListTile(
-            title: Text(l10n?.amoledBlack ?? 'AMOLED Black'),
+          ListTile(
+            title: Text(l10n?.theme ?? 'Theme'),
             subtitle: Text(
-              l10n?.amoledBlackSubtitle ??
-                  'Pure black behind every dark theme, for OLED screens',
+              themeSummary(
+                l10n,
+                mode: themeMode,
+                palette: ref.watch(themePaletteProvider),
+                amoled: amoled,
+              ),
             ),
-            value: amoled,
-            onChanged: (v) => ref.read(amoledProvider.notifier).set(v),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/settings/theme'),
           ),
           // Android Auto exists only on phones; desktops never connect to a car.
           if (ref.watch(platformOfflinePolicyProvider).supportsCarConnection)

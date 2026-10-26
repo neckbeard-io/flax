@@ -23,6 +23,7 @@
   "settingsTitle": "Einstellungen",
   "appearance": "Erscheinungsbild & Oberfläche",
   "theme": "Design",
+  "themeMode": "Hell oder dunkel",
   "themeSystem": "System",
   "themeLight": "Hell",
   "themeDark": "Dunkel",
