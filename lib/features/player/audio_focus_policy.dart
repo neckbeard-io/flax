@@ -41,3 +41,22 @@ class AudioFocusPolicy {
   /// they chose stands when it ends.
   void cancel() => _resumePending = false;
 }
+
+/// Asks for audio focus through [setActive], `AudioSession.setActive`, and
+/// says whether flax may play.
+///
+/// Android refuses focus while a call holds it. Playing anyway put music
+/// under a video call, and with no focus held nothing ever paused it: not the
+/// call ending, not Android Auto disconnecting. In the car it was silent too,
+/// since Android Auto only plays the app that holds focus.
+///
+/// audio_session keeps a refused request and reports every later one granted
+/// without asking Android, so one refusal lasted until the process died. The
+/// request is abandoned here so the next play really asks.
+Future<bool> requestAudioFocus(
+  Future<bool> Function(bool active) setActive,
+) async {
+  if (await setActive(true)) return true;
+  await setActive(false);
+  return false;
+}

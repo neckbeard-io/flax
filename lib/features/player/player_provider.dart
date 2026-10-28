@@ -701,6 +701,9 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       return false;
     }
 
+    // Asked before the load, which starts playing by itself when told to.
+    final start = play && await _requestAudioFocus();
+
     // Loading replaces the whole playlist, so it waits for any edit of the
     // old one to finish rather than land in the middle of it.
     final loaded = await _editPlaylist(() async {
@@ -726,14 +729,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       // An mpv slot, not a queue index: songs that could not be handed to mpv
       // leave gaps, so the two diverge after the first one.
       final targetIndex = _mpvMap.startIndexFor(index);
-      await _player.openAll(medias, play: play, index: targetIndex);
+      await _player.openAll(medias, play: start, index: targetIndex);
       return true;
     });
     if (!loaded) return false;
-    if (play) {
-      await _activateAudioSession();
-      await _player.play();
-    }
+    if (start) await _player.play();
 
     return true;
   }
@@ -778,24 +778,30 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       await _player.seek(position);
     }
     if (play) {
-      await _activateAudioSession();
-      await _player.play();
+      await _startPlayback();
     } else if (_intent.playRequestedSince(intentMark)) {
       PlaybackTrace.record('play requested during load; starting now');
-      await _activateAudioSession();
-      await _player.play();
+      await _startPlayback();
     }
   }
 
-  Future<void> _activateAudioSession() async {
-    if (Platform.isAndroid || Platform.isIOS) {
-      try {
-        final session = await AudioSession.instance;
-        await session.setActive(true);
-      } catch (e) {
-        AppLogger.w('Player', 'Failed to activate AudioSession: $e');
-      }
+  /// Whether flax may start playing: false while another app, such as a call,
+  /// holds audio focus. See [requestAudioFocus].
+  Future<bool> _requestAudioFocus() async {
+    if (!Platform.isAndroid && !Platform.isIOS) return true;
+    try {
+      final session = await AudioSession.instance;
+      if (await requestAudioFocus(session.setActive)) return true;
+      PlaybackTrace.record('audio focus refused; staying paused');
+      return false;
+    } catch (e) {
+      AppLogger.w('Player', 'Failed to activate AudioSession: $e');
+      return true;
     }
+  }
+
+  Future<void> _startPlayback() async {
+    if (await _requestAudioFocus()) await _player.play();
   }
 
   /// mpv moved to another entry by itself, which is what a gapless advance
@@ -854,8 +860,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     );
     if (slot != null) {
       await _player.jump(slot);
-      await _activateAudioSession();
-      await _player.play();
+      await _startPlayback();
     } else {
       await _openQueue(state.queue, index, play: true);
     }
@@ -1808,8 +1813,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     if (state.queue.isNotEmpty && !_mpvQueueInSync) {
       await _openAt(state.queue, state.queueIndex, state.position, play: true);
     } else {
-      await _activateAudioSession();
-      await _player.play();
+      await _startPlayback();
     }
   }
 
