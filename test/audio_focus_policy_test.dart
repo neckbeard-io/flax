@@ -83,4 +83,56 @@ void main() {
       AudioFocusAction.none,
     );
   });
+
+  group('requestAudioFocus', () {
+    late _FocusPlugin plugin;
+    setUp(() => plugin = _FocusPlugin());
+
+    test('plays when Android grants focus', () async {
+      expect(await requestAudioFocus(plugin.setActive), isTrue);
+      expect(plugin.asked, 1);
+    });
+
+    test('stays paused while a call holds focus', () async {
+      plugin.grant = false;
+
+      expect(await requestAudioFocus(plugin.setActive), isFalse);
+    });
+
+    test('asks Android again after a refusal', () async {
+      plugin.grant = false;
+      await requestAudioFocus(plugin.setActive);
+
+      plugin.grant = true;
+      expect(await requestAudioFocus(plugin.setActive), isTrue);
+      expect(plugin.asked, 2);
+    });
+
+    test('a refusal is not reported granted later', () async {
+      plugin.grant = false;
+      await requestAudioFocus(plugin.setActive);
+
+      expect(await requestAudioFocus(plugin.setActive), isFalse);
+    });
+  });
+}
+
+/// audio_session's Android focus handling: a request is kept whether or not
+/// Android granted it, and while one is kept, asking again reports success
+/// without reaching Android. Abandoning clears it.
+class _FocusPlugin {
+  bool grant = true;
+  int asked = 0;
+  bool _requestKept = false;
+
+  Future<bool> setActive(bool active) async {
+    if (!active) {
+      _requestKept = false;
+      return true;
+    }
+    if (_requestKept) return true;
+    _requestKept = true;
+    asked++;
+    return grant;
+  }
 }

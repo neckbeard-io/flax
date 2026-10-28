@@ -44,6 +44,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - AMOLED black now works with every dark theme.
 
 ### Fixed
+- Music no longer plays under a phone or video call.
+- Android Auto no longer stays silent after a call until flax is force-stopped.
 - Tablets: album Play, Next and Last labels no longer break mid-word.
 - Tablets: Settings and the mini player no longer hide under the navigation bar.
 - Flax no longer fails to start with "duplicate column name" after an interrupted update.

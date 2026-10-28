@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
-import 'package:audio_session/audio_session.dart';
 import 'package:collection/collection.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1797,15 +1796,6 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
   // ── Transport Controls ─────────────────────────────────────────────────────
 
-  Future<void> _activateAudioSession() async {
-    try {
-      final session = await AudioSession.instance;
-      await session.setActive(true);
-    } catch (e) {
-      AppLogger.w('AudioHandler', 'Failed to activate AudioSession: $e');
-    }
-  }
-
   @override
   Future<void> prepare() async {
     AppLogger.i('AudioHandler', 'prepare called from platform');
@@ -1904,7 +1894,8 @@ class FlaxAudioHandler extends BaseAudioHandler {
   Future<void> play() async {
     AppLogger.i('AudioHandler', 'Play requested from the media session');
     if (_container.exists(playerProvider)) _player.notePlayRequested();
-    await _activateAudioSession();
+    // Audio focus is the player's to ask for, as it starts playing: asked
+    // here as well, a refusal went unheeded and played under a call.
     unawaited(
       _container.read(carConnectionServiceProvider).activateMediaSession(),
     );
