@@ -3,6 +3,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/providers/app_in_use_provider.dart';
 import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/platform_offline_policy.dart';
@@ -232,6 +233,9 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
   final Ref _ref;
   Timer? _retryTimer;
   int _retryAttempt = 0;
+
+  /// A retry's own ping is in flight; its failure is the retry's to schedule.
+  bool _retrying = false;
 
   ServerReachabilityNotifier(
     this._ref, {
@@ -484,7 +488,9 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
       _retryTimer = null;
       _retryAttempt = 0;
       _checkServerMigration(client);
-    } else {
+    } else if (!_retrying) {
+      // Not from a retry: restarting the backoff from one held every retry at
+      // 8 seconds, never reaching 30.
       _startRetryTimer();
     }
 
@@ -574,9 +580,19 @@ class ServerReachabilityNotifier extends StateNotifier<ServerReachability> {
     _retryAttempt++;
 
     _retryTimer = Timer(Duration(seconds: delaySec), () async {
+      // Nobody is using flax: stop, rather than ping every 30 seconds all day
+      // (#192). Coming back to the foreground probes again, and a request
+      // that fails while playing or in the car starts this over.
+      if (!_ref.read(appInUseProvider)) return;
       if (!state.isReachable && !state.isProbing) {
-        final reachable = await probeServer(silent: true);
-        if (!reachable) {
+        _retrying = true;
+        final bool reachable;
+        try {
+          reachable = await probeServer(silent: true);
+        } finally {
+          _retrying = false;
+        }
+        if (!reachable && mounted) {
           _scheduleNextRetry();
         }
       }
