@@ -82,6 +82,10 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
         channel: state.channel,
         currentVersion: state.currentVersion,
       );
+      // A download started while GitHub was answering. Offering the update
+      // again would hide its progress and bring back the button that starts
+      // a second one.
+      if (_downloadStarted) return;
       final now = DateTime.now();
 
       if (latest == null) {
@@ -138,6 +142,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
       }
     } catch (e) {
       AppLogger.w('Updater', 'Update check failed', error: e);
+      if (_downloadStarted) return;
       // A background check that fails, say while the machine wakes from
       // sleep, leaves the screen as it was: an update already found stays
       // offered, and nothing reports an error nobody asked about.
@@ -152,8 +157,17 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
     }
   }
 
+  /// Whether a download is running or has finished, which a check that ends
+  /// meanwhile must leave alone.
+  bool get _downloadStarted =>
+      state.isDownloading || state.isReadyToInstall || state.isInstalling;
+
   /// Starts downloading the matched update package and optionally proceeds to installation.
   Future<void> downloadUpdate({bool autoInstall = false}) async {
+    if (state.isDownloading || state.isInstalling) {
+      AppLogger.w('Updater', 'Download already running; ignoring another');
+      return;
+    }
     final asset = state.matchingAsset;
     if (asset == null) {
       state = state.copyWith(
@@ -163,7 +177,12 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
       return;
     }
 
-    _cancelToken = CancelToken();
+    // A download cancelled before this one may still be winding down; only
+    // the download holding the current token may change the state.
+    final cancelToken = CancelToken();
+    _cancelToken = cancelToken;
+    bool isCurrent() => identical(_cancelToken, cancelToken);
+    AppLogger.i('Updater', 'Downloading ${asset.name}');
     state = state.copyWith(
       stage: UpdateStage.downloading,
       downloadProgress: 0.0,
@@ -176,8 +195,9 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
       var lastProgressUpdate = DateTime.now();
       final localPath = await _service.downloadAsset(
         asset,
-        cancelToken: _cancelToken,
+        cancelToken: cancelToken,
         onProgress: (received, total) {
+          if (!isCurrent()) return;
           final now = DateTime.now();
           if (now.difference(lastProgressUpdate).inMilliseconds < 100 &&
               received < total) {
@@ -192,7 +212,9 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
           );
         },
       );
+      if (!isCurrent()) return;
 
+      AppLogger.i('Updater', 'Downloaded ${asset.name}');
       state = state.copyWith(
         stage: UpdateStage.readyToInstall,
         localFilePath: localPath,
@@ -203,16 +225,18 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
         await install();
       }
     } catch (e) {
-      if (_cancelToken?.isCancelled ?? false) {
+      if (!isCurrent()) return;
+      if (cancelToken.isCancelled) {
         state = state.copyWith(stage: UpdateStage.available);
       } else {
+        AppLogger.w('Updater', 'Download failed', error: e);
         state = state.copyWith(
           stage: UpdateStage.error,
           errorMessage: 'Download failed: ${UpdateService.describeFailure(e)}',
         );
       }
     } finally {
-      _cancelToken = null;
+      if (isCurrent()) _cancelToken = null;
     }
   }
 

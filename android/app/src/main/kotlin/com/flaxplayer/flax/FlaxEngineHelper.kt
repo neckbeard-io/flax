@@ -165,19 +165,25 @@ object FlaxEngineHelper {
                     }
 
                     val destFile = File(destinationPath)
-                    val tempFile = File("$destinationPath.tmp")
                     destFile.parentFile?.mkdirs()
 
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            val request = Request.Builder()
-                                .url(url)
-                                .header("User-Agent", "Flax-UpdateChecker")
-                                .header("Accept", "application/octet-stream")
-                                .build()
+                    val request = Request.Builder()
+                        .url(url)
+                        .header("User-Agent", "Flax-UpdateChecker")
+                        .header("Accept", "application/octet-stream")
+                        .build()
+                    val callInstance = installerClient.newCall(request)
+                    // One download at a time. Two once ran together, sharing
+                    // a temp file and taking turns on the progress bar.
+                    apkDownloadCall?.cancel()
+                    apkDownloadCall = callInstance
 
-                            val callInstance = installerClient.newCall(request)
-                            apkDownloadCall = callInstance
+                    CoroutineScope(Dispatchers.IO).launch {
+                        // Its own temp file, so a download still winding down
+                        // cannot delete or rename the one replacing it.
+                        var tempFile: File? = null
+                        try {
+                            tempFile = File.createTempFile(destFile.name, ".tmp", destFile.parentFile)
                             val response = callInstance.execute()
 
                             if (!response.isSuccessful) {
@@ -202,11 +208,13 @@ object FlaxEngineHelper {
                                         val now = System.currentTimeMillis()
                                         if (now - lastProgressTime >= 100 || totalRead == totalBytes) {
                                             lastProgressTime = now
+                                            val received = totalRead
                                             mainHandler.post {
+                                                if (apkDownloadCall !== callInstance) return@post
                                                 installerEventSink?.success(
                                                     mapOf(
                                                         "type" to "progress",
-                                                        "received" to totalRead,
+                                                        "received" to received,
                                                         "total" to totalBytes
                                                     )
                                                 )
@@ -226,8 +234,8 @@ object FlaxEngineHelper {
                                 result.success(destFile.absolutePath)
                             }
                         } catch (e: Exception) {
-                            tempFile.delete()
-                            val isCanceled = apkDownloadCall?.isCanceled() == true
+                            tempFile?.delete()
+                            val isCanceled = callInstance.isCanceled()
                             mainHandler.post {
                                 if (isCanceled) {
                                     result.error("CANCELED", "Download canceled", null)
@@ -236,7 +244,9 @@ object FlaxEngineHelper {
                                 }
                             }
                         } finally {
-                            apkDownloadCall = null
+                            mainHandler.post {
+                                if (apkDownloadCall === callInstance) apkDownloadCall = null
+                            }
                         }
                     }
                 }

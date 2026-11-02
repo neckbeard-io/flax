@@ -58,6 +58,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Covers saved for offline no longer vanish when the system frees up storage.
 - A background error no longer skips checking the server for library changes.
 - Cancel stops a metadata sync, from the app or its notification, and clears it.
+- Tapping Update no longer seems to do nothing, or downloads twice with a jumping progress bar.
 - Metadata sync no longer hangs forever if its downloader can't start.
 - Cache Status and Sync start in seconds on large libraries instead of stalling.
 - With queue sharing off, another device's queue no longer replaces yours at launch.

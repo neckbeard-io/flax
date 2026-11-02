@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -46,6 +48,67 @@ class _GitHub {
       ),
     );
     return dio;
+  }
+}
+
+/// A release with an APK, whose checks and downloads each wait until the test
+/// answers them.
+class _SlowService extends UpdateService {
+  final checks = <Completer<ReleaseInfo?>>[];
+  final downloads = <({Completer<String> done, CancelToken? token})>[];
+  final progress = <void Function(int, int)>[];
+  int installs = 0;
+
+  static final release = ReleaseInfo(
+    tagName: 'v0.6.0',
+    version: '0.6.0',
+    title: 'flax v0.6.0',
+    body: '',
+    htmlUrl: '',
+    publishedAt: DateTime(2026, 10, 6),
+    isPrerelease: false,
+    assets: const [
+      ReleaseAsset(
+        id: 1,
+        name: 'flax-0.6.0-android-universal.apk',
+        downloadUrl: 'https://example.invalid/flax.apk',
+        sizeBytes: 1000,
+        contentType: 'application/vnd.android.package-archive',
+      ),
+    ],
+  );
+
+  @override
+  InstallMethod detectInstallMethod() => InstallMethod.androidApk;
+
+  @override
+  Future<ReleaseInfo?> fetchLatestRelease({
+    UpdateChannel channel = UpdateChannel.stable,
+    String? currentVersion,
+  }) {
+    final check = Completer<ReleaseInfo?>();
+    checks.add(check);
+    return check.future;
+  }
+
+  @override
+  Future<String> downloadAsset(
+    ReleaseAsset asset, {
+    required void Function(int received, int total) onProgress,
+    CancelToken? cancelToken,
+  }) {
+    final done = Completer<String>();
+    downloads.add((done: done, token: cancelToken));
+    progress.add(onProgress);
+    return done.future;
+  }
+
+  @override
+  Future<void> installUpdate({
+    required InstallMethod method,
+    required String filePath,
+  }) async {
+    installs++;
   }
 }
 
@@ -129,6 +192,82 @@ void main() {
       expect(notifier.state.errorMessage, shown);
     },
   );
+
+  group('one download at a time', () {
+    late _SlowService service;
+    late UpdateNotifier slow;
+
+    setUp(() async {
+      service = _SlowService();
+      slow = UpdateNotifier(service);
+      await pumpEventQueue();
+      final first = slow.checkForUpdates();
+      service.checks.single.complete(_SlowService.release);
+      await first;
+      expect(slow.state.stage, UpdateStage.available);
+    });
+
+    tearDown(() => slow.dispose());
+
+    test('a check that returns mid-download keeps showing it', () async {
+      // The check flax makes on coming back to the foreground, still waiting
+      // on GitHub when Update is tapped.
+      final check = slow.checkForUpdates(silent: true);
+      unawaited(slow.downloadUpdate(autoInstall: true));
+      expect(slow.state.stage, UpdateStage.downloading);
+
+      service.checks.last.complete(_SlowService.release);
+      await check;
+      expect(slow.state.stage, UpdateStage.downloading);
+    });
+
+    test('a failed check that returns mid-download keeps showing it', () async {
+      final check = slow.checkForUpdates(silent: true);
+      unawaited(slow.downloadUpdate(autoInstall: true));
+
+      service.checks.last.completeError(
+        DioException.connectionError(
+          requestOptions: RequestOptions(path: UpdateService.releasesUrl),
+          reason: 'offline',
+        ),
+      );
+      await check;
+      expect(slow.state.stage, UpdateStage.downloading);
+    });
+
+    test('tapping Update again while downloading starts nothing', () async {
+      final download = slow.downloadUpdate(autoInstall: true);
+      await slow.downloadUpdate(autoInstall: true);
+      expect(service.downloads, hasLength(1));
+
+      service.downloads.single.done.complete('/tmp/flax.apk');
+      await download;
+      expect(service.installs, 1);
+    });
+
+    test('a cancelled download cannot disturb the one after it', () async {
+      unawaited(slow.downloadUpdate());
+      slow.cancelDownload();
+      final second = slow.downloadUpdate(autoInstall: true);
+      expect(service.downloads, hasLength(2));
+
+      // A finished report, which the progress throttle always lets through.
+      service.progress.first(1000, 1000);
+      service.downloads.first.done.completeError(
+        DioException.requestCancelled(
+          requestOptions: RequestOptions(path: ''),
+          reason: 'Cancelled by user',
+        ),
+      );
+      await pumpEventQueue();
+      expect(slow.state.stage, UpdateStage.downloading);
+      expect(slow.state.downloadedBytes, 0);
+
+      service.downloads.last.done.complete('/tmp/flax.apk');
+      await second;
+      expect(service.installs, 1);
+    });
+  });
 
   group('describeFailure', () {
     final request = RequestOptions(path: UpdateService.releasesUrl);

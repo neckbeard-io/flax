@@ -9,6 +9,11 @@ class AndroidInstaller {
     'com.flax/package_installer_events',
   );
 
+  // One stream for every download. Each call to receiveBroadcastStream owns
+  // the channel, so a download that finished after a newer one started would
+  // cancel the newer one's progress when it stopped listening.
+  static final Stream<dynamic> _events = _eventChannel.receiveBroadcastStream();
+
   /// Downloads the APK using high-throughput native OkHttp over HTTP/2.
   static Future<String> downloadApk(
     String url,
@@ -20,7 +25,7 @@ class AndroidInstaller {
       throw UnsupportedError('Native APK download only supported on Android');
     }
 
-    final sub = _eventChannel.receiveBroadcastStream().listen((dynamic event) {
+    final sub = _events.listen((dynamic event) {
       if (event is Map) {
         final type = event['type'] as String?;
         if (type == 'progress') {

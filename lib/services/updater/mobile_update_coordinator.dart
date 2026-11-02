@@ -36,27 +36,31 @@ class MobileUpdateCoordinator {
     final release = updateState.latestRelease;
     if (release == null) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    final lastPromptedVersion = prefs.getString(_prefLastPromptedVersionKey);
-    final lastPromptedTimeMs = prefs.getInt(_prefLastPromptedTimeKey) ?? 0;
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
-
-    // Prompt if new version OR if at least 24 hours have passed since last prompt
-    final isNewVersion = lastPromptedVersion != release.version;
-    final isOver24Hours =
-        (nowMs - lastPromptedTimeMs) > const Duration(hours: 24).inMilliseconds;
-
-    if (!isNewVersion && !isOver24Hours) {
-      return;
-    }
-
-    if (!context.mounted) return;
-
-    await prefs.setString(_prefLastPromptedVersionKey, release.version);
-    await prefs.setInt(_prefLastPromptedTimeKey, nowMs);
-
+    // Claimed before the first await: the launch prompt and the resume prompt
+    // run together when a screen attaches to a running process, and both
+    // passing the check stacked two dialogs.
     isShowingDialog = true;
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastPromptedVersion = prefs.getString(_prefLastPromptedVersionKey);
+      final lastPromptedTimeMs = prefs.getInt(_prefLastPromptedTimeKey) ?? 0;
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+      // Prompt if new version OR if at least 24 hours have passed since last prompt
+      final isNewVersion = lastPromptedVersion != release.version;
+      final isOver24Hours =
+          (nowMs - lastPromptedTimeMs) >
+          const Duration(hours: 24).inMilliseconds;
+
+      if (!isNewVersion && !isOver24Hours) {
+        return;
+      }
+
+      if (!context.mounted) return;
+
+      await prefs.setString(_prefLastPromptedVersionKey, release.version);
+      await prefs.setInt(_prefLastPromptedTimeKey, nowMs);
+
       final dialogContext = rootNavigatorKey.currentContext ?? context;
       if (dialogContext.mounted) {
         await showDialog<void>(
