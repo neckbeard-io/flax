@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart' as mpv;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/logging/app_logger.dart';
+import 'package:flax/core/providers/app_in_use_provider.dart';
 import 'package:flax/core/logging/playback_trace.dart';
 import 'package:flax/features/player/audio_focus_policy.dart';
 import 'package:flax/features/player/queue_advance.dart';
@@ -245,6 +246,21 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
       (state) => _autoCache.update(state.currentSong, playing: state.isPlaying),
       fireImmediately: false,
     );
+    addListener(_publishPlaying, fireImmediately: false);
+  }
+
+  bool _publishedPlaying = false;
+
+  /// Tells background work whether music is playing, without it having to
+  /// create the player to ask. Deferred, as a listener may run while another
+  /// provider is building.
+  void _publishPlaying(PlayerState state) {
+    final playing = state.isPlaying;
+    if (playing == _publishedPlaying) return;
+    _publishedPlaying = playing;
+    scheduleMicrotask(() {
+      if (mounted) _ref.read(playbackActiveProvider.notifier).state = playing;
+    });
   }
 
   /// Saves streamed tracks to the rolling cache once they actually play.

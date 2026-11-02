@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+- Less battery use: flax stops polling the server while locked and not playing.
+
 ## v0.7.0 — 2026-11-01
 
 ### Upgrading from v0.6.0

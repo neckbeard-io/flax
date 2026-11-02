@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:flax/app/router.dart';
+import 'package:flax/core/providers/app_in_use_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/platform_offline_policy.dart';
@@ -58,6 +59,12 @@ class _AppChromeState extends ConsumerState<AppChrome>
     // AppChrome is the only widget that wraps every route, which makes it the
     // one place this can live without being duplicated per screen.
     WidgetsBinding.instance.addObserver(this);
+    // Whether flax starts on screen. Deferred, as no provider may change
+    // while the tree builds.
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    scheduleMicrotask(() {
+      if (mounted) _setVisible(lifecycle);
+    });
     // A keyboard handler rather than a Shortcuts widget.
     //
     // Shortcuts only sees keys that bubble up through the focused node's
@@ -88,6 +95,8 @@ class _AppChromeState extends ConsumerState<AppChrome>
     // long-running clients automatically discover newly scanned library additions.
     _syncTimer = Timer.periodic(SyncPolicy.beaconCheck, (_) {
       if (!mounted) return;
+      // Nobody is using flax: the next resume checks anyway (#192).
+      if (!ref.read(appInUseProvider)) return;
       final isOffline = ref.read(isOfflineModeProvider);
       if (isOffline) return;
       final repo = ref.read(libraryRepositoryProvider);
@@ -115,8 +124,21 @@ class _AppChromeState extends ConsumerState<AppChrome>
     super.dispose();
   }
 
+  /// Paused, hidden and detached all mean nothing of flax is on screen; an
+  /// inactive window is still in view. No state yet counts as on screen, as
+  /// everything did before: not every platform reports one at launch.
+  void _setVisible(AppLifecycleState? lifecycle) {
+    ref.read(appVisibleProvider.notifier).state = switch (lifecycle) {
+      AppLifecycleState.paused ||
+      AppLifecycleState.hidden ||
+      AppLifecycleState.detached => false,
+      _ => true,
+    };
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _setVisible(state);
     if (state != AppLifecycleState.resumed) return;
 
     // Check for updates when coming back to the foreground on mobile (Android/iOS).
