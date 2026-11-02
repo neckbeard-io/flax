@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flax/domain/models/models.dart';
+import 'package:flax/features/library/artist_desktop_view.dart';
 import 'package:flax/features/library/artist_detail_screen.dart';
 
 const _artistId = 'art-1';
@@ -104,7 +105,7 @@ void main() {
     // The image is a bounded square, not a full-width crop. A banner was the
     // whole problem: it cropped a square publicity photo to a strip and put
     // controls over arbitrary artwork.
-    final image = tester.getSize(find.byType(SizedBox).at(0));
+    final image = tester.getSize(find.byKey(ArtistDesktopView.imageKey));
     expect(find.text('Canada'), findsOneWidget, reason: 'country chip renders');
     expect(
       image.width,
