@@ -96,52 +96,66 @@ class AlbumDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       body: albumAsync.when(
-        data: (album) => CustomScrollView(
-          slivers: [
-            if (desktop)
-              SliverToBoxAdapter(
-                child: _DesktopHeader(album: album, albumId: albumId),
-              )
-            else
-              _MobileHeader(album: album, albumId: albumId),
-            songsAsync.when(
-              data: (songs) {
-                if (songs.isEmpty) {
-                  return const SliverToBoxAdapter(child: SizedBox.shrink());
-                }
-                final genreColumn =
-                    desktop && tracksNeedGenreColumn(album, songs);
-                return SliverMainAxisGroup(
-                  slivers: [
-                    if (desktop)
-                      SliverToBoxAdapter(
-                        child: _TrackTableHeader(genreColumn: genreColumn),
-                      ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _TrackRow(
-                          song: songs[index],
-                          index: index,
-                          songs: songs,
-                          albumId: albumId,
-                          desktop: desktop,
-                          genreColumn: genreColumn,
+        data: (album) {
+          final page = CustomScrollView(
+            slivers: [
+              if (desktop)
+                SliverToBoxAdapter(
+                  child: _DesktopHeader(album: album, albumId: albumId),
+                )
+              else
+                _MobileHeader(album: album, albumId: albumId),
+              songsAsync.when(
+                data: (songs) {
+                  if (songs.isEmpty) {
+                    return const SliverToBoxAdapter(child: SizedBox.shrink());
+                  }
+                  final genreColumn =
+                      desktop && tracksNeedGenreColumn(album, songs);
+                  return SliverMainAxisGroup(
+                    slivers: [
+                      if (desktop)
+                        SliverToBoxAdapter(
+                          child: _TrackTableHeader(genreColumn: genreColumn),
                         ),
-                        childCount: songs.length,
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _TrackRow(
+                            song: songs[index],
+                            index: index,
+                            songs: songs,
+                            albumId: albumId,
+                            desktop: desktop,
+                            genreColumn: genreColumn,
+                          ),
+                          childCount: songs.length,
+                        ),
                       ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  ],
-                );
-              },
-              loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    ],
+                  );
+                },
+                loading: () => const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (e, _) => SliverFillRemaining(
+                  child: Center(child: Text('Error: $e')),
+                ),
               ),
-              error: (e, _) =>
-                  SliverFillRemaining(child: Center(child: Text('Error: $e'))),
-            ),
-          ],
-        ),
+            ],
+          );
+          if (!desktop) return page;
+          // Always present. Popping returns you to wherever you came from; with
+          // nothing to pop — a deep link, or a directly launched screen — it
+          // falls back to the album's artist, which is the page that contains
+          // it. Hiding the button in that case left no way out at all.
+          return PinnedBackBar(
+            fallbackLocation: album.artistId != null
+                ? '/artists/${album.artistId}'
+                : '/albums',
+            child: page,
+          );
+        },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
@@ -350,33 +364,17 @@ class _DesktopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The back button is above the scroll view, in PinnedBackBar.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 24, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Always present. Popping returns you to wherever you came from; with
-          // nothing to pop — a deep link, or a directly launched screen — it
-          // falls back to the album's artist, which is the page that contains
-          // it. Hiding the button in that case left no way out at all.
-          UpBackButton(
-            fallbackLocation: album.artistId != null
-                ? '/artists/${album.artistId}'
-                : '/albums',
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 8),
-            child: LayoutBuilder(
-              builder: (context, constraints) => _details(
-                context,
-                // Full size wherever it fits. Beside the sidebar on a portrait
-                // tablet a 240px cover left the details too narrow for the
-                // play buttons.
-                coverSize: (constraints.maxWidth * 0.3).clamp(160.0, 240.0),
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: LayoutBuilder(
+        builder: (context, constraints) => _details(
+          context,
+          // Full size wherever it fits. Beside the sidebar on a portrait
+          // tablet a 240px cover left the details too narrow for the
+          // play buttons.
+          coverSize: (constraints.maxWidth * 0.3).clamp(160.0, 240.0),
+        ),
       ),
     );
   }

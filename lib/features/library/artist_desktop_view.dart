@@ -69,6 +69,7 @@ class ArtistDesktopView extends ConsumerWidget {
   final bool offline;
 
   static const railKey = Key('artist-rail');
+  static const imageKey = Key('artist-image');
   static const popularKey = Key('artist-popular');
   static const similarKey = Key('artist-similar');
   static const playKey = Key('artist-play');
@@ -140,55 +141,51 @@ class ArtistDesktopView extends ConsumerWidget {
             ),
         ];
 
-        return CustomScrollView(
-          slivers: [
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(16, 12, 24, 0),
-                // See UpBackButton: pops when it can, otherwise goes up to the
-                // list of artists rather than disappearing.
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: UpBackButton(fallbackLocation: '/artists'),
-                ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 4, 24, 48),
-              sliver: wide
-                  ? SliverCrossAxisGroup(
-                      slivers: [
-                        SliverCrossAxisExpanded(
-                          flex: 1,
-                          sliver: SliverMainAxisGroup(slivers: main),
-                        ),
-                        const SliverConstrainedCrossAxis(
-                          maxExtent: _railGap,
-                          sliver: SliverToBoxAdapter(child: SizedBox.shrink()),
-                        ),
-                        SliverConstrainedCrossAxis(
-                          maxExtent: kArtistRailWidth,
-                          sliver: SliverToBoxAdapter(
-                            child: Column(
-                              key: railKey,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ?popular,
-                                if (similar.isNotEmpty)
-                                  _SimilarArtists(
-                                    key: similarKey,
-                                    artists: similar,
-                                    shelf: false,
-                                  ),
-                              ],
+        // See UpBackButton: pops when it can, otherwise goes up to the list of
+        // artists rather than disappearing.
+        return PinnedBackBar(
+          fallbackLocation: '/artists',
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 48),
+                sliver: wide
+                    ? SliverCrossAxisGroup(
+                        slivers: [
+                          SliverCrossAxisExpanded(
+                            flex: 1,
+                            sliver: SliverMainAxisGroup(slivers: main),
+                          ),
+                          const SliverConstrainedCrossAxis(
+                            maxExtent: _railGap,
+                            sliver: SliverToBoxAdapter(
+                              child: SizedBox.shrink(),
                             ),
                           ),
-                        ),
-                      ],
-                    )
-                  : SliverMainAxisGroup(slivers: main),
-            ),
-          ],
+                          SliverConstrainedCrossAxis(
+                            maxExtent: kArtistRailWidth,
+                            sliver: SliverToBoxAdapter(
+                              child: Column(
+                                key: railKey,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ?popular,
+                                  if (similar.isNotEmpty)
+                                    _SimilarArtists(
+                                      key: similarKey,
+                                      artists: similar,
+                                      shelf: false,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : SliverMainAxisGroup(slivers: main),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -538,6 +535,7 @@ class _DesktopHeaderState extends ConsumerState<_DesktopHeader> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _ArtistImage(
+              key: ArtistDesktopView.imageKey,
               size: imageSize,
               remoteImageUrl:
                   widget.artistInfo?.bestImageUrl ?? artist.imageUrl,
@@ -679,6 +677,7 @@ class _Biography extends StatelessWidget {
 /// vanished against a pale one.
 class _ArtistImage extends StatelessWidget {
   const _ArtistImage({
+    super.key,
     required this.size,
     required this.remoteImageUrl,
     required this.coverArtId,

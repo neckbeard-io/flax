@@ -59,6 +59,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - A background error no longer skips checking the server for library changes.
 - Cancel stops a metadata sync, from the app or its notification, and clears it.
 - Tapping Update no longer seems to do nothing, or downloads twice with a jumping progress bar.
+- Artist and album pages no longer scroll under the window controls; Back stays in view.
 - Metadata sync no longer hangs forever if its downloader can't start.
 - Cache Status and Sync start in seconds on large libraries instead of stalling.
 - With queue sharing off, another device's queue no longer replaces yours at launch.

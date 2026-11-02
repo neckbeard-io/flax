@@ -8,6 +8,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/library/album_detail_screen.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 
 const _albumId = 'alb-1';
 
@@ -92,6 +93,30 @@ void main() {
         reason: '$title should be listed',
       );
     }
+  });
+
+  testWidgets('desktop tracks scroll below the window controls', (
+    tester,
+  ) async {
+    // #194: track lengths, ratings and hearts scrolled up under the window
+    // buttons.
+    tester.view.physicalSize = const ui.Size(1400, 420);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_harness(size: const Size(1400, 420)));
+    await tester.pumpAndSettle();
+    final page = find.byType(CustomScrollView);
+    final back = find.byType(UpBackButton);
+    final barBottom = tester.getRect(back).bottom;
+
+    await tester.drag(page, const Offset(0, -300));
+    await tester.pumpAndSettle();
+
+    expect(back.hitTestable(), findsOneWidget, reason: 'the bar stays put');
+    expect(tester.getRect(back).bottom, barBottom);
+    expect(tester.getRect(page).top, greaterThanOrEqualTo(barBottom));
+    expect(barBottom, greaterThanOrEqualTo(32));
   });
 
   testWidgets('desktop header has a back button when there is a route to pop', (

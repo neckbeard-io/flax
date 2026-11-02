@@ -18,6 +18,7 @@ import 'package:flax/shared/widgets/album_grid_tile.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
+import 'package:flax/shared/widgets/up_back_button.dart';
 
 /// The desktop artist page: rail, discography groups, and nothing moving when
 /// the slow lookups land. #87.
@@ -279,6 +280,28 @@ void main() {
 
     expect(tester.getTopLeft(_tiles.first).dy, closeTo(before, 0.5));
     expect(find.text('Read more').hitTestable(), findsNothing);
+  });
+
+  testWidgets('the page scrolls below the window controls, not under them', (
+    tester,
+  ) async {
+    // #194: the rail's track lengths scrolled up under the window buttons.
+    await _pump(tester, size: const Size(1220, 700));
+    final page = find.byType(CustomScrollView);
+    final back = find.byType(UpBackButton);
+    final barBottom = tester.getRect(back).bottom;
+
+    await tester.drag(page, const Offset(0, -600));
+    await tester.pumpAndSettle();
+
+    expect(back.hitTestable(), findsOneWidget, reason: 'the bar stays put');
+    expect(tester.getRect(back).bottom, barBottom);
+    expect(tester.getRect(page).top, greaterThanOrEqualTo(barBottom));
+    expect(
+      barBottom,
+      greaterThanOrEqualTo(32),
+      reason: 'the bar covers the band the window controls are drawn in',
+    );
   });
 
   testWidgets('a long name fits at the breakpoint', (tester) async {
