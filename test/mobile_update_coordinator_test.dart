@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -9,8 +10,11 @@ import 'package:flax/app/router.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/server.dart';
 import 'package:flax/features/updater/update_button.dart';
+import 'package:flax/features/updater/update_dialog.dart';
+import 'package:flax/services/updater/mobile_update_coordinator.dart';
 import 'package:flax/services/updater/update_models.dart';
 import 'package:flax/services/updater/update_provider.dart';
+import 'package:flax/shared/widgets/layout_metrics.dart';
 
 const _server = Server(
   id: 'srv',
@@ -110,5 +114,57 @@ void main() {
       matching: find.byType(Badge),
     );
     expect(settingsNav, findsWidgets);
+  });
+
+  testWidgets('prompts at launch and on resume together open one dialog', (
+    tester,
+  ) async {
+    debugOverrideIsDesktopPlatform = false;
+    addTearDown(() => debugOverrideIsDesktopPlatform = null);
+
+    final availableState = UpdateState(
+      currentVersion: '0.4.6',
+      stage: UpdateStage.available,
+      installMethod: InstallMethod.androidApk,
+      latestRelease: ReleaseInfo(
+        version: '0.4.7',
+        tagName: 'v0.4.7',
+        title: 'v0.4.7',
+        body: 'Bug fixes',
+        htmlUrl: '',
+        publishedAt: DateTime(2026, 10, 1),
+        isPrerelease: false,
+        assets: [],
+      ),
+    );
+
+    late BuildContext context;
+    late WidgetRef ref;
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          updateNotifierProvider.overrideWith(
+            (ref) => _StubUpdateNotifier(availableState),
+          ),
+        ],
+        child: MaterialApp(
+          navigatorKey: rootNavigatorKey,
+          home: Consumer(
+            builder: (c, r, _) {
+              context = c;
+              ref = r;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    // A screen attaching to a running process asks from both places at once.
+    unawaited(MobileUpdateCoordinator.checkAndPrompt(context, ref));
+    unawaited(MobileUpdateCoordinator.checkAndPrompt(context, ref));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(UpdateDialog), findsOneWidget);
   });
 }
