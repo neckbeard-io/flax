@@ -10,83 +10,75 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.7.0 — 2026-11-01
+
+### Upgrading from v0.6.0
+- Windows: v0.6.0 closes without installing updates. Run the new setup from github.com/neckbeard-io/flax/releases; servers and settings are kept.
+- In-app updates work on Windows from v0.7.0 on.
+
 ### Added
-- Albums show every genre; tap one to browse that genre.
-- Genre pages, with Shuffle.
-- Phones show album genres, and the playing song's genres in Now Playing.
-- A–Z index on long artist lists: tap or drag a letter to jump there.
-- The A–Z index on Albums (All, Downloaded), genre pages and Downloads too.
-- Adding a self-signed server offers to skip the certificate check.
-- Server connection settings follow your chosen language.
-- Desktop artist pages show a discography grid, grouped into albums, EPs, live and compilations.
-- Play and Shuffle buttons on desktop artist pages.
-- Popular songs and similar artists beside the discography in wide windows.
-- Choose which four tabs Android Auto shows, in Settings › Android Auto.
+- Genre pages, with Shuffle; tap any album or artist genre to open one.
+- Albums show all their genres as tags; phones show the playing song's genres in Now Playing.
+- A–Z index on Artists, Albums, genre pages and Downloads: tap or drag a letter.
 - Color themes in Settings › Theme: Album, Evergreen, Nord, Catppuccin, Dracula, Gruvbox, Synthwave and more.
 - The Album theme recolors flax from the playing cover.
-- The equalizer remembers its settings per output device and switches when you change device.
+- The equalizer keeps settings per output device and switches when you change device.
 - Several EQ profiles per device; pick one from the Equalizer screen.
 - Settings › Audio Devices: rename devices, choose default profiles, forget old devices.
+- Desktop artist pages: a discography grid of albums, EPs, live and compilations, with Play and Shuffle.
+- Popular songs and similar artists beside the discography in wide windows.
+- Choose which four tabs Android Auto shows, in Settings › Android Auto.
+- Adding a self-signed server offers to skip the certificate check.
+- Server connection settings follow your chosen language.
 
 ### Changed
+- Flax now checks server certificates, streaming included; turn off "Verify Certificates" for a self-signed server.
+- The local network target is never checked, so its Trust Self-Signed switch is gone.
 - Auto-Cache Streamed Music is now off unless you turn it on.
 - New output devices start with the EQ off; your current EQ is kept for the device in use.
 - Covers now count as app data; clear them in Settings, not Android's Clear cache.
-- Album genres are now tags under the artist instead of the end of the details line.
 - The offline pin now means the track is playing from its download.
-- Long artist names in Artists now end with "…" instead of wrapping.
-- Flax now checks server certificates; turn off "Verify Certificates" for a self-signed server.
-- Streamed music checks the server's certificate too, as the rest of flax does.
-- The local network target is never checked, so its Trust Self-Signed switch is gone.
-- "Sync Queue with Server" is now "Share queue between devices".
-- Artist bios sit beside the photo; Read more opens the full text.
-- Artist pages show library genres instead of MusicBrainz tags; tap one to browse.
+- Artist pages show library genres instead of MusicBrainz tags, and the bio beside the photo.
 - AMOLED black now works with every dark theme.
+- Long artist names in Artists now end with "…" instead of wrapping.
+- "Sync Queue with Server" is now "Share queue between devices".
 
 ### Fixed
 - Music no longer plays under a phone or video call.
-- Android Auto no longer stays silent after a call until flax is force-stopped.
-- Tablets: album Play, Next and Last labels no longer break mid-word.
-- Tablets: Settings and the mini player no longer hide under the navigation bar.
-- Flax no longer fails to start with "duplicate column name" after an interrupted update.
-- Metadata sync no longer stops after biographies on Android, leaving covers unsaved.
-- Moving cached music to an SD card no longer freezes, or loses files if interrupted.
-- Albums' All tab shows the whole library, not just the first 500 albums.
-- Downloaded tracks no longer show the streaming format (e.g. → OPUS 256kbps).
-- Queued songs that finish downloading play from the download instead of streaming.
-- Fixed an occasional error after leaving the car or changing networks.
-- Covers saved for offline no longer vanish when the system frees up storage.
-- A background error no longer skips checking the server for library changes.
-- Cancel stops a metadata sync, from the app or its notification, and clears it.
-- Tapping Update no longer seems to do nothing, or downloads twice with a jumping progress bar.
-- Artist and album pages no longer scroll under the window controls; Back stays in view.
-- Metadata sync no longer hangs forever if its downloader can't start.
-- Cache Status and Sync start in seconds on large libraries instead of stalling.
-- With queue sharing off, another device's queue no longer replaces yours at launch.
-- Covers fetched by the nightly background sync now show up in the app.
-- Update dialog no longer shows an earlier check's error beside the update.
-- Failed update checks give up after 15 seconds and say why in plain words.
-- A failed background check no longer hides an update already found.
-- Windows updates now install and reopen flax. Install this build by hand once.
 - Music resumes after the Assistant or a call instead of staying paused.
-- Android Auto no longer pauses right after resuming when the server's queue arrives late.
-- Offline queues skip songs that aren't downloaded instead of stopping mid-queue.
-- Now Playing keeps its title and queue button in a narrow desktop window.
-- A certificate problem says so instead of "Network error: unknown".
-- Settings' Language and Theme choices fit on narrow phones in every language.
-- Covers load from a self-signed server or local network target.
-- Titles and buttons no longer slip under the window's top-right controls.
-- Global hotkeys work as soon as flax starts, not only after opening Settings.
-- Play Artist no longer skips albums you haven't opened yet.
-- Similar artists no longer lists artists with no albums in your library.
-- Android no longer flips to offline and back when one request is slow.
-- The first song played after launch is no longer cached with Auto-Cache off.
-- Large library syncs no longer fail after 15 seconds on a slow connection.
-- At home, flax uses your server's local address from the very first request.
+- Android Auto no longer stays silent after a call until flax is force-stopped.
 - Android Auto no longer leaves music paused a few seconds after connecting.
+- Android Auto no longer pauses right after resuming when the server's queue arrives late.
 - Play and Pause buttons in the car no longer toggle; Play always plays.
 - Android Auto's tabs show real icons instead of blank squares.
-- Light/dark mode and AMOLED black are remembered after restarting.
+- Offline queues skip songs that aren't downloaded instead of stopping mid-queue.
+- Queued songs that finish downloading play from the download instead of streaming.
+- Downloaded tracks no longer show the streaming format (e.g. → OPUS 256kbps).
+- The first song played after launch is no longer cached with Auto-Cache off.
+- Covers saved for offline no longer vanish when the system frees up storage.
+- Covers fetched by the nightly background sync now show up in the app.
+- Metadata sync no longer stops after biographies on Android, or hangs if it can't start.
+- Cancel stops a metadata sync, from the app or its notification, and clears it.
+- Cache Status and Sync start in seconds on large libraries instead of stalling.
+- Large library syncs no longer fail after 15 seconds on a slow connection.
+- A background error no longer skips checking the server for library changes.
+- Moving cached music to an SD card no longer freezes, or loses files if interrupted.
+- Albums' All tab shows the whole library, not just the first 500 albums.
+- Play Artist no longer skips albums you haven't opened yet.
+- Similar artists no longer lists artists with no albums in your library.
+- At home, flax uses your server's local address from the very first request.
+- Android no longer flips to offline and back when one request is slow.
+- Fixed an occasional error after leaving the car or changing networks.
+- With queue sharing off, another device's queue no longer replaces yours at launch.
+- Flax no longer fails to start with "duplicate column name" after an interrupted update.
+- Global hotkeys work as soon as flax starts, not only after opening Settings.
+- Update checks give up after 15 seconds, explain failures plainly, and keep an update already found.
+- Tapping Update no longer seems to do nothing, or downloads twice.
+- Titles, buttons and album pages no longer slip under the window's top-right controls.
+- Now Playing keeps its title and queue button in a narrow desktop window.
+- Tablets: Settings and the mini player no longer hide under the navigation bar.
+- Tablets: album Play, Next and Last labels no longer break mid-word.
+- Settings' Language and Theme choices fit on narrow phones in every language.
 
 ### Removed
 - The Online/Offline switch in Android Auto; the phone's offline settings still apply in the car.
