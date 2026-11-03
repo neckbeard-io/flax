@@ -29,13 +29,26 @@ struct WindowModeCoordinator {
     /// AppKit refused a transition. FullScreenAwareWindow infers these from a
     /// transition that never finishes.
     case didFailToEnterFullScreen, didFailToExitFullScreen
+    /// AppKit ignored a toggleFullScreen(_:): no will-notification came back.
+    /// It does that to a toggle made as a full-screen window finishes
+    /// settling, which is exactly when a queued request is carried out.
+    case toggleFullScreenDropped
+    /// The delay asked for with `.scheduleRetry` is over.
+    case retry
   }
 
-  /// What the window should ask AppKit for. Only ever returned when AppKit
-  /// will act on it: never mid-transition, never a minimize in full screen.
+  /// What the window should do. Never a call mid-transition, nor a minimize
+  /// in full screen, which AppKit drops without telling anyone.
   enum Action: Equatable {
     case miniaturize, toggleFullScreen
+    /// Send `.retry` after `retryDelay`.
+    case scheduleRetry
   }
+
+  /// A dropped toggle is retried this often, up to `maxRetries` times
+  /// (five seconds), and then the request is given up.
+  static let retryDelay = 0.1
+  static let maxRetries = 50
 
   private enum Intent: Equatable {
     case minimize
@@ -44,6 +57,8 @@ struct WindowModeCoordinator {
 
   private(set) var phase: Phase
   private var intent: Intent?
+  private var retryScheduled = false
+  private var retries = 0
 
   init(isFullScreen: Bool) {
     phase = isFullScreen ? .fullScreen : .windowed
@@ -71,11 +86,24 @@ struct WindowModeCoordinator {
       // The latest request wins, a pending minimize included. Pressed twice
       // during one animation, it flips the target back.
       intent = .fullScreen(!isHeadingFullScreen)
+    case .toggleFullScreenDropped:
+      guard !retryScheduled else { return [] }
+      guard retries < Self.maxRetries else {
+        intent = nil
+        return []
+      }
+      retries += 1
+      retryScheduled = true
+      return [.scheduleRetry]
+    case .retry:
+      retryScheduled = false
     case .willEnterFullScreen:
+      retries = 0
       phase = .entering
     case .didEnterFullScreen:
       phase = .fullScreen
     case .willExitFullScreen:
+      retries = 0
       phase = .exiting
     case .didExitFullScreen:
       phase = .windowed
@@ -91,9 +119,8 @@ struct WindowModeCoordinator {
   }
 
   private mutating func drive() -> [Action] {
-    guard let want = intent, phase == .windowed || phase == .fullScreen else {
-      return []
-    }
+    guard let want = intent, !retryScheduled, phase == .windowed || phase == .fullScreen
+    else { return [] }
     switch want {
     case .minimize:
       if phase == .fullScreen { return [.toggleFullScreen] }
@@ -188,8 +215,18 @@ class FullScreenAwareWindow: NSWindow {
   private func send(_ event: WindowModeCoordinator.Event) {
     for action in coordinator.handle(event) {
       switch action {
-      case .miniaturize: super.miniaturize(nil)
-      case .toggleFullScreen: super.toggleFullScreen(nil)
+      case .miniaturize:
+        super.miniaturize(nil)
+      case .toggleFullScreen:
+        // AppKit posts the will-notification before returning, so a phase
+        // that has not moved means the toggle was ignored.
+        let before = coordinator.phase
+        super.toggleFullScreen(nil)
+        if coordinator.phase == before { send(.toggleFullScreenDropped) }
+      case .scheduleRetry:
+        DispatchQueue.main.asyncAfter(deadline: .now() + WindowModeCoordinator.retryDelay) {
+          [weak self] in self?.send(.retry)
+        }
       }
     }
   }

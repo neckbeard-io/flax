@@ -95,6 +95,13 @@ func expect(_ ok: Bool, _ what: String) {
 
 func isFullScreen(_ w: NSWindow) -> Bool { w.styleMask.contains(.fullScreen) }
 
+func state(_ w: NSWindow, minimized: Bool? = nil, again: Bool? = nil) -> String {
+  var parts = ["fullScreen=\(isFullScreen(w))", "miniaturized=\(w.isMiniaturized)"]
+  if let minimized { parts.append("first minimize=\(minimized)") }
+  if let again { parts.append("second minimize=\(again)") }
+  return " [" + parts.joined(separator: " ") + "]"
+}
+
 /// Take a window out of full screen and the Dock, and close it.
 func dispose(_ w: NSWindow, _ log: TransitionLog) {
   if w.isMiniaturized { w.deminiaturize(nil); waitUntil { !w.isMiniaturized } }
@@ -138,6 +145,28 @@ func appKitFacts() {
     spin(1)
     expect(isFullScreen(w) && log.willEnterCount == 1,
            "toggleFullScreen during the enter animation is dropped")
+    dispose(w, log)
+  }
+
+  do {
+    // Not asserted: the coordinator retries a dropped toggle either way. It
+    // records whether AppKit still drops one made as full screen is entered,
+    // which is what the probe first caught (the fake's `settling`).
+    let w = makeWindow(aware: false)
+    let log = TransitionLog(w)
+    var exitStarted = false
+    let exitObserver = NotificationCenter.default.addObserver(
+      forName: NSWindow.willExitFullScreenNotification, object: w, queue: nil
+    ) { _ in exitStarted = true }
+    let enterObserver = NotificationCenter.default.addObserver(
+      forName: NSWindow.didEnterFullScreenNotification, object: w, queue: nil
+    ) { _ in w.toggleFullScreen(nil) }
+    w.toggleFullScreen(nil)
+    waitUntil { isFullScreen(w) && !log.transitioning }
+    print("  note  toggleFullScreen inside didEnterFullScreen is \(exitStarted ? "honored" : "dropped")")
+    NotificationCenter.default.removeObserver(enterObserver)
+    NotificationCenter.default.removeObserver(exitObserver)
+    waitUntil { !log.transitioning }
     dispose(w, log)
   }
 }
@@ -227,7 +256,7 @@ func combinations() {
           // Two flips: back where it started, and not stuck mid-way.
           spin(1)
           let settled = waitUntil(12) { !log.transitioning && isFullScreen(w) == startFullScreen }
-          expect(settled && !w.isMiniaturized, name)
+          expect(settled && !w.isMiniaturized, name + state(w))
         } else {
           let minimized = waitUntil(12) { w.isMiniaturized }
           var again = false
@@ -239,7 +268,8 @@ func combinations() {
             second.send(to: w)
             again = waitUntil(12) { w.isMiniaturized }
           }
-          expect(minimized && again && !isFullScreen(w), name + ", then again after restoring")
+          expect(minimized && again && !isFullScreen(w),
+                 name + ", then again after restoring" + state(w, minimized: minimized, again: again))
         }
         dispose(w, log)
       }
