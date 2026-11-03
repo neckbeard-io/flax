@@ -23,8 +23,11 @@ class MainFlutterWindow: NSWindow {
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
 
-    // Titled for drag support, transparent so it blends with content
-    self.styleMask = [.titled, .resizable, .fullSizeContentView]
+    // Titled for drag support, transparent so it blends with content.
+    // .miniaturizable is what lets the window minimize at all: without it
+    // miniaturize(_:) silently does nothing, for flax's own button and for
+    // Window > Minimize (Cmd-M) alike. The traffic lights stay hidden.
+    self.styleMask = [.titled, .resizable, .miniaturizable, .fullSizeContentView]
     self.titlebarAppearsTransparent = true
     self.titleVisibility = .hidden
 
