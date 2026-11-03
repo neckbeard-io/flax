@@ -2,13 +2,16 @@ import Cocoa
 import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
+  /// Hides the native buttons; flax draws its own (window_buttons.dart).
+  ///
+  /// isHidden only. AppKit disables a button whose alphaValue is 0, and a
+  /// window whose minimize button is disabled ignores miniaturize(_:), so
+  /// fading the buttons out killed minimize: once the window became key it
+  /// would not minimize again until full screen rebuilt the buttons. Checked on
+  /// GitHub's macOS 15 and 26 runners; neither isHidden nor a zero frame does it.
   func hideTrafficLights() {
     for type: NSWindow.ButtonType in [.closeButton, .miniaturizeButton, .zoomButton] {
-      if let button = super.standardWindowButton(type) {
-        button.isHidden = true
-        button.alphaValue = 0
-        button.frame = .zero
-      }
+      super.standardWindowButton(type)?.isHidden = true
     }
   }
 
@@ -33,6 +36,12 @@ class MainFlutterWindow: NSWindow {
 
     // Hide traffic lights after system creates them
     DispatchQueue.main.async { [weak self] in
+      self?.hideTrafficLights()
+    }
+    // Leaving full screen rebuilds them, and the window may already be key.
+    NotificationCenter.default.addObserver(
+      forName: NSWindow.didExitFullScreenNotification, object: self, queue: .main
+    ) { [weak self] _ in
       self?.hideTrafficLights()
     }
 
