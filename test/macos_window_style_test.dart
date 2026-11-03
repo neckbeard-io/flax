@@ -25,6 +25,18 @@ void main() {
     expect(mask!.group(1), contains('.miniaturizable'));
   });
 
+  test('minimize and full screen go through FullScreenAwareWindow', () {
+    // AppKit drops a minimize in full screen and any request mid-animation;
+    // FullScreenAwareWindow sequences them. Its own tests are Swift, under
+    // test/macos/, run by .github/workflows/macos-window.yml.
+    expect(code, contains('class MainFlutterWindow: FullScreenAwareWindow'));
+    expect(code, contains('observeFullScreenTransitions()'));
+    expect(
+      File('macos/Runner.xcodeproj/project.pbxproj').readAsStringSync(),
+      contains('FullScreenAwareWindow.swift in Sources'),
+    );
+  });
+
   test('hiding the traffic lights leaves minimize enabled', () {
     expect(code, contains('isHidden = true'));
     expect(code, isNot(contains('alphaValue')));

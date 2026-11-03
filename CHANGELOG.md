@@ -12,6 +12,7 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Fixed
 - macOS: the minimize button and Cmd-M work every time, not just once after full screen.
+- macOS: minimize works in full screen and mid-animation; a quick second maximize is no longer ignored.
 - Less battery use: flax stops polling the server while locked and not playing.
 
 ## v0.7.0 — 2026-11-01
