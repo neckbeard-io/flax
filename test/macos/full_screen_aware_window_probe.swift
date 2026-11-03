@@ -206,7 +206,7 @@ func combinations() {
         let log = TransitionLog(w)
         if startFullScreen {
           w.toggleFullScreen(nil)
-          guard waitUntil({ isFullScreen(w) && !log.transitioning }) else {
+          guard waitUntil(8, { isFullScreen(w) && !log.transitioning }) else {
             expect(false, "\(name): could not reach full screen to start")
             dispose(w, log)
             continue
