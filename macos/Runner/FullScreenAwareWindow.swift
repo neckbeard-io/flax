@@ -25,8 +25,10 @@ struct WindowModeCoordinator {
 
   enum Event: Equatable, CaseIterable {
     case minimizeRequested, toggleFullScreenRequested
-    case willEnterFullScreen, didEnterFullScreen, didFailToEnterFullScreen
-    case willExitFullScreen, didExitFullScreen, didFailToExitFullScreen
+    case willEnterFullScreen, didEnterFullScreen, willExitFullScreen, didExitFullScreen
+    /// AppKit refused a transition. FullScreenAwareWindow infers these from a
+    /// transition that never finishes.
+    case didFailToEnterFullScreen, didFailToExitFullScreen
   }
 
   /// What the window should ask AppKit for. Only ever returned when AppKit
@@ -124,18 +126,41 @@ class FullScreenAwareWindow: NSWindow {
     let events: [(Notification.Name, WindowModeCoordinator.Event)] = [
       (NSWindow.willEnterFullScreenNotification, .willEnterFullScreen),
       (NSWindow.didEnterFullScreenNotification, .didEnterFullScreen),
-      (NSWindow.didFailToEnterFullScreenNotification, .didFailToEnterFullScreen),
       (NSWindow.willExitFullScreenNotification, .willExitFullScreen),
       (NSWindow.didExitFullScreenNotification, .didExitFullScreen),
-      (NSWindow.didFailToExitFullScreenNotification, .didFailToExitFullScreen),
     ]
     for (name, event) in events {
       // queue: nil delivers synchronously, so the phase has moved on before
       // toggleFullScreen(_:) returns and nothing can ask for a second toggle.
       observers.append(
         NotificationCenter.default.addObserver(forName: name, object: self, queue: nil) {
-          [weak self] _ in self?.send(event)
+          [weak self] _ in
+          self?.transitionGeneration += 1
+          self?.send(event)
+          if event == .willEnterFullScreen || event == .willExitFullScreen {
+            self?.watchTransition()
+          }
         })
+    }
+  }
+
+  /// AppKit reports a refused transition only to the window's delegate, which
+  /// Flutter and its plugins own. So if a transition has not finished after
+  /// `transitionTimeout`, read where the window actually is and report that,
+  /// rather than holding a request for an end that will never be announced.
+  private var transitionGeneration = 0
+  private let transitionTimeout: TimeInterval = 5
+
+  private func watchTransition() {
+    let generation = transitionGeneration
+    DispatchQueue.main.asyncAfter(deadline: .now() + transitionTimeout) { [weak self] in
+      guard let self, generation == self.transitionGeneration else { return }
+      let inFullScreen = self.styleMask.contains(.fullScreen)
+      switch self.coordinator.phase {
+      case .entering: self.send(inFullScreen ? .didEnterFullScreen : .didFailToEnterFullScreen)
+      case .exiting: self.send(inFullScreen ? .didFailToExitFullScreen : .didExitFullScreen)
+      case .windowed, .fullScreen: break
+      }
     }
   }
 

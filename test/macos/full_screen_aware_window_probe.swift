@@ -40,10 +40,7 @@ final class TransitionLog {
         if n.name == NSWindow.willEnterFullScreenNotification { self?.willEnterCount += 1 }
       })
     }
-    for name in [
-      NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification,
-      NSWindow.didFailToEnterFullScreenNotification, NSWindow.didFailToExitFullScreenNotification,
-    ] {
+    for name in [NSWindow.didEnterFullScreenNotification, NSWindow.didExitFullScreenNotification] {
       observers.append(center.addObserver(forName: name, object: window, queue: nil) { [weak self] _ in
         self?.transitioning = false
       })
