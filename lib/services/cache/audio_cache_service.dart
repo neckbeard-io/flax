@@ -901,12 +901,53 @@ class AudioCacheService {
         ).ignore();
       }
     }
+    await _downloadSongs(
+      songs,
+      label: 'Caching "${album?.name ?? 'Album'}"',
+      isPinned: isPinned,
+    );
+  }
+
+  /// Caches a playlist: its current track list, each distinct track once, and
+  /// its own cover, which belongs to no album and so comes with no track.
+  ///
+  /// [label] is what the activity indicator shows. The caller passes it because
+  /// only a widget can translate it.
+  Future<void> cachePlaylist(String playlistId, {required String label}) async {
+    final repo = _ref.read(libraryRepositoryProvider);
+    if (repo == null) return;
+
+    await repo.refreshPlaylist(playlistId);
+    final songs = await repo.watchPlaylistSongs(playlistId).first;
+    if (songs.isEmpty) return;
+
+    final coverArtId = (await repo.watchPlaylist(playlistId).first)?.coverArtId;
+    final client = _ref.read(subsonicClientProvider);
+    if (client != null && coverArtId != null) {
+      _storeCoverForOffline(client, coverArtId).ignore();
+    }
+
+    await _downloadSongs(
+      {for (final song in songs) song.id: song}.values.toList(),
+      label: label,
+      isPinned: true,
+    );
+  }
+
+  /// Downloads [songs], which must not be empty, as one task. Shared by
+  /// everything that caches a fixed list of tracks.
+  Future<void> _downloadSongs(
+    List<Song> songs, {
+    required String label,
+    required bool isPinned,
+  }) async {
+    final dao = _ref.read(libraryDaoProvider);
     final taskRegistry = _ref.read(taskRegistryProvider.notifier);
     final cancelToken = CancelToken();
     final handle = isPinned
         ? taskRegistry.start(
             kind: TaskKind.audioDownload,
-            label: 'Caching "${album?.name ?? 'Album'}"',
+            label: label,
             serverId: songs.first.serverId,
             onCancel: () => cancelToken.cancel(),
           )
@@ -960,6 +1001,10 @@ class AudioCacheService {
       }
     }
 
+    // [songs] was read before anything downloaded, so its states can't say what
+    // has finished since. A cancel resets only what this set doesn't hold.
+    final finished = <String>{};
+
     Future<void> worker() async {
       while (!cancelToken.isCancelled && handle?.isCanceled != true) {
         final i = currentIndex++;
@@ -978,6 +1023,7 @@ class AudioCacheService {
         );
         if (path != null) {
           doneCount++;
+          finished.add(song.id);
         }
         updateProgress(force: true);
       }
@@ -988,7 +1034,11 @@ class AudioCacheService {
 
     if (cancelToken.isCancelled || handle?.isCanceled == true) {
       final unfinished = songs
-          .where((s) => s.downloadState != DownloadState.complete)
+          .where(
+            (s) =>
+                s.downloadState != DownloadState.complete &&
+                !finished.contains(s.id),
+          )
           .map((s) => s.id)
           .toList();
       await dao.updateSongsDownloadState(
@@ -1099,6 +1149,10 @@ class AudioCacheService {
       }
     }
 
+    // [songs] was read before anything downloaded, so its states can't say what
+    // has finished since. A cancel resets only what this set doesn't hold.
+    final finished = <String>{};
+
     Future<void> worker() async {
       while (!cancelToken.isCancelled && handle?.isCanceled != true) {
         final i = currentIndex++;
@@ -1119,6 +1173,7 @@ class AudioCacheService {
         );
         if (path != null) {
           doneCount++;
+          finished.add(song.id);
         }
         updateProgress(force: true);
       }
@@ -1129,7 +1184,11 @@ class AudioCacheService {
 
     if (cancelToken.isCancelled || handle?.isCanceled == true) {
       final unfinished = allSongs
-          .where((s) => s.downloadState != DownloadState.complete)
+          .where(
+            (s) =>
+                s.downloadState != DownloadState.complete &&
+                !finished.contains(s.id),
+          )
           .map((s) => s.id)
           .toList();
       await dao.updateSongsDownloadState(
@@ -1557,6 +1616,17 @@ class AudioCacheService {
     final songs = await repo.watchAlbumSongs(albumId).first;
     for (final song in songs) {
       await removeCachedSong(song.id);
+    }
+  }
+
+  /// Removes a playlist's tracks from cache.
+  Future<void> removeCachedPlaylist(String playlistId) async {
+    final repo = _ref.read(libraryRepositoryProvider);
+    if (repo == null) return;
+
+    final songs = await repo.watchPlaylistSongs(playlistId).first;
+    for (final id in {for (final song in songs) song.id}) {
+      await removeCachedSong(id);
     }
   }
 

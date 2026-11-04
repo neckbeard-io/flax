@@ -632,4 +632,59 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get audioDevicesManage => '管理设备';
+
+  @override
+  String get playlistHeading => '播放列表';
+
+  @override
+  String get noPlaylists => '此服务器上没有播放列表';
+
+  @override
+  String get noCachedPlaylists => '没有已缓存供离线使用的播放列表';
+
+  @override
+  String get playlistEmpty => '此播放列表没有曲目';
+
+  @override
+  String get noCachedPlaylistTracks => '此播放列表没有已缓存的曲目';
+
+  @override
+  String get playlistNotFound => '未找到播放列表';
+
+  @override
+  String get cachePlaylistOffline => '缓存播放列表以供离线使用';
+
+  @override
+  String get completePlaylistCaching => '完成缓存播放列表';
+
+  @override
+  String get removePlaylistFromCache => '从缓存中移除播放列表';
+
+  @override
+  String get removeCachedTracks => '移除已缓存的曲目';
+
+  @override
+  String get queueNext => '下一首播放';
+
+  @override
+  String get queueLast => '最后播放';
+
+  @override
+  String cachingPlaylist(String name) {
+    return '正在缓存“$name”...';
+  }
+
+  @override
+  String removedPlaylistFromCache(String name) {
+    return '已从离线缓存中移除“$name”';
+  }
+
+  @override
+  String get navPlaylistsShort => '播放列表';
+
+  @override
+  String get unknownAlbum => '未知专辑';
+
+  @override
+  String get unknownArtist => '未知艺术家';
 }

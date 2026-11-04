@@ -585,8 +585,71 @@ class LibraryDao {
   Stream<List<Playlist>> watchPlaylists(String serverId) {
     final q = _db.select(_db.playlists)
       ..where((t) => t.serverId.equals(serverId))
-      ..orderBy([(t) => OrderingTerm(expression: t.name)]);
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.name.collate(Collate.noCase)),
+      ]);
     return q.watch().map((rows) => rows.map(playlistFromRow).toList());
+  }
+
+  Stream<Playlist?> watchPlaylist(String serverId, String playlistId) {
+    final q = _db.select(_db.playlists)
+      ..where((t) => t.serverId.equals(serverId) & t.id.equals(playlistId));
+    return q.watchSingleOrNull().map(
+      (row) => row == null ? null : playlistFromRow(row),
+    );
+  }
+
+  /// Makes the stored list match the server's.
+  ///
+  /// Unlike albums, nothing but this response ever mentions a playlist, so one
+  /// the server no longer returns really is gone. Its downloaded tracks stay:
+  /// they belong to their albums as much as to the playlist.
+  Future<void> replacePlaylists(
+    String serverId,
+    List<Playlist> playlists,
+    DateTime now,
+  ) async {
+    final ids = playlists.map((p) => p.id).toList();
+    await _db.transaction(() async {
+      await upsertPlaylists(playlists, now);
+      await (_db.delete(_db.playlistEntries)..where(
+            (t) => t.serverId.equals(serverId) & t.playlistId.isNotIn(ids),
+          ))
+          .go();
+      await (_db.delete(
+        _db.playlists,
+      )..where((t) => t.serverId.equals(serverId) & t.id.isNotIn(ids))).go();
+    });
+  }
+
+  /// Stores one playlist and its tracks in order. A playlist can hold the same
+  /// track twice, which is why entries are keyed by position.
+  Future<void> storePlaylist(
+    Playlist playlist,
+    List<Song> songs,
+    DateTime now,
+  ) async {
+    await _db.transaction(() async {
+      await upsertPlaylists([playlist], now);
+      await upsertSongs(songs, now);
+      await (_db.delete(_db.playlistEntries)..where(
+            (t) =>
+                t.serverId.equals(playlist.serverId) &
+                t.playlistId.equals(playlist.id),
+          ))
+          .go();
+      await _db.batch((b) {
+        b.insertAll(_db.playlistEntries, [
+          for (var i = 0; i < songs.length; i++)
+            PlaylistEntriesCompanion.insert(
+              serverId: playlist.serverId,
+              playlistId: playlist.id,
+              position: i,
+              songId: songs[i].id,
+            ),
+        ]);
+      });
+    });
   }
 
   Future<void> upsertPlaylists(List<Playlist> playlists, DateTime now) async {
@@ -603,6 +666,94 @@ class LibraryDao {
         );
       }
     });
+  }
+
+  JoinedSelectStatement<HasResultSet, dynamic> _playlistSongsQuery(
+    String serverId,
+    String playlistId,
+  ) {
+    return _db.select(_db.playlistEntries).join([
+        innerJoin(
+          _db.songs,
+          _db.songs.serverId.equalsExp(_db.playlistEntries.serverId) &
+              _db.songs.id.equalsExp(_db.playlistEntries.songId),
+        ),
+      ])
+      ..where(
+        _db.playlistEntries.serverId.equals(serverId) &
+            _db.playlistEntries.playlistId.equals(playlistId),
+      )
+      ..orderBy([OrderingTerm.asc(_db.playlistEntries.position)]);
+  }
+
+  /// A playlist's tracks in playlist order, repeats included.
+  Stream<List<Song>> watchPlaylistSongs(String serverId, String playlistId) {
+    return _playlistSongsQuery(serverId, playlistId).watch().map(
+      (rows) => [for (final r in rows) songFromRow(r.readTable(_db.songs))],
+    );
+  }
+
+  /// The tracks of a playlist that can play offline, in playlist order.
+  Stream<List<Song>> watchDownloadedPlaylistSongs(
+    String serverId,
+    String playlistId,
+  ) {
+    final q = _playlistSongsQuery(serverId, playlistId)
+      ..where(
+        _db.songs.localPath.isNotNull() &
+            _db.songs.downloadState.equals(DownloadState.complete.index),
+      );
+    return q.watch().map(
+      (rows) => [for (final r in rows) songFromRow(r.readTable(_db.songs))],
+    );
+  }
+
+  /// Playlists with at least one downloaded track in their stored track list:
+  /// what the Playlists screen shows offline. As with albums, a partly cached
+  /// one is listed and shows the tracks it has.
+  Stream<List<Playlist>> watchDownloadedPlaylists(String serverId) {
+    final downloaded =
+        _db.selectOnly(_db.playlistEntries).join([
+            innerJoin(
+              _db.songs,
+              _db.songs.serverId.equalsExp(_db.playlistEntries.serverId) &
+                  _db.songs.id.equalsExp(_db.playlistEntries.songId),
+            ),
+          ])
+          ..addColumns([_db.playlistEntries.playlistId])
+          ..where(
+            _db.playlistEntries.serverId.equals(serverId) &
+                _db.songs.localPath.isNotNull() &
+                _db.songs.downloadState.equals(DownloadState.complete.index),
+          );
+    final q = _db.select(_db.playlists)
+      ..where((t) => t.serverId.equals(serverId) & t.id.isInQuery(downloaded))
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.name.collate(Collate.noCase)),
+      ]);
+    return q.watch().map((rows) => rows.map(playlistFromRow).toList());
+  }
+
+  /// Playlists whose every track is downloaded. A stored track list shorter
+  /// than the server's count means tracks were added since, so it doesn't count.
+  Stream<Set<String>> watchDownloadedPlaylistIds(String serverId) {
+    final query = _db.customSelect(
+      'SELECT e.playlist_id FROM playlist_entries e '
+      'JOIN playlists p ON p.server_id = e.server_id AND p.id = e.playlist_id '
+      'LEFT JOIN songs s ON s.server_id = e.server_id AND s.id = e.song_id '
+      'WHERE e.server_id = ? '
+      'GROUP BY e.playlist_id, p.song_count '
+      'HAVING COUNT(*) >= p.song_count '
+      '  AND COUNT(*) = SUM(CASE WHEN s.download_state = ? AND s.local_path IS NOT NULL THEN 1 ELSE 0 END)',
+      variables: [
+        Variable<String>(serverId),
+        Variable<int>(DownloadState.complete.index),
+      ],
+      readsFrom: {_db.playlistEntries, _db.playlists, _db.songs},
+    );
+    return query.watch().map(
+      (rows) => rows.map((r) => r.read<String>('playlist_id')).toSet(),
+    );
   }
 
   // ── Annotations ──────────────────────────────────────────────────────────

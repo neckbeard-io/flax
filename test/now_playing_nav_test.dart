@@ -99,8 +99,17 @@ void main() {
 
     test('Settings is reachable on the mobile bottom bar', () {
       expect(mobileNavDestinations.any((d) => d.path == '/settings'), isTrue);
-      expect(navIndexForLocation('/settings'), 3);
-      expect(navIndexForLocation('/settings/equalizer'), 3);
+      expect(navIndexForLocation('/settings'), 4);
+      expect(navIndexForLocation('/settings/equalizer'), 4);
+    });
+
+    test('a playlist page highlights Playlists on the mobile bottom bar', () {
+      for (final location in ['/playlists', '/playlists/some-id']) {
+        expect(
+          mobileNavDestinations[navIndexForLocation(location)].path,
+          '/playlists',
+        );
+      }
     });
 
     test('Songs is removed from navigation destinations', () {

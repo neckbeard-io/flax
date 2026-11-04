@@ -186,5 +186,22 @@
   "eqProfileDeleteTitle": "{name} löschen?",
   "eqProfileNameLabel": "Profilname",
   "eqProfileKeepOne": "Ein Gerät behält mindestens ein Profil",
-  "audioDevicesManage": "Geräte verwalten"
+  "audioDevicesManage": "Geräte verwalten",
+  "playlistHeading": "WIEDERGABELISTE",
+  "noPlaylists": "Keine Wiedergabelisten auf diesem Server",
+  "noCachedPlaylists": "Keine Wiedergabelisten für die Offline-Nutzung im Cache",
+  "playlistEmpty": "Diese Wiedergabeliste enthält keine Titel",
+  "noCachedPlaylistTracks": "Von dieser Wiedergabeliste sind keine Titel im Cache",
+  "playlistNotFound": "Wiedergabeliste nicht gefunden",
+  "cachePlaylistOffline": "Wiedergabeliste offline speichern",
+  "completePlaylistCaching": "Wiedergabeliste vollständig speichern",
+  "removePlaylistFromCache": "Wiedergabeliste aus dem Cache entfernen",
+  "removeCachedTracks": "Titel im Cache entfernen",
+  "queueNext": "Als Nächstes",
+  "queueLast": "Als Letztes",
+  "cachingPlaylist": "„{name}“ wird gespeichert …",
+  "removedPlaylistFromCache": "„{name}“ aus dem Offline-Cache entfernt",
+  "navPlaylistsShort": "Playlists",
+  "unknownAlbum": "Unbekanntes Album",
+  "unknownArtist": "Unbekannter Künstler"
 }

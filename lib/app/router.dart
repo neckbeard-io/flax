@@ -13,6 +13,8 @@ import 'package:flax/features/library/artists_screen.dart';
 import 'package:flax/features/library/artist_detail_screen.dart';
 import 'package:flax/features/library/downloads_screen.dart';
 import 'package:flax/features/library/genre_screen.dart';
+import 'package:flax/features/library/playlist_detail_screen.dart';
+import 'package:flax/features/library/playlists_screen.dart';
 import 'package:flax/features/search/search_screen.dart';
 import 'package:flax/features/settings/settings_screen.dart';
 import 'package:flax/features/settings/audio_output_screen.dart';
@@ -232,6 +234,15 @@ final List<RouteBase> appRoutes = [
         path: '/genres/:name',
         builder: (context, state) =>
             GenreScreen(genre: state.pathParameters['name']!),
+      ),
+      GoRoute(
+        path: '/playlists',
+        builder: (context, state) => const PlaylistsScreen(),
+      ),
+      GoRoute(
+        path: '/playlists/:id',
+        builder: (context, state) =>
+            PlaylistDetailScreen(playlistId: state.pathParameters['id']!),
       ),
       GoRoute(path: '/songs', redirect: (context, state) => '/albums'),
       GoRoute(
