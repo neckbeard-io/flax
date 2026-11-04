@@ -51,6 +51,21 @@ abstract class LibraryRepository {
   Future<void> refreshAlbumList(AlbumListQuery query, {bool force = false});
   Future<void> refreshAlbum(String albumId, {bool force = false});
 
+  // ── Playlists ────────────────────────────────────────────────────────────
+
+  Stream<List<Playlist>> watchPlaylists();
+  Stream<Playlist?> watchPlaylist(String playlistId);
+  Stream<List<Song>> watchPlaylistSongs(String playlistId);
+  Stream<List<Playlist>> watchDownloadedPlaylists();
+  Stream<List<Song>> watchDownloadedPlaylistSongs(String playlistId);
+  Stream<Set<String>> watchDownloadedPlaylistIds();
+
+  /// Fetched each time a screen opens rather than by TTL or scan beacon: a
+  /// playlist edit doesn't move the beacon, and these responses are small next
+  /// to what a stale list costs someone who just made a playlist.
+  Future<void> refreshPlaylists();
+  Future<void> refreshPlaylist(String playlistId);
+
   /// Ask the server whether anything changed, and refresh only if so.
   ///
   /// Returns true when the beacon moved. This is one 285-byte call against

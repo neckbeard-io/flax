@@ -636,4 +636,59 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get audioDevicesManage => 'デバイスを管理';
+
+  @override
+  String get playlistHeading => 'プレイリスト';
+
+  @override
+  String get noPlaylists => 'このサーバーにプレイリストはありません';
+
+  @override
+  String get noCachedPlaylists => 'オフライン用にキャッシュされたプレイリストはありません';
+
+  @override
+  String get playlistEmpty => 'このプレイリストに曲はありません';
+
+  @override
+  String get noCachedPlaylistTracks => 'このプレイリストにキャッシュ済みの曲はありません';
+
+  @override
+  String get playlistNotFound => 'プレイリストが見つかりません';
+
+  @override
+  String get cachePlaylistOffline => 'プレイリストをオフライン用にキャッシュ';
+
+  @override
+  String get completePlaylistCaching => 'プレイリストのキャッシュを完了';
+
+  @override
+  String get removePlaylistFromCache => 'プレイリストをキャッシュから削除';
+
+  @override
+  String get removeCachedTracks => 'キャッシュ済みの曲を削除';
+
+  @override
+  String get queueNext => '次に再生';
+
+  @override
+  String get queueLast => '最後に再生';
+
+  @override
+  String cachingPlaylist(String name) {
+    return '「$name」をキャッシュしています...';
+  }
+
+  @override
+  String removedPlaylistFromCache(String name) {
+    return '「$name」をオフラインキャッシュから削除しました';
+  }
+
+  @override
+  String get navPlaylistsShort => 'プレイリスト';
+
+  @override
+  String get unknownAlbum => '不明なアルバム';
+
+  @override
+  String get unknownArtist => '不明なアーティスト';
 }

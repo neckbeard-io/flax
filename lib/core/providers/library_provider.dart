@@ -108,6 +108,22 @@ final anyDownloadedArtistIdsProvider = StreamProvider<Set<String>>((ref) {
   return repo.watchAnyDownloadedArtistIds();
 });
 
+/// Playlists whose every track is downloaded.
+final downloadedPlaylistIdsProvider = StreamProvider<Set<String>>((ref) {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) return Stream.value(const {});
+  return repo.watchDownloadedPlaylistIds();
+});
+
+/// Playlists with at least one downloaded track.
+final anyDownloadedPlaylistIdsProvider = StreamProvider<Set<String>>((ref) {
+  final repo = ref.watch(libraryRepositoryProvider);
+  if (repo == null) return Stream.value(const {});
+  return repo.watchDownloadedPlaylists().map(
+    (playlists) => {for (final p in playlists) p.id},
+  );
+});
+
 final downloadedSongsProvider = StreamProvider<List<Song>>((ref) {
   final repo = ref.watch(libraryRepositoryProvider);
   if (repo == null) return Stream.value(const []);

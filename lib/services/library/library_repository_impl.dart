@@ -372,6 +372,59 @@ class LibraryRepositoryImpl implements LibraryRepository {
     });
   }
 
+  @override
+  Stream<List<Playlist>> watchPlaylists() => _dao.watchPlaylists(_serverId);
+
+  @override
+  Stream<Playlist?> watchPlaylist(String playlistId) =>
+      _dao.watchPlaylist(_serverId, playlistId);
+
+  @override
+  Stream<List<Song>> watchPlaylistSongs(String playlistId) =>
+      _dao.watchPlaylistSongs(_serverId, playlistId);
+
+  @override
+  Stream<List<Playlist>> watchDownloadedPlaylists() =>
+      _dao.watchDownloadedPlaylists(_serverId);
+
+  @override
+  Stream<List<Song>> watchDownloadedPlaylistSongs(String playlistId) =>
+      _dao.watchDownloadedPlaylistSongs(_serverId, playlistId);
+
+  @override
+  Stream<Set<String>> watchDownloadedPlaylistIds() =>
+      _dao.watchDownloadedPlaylistIds(_serverId);
+
+  @override
+  Future<void> refreshPlaylists() {
+    return _once('playlists', () async {
+      try {
+        final playlists = await _backend.getPlaylists();
+        onNetworkSuccess?.call();
+        await _dao.replacePlaylists(_serverId, playlists, _clock());
+      } catch (e) {
+        AppLogger.w('Library', 'refreshPlaylists failed: $e');
+        _reportIfNetworkError(e);
+      }
+    });
+  }
+
+  @override
+  Future<void> refreshPlaylist(String playlistId) {
+    return _once('playlist:$playlistId', () async {
+      try {
+        // Without the request limit: a long playlist is a large response.
+        final playlist = await _background.getPlaylist(playlistId);
+        final songs = await _background.getPlaylistSongs(playlistId);
+        onNetworkSuccess?.call();
+        await _dao.storePlaylist(playlist, songs, _clock());
+      } catch (e) {
+        AppLogger.w('Library', 'refreshPlaylist($playlistId) failed: $e');
+        _reportIfNetworkError(e);
+      }
+    });
+  }
+
   /// Whether fewer of an album's songs are cached than the album claims.
   ///
   /// A timestamp cannot answer this. Individual song plays, queues, and search

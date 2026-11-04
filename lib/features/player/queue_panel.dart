@@ -7,6 +7,7 @@ import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/library/album_detail_screen.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
+import 'package:flax/shared/widgets/album_group_header.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/genre_chips.dart';
@@ -32,7 +33,7 @@ class QueuePanel extends ConsumerWidget {
       );
     }
 
-    final groups = _groupByAlbum(state.queue);
+    final groups = groupByAlbum(state.queue);
     final currentSong = state.currentSong;
 
     return Column(
@@ -65,52 +66,6 @@ class QueuePanel extends ConsumerWidget {
       ],
     );
   }
-
-  List<_AlbumGroupData> _groupByAlbum(List<Song> songs) {
-    final groups = <_AlbumGroupData>[];
-    _AlbumGroupData? current;
-
-    for (final song in songs) {
-      final albumKey = song.albumId ?? song.albumName ?? '';
-      if (current == null || current.albumKey != albumKey) {
-        current = _AlbumGroupData(
-          albumKey: albumKey,
-          albumId: song.albumId,
-          albumName: song.albumName ?? 'Unknown Album',
-          artistName: song.artistName ?? 'Unknown Artist',
-          coverArtId: song.coverArtId,
-          year: song.year,
-          songs: [],
-        );
-        groups.add(current);
-      }
-      current.songs.add(song);
-    }
-
-    return groups;
-  }
-}
-
-class _AlbumGroupData {
-  final String albumKey;
-  final String? albumId;
-  final String albumName;
-  final String artistName;
-  final String? coverArtId;
-  final int? year;
-  final List<Song> songs;
-
-  _AlbumGroupData({
-    required this.albumKey,
-    this.albumId,
-    required this.albumName,
-    required this.artistName,
-    this.coverArtId,
-    this.year,
-    required this.songs,
-  });
-
-  int get totalDuration => songs.fold(0, (sum, s) => sum + s.duration);
 }
 
 class _NowPlayingAlbumHeader extends ConsumerWidget {
@@ -289,7 +244,7 @@ class _AlbumRatingRow extends ConsumerWidget {
 }
 
 class _AlbumGroup extends ConsumerWidget {
-  final _AlbumGroupData group;
+  final AlbumGroup group;
   final Song? currentSong;
   final void Function(Song song, int index) onSongTap;
 
@@ -308,67 +263,7 @@ class _AlbumGroup extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Album group header ──
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CoverArtImage(coverArtId: group.coverArtId, size: 64),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      group.albumName,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      group.artistName,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    _formatDurationHMS(group.totalDuration),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 11,
-                    ),
-                  ),
-                  if (group.year != null)
-                    Text(
-                      '${group.year}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 11,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
+        AlbumGroupHeader(group: group),
 
         // ── Tracks ──
         ...group.songs.asMap().entries.map((entry) {
@@ -447,17 +342,6 @@ class _AlbumGroup extends ConsumerWidget {
         }),
       ],
     );
-  }
-
-  String _formatDurationHMS(int seconds) {
-    final d = Duration(seconds: seconds);
-    final h = d.inHours;
-    final m = d.inMinutes.remainder(60);
-    final s = d.inSeconds.remainder(60);
-    if (h > 0) {
-      return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-    }
-    return '0:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   String _formatTrackDuration(int seconds) {

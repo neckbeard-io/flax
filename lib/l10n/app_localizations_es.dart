@@ -683,4 +683,64 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get audioDevicesManage => 'Gestionar dispositivos';
+
+  @override
+  String get playlistHeading => 'LISTA DE REPRODUCCIÓN';
+
+  @override
+  String get noPlaylists => 'No hay listas de reproducción en este servidor';
+
+  @override
+  String get noCachedPlaylists =>
+      'No hay listas de reproducción en caché para usar sin conexión';
+
+  @override
+  String get playlistEmpty => 'Esta lista de reproducción no tiene pistas';
+
+  @override
+  String get noCachedPlaylistTracks =>
+      'Ninguna pista de esta lista de reproducción está en caché';
+
+  @override
+  String get playlistNotFound => 'Lista de reproducción no encontrada';
+
+  @override
+  String get cachePlaylistOffline =>
+      'Guardar la lista de reproducción sin conexión';
+
+  @override
+  String get completePlaylistCaching =>
+      'Completar la caché de la lista de reproducción';
+
+  @override
+  String get removePlaylistFromCache =>
+      'Quitar la lista de reproducción de la caché';
+
+  @override
+  String get removeCachedTracks => 'Quitar las pistas en caché';
+
+  @override
+  String get queueNext => 'A continuación';
+
+  @override
+  String get queueLast => 'Al final';
+
+  @override
+  String cachingPlaylist(String name) {
+    return 'Guardando «$name» en caché...';
+  }
+
+  @override
+  String removedPlaylistFromCache(String name) {
+    return 'Se quitó «$name» de la caché sin conexión';
+  }
+
+  @override
+  String get navPlaylistsShort => 'Listas';
+
+  @override
+  String get unknownAlbum => 'Álbum desconocido';
+
+  @override
+  String get unknownArtist => 'Artista desconocido';
 }

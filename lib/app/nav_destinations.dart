@@ -38,6 +38,12 @@ class NavDestination {
         return label;
     }
   }
+
+  /// The label for the phone bottom bar, where five items share the width. The
+  /// full word for playlists doesn't fit there in several languages.
+  String barLabel(BuildContext context) => path == '/playlists'
+      ? AppLocalizations.of(context)?.navPlaylistsShort ?? label
+      : localizedLabel(context);
 }
 
 /// Core library navigation destinations (used in desktop sidebar).
@@ -69,9 +75,18 @@ const settingsNavDestination = NavDestination(
   label: 'Settings',
 );
 
-/// Mobile bottom bar destinations: Artists, Albums, Search, Settings.
+/// Below Downloads in the desktop sidebar, so not part of [navDestinations].
+const playlistsNavDestination = NavDestination(
+  path: '/playlists',
+  icon: Icons.queue_music_outlined,
+  selectedIcon: Icons.queue_music,
+  label: 'Playlists',
+);
+
+/// Mobile bottom bar destinations: Artists, Albums, Search, Playlists, Settings.
 const mobileNavDestinations = <NavDestination>[
   ...navDestinations,
+  playlistsNavDestination,
   settingsNavDestination,
 ];
 
