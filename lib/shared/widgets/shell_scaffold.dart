@@ -75,7 +75,7 @@ class ShellScaffold extends ConsumerWidget {
                   selectedIcon: (d.path == '/settings' && isUpdateAvailable)
                       ? Badge(child: Icon(d.selectedIcon))
                       : Icon(d.selectedIcon),
-                  label: d.localizedLabel(context),
+                  label: d.barLabel(context),
                 ),
             ],
             onDestinationSelected: (i) =>

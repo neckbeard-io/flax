@@ -671,4 +671,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get audioDevicesManage => 'Manage devices';
+
+  @override
+  String get playlistHeading => 'PLAYLIST';
+
+  @override
+  String get noPlaylists => 'No playlists on this server';
+
+  @override
+  String get noCachedPlaylists => 'No playlists cached for offline use';
+
+  @override
+  String get playlistEmpty => 'This playlist has no tracks';
+
+  @override
+  String get noCachedPlaylistTracks =>
+      'No tracks from this playlist are cached';
+
+  @override
+  String get playlistNotFound => 'Playlist not found';
+
+  @override
+  String get cachePlaylistOffline => 'Cache playlist offline';
+
+  @override
+  String get completePlaylistCaching => 'Complete playlist caching';
+
+  @override
+  String get removePlaylistFromCache => 'Remove playlist from cache';
+
+  @override
+  String get removeCachedTracks => 'Remove cached tracks';
+
+  @override
+  String get queueNext => 'Next';
+
+  @override
+  String get queueLast => 'Last';
+
+  @override
+  String cachingPlaylist(String name) {
+    return 'Caching \"$name\"...';
+  }
+
+  @override
+  String removedPlaylistFromCache(String name) {
+    return 'Removed \"$name\" from offline cache';
+  }
+
+  @override
+  String get navPlaylistsShort => 'Playlists';
+
+  @override
+  String get unknownAlbum => 'Unknown Album';
+
+  @override
+  String get unknownArtist => 'Unknown Artist';
 }

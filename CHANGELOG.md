@@ -10,7 +10,12 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Playlists section: browse and play your server's playlists from the sidebar or phone bar.
+- Cache a playlist for offline; offline, only cached playlists are listed.
+
 ### Fixed
+- Canceling a download no longer forgets the tracks that had already finished.
 - macOS: the minimize button and Cmd-M work every time, not just once after full screen.
 - Less battery use: flax stops polling the server while locked and not playing.
 

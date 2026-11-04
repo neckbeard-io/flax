@@ -873,5 +873,83 @@
   "audioDevicesManage": "Manage devices",
   "@audioDevicesManage": {
     "description": "Profile actions menu item on the Equalizer screen: opens the Audio Devices page"
+  },
+  "playlistHeading": "PLAYLIST",
+  "@playlistHeading": {
+    "description": "Label above a playlist's name on its page, in capitals"
+  },
+  "noPlaylists": "No playlists on this server",
+  "@noPlaylists": {
+    "description": "Playlists screen when the server has none"
+  },
+  "noCachedPlaylists": "No playlists cached for offline use",
+  "@noCachedPlaylists": {
+    "description": "Playlists screen while offline when none has a downloaded track"
+  },
+  "playlistEmpty": "This playlist has no tracks",
+  "@playlistEmpty": {
+    "description": "Playlist page when the playlist has no tracks"
+  },
+  "noCachedPlaylistTracks": "No tracks from this playlist are cached",
+  "@noCachedPlaylistTracks": {
+    "description": "Playlist page while offline when none of its tracks is downloaded"
+  },
+  "playlistNotFound": "Playlist not found",
+  "@playlistNotFound": {
+    "description": "Playlist page when the playlist no longer exists"
+  },
+  "cachePlaylistOffline": "Cache playlist offline",
+  "@cachePlaylistOffline": {
+    "description": "Tooltip on the playlist page's download button"
+  },
+  "completePlaylistCaching": "Complete playlist caching",
+  "@completePlaylistCaching": {
+    "description": "Tooltip on the playlist page's download button when some tracks are already cached"
+  },
+  "removePlaylistFromCache": "Remove playlist from cache",
+  "@removePlaylistFromCache": {
+    "description": "Tooltip on the playlist page's button when every track is cached"
+  },
+  "removeCachedTracks": "Remove cached tracks",
+  "@removeCachedTracks": {
+    "description": "Tooltip on the playlist page's delete button when some tracks are cached"
+  },
+  "queueNext": "Next",
+  "@queueNext": {
+    "description": "Playlist page button: play the whole playlist after the current track"
+  },
+  "queueLast": "Last",
+  "@queueLast": {
+    "description": "Playlist page button: add the whole playlist to the end of the queue"
+  },
+  "cachingPlaylist": "Caching \"{name}\"...",
+  "@cachingPlaylist": {
+    "description": "Snackbar and activity indicator while a playlist downloads",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removedPlaylistFromCache": "Removed \"{name}\" from offline cache",
+  "@removedPlaylistFromCache": {
+    "description": "Snackbar after removing a playlist's downloads",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "navPlaylistsShort": "Playlists",
+  "@navPlaylistsShort": {
+    "description": "Phone bottom bar label for Playlists. One of five items on a narrow screen, so it must be short"
+  },
+  "unknownAlbum": "Unknown Album",
+  "@unknownAlbum": {
+    "description": "Shown in an album break above a track that has no album name"
+  },
+  "unknownArtist": "Unknown Artist",
+  "@unknownArtist": {
+    "description": "Shown in an album break above a track that has no artist name"
   }
 }

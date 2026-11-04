@@ -1227,6 +1227,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage devices'**
   String get audioDevicesManage;
+
+  /// Label above a playlist's name on its page, in capitals
+  ///
+  /// In en, this message translates to:
+  /// **'PLAYLIST'**
+  String get playlistHeading;
+
+  /// Playlists screen when the server has none
+  ///
+  /// In en, this message translates to:
+  /// **'No playlists on this server'**
+  String get noPlaylists;
+
+  /// Playlists screen while offline when none has a downloaded track
+  ///
+  /// In en, this message translates to:
+  /// **'No playlists cached for offline use'**
+  String get noCachedPlaylists;
+
+  /// Playlist page when the playlist has no tracks
+  ///
+  /// In en, this message translates to:
+  /// **'This playlist has no tracks'**
+  String get playlistEmpty;
+
+  /// Playlist page while offline when none of its tracks is downloaded
+  ///
+  /// In en, this message translates to:
+  /// **'No tracks from this playlist are cached'**
+  String get noCachedPlaylistTracks;
+
+  /// Playlist page when the playlist no longer exists
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist not found'**
+  String get playlistNotFound;
+
+  /// Tooltip on the playlist page's download button
+  ///
+  /// In en, this message translates to:
+  /// **'Cache playlist offline'**
+  String get cachePlaylistOffline;
+
+  /// Tooltip on the playlist page's download button when some tracks are already cached
+  ///
+  /// In en, this message translates to:
+  /// **'Complete playlist caching'**
+  String get completePlaylistCaching;
+
+  /// Tooltip on the playlist page's button when every track is cached
+  ///
+  /// In en, this message translates to:
+  /// **'Remove playlist from cache'**
+  String get removePlaylistFromCache;
+
+  /// Tooltip on the playlist page's delete button when some tracks are cached
+  ///
+  /// In en, this message translates to:
+  /// **'Remove cached tracks'**
+  String get removeCachedTracks;
+
+  /// Playlist page button: play the whole playlist after the current track
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get queueNext;
+
+  /// Playlist page button: add the whole playlist to the end of the queue
+  ///
+  /// In en, this message translates to:
+  /// **'Last'**
+  String get queueLast;
+
+  /// Snackbar and activity indicator while a playlist downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Caching \"{name}\"...'**
+  String cachingPlaylist(String name);
+
+  /// Snackbar after removing a playlist's downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Removed \"{name}\" from offline cache'**
+  String removedPlaylistFromCache(String name);
+
+  /// Phone bottom bar label for Playlists. One of five items on a narrow screen, so it must be short
+  ///
+  /// In en, this message translates to:
+  /// **'Playlists'**
+  String get navPlaylistsShort;
+
+  /// Shown in an album break above a track that has no album name
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown Album'**
+  String get unknownAlbum;
+
+  /// Shown in an album break above a track that has no artist name
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown Artist'**
+  String get unknownArtist;
 }
 
 class _AppLocalizationsDelegate

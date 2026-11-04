@@ -116,15 +116,15 @@ class AlbumDetailScreen extends ConsumerWidget {
                     slivers: [
                       if (desktop)
                         SliverToBoxAdapter(
-                          child: _TrackTableHeader(genreColumn: genreColumn),
+                          child: TrackTableHeader(genreColumn: genreColumn),
                         ),
                       SliverList(
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => _TrackRow(
+                          (context, index) => TrackRow(
                             song: songs[index],
                             index: index,
                             songs: songs,
-                            albumId: albumId,
+                            albumArtist: album.artistName,
                             desktop: desktop,
                             genreColumn: genreColumn,
                           ),
@@ -555,8 +555,8 @@ class _MobileHeader extends StatelessWidget {
 }
 
 /// Column headings for the desktop track table.
-class _TrackTableHeader extends StatelessWidget {
-  const _TrackTableHeader({required this.genreColumn});
+class TrackTableHeader extends StatelessWidget {
+  const TrackTableHeader({super.key, required this.genreColumn});
 
   final bool genreColumn;
 
@@ -579,11 +579,11 @@ class _TrackTableHeader extends StatelessWidget {
               Expanded(child: Text('TITLE', style: style)),
               if (genreColumn)
                 SizedBox(
-                  width: _TrackRow.genreWidth,
+                  width: TrackRow.genreWidth,
                   child: Text('GENRE', style: style),
                 ),
               SizedBox(
-                width: _TrackRow.ratingWidth,
+                width: TrackRow.ratingWidth,
                 child: Text('RATING', style: style),
               ),
               SizedBox(
@@ -615,21 +615,30 @@ class _TrackTableHeader extends StatelessWidget {
 /// One track. On desktop this is a table row with rating and favorite columns;
 /// on a phone it keeps the list-tile shape and shows only the favorite, since
 /// five stars per row does not fit a narrow screen.
-class _TrackRow extends ConsumerWidget {
-  const _TrackRow({
+///
+/// Shared by albums and playlists; the row plays [songs] from [index] either way.
+class TrackRow extends ConsumerWidget {
+  const TrackRow({
+    super.key,
     required this.song,
     required this.index,
     required this.songs,
-    required this.albumId,
     required this.desktop,
+    this.albumArtist,
+    this.number,
     this.genreColumn = false,
   });
 
   final Song song;
   final int index;
   final List<Song> songs;
-  final String albumId;
   final bool desktop;
+
+  /// The artist every track shares, left off rows that match it.
+  final String? albumArtist;
+
+  /// The number to show, when it isn't the track's own number on its album.
+  final int? number;
   final bool genreColumn;
 
   static const ratingWidth = 96.0;
@@ -685,7 +694,7 @@ class _TrackRow extends ConsumerWidget {
             width: 28,
             child: Center(
               child: Text(
-                '${song.track ?? index + 1}',
+                '${number ?? song.track ?? index + 1}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -766,7 +775,7 @@ class _TrackRow extends ConsumerWidget {
                         color: theme.colorScheme.primary,
                       )
                     : Text(
-                        '${song.track ?? index + 1}',
+                        '${number ?? song.track ?? index + 1}',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -813,7 +822,7 @@ class _TrackRow extends ConsumerWidget {
                     // Only when it differs from the album artist — repeating it on
                     // every row of a single-artist album is noise.
                     if (song.artistName != null &&
-                        song.artistName != _albumArtist(ref))
+                        song.artistName != albumArtist)
                       Text(
                         song.artistName!,
                         maxLines: 1,
@@ -871,9 +880,6 @@ class _TrackRow extends ConsumerWidget {
       ),
     );
   }
-
-  String? _albumArtist(WidgetRef ref) =>
-      ref.read(albumDetailProvider(albumId)).valueOrNull?.artistName;
 }
 
 /// h:mm:ss, or m:ss under an hour.

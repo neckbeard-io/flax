@@ -186,5 +186,22 @@
   "eqProfileDeleteTitle": "Supprimer {name} ?",
   "eqProfileNameLabel": "Nom du profil",
   "eqProfileKeepOne": "Un appareil conserve au moins un profil",
-  "audioDevicesManage": "Gérer les appareils"
+  "audioDevicesManage": "Gérer les appareils",
+  "playlistHeading": "LISTE DE LECTURE",
+  "noPlaylists": "Aucune liste de lecture sur ce serveur",
+  "noCachedPlaylists": "Aucune liste de lecture en cache pour une utilisation hors ligne",
+  "playlistEmpty": "Cette liste de lecture ne contient aucun morceau",
+  "noCachedPlaylistTracks": "Aucun morceau de cette liste de lecture n’est en cache",
+  "playlistNotFound": "Liste de lecture introuvable",
+  "cachePlaylistOffline": "Mettre la liste de lecture en cache hors ligne",
+  "completePlaylistCaching": "Terminer la mise en cache de la liste de lecture",
+  "removePlaylistFromCache": "Retirer la liste de lecture du cache",
+  "removeCachedTracks": "Retirer les morceaux en cache",
+  "queueNext": "Ensuite",
+  "queueLast": "À la fin",
+  "cachingPlaylist": "Mise en cache de « {name} »...",
+  "removedPlaylistFromCache": "« {name} » retiré du cache hors ligne",
+  "navPlaylistsShort": "Playlists",
+  "unknownAlbum": "Album inconnu",
+  "unknownArtist": "Artiste inconnu"
 }

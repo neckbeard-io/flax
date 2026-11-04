@@ -199,6 +199,21 @@ void main() {
       expect(router.state.uri.path, '/albums');
     });
 
+    testWidgets('navigates back to /playlists from /playlists/test-id', (
+      tester,
+    ) async {
+      final router = await _pumpApp(tester);
+      router.go('/playlists/test-id');
+      await _settle(tester);
+      expect(router.state.uri.path, '/playlists/test-id');
+
+      final handled = await WidgetsBinding.instance.handlePopRoute();
+      await _settle(tester);
+
+      expect(handled, isTrue);
+      expect(router.state.uri.path, '/playlists');
+    });
+
     testWidgets('navigates back to /albums from /downloads', (tester) async {
       final router = await _pumpApp(tester);
       router.go('/downloads');

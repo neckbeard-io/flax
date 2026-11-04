@@ -36,6 +36,19 @@ class FlaxTheme {
       navigationBarTheme: NavigationBarThemeData(
         indicatorColor: colorScheme.secondaryContainer,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        // Five items on a 360px phone leave 72px each, and a label too wide for
+        // that wraps and is cut off by the bar. test/mobile_nav_bar_test.dart
+        // measures every language against this.
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0,
+            color: states.contains(WidgetState.selected)
+                ? colorScheme.onSurface
+                : colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
       appBarTheme: AppBarTheme(
         centerTitle: false,

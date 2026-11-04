@@ -186,5 +186,22 @@
   "eqProfileDeleteTitle": "删除 {name}？",
   "eqProfileNameLabel": "配置名称",
   "eqProfileKeepOne": "每个设备至少保留一个配置",
-  "audioDevicesManage": "管理设备"
+  "audioDevicesManage": "管理设备",
+  "playlistHeading": "播放列表",
+  "noPlaylists": "此服务器上没有播放列表",
+  "noCachedPlaylists": "没有已缓存供离线使用的播放列表",
+  "playlistEmpty": "此播放列表没有曲目",
+  "noCachedPlaylistTracks": "此播放列表没有已缓存的曲目",
+  "playlistNotFound": "未找到播放列表",
+  "cachePlaylistOffline": "缓存播放列表以供离线使用",
+  "completePlaylistCaching": "完成缓存播放列表",
+  "removePlaylistFromCache": "从缓存中移除播放列表",
+  "removeCachedTracks": "移除已缓存的曲目",
+  "queueNext": "下一首播放",
+  "queueLast": "最后播放",
+  "cachingPlaylist": "正在缓存“{name}”...",
+  "removedPlaylistFromCache": "已从离线缓存中移除“{name}”",
+  "navPlaylistsShort": "播放列表",
+  "unknownAlbum": "未知专辑",
+  "unknownArtist": "未知艺术家"
 }

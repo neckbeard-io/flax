@@ -682,4 +682,62 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get audioDevicesManage => 'Geräte verwalten';
+
+  @override
+  String get playlistHeading => 'WIEDERGABELISTE';
+
+  @override
+  String get noPlaylists => 'Keine Wiedergabelisten auf diesem Server';
+
+  @override
+  String get noCachedPlaylists =>
+      'Keine Wiedergabelisten für die Offline-Nutzung im Cache';
+
+  @override
+  String get playlistEmpty => 'Diese Wiedergabeliste enthält keine Titel';
+
+  @override
+  String get noCachedPlaylistTracks =>
+      'Von dieser Wiedergabeliste sind keine Titel im Cache';
+
+  @override
+  String get playlistNotFound => 'Wiedergabeliste nicht gefunden';
+
+  @override
+  String get cachePlaylistOffline => 'Wiedergabeliste offline speichern';
+
+  @override
+  String get completePlaylistCaching => 'Wiedergabeliste vollständig speichern';
+
+  @override
+  String get removePlaylistFromCache =>
+      'Wiedergabeliste aus dem Cache entfernen';
+
+  @override
+  String get removeCachedTracks => 'Titel im Cache entfernen';
+
+  @override
+  String get queueNext => 'Als Nächstes';
+
+  @override
+  String get queueLast => 'Als Letztes';
+
+  @override
+  String cachingPlaylist(String name) {
+    return '„$name“ wird gespeichert …';
+  }
+
+  @override
+  String removedPlaylistFromCache(String name) {
+    return '„$name“ aus dem Offline-Cache entfernt';
+  }
+
+  @override
+  String get navPlaylistsShort => 'Playlists';
+
+  @override
+  String get unknownAlbum => 'Unbekanntes Album';
+
+  @override
+  String get unknownArtist => 'Unbekannter Künstler';
 }

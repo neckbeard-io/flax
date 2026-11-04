@@ -279,6 +279,12 @@ class _AppChromeState extends ConsumerState<AppChrome>
       return true;
     }
 
+    // Detail: /playlists/:id -> /playlists
+    if (location.startsWith('/playlists/')) {
+      router.go('/playlists');
+      return true;
+    }
+
     // Downloads screen -> /albums
     if (location == '/downloads') {
       router.go('/albums');

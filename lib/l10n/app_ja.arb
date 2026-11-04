@@ -186,5 +186,22 @@
   "eqProfileDeleteTitle": "{name} を削除しますか？",
   "eqProfileNameLabel": "プロファイル名",
   "eqProfileKeepOne": "デバイスには少なくとも 1 つのプロファイルが必要です",
-  "audioDevicesManage": "デバイスを管理"
+  "audioDevicesManage": "デバイスを管理",
+  "playlistHeading": "プレイリスト",
+  "noPlaylists": "このサーバーにプレイリストはありません",
+  "noCachedPlaylists": "オフライン用にキャッシュされたプレイリストはありません",
+  "playlistEmpty": "このプレイリストに曲はありません",
+  "noCachedPlaylistTracks": "このプレイリストにキャッシュ済みの曲はありません",
+  "playlistNotFound": "プレイリストが見つかりません",
+  "cachePlaylistOffline": "プレイリストをオフライン用にキャッシュ",
+  "completePlaylistCaching": "プレイリストのキャッシュを完了",
+  "removePlaylistFromCache": "プレイリストをキャッシュから削除",
+  "removeCachedTracks": "キャッシュ済みの曲を削除",
+  "queueNext": "次に再生",
+  "queueLast": "最後に再生",
+  "cachingPlaylist": "「{name}」をキャッシュしています...",
+  "removedPlaylistFromCache": "「{name}」をオフラインキャッシュから削除しました",
+  "navPlaylistsShort": "プレイリスト",
+  "unknownAlbum": "不明なアルバム",
+  "unknownArtist": "不明なアーティスト"
 }
