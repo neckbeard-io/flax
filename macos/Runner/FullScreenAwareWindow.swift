@@ -1,0 +1,234 @@
+// Minimize and full screen, made to work from any point in AppKit's
+// full-screen cycle.
+//
+// On macOS flax's maximize button is full screen. AppKit will not minimize a
+// full-screen window, and while the full-screen animation runs it ignores
+// both miniaturize(_:) and toggleFullScreen(_:), without an error either way.
+// So "maximize, then minimize right away" did nothing. Every request goes
+// through WindowModeCoordinator instead, which remembers what was last asked
+// for and carries it out once the window can: leaving full screen first when
+// a minimize needs it.
+//
+// The coordinator is plain Swift with no AppKit, so every ordering of
+// requests and transitions is checked on Linux by
+// test/macos/window_mode_coordinator_test.swift. FullScreenAwareWindow, the
+// AppKit half, is checked against real windows on a macOS runner by
+// test/macos/full_screen_aware_window_probe.swift.
+
+/// Decides what a minimize or full-screen request does, given where the window
+/// is in the full-screen cycle. Holds the latest request until the window can
+/// carry it out.
+struct WindowModeCoordinator {
+  enum Phase: Equatable {
+    case windowed, entering, fullScreen, exiting
+  }
+
+  enum Event: Equatable, CaseIterable {
+    case minimizeRequested, toggleFullScreenRequested
+    case willEnterFullScreen, didEnterFullScreen, willExitFullScreen, didExitFullScreen
+    /// AppKit refused a transition. FullScreenAwareWindow infers these from a
+    /// transition that never finishes.
+    case didFailToEnterFullScreen, didFailToExitFullScreen
+    /// AppKit ignored a toggleFullScreen(_:): no will-notification came back.
+    /// It does that to a toggle made as a full-screen window finishes
+    /// settling, which is exactly when a queued request is carried out.
+    case toggleFullScreenDropped
+    /// The delay asked for with `.scheduleRetry` is over.
+    case retry
+  }
+
+  /// What the window should do. Never a call mid-transition, nor a minimize
+  /// in full screen, which AppKit drops without telling anyone.
+  enum Action: Equatable {
+    case miniaturize, toggleFullScreen
+    /// Send `.retry` after `retryDelay`.
+    case scheduleRetry
+  }
+
+  /// A dropped toggle is retried this often, up to `maxRetries` times
+  /// (five seconds), and then the request is given up.
+  static let retryDelay = 0.1
+  static let maxRetries = 50
+
+  private enum Intent: Equatable {
+    case minimize
+    case fullScreen(Bool)
+  }
+
+  private(set) var phase: Phase
+  private var intent: Intent?
+  private var retryScheduled = false
+  private var retries = 0
+
+  init(isFullScreen: Bool) {
+    phase = isFullScreen ? .fullScreen : .windowed
+  }
+
+  /// Where the window will end up if nothing more is asked. The latest
+  /// request decides, and a pending minimize is headed out of full screen;
+  /// with none, a transition already under way counts as done.
+  var isHeadingFullScreen: Bool {
+    switch intent {
+    case .fullScreen(let target)?: return target
+    case .minimize?: return false
+    case nil: return phase == .entering || phase == .fullScreen
+    }
+  }
+
+  /// Whether a minimize is waiting on full screen to end.
+  var isMinimizePending: Bool { intent == .minimize }
+
+  mutating func handle(_ event: Event) -> [Action] {
+    switch event {
+    case .minimizeRequested:
+      intent = .minimize
+    case .toggleFullScreenRequested:
+      // The latest request wins, a pending minimize included. Pressed twice
+      // during one animation, it flips the target back.
+      intent = .fullScreen(!isHeadingFullScreen)
+    case .toggleFullScreenDropped:
+      guard !retryScheduled else { return [] }
+      guard retries < Self.maxRetries else {
+        intent = nil
+        return []
+      }
+      retries += 1
+      retryScheduled = true
+      return [.scheduleRetry]
+    case .retry:
+      retryScheduled = false
+    case .willEnterFullScreen:
+      retries = 0
+      phase = .entering
+    case .didEnterFullScreen:
+      phase = .fullScreen
+    case .willExitFullScreen:
+      retries = 0
+      phase = .exiting
+    case .didExitFullScreen:
+      phase = .windowed
+    case .didFailToEnterFullScreen:
+      // AppKit said no; asking again would only fail again.
+      phase = .windowed
+      intent = nil
+    case .didFailToExitFullScreen:
+      phase = .fullScreen
+      intent = nil
+    }
+    return drive()
+  }
+
+  private mutating func drive() -> [Action] {
+    guard let want = intent, !retryScheduled, phase == .windowed || phase == .fullScreen
+    else { return [] }
+    switch want {
+    case .minimize:
+      if phase == .fullScreen { return [.toggleFullScreen] }
+      intent = nil
+      return [.miniaturize]
+    case .fullScreen(let target):
+      if (phase == .fullScreen) == target {
+        intent = nil
+        return []
+      }
+      return [.toggleFullScreen]
+    }
+  }
+}
+
+#if canImport(AppKit)
+import AppKit
+
+/// An NSWindow whose minimize and full-screen requests, from flax's own
+/// buttons, the Window and View menus or the keyboard, go through
+/// WindowModeCoordinator. MainFlutterWindow is one.
+class FullScreenAwareWindow: NSWindow {
+  private var coordinator = WindowModeCoordinator(isFullScreen: false)
+  private var observers: [NSObjectProtocol] = []
+
+  /// Starts following the window's full-screen transitions. Call once, after
+  /// the window exists (awakeFromNib).
+  func observeFullScreenTransitions() {
+    coordinator = WindowModeCoordinator(isFullScreen: styleMask.contains(.fullScreen))
+    let events: [(Notification.Name, WindowModeCoordinator.Event)] = [
+      (NSWindow.willEnterFullScreenNotification, .willEnterFullScreen),
+      (NSWindow.didEnterFullScreenNotification, .didEnterFullScreen),
+      (NSWindow.willExitFullScreenNotification, .willExitFullScreen),
+      (NSWindow.didExitFullScreenNotification, .didExitFullScreen),
+    ]
+    for (name, event) in events {
+      // queue: nil delivers synchronously, so the phase has moved on before
+      // toggleFullScreen(_:) returns and nothing can ask for a second toggle.
+      observers.append(
+        NotificationCenter.default.addObserver(forName: name, object: self, queue: nil) {
+          [weak self] _ in
+          self?.transitionGeneration += 1
+          self?.send(event)
+          if event == .willEnterFullScreen || event == .willExitFullScreen {
+            self?.watchTransition()
+          }
+        })
+    }
+  }
+
+  /// AppKit reports a refused transition only to the window's delegate, which
+  /// Flutter and its plugins own. So if a transition has not finished after
+  /// `transitionTimeout`, read where the window actually is and report that,
+  /// rather than holding a request for an end that will never be announced.
+  private var transitionGeneration = 0
+  private let transitionTimeout: TimeInterval = 5
+
+  private func watchTransition() {
+    let generation = transitionGeneration
+    DispatchQueue.main.asyncAfter(deadline: .now() + transitionTimeout) { [weak self] in
+      guard let self, generation == self.transitionGeneration else { return }
+      let inFullScreen = self.styleMask.contains(.fullScreen)
+      switch self.coordinator.phase {
+      case .entering: self.send(inFullScreen ? .didEnterFullScreen : .didFailToEnterFullScreen)
+      case .exiting: self.send(inFullScreen ? .didFailToExitFullScreen : .didExitFullScreen)
+      case .windowed, .fullScreen: break
+      }
+    }
+  }
+
+  deinit {
+    observers.forEach(NotificationCenter.default.removeObserver)
+  }
+
+  override func miniaturize(_ sender: Any?) { send(.minimizeRequested) }
+
+  /// Window > Minimize (Cmd-M). AppKit's own version presses the minimize
+  /// button, which flax hides.
+  override func performMiniaturize(_ sender: Any?) { send(.minimizeRequested) }
+
+  override func toggleFullScreen(_ sender: Any?) { send(.toggleFullScreenRequested) }
+
+  /// Keep Window > Minimize enabled in full screen, where AppKit greys it out:
+  /// the coordinator leaves full screen first.
+  override func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+    if menuItem.action == #selector(performMiniaturize(_:)) {
+      return styleMask.contains(.miniaturizable)
+    }
+    return super.validateMenuItem(menuItem)
+  }
+
+  private func send(_ event: WindowModeCoordinator.Event) {
+    for action in coordinator.handle(event) {
+      switch action {
+      case .miniaturize:
+        super.miniaturize(nil)
+      case .toggleFullScreen:
+        // AppKit posts the will-notification before returning, so a phase
+        // that has not moved means the toggle was ignored.
+        let before = coordinator.phase
+        super.toggleFullScreen(nil)
+        if coordinator.phase == before { send(.toggleFullScreenDropped) }
+      case .scheduleRetry:
+        DispatchQueue.main.asyncAfter(deadline: .now() + WindowModeCoordinator.retryDelay) {
+          [weak self] in self?.send(.retry)
+        }
+      }
+    }
+  }
+}
+#endif

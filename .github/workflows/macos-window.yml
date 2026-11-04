@@ -1,0 +1,52 @@
+name: macOS window
+
+# Minimize and full screen on macOS (macos/Runner/FullScreenAwareWindow.swift).
+# The Dart suite cannot reach this code, so it is tested here: every ordering of
+# requests and transitions on Linux, and the same against real windows on macOS.
+on:
+  pull_request:
+    paths:
+      - 'macos/Runner/FullScreenAwareWindow.swift'
+      - 'macos/Runner/MainFlutterWindow.swift'
+      - 'test/macos/**'
+      - '.github/workflows/macos-window.yml'
+  workflow_dispatch:
+
+jobs:
+  coordinator:
+    name: Every ordering (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exhaustive coordinator test
+        run: |
+          swiftc -parse-as-library macos/Runner/FullScreenAwareWindow.swift \
+            test/macos/window_mode_coordinator_test.swift -o /tmp/wmc
+          /tmp/wmc
+
+  appkit:
+    name: Real windows (macOS)
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe FullScreenAwareWindow against AppKit
+        run: |
+          sw_vers
+          swiftc -parse-as-library macos/Runner/FullScreenAwareWindow.swift \
+            test/macos/full_screen_aware_window_probe.swift -o /tmp/probe
+          perl -e 'alarm 600; exec @ARGV' /tmp/probe
+
+  build:
+    name: Build the app (macOS)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+          cache: true
+      - run: flutter build macos --debug
