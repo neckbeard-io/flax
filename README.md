@@ -29,11 +29,13 @@ Installs Flax as a standalone app and enables **in-app self-updating** via the u
 curl -fsSL https://raw.githubusercontent.com/neckbeard-io/flax/main/tool/install.sh | bash
 ```
 
-Or pin a specific version:
+This installs the latest stable release. Or pin a specific version, dev builds included:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/neckbeard-io/flax/main/tool/install.sh | bash -s -- --version 0.5.0
 ```
+
+Flax follows the Stable update channel until you pick **Dev** under Settings → Update Channel, so a pinned dev build needs that too to keep receiving dev updates.
 
 **macOS**: installs `flax.app` to `/Applications`. No "app is damaged" prompt — the script handles Gatekeeper automatically so the app launches on first double-click.  
 **Linux**: installs to `~/.local/share/flax`, symlinks `~/.local/bin/flax`, and registers a `.desktop` launcher. Requires `libmpv`; the script will tell you how to install it if missing.

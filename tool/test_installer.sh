@@ -29,70 +29,76 @@ _fail() {
   echo $(( $(cat "$_tmpdir/fail") + 1 )) > "$_tmpdir/fail"
 }
 
+# Behaves like GitHub for an address whose API allowance is spent. Only the real
+# redirect URL gets $1 as its response; an answer that ignored the URL is how a
+# fallback pointing at a page that does not exist once passed these tests.
+mock_github() {
+  _redirect_response="$1"
+  curl() {
+    case "$*" in
+      *api.github.com*)
+        printf '{"message":"API rate limit exceeded for 203.0.113.7."}\n' ;;
+      *//github.com/neckbeard-io/flax/releases/latest*)
+        printf '%b' "$_redirect_response" ;;
+      *)
+        printf 'HTTP/2 404\r\n\r\n' ;;
+    esac
+  }
+}
+
 # ── Tests ─────────────────────────────────────────────────────────────
 
 echo "install.sh — resolve_latest_version"
 
-# 1. API returns a pre-release tag (the normal flax case)
+# 1. The redirect names the stable release, however spent the API allowance is
 (
   FLAX_TEST=1 source "$INSTALLER" 2>/dev/null
-  curl() { echo '[{"tag_name":"v0.5.1","prerelease":true}]'; }
+  mock_github 'HTTP/2 302\r\nlocation: https://github.com/neckbeard-io/flax/releases/tag/v0.7.0\r\n\r\n'
   got=$(resolve_latest_version 2>/dev/null)
-  [ "$got" = "0.5.1" ]
-) && _pass "API returns pre-release tag" || _fail "API returns pre-release tag"
+  [ "$got" = "0.7.0" ]
+) && _pass "Redirect resolves with the API rate-limited" || _fail "Redirect resolves with the API rate-limited"
 
-# 2. API returns a stable (non-pre-release) tag
+# 2. HTTP/1.1 capitalizes the header
 (
   FLAX_TEST=1 source "$INSTALLER" 2>/dev/null
-  curl() { echo '[{"tag_name":"v1.0.0","prerelease":false}]'; }
+  mock_github 'HTTP/1.1 302 Found\r\nLocation: https://github.com/neckbeard-io/flax/releases/tag/v1.0.0\r\n\r\n'
   got=$(resolve_latest_version 2>/dev/null)
   [ "$got" = "1.0.0" ]
-) && _pass "API returns stable tag" || _fail "API returns stable tag"
+) && _pass "Capitalized Location header" || _fail "Capitalized Location header"
 
-# 3. API returns tag without leading v — strip is a no-op
+# 3. Tag without leading v — strip is a no-op
 (
   FLAX_TEST=1 source "$INSTALLER" 2>/dev/null
-  curl() { echo '[{"tag_name":"0.5.1","prerelease":true}]'; }
+  mock_github 'HTTP/2 302\r\nlocation: https://github.com/neckbeard-io/flax/releases/tag/0.5.1\r\n\r\n'
   got=$(resolve_latest_version 2>/dev/null)
   [ "$got" = "0.5.1" ]
-) && _pass "API tag without leading v" || _fail "API tag without leading v"
+) && _pass "Tag without leading v" || _fail "Tag without leading v"
 
-# 4. API returns empty array → fallback to redirect Location header with /tag/
-#    Mock differentiates API vs HEAD calls by presence of "api.github.com" in args.
+# 4. With no stable release GitHub redirects to bare /releases → exits non-zero
 (
   FLAX_TEST=1 source "$INSTALLER" 2>/dev/null
-  curl() {
-    case "$*" in
-      *api.github.com*) echo '[]' ;;
-      *) printf 'HTTP/1.1 302 Found\r\nlocation: https://github.com/neckbeard-io/flax/releases/tag/v0.4.8\r\n\r\n' ;;
-    esac
-  }
-  got=$(resolve_latest_version 2>/dev/null)
-  [ "$got" = "0.4.8" ]
-) && _pass "Empty API falls back to redirect" || _fail "Empty API falls back to redirect"
-
-# 5. Redirect Location has no /tag/ path (the pre-fix bug) → rejected, exits non-zero
-(
-  FLAX_TEST=1 source "$INSTALLER" 2>/dev/null
-  curl() {
-    case "$*" in
-      *api.github.com*) echo '[]' ;;
-      *) printf 'HTTP/1.1 302 Found\r\nlocation: https://github.com/neckbeard-io/flax/releases\r\n\r\n' ;;
-    esac
-  }
+  mock_github 'HTTP/2 302\r\nlocation: https://github.com/neckbeard-io/flax/releases\r\n\r\n'
   resolve_latest_version 2>/dev/null
   exit 0  # force failure of outer test if we get here
 ) && _fail "Bare /releases redirect should be rejected" || _pass "Bare /releases redirect is rejected"
 
-# 6. Both API and redirect return nothing → exits non-zero
+# 5. A tag that is not a version → exits non-zero
 (
   FLAX_TEST=1 source "$INSTALLER" 2>/dev/null
-  curl() { echo ''; }
+  mock_github 'HTTP/2 302\r\nlocation: https://github.com/neckbeard-io/flax/releases/tag/nightly\r\n\r\n'
+  resolve_latest_version 2>/dev/null
+  exit 0
+) && _fail "Non-version tag should be rejected" || _pass "Non-version tag is rejected"
+
+# 6. No response at all, as when offline → exits non-zero
+(
+  FLAX_TEST=1 source "$INSTALLER" 2>/dev/null
+  curl() { return 6; }
   resolve_latest_version 2>/dev/null
   exit 0
 ) && _fail "Empty response should exit non-zero" || _pass "Empty response exits non-zero"
 
-# 7. API returns HTML error page → rejected as invalid version
+# 7. An HTML error page → rejected as invalid version
 (
   FLAX_TEST=1 source "$INSTALLER" 2>/dev/null
   curl() { echo '<html><body>Rate limited</body></html>'; }
