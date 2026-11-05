@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:collection/collection.dart';
@@ -94,7 +95,37 @@ class FlaxAudioHandler extends BaseAudioHandler {
   static const String kAlbumsNode = 'albums';
   static const String kPlaylistsNode = 'playlists';
   static const String kFavoritesNode = 'favorites';
-  static const String kOfflineNode = 'offline';
+
+  static const _playlistTrackPrefix = 'playlist-track/';
+
+  /// The id of a row on a playlist's page in the browse tree.
+  ///
+  /// A song's own id would not do: tapping one queues its album, and a playlist
+  /// can hold the same track twice. So this names the playlist and the position,
+  /// with the song's id to notice a list that changed since it was browsed.
+  static String _playlistTrackId(String playlistId, int index, String songId) =>
+      '$_playlistTrackPrefix${Uri.encodeComponent(playlistId)}'
+      '/$index/${Uri.encodeComponent(songId)}';
+
+  static ({String playlistId, int index, String songId})? _parsePlaylistTrackId(
+    String mediaId,
+  ) {
+    if (!mediaId.startsWith(_playlistTrackPrefix)) return null;
+    final parts = mediaId.substring(_playlistTrackPrefix.length).split('/');
+    if (parts.length != 3) return null;
+    final index = int.tryParse(parts[1]);
+    if (index == null) return null;
+    return (
+      playlistId: Uri.decodeComponent(parts[0]),
+      index: index,
+      songId: Uri.decodeComponent(parts[2]),
+    );
+  }
+
+  /// The song a browse item plays, when it plays one.
+  static String? _songIdOf(String mediaId) => mediaId.startsWith('song_')
+      ? mediaId.substring(5)
+      : _parsePlaylistTrackId(mediaId)?.songId;
 
   /// [android] decides how stored covers reach the media session (see
   /// [mediaSessionArtUri]); tests set it, everything else takes the platform's.
@@ -963,36 +994,17 @@ class FlaxAudioHandler extends BaseAudioHandler {
           ];
 
         case kPlaylistsNode:
-          if (_isOffline) {
-            final downloadedSongs = await library.getDownloadedSongs();
-            return [
-              MediaItem(
-                id: kOfflineNode,
-                title: 'Downloaded Tracks',
-                displayTitle: 'Downloaded Tracks',
-                displaySubtitle: '${downloadedSongs.length} offline tracks',
-                artUri: _icMusicNote,
-                playable: false,
-                extras: const {
-                  AndroidContentStyle.browsableHintKey:
-                      AndroidContentStyle.listItemHintValue,
-                },
-              ),
-            ];
-          }
-
-          try {
-            final playlists = await client.getPlaylists().timeout(
-              const Duration(seconds: 3),
-            );
-            return playlists
-                .take(50)
-                .map((p) => playlistToMediaItem(p, client))
-                .toList();
-          } catch (e) {
-            AppLogger.w('AudioHandler', 'client.getPlaylists failed: $e');
-            return const [];
-          }
+          final playlists = _isOffline
+              ? await library.watchDownloadedPlaylists().first
+              : await _storedThenRefreshed(
+                  kPlaylistsNode,
+                  read: () => library.watchPlaylists().first,
+                  refresh: library.refreshPlaylists,
+                  fingerprint: (p) =>
+                      '${p.id}|${p.name}|${p.songCount}|${p.duration}|'
+                      '${p.coverArtId}',
+                );
+          return [for (final p in playlists) playlistToMediaItem(p, client)];
 
         case kFavoritesNode:
           if (_isOffline) {
@@ -1033,22 +1045,6 @@ class FlaxAudioHandler extends BaseAudioHandler {
           return starredAlbums
               .take(50)
               .map((a) => albumToMediaItem(a, client))
-              .toList();
-
-        case kOfflineNode:
-          final downloadedSongs = await library.getDownloadedSongs();
-          return downloadedSongs
-              .take(100)
-              .map(
-                (s) => songToMediaItem(
-                  s,
-                  coverArtUrl: s.coverArtId != null
-                      ? client
-                            .getCoverArtUri(s.coverArtId!, size: 300)
-                            .toString()
-                      : null,
-                ),
-              )
               .toList();
       }
 
@@ -1257,45 +1253,23 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
       if (parentMediaId.startsWith('playlist_')) {
         final playlistId = parentMediaId.substring(9);
-        if (_isOffline) {
-          final songs = await library.getDownloadedSongs();
-          return songs
-              .map(
-                (s) => songToMediaItem(
-                  s,
-                  coverArtUrl: s.coverArtId != null
-                      ? client
-                            .getCoverArtUri(s.coverArtId!, size: 300)
-                            .toString()
-                      : null,
-                ),
-              )
-              .toList();
-        }
-
-        try {
-          final songs = await client
-              .getPlaylistSongs(playlistId)
-              .timeout(const Duration(seconds: 3));
-          return songs
-              .map(
-                (s) => songToMediaItem(
-                  s,
-                  coverArtUrl: s.coverArtId != null
-                      ? client
-                            .getCoverArtUri(s.coverArtId!, size: 300)
-                            .toString()
-                      : null,
-                ),
-              )
-              .toList();
-        } catch (e) {
-          AppLogger.w(
-            'AudioHandler',
-            'client.getPlaylistSongs failed or timed out: $e',
-          );
-          return const [];
-        }
+        final songs = _isOffline
+            ? await library.watchDownloadedPlaylistSongs(playlistId).first
+            : await _storedThenRefreshed(
+                parentMediaId,
+                read: () => library.watchPlaylistSongs(playlistId).first,
+                refresh: () => library.refreshPlaylist(playlistId),
+                fingerprint: (s) => s.id,
+              );
+        return [
+          for (final (index, s) in songs.indexed)
+            songToMediaItem(
+              s,
+              coverArtUrl: s.coverArtId != null
+                  ? client.getCoverArtUri(s.coverArtId!, size: 300).toString()
+                  : null,
+            ).copyWith(id: _playlistTrackId(playlistId, index, s.id)),
+        ];
       }
     } catch (e, st) {
       AppLogger.e(
@@ -1309,14 +1283,66 @@ class FlaxAudioHandler extends BaseAudioHandler {
     return const [];
   }
 
+  /// A list the server can change without the library sync noticing, as the
+  /// phone's playlist screens have it: the stored copy at once, and a refresh
+  /// behind it that reloads the page if it changed anything. With nothing
+  /// stored there is nothing to show, so this waits a moment for the refresh.
+  Future<List<T>> _storedThenRefreshed<T>(
+    String parentMediaId, {
+    required Future<List<T>> Function() read,
+    required Future<void> Function() refresh,
+    required String Function(T) fingerprint,
+  }) async {
+    final stored = await read();
+    final refreshing = refresh();
+    if (stored.isEmpty) {
+      try {
+        await refreshing.timeout(const Duration(seconds: 3));
+        return await read();
+      } on TimeoutException {
+        // Still on its way: the reload below brings it in when it arrives.
+      }
+    }
+    unawaited(() async {
+      try {
+        await refreshing;
+        final fresh = await read();
+        if (!const ListEquality<String>().equals(
+          stored.map(fingerprint).toList(),
+          fresh.map(fingerprint).toList(),
+        )) {
+          notifyChildrenChanged(parentMediaId);
+        }
+      } catch (e) {
+        AppLogger.w('AudioHandler', 'Refresh of $parentMediaId failed: $e');
+      }
+    }());
+    return stored;
+  }
+
+  /// A playlist's tracks to play: in playlist order and, offline, only those on
+  /// the device. The page was just browsed, so stored tracks are current enough.
+  Future<List<Song>> _playlistQueue(
+    LibraryRepository library,
+    String playlistId,
+  ) async {
+    if (_isOffline) {
+      return library.watchDownloadedPlaylistSongs(playlistId).first;
+    }
+    final stored = await library.watchPlaylistSongs(playlistId).first;
+    if (stored.isNotEmpty) return stored;
+    await library.refreshPlaylist(playlistId);
+    return library.watchPlaylistSongs(playlistId).first;
+  }
+
   @override
   Future<MediaItem?> getMediaItem(String mediaId) async {
     final client = _client;
     final library = _library;
     if (client == null || library == null) return null;
 
-    if (mediaId.startsWith('song_')) {
-      final songId = mediaId.substring(5);
+    final songId = _songIdOf(mediaId);
+    if (songId != null) {
       final song = await library.watchSong(songId).first;
       if (song != null) {
         return songToMediaItem(
@@ -1552,7 +1578,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
             kPlaylistsNode,
             'Playlists',
             _icTabPlaylists,
-            'Downloaded tracks & playlists',
+            'Downloaded playlists',
             AndroidContentStyle.listItemHintValue,
           ),
           AutoTab.favorites => tab(
@@ -1599,25 +1625,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
         }
         final song = await library.watchSong(songId).first;
         if (song != null) {
-          final artUrl = client != null && song.coverArtId != null
-              ? client
-                    .getCoverArtUri(song.coverArtId!, size: _nowPlayingArtSize)
-                    .toString()
-              : null;
-          final item = songToMediaItem(
-            song,
-            coverArtUrl: artUrl,
-            forNowPlaying: true,
-          );
-          mediaItem.add(item);
-          playbackState.add(
-            _buildPlaybackState(
-              isPlaying: true,
-              hasSong: true,
-              position: Duration.zero,
-              buffering: true,
-            ),
-          );
+          _announceStarting(song, client);
 
           if (song.albumId != null) {
             final albumSongs = _isOffline
@@ -1674,18 +1682,21 @@ class FlaxAudioHandler extends BaseAudioHandler {
             await _player.playTracks(firstAlbumSongs, initialIndex: 0);
           }
         }
+      } else if (_parsePlaylistTrackId(mediaId) case final track?) {
+        final songs = await _playlistQueue(library, track.playlistId);
+        if (songs.isEmpty) return;
+        // By position, since a track can be there twice; by id if the list has
+        // moved since it was browsed.
+        final index =
+            track.index < songs.length && songs[track.index].id == track.songId
+            ? track.index
+            : max(songs.indexWhere((s) => s.id == track.songId), 0);
+        _announceStarting(songs[index], client);
+        await _player.playTracks(songs, initialIndex: index);
       } else if (mediaId.startsWith('playlist_')) {
-        final playlistId = mediaId.substring(9);
-        if (_isOffline) {
-          final songs = await library.getDownloadedSongs();
-          if (songs.isNotEmpty) {
-            await _player.playTracks(songs, initialIndex: 0);
-          }
-        } else if (client != null) {
-          final songs = await client.getPlaylistSongs(playlistId);
-          if (songs.isNotEmpty) {
-            await _player.playTracks(songs, initialIndex: 0);
-          }
+        final songs = await _playlistQueue(library, mediaId.substring(9));
+        if (songs.isNotEmpty) {
+          await _player.playTracks(songs, initialIndex: 0);
         }
       } else if (mediaId == kFavoritesNode) {
         final starredAlbums = _isOffline
@@ -1720,11 +1731,6 @@ class FlaxAudioHandler extends BaseAudioHandler {
         if (items.isNotEmpty) {
           await playFromMediaId(items.first.id);
         }
-      } else if (mediaId == kOfflineNode) {
-        final downloadedSongs = await library.getDownloadedSongs();
-        if (downloadedSongs.isNotEmpty) {
-          await _player.playTracks(downloadedSongs, initialIndex: 0);
-        }
       }
     } catch (e, st) {
       AppLogger.e(
@@ -1734,6 +1740,26 @@ class FlaxAudioHandler extends BaseAudioHandler {
         stackTrace: st,
       );
     }
+  }
+
+  /// Shows [song] as starting, so the car responds before the player does.
+  void _announceStarting(Song song, SubsonicClient? client) {
+    final artUrl = client != null && song.coverArtId != null
+        ? client
+              .getCoverArtUri(song.coverArtId!, size: _nowPlayingArtSize)
+              .toString()
+        : null;
+    mediaItem.add(
+      songToMediaItem(song, coverArtUrl: artUrl, forNowPlaying: true),
+    );
+    playbackState.add(
+      _buildPlaybackState(
+        isPlaying: true,
+        hasSong: true,
+        position: Duration.zero,
+        buffering: true,
+      ),
+    );
   }
 
   @override
@@ -1821,8 +1847,8 @@ class FlaxAudioHandler extends BaseAudioHandler {
     if (library == null) return;
 
     try {
-      if (mediaId.startsWith('song_')) {
-        final songId = mediaId.substring(5);
+      final songId = _songIdOf(mediaId);
+      if (songId != null) {
         final song = await library.watchSong(songId).first;
         if (song != null) {
           final artUrl = client != null && song.coverArtId != null

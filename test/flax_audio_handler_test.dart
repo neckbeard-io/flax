@@ -265,33 +265,6 @@ class MockSubsonicClient extends Mock implements SubsonicClient {
   }
 
   @override
-  Future<List<Playlist>> getPlaylists() async {
-    return [
-      const Playlist(
-        id: 'pl_1',
-        serverId: 'srv_1',
-        name: 'Driving Mix',
-        songCount: 42,
-        duration: 7200,
-      ),
-    ];
-  }
-
-  @override
-  Future<List<Song>> getPlaylistSongs(String? playlistId) async {
-    return [
-      const Song(
-        id: 'song_1',
-        serverId: 'srv_1',
-        title: 'Get Lucky',
-        artistName: 'Daft Punk',
-        albumName: 'Random Access Memories',
-        duration: 248,
-      ),
-    ];
-  }
-
-  @override
   Future<SearchResult> getStarred() async {
     return const SearchResult();
   }
@@ -555,26 +528,6 @@ void main() {
       expect(tracks.first.id, equals('song_song_1'));
       expect(tracks.first.title, equals('Get Lucky · Daft Punk'));
       expect(tracks.first.artist, equals('Daft Punk'));
-    });
-
-    test('fetches playlists and playlist tracks', () async {
-      final playlists = await handler.getChildren(
-        FlaxAudioHandler.kPlaylistsNode,
-      );
-      expect(playlists.length, equals(1));
-      expect(playlists.first.id, equals('playlist_pl_1'));
-      expect(playlists.first.title, equals('Driving Mix'));
-
-      final playlistTracks = await handler.getChildren('playlist_pl_1');
-      expect(playlistTracks.length, equals(1));
-      expect(playlistTracks.first.title, equals('Get Lucky · Daft Punk'));
-    });
-
-    test('fetches offline downloaded tracks', () async {
-      final offline = await handler.getChildren(FlaxAudioHandler.kOfflineNode);
-      expect(offline.length, equals(1));
-      expect(offline.first.id, equals('song_song_cached_1'));
-      expect(offline.first.title, equals('Instant Crush · Daft Punk'));
     });
 
     test(

@@ -14,7 +14,12 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Playlists section: browse and play your server's playlists from the sidebar or phone bar.
 - Cache a playlist for offline; offline, only cached playlists are listed.
 
+### Changed
+- Android Auto: the Downloaded Tracks list is gone; offline, Playlists lists cached playlists.
+
 ### Fixed
+- Android Auto: Playlists shows your server's playlists, in their own track order.
+- Android Auto: tapping a playlist track plays on through the playlist, not the track's album.
 - Canceling a download no longer forgets the tracks that had already finished.
 - macOS: the minimize button and Cmd-M work every time, not just once after full screen.
 - macOS: minimize works in full screen and mid-animation; a quick second maximize is no longer ignored.
