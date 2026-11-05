@@ -9,9 +9,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:flax/shared/widgets/art_cache.dart';
+import 'package:flax/shared/widgets/cover_index.dart';
 
 /// The cover-art store every reader goes through. Overridden in tests.
 final artCacheProvider = Provider<BaseCacheManager>((ref) => ArtCache.instance);
+
+/// Reads the store's index in one pass, for looking up many covers at once.
+/// Overridden in tests.
+final coverIndexReaderProvider = Provider<Future<CoverIndex> Function()>(
+  (ref) => CoverIndex.readArtCache,
+);
 
 /// Server-side thumbnail sizes, in physical pixels.
 ///
@@ -117,6 +124,22 @@ class CoverArtCache {
     int? preferredSize,
   }) async =>
       (await findStored(cache, coverArtId, preferredSize: preferredSize))?.file;
+
+  /// [findStored] against an [index] already read, for looking up many covers:
+  /// see [CoverIndex].
+  static StoredCover? findIn(
+    CoverIndex index,
+    String coverArtId, {
+    int? preferredSize,
+  }) {
+    for (final size in _candidateSizes(preferredSize)) {
+      final file = index.fileOf(coverCacheKey(coverArtId, size));
+      if (file == null) continue;
+      _remember(coverArtId, size, file.path);
+      return (file: file, size: size);
+    }
+    return null;
+  }
 
   /// Forgets every cover found this session.
   @visibleForTesting

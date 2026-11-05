@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
@@ -27,6 +28,8 @@ final songLyricsProvider = FutureProvider.family<Lyrics?, LyricsQuery>((
     final parsed = Lyrics.fromLrcText(cachedStr);
     if (parsed != null && !parsed.isEmpty) return parsed;
   }
+
+  if (ref.watch(isOfflineModeProvider)) return null;
 
   final client = ref.watch(subsonicClientProvider);
   if (client == null) return null;

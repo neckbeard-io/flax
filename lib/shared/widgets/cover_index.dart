@@ -67,6 +67,9 @@ class CoverIndex {
     );
   }
 
+  /// The file stored under [key], if it is on disk.
+  File? fileOf(String key) => _stored[key]?.file;
+
   /// The [items] whose cover, under [keyOf], is not stored.
   List<T> missing<T>(Iterable<T> items, String Function(T item) keyOf) => [
     for (final item in items)

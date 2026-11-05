@@ -20,6 +20,11 @@ Releases before v0.1.8 predate this file. Their notes are on the
 ### Fixed
 - Android Auto: Playlists shows your server's playlists, in their own track order.
 - Android Auto: tapping a playlist track plays on through the playlist, not the track's album.
+- Android Auto: offline, browse rows and the queue use stored covers and never contact the server.
+- Offline lyrics and artist photos come from the device; lyrics no longer ask the server.
+- Downloads now store the album's artist too, so compilations keep it offline.
+- Downloaded tracks missing covers, bios or lyrics fill them in automatically on Wi-Fi.
+- A failed artist lookup during sync no longer records "no biography" for good.
 - Canceling a download no longer forgets the tracks that had already finished.
 - macOS: the minimize button and Cmd-M work every time, not just once after full screen.
 - macOS: minimize works in full screen and mid-animation; a quick second maximize is no longer ignored.

@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +17,7 @@ import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
 import 'package:flax/shared/widgets/album_grid_tile.dart';
+import 'package:flax/shared/widgets/artist_photo.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/favorite_button.dart';
 import 'package:flax/shared/widgets/genre_chips.dart';
@@ -715,11 +715,10 @@ class _ArtistImage extends StatelessWidget {
           ? fallback()
           : ClipRRect(
               borderRadius: radius,
-              child: CachedNetworkImage(
-                imageUrl: remoteImageUrl!,
+              child: ArtistPhoto(
+                url: remoteImageUrl!,
                 fit: BoxFit.cover,
-                placeholder: (_, _) => fallback(),
-                errorWidget: (_, _, _) => fallback(),
+                fallback: fallback(),
               ),
             ),
     );

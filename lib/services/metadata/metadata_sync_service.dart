@@ -895,14 +895,15 @@ class _ArtistInfoWorkItem extends _SyncWorkItem {
     BaseCacheManager cacheManager,
   ) async {
     final info = await client.getArtistInfoParsed(artist.id);
+    // No answer isn't "no biography": left unset, the next sync asks again.
+    if (info == null) return 0;
     final updated = artist.copyWith(
-      biography: info?.biography ?? '',
-      musicBrainzId: info?.musicBrainzId,
-      imageUrl:
-          info?.largeImageUrl ?? info?.mediumImageUrl ?? info?.smallImageUrl,
+      biography: info.biography ?? '',
+      musicBrainzId: info.musicBrainzId,
+      imageUrl: info.largeImageUrl ?? info.mediumImageUrl ?? info.smallImageUrl,
     );
     await dao.upsertArtists([updated], DateTime.now());
-    return (info?.biography != null && info!.biography!.isNotEmpty)
+    return (info.biography != null && info.biography!.isNotEmpty)
         ? utf8.encode(info.biography!).length
         : 0;
   }
