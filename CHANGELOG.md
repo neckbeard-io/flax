@@ -10,6 +10,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+## v0.8.0 — 2026-11-05
+
 ### Added
 - Playlists section: browse and play your server's playlists from the sidebar or phone bar.
 - Cache a playlist for offline; offline, only cached playlists are listed.
@@ -29,8 +31,8 @@ Releases before v0.1.8 predate this file. Their notes are on the
 - Downloaded tracks missing covers, bios or lyrics fill them in automatically on Wi-Fi.
 - A failed artist lookup during sync no longer records "no biography" for good.
 - Canceling a download no longer forgets the tracks that had already finished.
-- macOS: the minimize button and Cmd-M work every time, not just once after full screen.
-- macOS: minimize works in full screen and mid-animation; a quick second maximize is no longer ignored.
+- macOS: the minimize button and Cmd-M work every time, including in full screen and mid-animation.
+- macOS: a quick second maximize is no longer ignored.
 - Less battery use: flax stops polling the server while locked and not playing.
 
 ## v0.7.0 — 2026-11-01
