@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flax/core/logging/app_logger.dart';
 import 'package:meta/meta.dart';
 
+import 'package:flax/core/providers/app_in_use_provider.dart';
+import 'package:flax/core/providers/connectivity_provider.dart';
 import 'package:flax/core/providers/library_provider.dart';
+import 'package:flax/core/providers/offline_mode_provider.dart';
 import 'package:flax/core/providers/server_provider.dart';
 import 'package:flax/core/tasks/task.dart';
 import 'package:flax/core/tasks/task_registry.dart';
@@ -754,8 +758,9 @@ class AudioCacheService {
                 album.coverArtId != song.coverArtId) {
               _storeCoverForOffline(client, album.coverArtId!).ignore();
             }
-            if (album.artistId != null &&
-                (song.artistId == null || song.artistId!.isEmpty)) {
+            // A compilation's track has its own artist; the album's is lineage
+            // too, or the album page has no artist offline.
+            if (album.artistId != null && album.artistId != song.artistId) {
               _cacheArtistMetadata(
                 client,
                 dao,
@@ -794,11 +799,7 @@ class AudioCacheService {
     String coverArtId, {
     bool artist = false,
   }) {
-    final config = _ref.read(activeServerProvider)?.metadataCacheConfig;
-    final quality = artist ? config?.artistArtQuality : config?.albumArtQuality;
-    final size = quality == null || quality == MetadataQuality.disabled
-        ? MetadataQuality.medium.requestSize
-        : quality.requestSize;
+    final size = _offlineCoverSize(artist: artist);
     return CoverArtCache.storeForOffline(
       _ref.read(artCacheProvider),
       coverArtId: coverArtId,
@@ -807,6 +808,17 @@ class AudioCacheService {
     );
   }
 
+  int? _offlineCoverSize({required bool artist}) {
+    final config = _ref.read(activeServerProvider)?.metadataCacheConfig;
+    final quality = artist ? config?.artistArtQuality : config?.albumArtQuality;
+    return quality == null || quality == MetadataQuality.disabled
+        ? MetadataQuality.medium.requestSize
+        : quality.requestSize;
+  }
+
+  /// Stores a track's lyrics, or an empty file when the server has none, so
+  /// [repairOfflineLineage] asks once. A request that fails leaves no file, and
+  /// the next repair asks again.
   Future<void> _cacheLyrics(
     SubsonicClient client,
     String serverId,
@@ -828,16 +840,23 @@ class AudioCacheService {
           buffer.writeln('[$min:$sec.$hundredths]${line.text}');
         }
         await lrcFile.writeAsString(buffer.toString());
-      } else if (song.artistName != null && song.title.isNotEmpty) {
-        final plain = await client.getLyrics(
-          artist: song.artistName,
-          title: song.title,
-        );
-        if (plain != null && plain.isNotEmpty) {
-          await lrcFile.writeAsString(plain);
+        return;
+      }
+      String? plain;
+      if (song.artistName != null && song.title.isNotEmpty) {
+        try {
+          plain = await client.getLyrics(
+            artist: song.artistName,
+            title: song.title,
+          );
+        } on SubsonicException {
+          // The server answered: it has none to give.
         }
       }
-    } catch (_) {}
+      await lrcFile.writeAsString(plain ?? '');
+    } catch (e) {
+      AppLogger.w('AudioCache', 'Could not store lyrics for ${song.id}: $e');
+    }
   }
 
   Future<void> _cacheArtistMetadata(
@@ -853,26 +872,229 @@ class AudioCacheService {
       }
       final artist = await dao.watchArtist(serverId, artistId).first;
       if (artist != null && artist.coverArtId != null) {
-        _storeCoverForOffline(
-          client,
-          artist.coverArtId!,
-          artist: true,
-        ).ignore();
+        await _storeCoverForOffline(client, artist.coverArtId!, artist: true);
       }
 
+      // No answer leaves the biography unset, for the next repair. An empty one
+      // says the server was asked and has none.
       final info = await client.getArtistInfoParsed(artistId);
       if (info != null && artist != null) {
         final updated = artist.copyWith(
-          biography: info.biography ?? artist.biography,
+          biography: info.biography ?? artist.biography ?? '',
           musicBrainzId: info.musicBrainzId ?? artist.musicBrainzId,
           imageUrl: info.bestImageUrl ?? artist.imageUrl,
         );
         await dao.upsertArtists([updated], DateTime.now());
         if (info.bestImageUrl != null) {
-          ArtCache.instance.downloadFile(info.bestImageUrl!).ignore();
+          await _storeArtistPhoto(info.bestImageUrl!);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.w('AudioCache', 'Could not store artist $artistId: $e');
+    }
+  }
+
+  /// Stores an artist photo under its URL, which is how `ArtistPhoto` finds it.
+  Future<void> _storeArtistPhoto(String url) async {
+    try {
+      final cache = _ref.read(artCacheProvider);
+      if (await cache.getFileFromCache(url) == null) {
+        await cache.downloadFile(url);
+      }
+    } catch (e) {
+      AppLogger.w('AudioCache', 'Could not store an artist photo: $e');
+    }
+  }
+
+  /// The least time between completed [repairOfflineLineage] runs. A failed
+  /// fetch waits this long to be tried again.
+  static const _lineageRepairInterval = Duration(hours: 6);
+
+  /// Set once biographies marked as having none were asked about again; see
+  /// [repairOfflineLineage].
+  static const _bioRecheckedPrefKey = 'flax_lineage_bio_rechecked_v1';
+
+  DateTime? _lineageRepairedAt;
+  bool _repairingLineage = false;
+
+  /// Only with someone using flax and the server wanted (#192), and rechecked
+  /// between fetches, so it stops as the car goes offline.
+  bool get _mayRepairLineage =>
+      !_ref.read(isOfflineModeProvider) && _ref.read(appInUseProvider);
+
+  /// Fetches whatever the active server's downloaded tracks are missing: covers,
+  /// album and artist records, biographies, artist photos and lyrics.
+  ///
+  /// A download's own metadata fetches run once and in the background, so one
+  /// that fails, or a process that dies before the downloader reports back,
+  /// leaves a track that plays offline without the rest of it. This compares
+  /// what is stored with what should be and asks only for the difference, so
+  /// callers can call it freely. It waits for Wi-Fi or Ethernet: on a phone
+  /// that has never run it, the difference can be a lot of art.
+  ///
+  /// Returns how many items it tried to fetch.
+  Future<int> repairOfflineLineage() async {
+    if (_repairingLineage) return 0;
+    final last = _lineageRepairedAt;
+    if (last != null &&
+        DateTime.now().difference(last) < _lineageRepairInterval) {
+      return 0;
+    }
+    final client = _ref.read(subsonicClientProvider);
+    final repo = _ref.read(libraryRepositoryProvider);
+    final server = _ref.read(activeServerProvider);
+    if (client == null || repo == null || server == null) return 0;
+    if (!_mayRepairLineage) return 0;
+
+    _repairingLineage = true;
+    try {
+      final network = await readCurrentConnectivity(_ref);
+      if (network.contains(ConnectivityResult.mobile) &&
+          !network.contains(ConnectivityResult.wifi) &&
+          !network.contains(ConnectivityResult.ethernet)) {
+        return 0;
+      }
+      return await _fillLineageGaps(client, repo, server);
+    } catch (e, st) {
+      AppLogger.w(
+        'AudioCache',
+        'Repairing offline metadata failed: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return 0;
+    } finally {
+      _repairingLineage = false;
+    }
+  }
+
+  Future<int> _fillLineageGaps(
+    SubsonicClient client,
+    LibraryRepository repo,
+    Server server,
+  ) async {
+    final serverId = server.id;
+    final dao = _ref.read(libraryDaoProvider);
+    final workers = server.metadataCacheConfig.concurrency.clamp(1, 24);
+    final songs = await dao.getDownloadedSongs(serverId);
+
+    // Album records first: they name the album's cover and its artist.
+    Future<Map<String, Album>> readAlbums() async => {
+      for (final album in await dao.getAllAlbums(serverId)) album.id: album,
+    };
+    var albums = await readAlbums();
+    final missingAlbums = {
+      for (final song in songs)
+        if (song.albumId != null && !albums.containsKey(song.albumId))
+          song.albumId!,
+    };
+    if (missingAlbums.isNotEmpty) {
+      final finished = await _runLineageJobs([
+        for (final id in missingAlbums)
+          () => repo.refreshAlbum(id, force: true),
+      ], workers);
+      if (!finished) return missingAlbums.length;
+      albums = await readAlbums();
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final bioRechecked = prefs.getBool(_bioRecheckedPrefKey) ?? false;
+    final index = await _ref.read(coverIndexReaderProvider)();
+    final jobs = <Future<void> Function()>[];
+
+    final wantedCovers = <String>{};
+    void wantCover(String? id, {bool artist = false}) {
+      if (id == null || id.isEmpty || !wantedCovers.add(id)) return;
+      final size = _offlineCoverSize(artist: artist);
+      final stored = CoverArtCache.findIn(index, id, preferredSize: size);
+      if (stored == null || !CoverArtCache.isAtLeast(stored.size, size)) {
+        jobs.add(() => _storeCoverForOffline(client, id, artist: artist));
+      }
+    }
+
+    final artistIds = <String>{};
+    for (final song in songs) {
+      wantCover(song.coverArtId);
+      final album = albums[song.albumId];
+      wantCover(album?.coverArtId);
+      for (final id in [song.artistId, album?.artistId]) {
+        if (id != null && id.isNotEmpty) artistIds.add(id);
+      }
+    }
+
+    final artists = {
+      for (final artist in await dao.getAllArtists(serverId)) artist.id: artist,
+    };
+    for (final id in artistIds) {
+      final artist = artists[id];
+      // Until now a sync that failed to reach the server recorded "no
+      // biography", so those are each asked about once more.
+      if (artist == null ||
+          artist.biography == null ||
+          (!bioRechecked && artist.biography!.isEmpty)) {
+        jobs.add(() => _cacheArtistMetadata(client, dao, repo, serverId, id));
+        continue;
+      }
+      wantCover(artist.coverArtId, artist: true);
+      final photo = artist.imageUrl;
+      if (photo != null && photo.isNotEmpty && index.fileOf(photo) == null) {
+        jobs.add(() => _storeArtistPhoto(photo));
+      }
+    }
+
+    for (final playlist in await dao.watchDownloadedPlaylists(serverId).first) {
+      wantCover(playlist.coverArtId);
+    }
+
+    final lyricsDir = await _getLyricsDir(serverId);
+    final storedLyrics = {
+      await for (final entity in lyricsDir.list()) p.basename(entity.path),
+    };
+    for (final song in songs) {
+      if (!storedLyrics.contains('${song.id}.lrc')) {
+        jobs.add(() => _cacheLyrics(client, serverId, song));
+      }
+    }
+
+    final finished = await _runLineageJobs(jobs, workers);
+    final tried = missingAlbums.length + jobs.length;
+    if (finished) {
+      _lineageRepairedAt = DateTime.now();
+      await prefs.setBool(_bioRecheckedPrefKey, true);
+    }
+    if (tried > 0) {
+      AppLogger.i(
+        'AudioCache',
+        'Offline metadata: fetched $tried missing items for ${songs.length} '
+            'downloaded tracks${finished ? '' : ', then stopped early'}',
+      );
+    }
+    return tried;
+  }
+
+  /// Runs [jobs] on [workers] at a time. False when it stopped before the end.
+  Future<bool> _runLineageJobs(
+    List<Future<void> Function()> jobs,
+    int workers,
+  ) async {
+    var next = 0;
+    var finished = true;
+    Future<void> worker() async {
+      while (next < jobs.length) {
+        if (!_mayRepairLineage) {
+          finished = false;
+          return;
+        }
+        try {
+          await jobs[next++]();
+        } catch (e) {
+          AppLogger.w('AudioCache', 'Offline metadata fetch failed: $e');
+        }
+      }
+    }
+
+    await Future.wait([for (var i = 0; i < workers; i++) worker()]);
+    return finished;
   }
 
   /// Caches all songs in an album.

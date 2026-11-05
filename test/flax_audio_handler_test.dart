@@ -19,7 +19,9 @@ import 'package:flax/services/audio/media_session_art.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/cover_art_cache.dart';
+import 'package:flax/shared/widgets/cover_index.dart';
 
+import 'helpers/fake_cache_info_repository.dart';
 import 'helpers/fake_cover_store.dart';
 
 class MockLibraryRepository extends Mock implements LibraryRepository {
@@ -315,6 +317,12 @@ void main() {
     container = ProviderContainer(
       overrides: [
         artCacheProvider.overrideWithValue(covers),
+        coverIndexReaderProvider.overrideWithValue(
+          () => CoverIndex.read(
+            repo: FakeCacheInfoRepository(),
+            directory: coverDir,
+          ),
+        ),
         libraryRepositoryProvider.overrideWithValue(mockRepo),
         subsonicClientProvider.overrideWithValue(mockClient),
         activeServerProvider.overrideWithValue(
@@ -391,6 +399,10 @@ void main() {
       });
       final fresh = ProviderContainer(
         overrides: [
+          artCacheProvider.overrideWithValue(covers),
+          coverIndexReaderProvider.overrideWithValue(
+            () async => throw StateError('no index'),
+          ),
           libraryRepositoryProvider.overrideWithValue(mockRepo),
           subsonicClientProvider.overrideWithValue(mockClient),
         ],
@@ -415,6 +427,10 @@ void main() {
       });
       final fresh = ProviderContainer(
         overrides: [
+          artCacheProvider.overrideWithValue(covers),
+          coverIndexReaderProvider.overrideWithValue(
+            () async => throw StateError('no index'),
+          ),
           libraryRepositoryProvider.overrideWithValue(mockRepo),
           subsonicClientProvider.overrideWithValue(mockClient),
         ],
@@ -750,6 +766,10 @@ void main() {
     test('returns root categories even if client or library is null', () async {
       final emptyContainer = ProviderContainer(
         overrides: [
+          artCacheProvider.overrideWithValue(covers),
+          coverIndexReaderProvider.overrideWithValue(
+            () async => throw StateError('no index'),
+          ),
           libraryRepositoryProvider.overrideWithValue(null),
           subsonicClientProvider.overrideWithValue(null),
         ],
@@ -875,6 +895,9 @@ void main() {
       final album = covers.add(coverCacheKey('al-ayam', 512));
       final offline = ProviderContainer(
         overrides: [
+          coverIndexReaderProvider.overrideWithValue(
+            () async => throw StateError('no index'),
+          ),
           artCacheProvider.overrideWithValue(covers),
           libraryRepositoryProvider.overrideWithValue(
             _AlbumCoverRepo('al-ayam'),
@@ -903,6 +926,9 @@ void main() {
     test('offline with no stored cover, the server is not asked', () async {
       final offline = ProviderContainer(
         overrides: [
+          coverIndexReaderProvider.overrideWithValue(
+            () async => throw StateError('no index'),
+          ),
           artCacheProvider.overrideWithValue(covers),
           libraryRepositoryProvider.overrideWithValue(mockRepo),
           subsonicClientProvider.overrideWithValue(mockClient),

@@ -101,6 +101,7 @@ class _AppChromeState extends ConsumerState<AppChrome>
       if (isOffline) return;
       final repo = ref.read(libraryRepositoryProvider);
       repo?.syncIfChanged();
+      ref.read(audioCacheServiceProvider).repairOfflineLineage().ignore();
     });
   }
 
@@ -159,6 +160,7 @@ class _AppChromeState extends ConsumerState<AppChrome>
       if (isOffline) return;
 
       ref.read(audioCacheServiceProvider).resumePendingDownloads();
+      ref.read(audioCacheServiceProvider).repairOfflineLineage().ignore();
 
       final repo = ref.read(libraryRepositoryProvider);
       if (repo == null) return;

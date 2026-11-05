@@ -20,6 +20,7 @@ import 'package:flax/services/audio/media_session_art.dart';
 import 'package:flax/services/platform/car_connection_service.dart';
 import 'package:flax/services/subsonic/subsonic_client.dart';
 import 'package:flax/shared/widgets/cover_art_cache.dart';
+import 'package:flax/shared/widgets/cover_index.dart';
 
 /// Android Auto & background media session handler for Flax.
 ///
@@ -387,15 +388,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
             .first;
         if (songs.isNotEmpty) {
           final first = songs.first;
-          final artUrl = first.coverArtId != null
-              ? client.getCoverArtUri(first.coverArtId!, size: 600).toString()
-              : null;
+          final artUrl = _nowPlayingArt(first);
           final item = songToMediaItem(
             first,
             coverArtUrl: artUrl,
             forNowPlaying: true,
           );
           mediaItem.add(item);
+          unawaited(_useStoredNowPlayingArt(item, first));
           queue.add(
             songs.map((s) => songToMediaItem(s, coverArtUrl: artUrl)).toList(),
           );
@@ -417,6 +417,22 @@ class FlaxAudioHandler extends BaseAudioHandler {
   LibraryRepository? get _library => _container.read(libraryRepositoryProvider);
   SubsonicClient? get _client => _container.read(subsonicClientProvider);
   PlayerNotifier get _player => _container.read(playerProvider.notifier);
+
+  /// Reissues the queue with stored covers, unless it has moved on since.
+  Future<void> _refineQueueArt(List<MediaItem> items, List<String> ids) async {
+    final index = await _recentCoverIndex();
+    if (index == null) return;
+    final current = queue.value.map((m) => m.id).toList();
+    if (!const ListEquality().equals(current, ids)) return;
+    try {
+      final offline = _isOffline;
+      queue.add([
+        for (final item in items) _withLocalArt(item, index, offline: offline),
+      ]);
+    } catch (_) {
+      // The container went away while the index was being read.
+    }
+  }
 
   /// Synchronizes playback state from [PlayerNotifier] to the car media session.
   void updateFromPlayerState(PlayerState state) {
@@ -457,7 +473,16 @@ class FlaxAudioHandler extends BaseAudioHandler {
             : null;
         return songToMediaItem(s, coverArtUrl: artUrl);
       }).toList();
-      queue.add(queueItems);
+      final offline = _isOffline;
+      final index = _coverIndex;
+      queue.add([
+        for (final item in queueItems)
+          _withLocalArt(item, index, offline: offline),
+      ]);
+      // Not read yet: this has to answer now, so the art follows.
+      if (index == null) {
+        unawaited(_refineQueueArt(queueItems, newQueueIds));
+      }
     }
 
     playbackState.add(
@@ -576,11 +601,105 @@ class FlaxAudioHandler extends BaseAudioHandler {
     }
   }
 
+  /// How long one read of the cover index stands. A cover stored since is still
+  /// found through [CoverArtCache.knownPath].
+  static const _coverIndexMaxAge = Duration(minutes: 5);
+
+  CoverIndex? _coverIndex;
+  DateTime? _coverIndexAt;
+  Future<CoverIndex?>? _coverIndexRead;
+
+  /// The cover index, for art on every row of a page: one lookup per row would
+  /// be thousands on a long playlist. Null when it can't be read.
+  Future<CoverIndex?> _recentCoverIndex() async {
+    final at = _coverIndexAt;
+    if (at != null && DateTime.now().difference(at) < _coverIndexMaxAge) {
+      return _coverIndex;
+    }
+    return _coverIndexRead ??= _readCoverIndex().whenComplete(
+      () => _coverIndexRead = null,
+    );
+  }
+
+  Future<CoverIndex?> _readCoverIndex() async {
+    try {
+      // Bounded: the car is waiting on this page, and rows without stored art
+      // beat a spinner.
+      _coverIndex = await _container
+          .read(coverIndexReaderProvider)()
+          .timeout(const Duration(seconds: 3));
+      _coverIndexAt = DateTime.now();
+    } catch (e) {
+      AppLogger.w('AudioHandler', 'Could not read the cover index: $e');
+    }
+    return _coverIndex;
+  }
+
+  static bool _isRemoteArt(Uri? art) =>
+      art != null && (art.isScheme('http') || art.isScheme('https'));
+
+  /// [item] with its art on this device when it is stored there.
+  ///
+  /// Every row leaves here. A server URL handed to Android Auto is fetched by
+  /// Android Auto, which knows nothing of offline mode, so offline a row carries
+  /// a stored cover or a placeholder and never a URL. Online, the stored cover
+  /// still saves the server the work, and the URL is for covers not yet stored.
+  MediaItem _withLocalArt(
+    MediaItem item,
+    CoverIndex? index, {
+    required bool offline,
+  }) {
+    final art = item.artUri;
+    if (!_isRemoteArt(art)) return item;
+    final coverId = art!.path.endsWith('/rest/getCoverArt')
+        ? art.queryParameters['id']
+        : null;
+    final String? stored;
+    if (coverId != null) {
+      final size = int.tryParse(art.queryParameters['size'] ?? '');
+      stored = index == null
+          ? CoverArtCache.knownPath(coverId, size: size)
+          : CoverArtCache.findIn(
+                  index,
+                  coverId,
+                  preferredSize: size,
+                )?.file.path ??
+                CoverArtCache.knownPath(coverId, size: size);
+    } else {
+      // An artist photo, which has a URL of its own and is stored under it.
+      stored = index?.fileOf(art.toString())?.path;
+    }
+    if (stored != null) {
+      return item.copyWith(
+        artUri: mediaSessionArtUri(stored, android: _android),
+      );
+    }
+    return offline ? item.copyWith(artUri: _placeholderArt(item.id)) : item;
+  }
+
+  /// What a row shows offline when its cover isn't on the device.
+  static Uri _placeholderArt(String mediaId) {
+    if (mediaId.startsWith('album')) return _icAlbumCollection;
+    if (mediaId.startsWith('artist')) return _icArtistAvatar;
+    return _icMusicNote;
+  }
+
+  Future<List<MediaItem>> _withLocalArtAll(List<MediaItem> items) async {
+    if (!items.any((item) => _isRemoteArt(item.artUri))) return items;
+    final index = await _recentCoverIndex();
+    final offline = _isOffline;
+    return [
+      for (final item in items) _withLocalArt(item, index, offline: offline),
+    ];
+  }
+
   @override
   Future<List<MediaItem>> getChildren(
     String parentMediaId, [
     Map<String, dynamic>? options,
-  ]) async {
+  ]) async => _withLocalArtAll(await _loadChildren(parentMediaId));
+
+  Future<List<MediaItem>> _loadChildren(String parentMediaId) async {
     AppLogger.i('AudioHandler', 'Browse request: $parentMediaId');
     if (parentMediaId == AudioService.recentRootId) {
       final items = await _resumptionItems();
@@ -1337,6 +1456,11 @@ class FlaxAudioHandler extends BaseAudioHandler {
 
   @override
   Future<MediaItem?> getMediaItem(String mediaId) async {
+    final item = await _loadMediaItem(mediaId);
+    return item == null ? null : (await _withLocalArtAll([item])).single;
+  }
+
+  Future<MediaItem?> _loadMediaItem(String mediaId) async {
     final client = _client;
     final library = _library;
     if (client == null || library == null) return null;
@@ -1625,7 +1749,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
         }
         final song = await library.watchSong(songId).first;
         if (song != null) {
-          _announceStarting(song, client);
+          _announceStarting(song);
 
           if (song.albumId != null) {
             final albumSongs = _isOffline
@@ -1691,7 +1815,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
             track.index < songs.length && songs[track.index].id == track.songId
             ? track.index
             : max(songs.indexWhere((s) => s.id == track.songId), 0);
-        _announceStarting(songs[index], client);
+        _announceStarting(songs[index]);
         await _player.playTracks(songs, initialIndex: index);
       } else if (mediaId.startsWith('playlist_')) {
         final songs = await _playlistQueue(library, mediaId.substring(9));
@@ -1743,15 +1867,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
   }
 
   /// Shows [song] as starting, so the car responds before the player does.
-  void _announceStarting(Song song, SubsonicClient? client) {
-    final artUrl = client != null && song.coverArtId != null
-        ? client
-              .getCoverArtUri(song.coverArtId!, size: _nowPlayingArtSize)
-              .toString()
-        : null;
-    mediaItem.add(
-      songToMediaItem(song, coverArtUrl: artUrl, forNowPlaying: true),
+  void _announceStarting(Song song) {
+    final item = songToMediaItem(
+      song,
+      coverArtUrl: _nowPlayingArt(song),
+      forNowPlaying: true,
     );
+    mediaItem.add(item);
+    unawaited(_useStoredNowPlayingArt(item, song));
     playbackState.add(
       _buildPlaybackState(
         isPlaying: true,
@@ -1783,16 +1906,20 @@ class FlaxAudioHandler extends BaseAudioHandler {
           : await library.watchSongSearch(query, limit: 20).first;
       if (matchingSongs.isNotEmpty) {
         await _player.playTracks(matchingSongs, initialIndex: 0);
-        return matchingSongs
-            .map(
-              (s) => songToMediaItem(
-                s,
-                coverArtUrl: s.coverArtId != null
-                    ? client.getCoverArtUri(s.coverArtId!, size: 300).toString()
-                    : null,
-              ),
-            )
-            .toList();
+        return await _withLocalArtAll(
+          matchingSongs
+              .map(
+                (s) => songToMediaItem(
+                  s,
+                  coverArtUrl: s.coverArtId != null
+                      ? client
+                            .getCoverArtUri(s.coverArtId!, size: 300)
+                            .toString()
+                      : null,
+                ),
+              )
+              .toList(),
+        );
       }
 
       final matchingAlbums = await library
@@ -1804,9 +1931,9 @@ class FlaxAudioHandler extends BaseAudioHandler {
             .first;
         if (songs.isNotEmpty) {
           await _player.playTracks(songs, initialIndex: 0);
-          return matchingAlbums
-              .map((a) => albumToMediaItem(a, client))
-              .toList();
+          return await _withLocalArtAll(
+            matchingAlbums.map((a) => albumToMediaItem(a, client)).toList(),
+          );
         }
       }
     } catch (e, st) {
@@ -1843,7 +1970,6 @@ class FlaxAudioHandler extends BaseAudioHandler {
       _container.read(carConnectionServiceProvider).activateMediaSession(),
     );
     final library = _library;
-    final client = _client;
     if (library == null) return;
 
     try {
@@ -1851,12 +1977,13 @@ class FlaxAudioHandler extends BaseAudioHandler {
       if (songId != null) {
         final song = await library.watchSong(songId).first;
         if (song != null) {
-          final artUrl = client != null && song.coverArtId != null
-              ? client.getCoverArtUri(song.coverArtId!, size: 600).toString()
-              : null;
-          mediaItem.add(
-            songToMediaItem(song, coverArtUrl: artUrl, forNowPlaying: true),
+          final item = songToMediaItem(
+            song,
+            coverArtUrl: _nowPlayingArt(song),
+            forNowPlaying: true,
           );
+          mediaItem.add(item);
+          unawaited(_useStoredNowPlayingArt(item, song));
           playbackState.add(
             _buildPlaybackState(
               isPlaying: false,
@@ -1873,12 +2000,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
             : await library.watchAlbumSongs(albumId).first;
         if (songs.isNotEmpty) {
           final first = songs.first;
-          final artUrl = client != null && first.coverArtId != null
-              ? client.getCoverArtUri(first.coverArtId!, size: 600).toString()
-              : null;
-          mediaItem.add(
-            songToMediaItem(first, coverArtUrl: artUrl, forNowPlaying: true),
+          final artUrl = _nowPlayingArt(first);
+          final item = songToMediaItem(
+            first,
+            coverArtUrl: artUrl,
+            forNowPlaying: true,
           );
+          mediaItem.add(item);
+          unawaited(_useStoredNowPlayingArt(item, first));
           queue.add(
             songs.map((s) => songToMediaItem(s, coverArtUrl: artUrl)).toList(),
           );

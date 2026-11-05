@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +11,7 @@ import 'package:flax/features/library/artist_desktop_view.dart';
 import 'package:flax/features/library/artist_widgets.dart';
 import 'package:flax/services/musicbrainz/musicbrainz_service.dart';
 import 'package:flax/shared/widgets/album_context_menu.dart';
+import 'package:flax/shared/widgets/artist_photo.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/layout_metrics.dart';
@@ -260,10 +260,10 @@ class ArtistDetailScreen extends ConsumerWidget {
           fit: StackFit.expand,
           children: [
             if (bgImage != null)
-              CachedNetworkImage(
-                imageUrl: bgImage,
+              ArtistPhoto(
+                url: bgImage,
                 fit: BoxFit.cover,
-                errorWidget: (_, _, _) => artist.coverArtId != null
+                fallback: artist.coverArtId != null
                     ? CoverArtImage(coverArtId: artist.coverArtId, size: 600)
                     : const SizedBox.shrink(),
               )

@@ -36,8 +36,16 @@ class _Repo extends Fake implements LibraryRepository {
 }
 
 class _Cache extends Fake implements AudioCacheService {
+  var repairs = 0;
+
   @override
   Future<void> resumePendingDownloads() async {}
+
+  @override
+  Future<int> repairOfflineLineage() async {
+    repairs++;
+    return 0;
+  }
 }
 
 class _Reachable extends StateNotifier<ServerReachability>

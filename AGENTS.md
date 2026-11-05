@@ -159,6 +159,16 @@ downloaded item needs the server. Two rules keep that true:
 - **Every reader resolves art through `CoverArtCache.findCached`** — screens,
   Android Auto, the notification. It falls back to any stored size of the cover
   before the server, and nothing asks the server for art while offline.
+- **Android Auto's rows go through `_withLocalArt`.** A URL handed to Android
+  Auto is fetched by Android Auto, which knows nothing of offline mode, so
+  offline a browse row or queue item carries a stored cover or a placeholder,
+  never a URL.
+- **A download's metadata is repaired, not assumed.** Its fetches run once in the
+  background, so `AudioCacheService.repairOfflineLineage` compares what
+  downloaded tracks have with what they should have and fetches the difference,
+  on Wi-Fi or Ethernet while flax is in use. An empty biography or lyrics file
+  means the server was asked and has none; a failed request must leave them
+  unset, or nothing asks again.
 - **A thumbnail is not a stored cover.** The mini player stores a 128px copy
   the moment a track plays, so `storeForOffline` skips only when a copy at
   least the requested size exists. When any size counted, cached tracks were

@@ -170,6 +170,15 @@ Future<void> main() async {
     );
   }
 
+  // After the two above, so covers they file aren't taken for missing. This
+  // also covers a start with no screen, such as Android Auto connecting.
+  unawaited(
+    Future<void>.delayed(
+      const Duration(seconds: 30),
+      container.read(audioCacheServiceProvider).repairOfflineLineage,
+    ),
+  );
+
   // Ensure periodic background sync is scheduled on Android if enabled
   if (Platform.isAndroid) {
     try {

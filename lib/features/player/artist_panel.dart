@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +6,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/library/artist_detail_screen.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/shared/widgets/country_chip.dart';
+import 'package:flax/shared/widgets/artist_photo.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
 import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/similar_artist_tile.dart';
@@ -193,13 +193,10 @@ class ArtistPanelView extends StatelessWidget {
 
   Widget _buildHeroImage(String? imageUrl, String? coverArtId) {
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      return CachedNetworkImage(
-        imageUrl: imageUrl,
+      return ArtistPhoto(
+        url: imageUrl,
         fit: BoxFit.cover,
-        placeholder: (_, _) => coverArtId != null
-            ? CoverArtImage(coverArtId: coverArtId, size: 600)
-            : const _ArtistPlaceholder(),
-        errorWidget: (_, _, _) => coverArtId != null
+        fallback: coverArtId != null
             ? CoverArtImage(coverArtId: coverArtId, size: 600)
             : const _ArtistPlaceholder(),
       );
