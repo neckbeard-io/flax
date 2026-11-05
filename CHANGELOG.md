@@ -16,8 +16,11 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ### Changed
 - Android Auto: the Downloaded Tracks list is gone; offline, Playlists lists cached playlists.
+- The one-line installer now installs the latest stable release, not the newest dev build.
 
 ### Fixed
+- The one-line installer no longer fails when GitHub's API rate limit is reached.
+- Settings now says why an update check failed instead of appearing to do nothing.
 - Android Auto: Playlists shows your server's playlists, in their own track order.
 - Android Auto: tapping a playlist track plays on through the playlist, not the track's album.
 - Android Auto: offline, browse rows and the queue use stored covers and never contact the server.

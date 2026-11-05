@@ -224,6 +224,52 @@ void main() {
         expect(notifier.checkCalls, 1);
       },
     );
+
+    testWidgets('shows why an update check failed, and offers another try', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      const reason =
+          'GitHub is limiting update checks right now. Try again later.';
+      final notifier = _TestUpdateNotifier(
+        const UpdateState(
+          stage: UpdateStage.error,
+          channel: UpdateChannel.dev,
+          currentVersion: '0.7.0',
+          errorMessage: reason,
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [updateNotifierProvider.overrideWith((ref) => notifier)],
+          child: const MaterialApp(home: SettingsScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Check for Updates'),
+        500,
+        scrollable: find.byType(Scrollable),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(reason), findsOneWidget);
+      expect(
+        find.text('Tap to check GitHub for new dev releases'),
+        findsNothing,
+      );
+
+      final retry = find.text('Check Now');
+      expect(tester.getRect(retry).right, lessThanOrEqualTo(390));
+      await tester.tap(retry);
+      await tester.pumpAndSettle();
+      expect(notifier.checkCalls, 1);
+    });
   });
   group('Android Auto offline option', () {
     Future<void> pumpSettings(

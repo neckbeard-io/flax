@@ -524,6 +524,9 @@ class _AboutTile extends ConsumerWidget {
                 ? 'New ${updateState.latestRelease?.isPrerelease == true ? "dev" : "stable"} version: v${updateState.latestRelease?.version ?? ""}'
                 : updateState.stage == UpdateStage.upToDate
                 ? 'Flax is up to date (${updateState.channel.label} channel)'
+                : updateState.stage == UpdateStage.error &&
+                      updateState.errorMessage != null
+                ? updateState.errorMessage!
                 : 'Tap to check GitHub for new ${updateState.channel.label.toLowerCase()} releases',
           ),
           trailing: updateState.isChecking

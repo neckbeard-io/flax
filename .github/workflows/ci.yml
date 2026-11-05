@@ -9,6 +9,7 @@ name: CI
 #   1. dart format --output=none --set-exit-if-changed .
 #   2. flutter analyze --fatal-infos
 #   3. flutter test
+#   4. tool/test_installer.sh
 
 on:
   push:
@@ -70,6 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Run installer tests
+        run: bash tool/test_installer.sh
 
       - uses: subosito/flutter-action@v2
         with:
