@@ -646,6 +646,48 @@ void main() {
       expect(nowPlayingItem.title, equals('Starboy'));
       expect(nowPlayingItem.displayTitle, equals('Starboy'));
     });
+
+    // Android's Bluetooth stack holds a track change back until the active
+    // queue entry describes the same song as the Now Playing metadata: the
+    // entry's title, subtitle and description against its title, artist and
+    // album. A car on Bluetooth alone kept showing the first track.
+    test('describes a queue entry as the Now Playing item', () {
+      const song = Song(
+        id: 's123',
+        serverId: 'srv_1',
+        title: 'Starboy',
+        artistName: 'The Weeknd',
+        albumName: 'Starboy',
+        duration: 230,
+        suffix: 'flac',
+        bitRate: 1000,
+      );
+
+      final nowPlaying = FlaxAudioHandler.songToMediaItem(
+        song,
+        forNowPlaying: true,
+      );
+      final entry = FlaxAudioHandler.songToQueueItem(song);
+
+      expect(entry.id, nowPlaying.id);
+      expect(entry.title, nowPlaying.title);
+      expect(entry.displayTitle, nowPlaying.title);
+      expect(entry.displaySubtitle, nowPlaying.artist);
+      expect(entry.displayDescription, nowPlaying.album);
+    });
+
+    test('describes a queue entry with no artist or album', () {
+      const song = Song(id: 's9', serverId: 'srv_1', title: 'Untitled');
+
+      final nowPlaying = FlaxAudioHandler.songToMediaItem(
+        song,
+        forNowPlaying: true,
+      );
+      final entry = FlaxAudioHandler.songToQueueItem(song);
+
+      expect(entry.displaySubtitle, nowPlaying.artist);
+      expect(entry.displayDescription, nowPlaying.album);
+    });
   });
 
   group('FlaxAudioHandler State Updates', () {
@@ -678,7 +720,15 @@ void main() {
       expect(handler.queue.value.length, equals(1));
       expect(
         handler.queue.value.first.title,
-        equals('Harder, Better, Faster, Stronger · Daft Punk'),
+        equals('Harder, Better, Faster, Stronger'),
+      );
+      expect(
+        handler.queue.value.first.displaySubtitle,
+        handler.mediaItem.value!.artist,
+      );
+      expect(
+        handler.queue.value.first.displayDescription,
+        handler.mediaItem.value!.album,
       );
       expect(handler.playbackState.value.playing, isTrue);
       expect(

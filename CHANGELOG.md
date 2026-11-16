@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Fixed
+- Bluetooth car stereos now follow track changes, not just the first song's title and art.
+
 ## v0.8.0 — 2026-11-05
 
 ### Added
