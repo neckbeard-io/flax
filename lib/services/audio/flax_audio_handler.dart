@@ -364,7 +364,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
           unawaited(_useStoredNowPlayingArt(item, first));
           queue.add(
             downloadedSongs
-                .map((s) => songToMediaItem(s, coverArtUrl: artUrl))
+                .map((s) => songToQueueItem(s, coverArtUrl: artUrl))
                 .toList(),
           );
           playbackState.add(
@@ -373,6 +373,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
               hasSong: true,
               position: Duration.zero,
               buffering: false,
+              queueIndex: 0,
             ),
           );
           return;
@@ -397,7 +398,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
           mediaItem.add(item);
           unawaited(_useStoredNowPlayingArt(item, first));
           queue.add(
-            songs.map((s) => songToMediaItem(s, coverArtUrl: artUrl)).toList(),
+            songs.map((s) => songToQueueItem(s, coverArtUrl: artUrl)).toList(),
           );
           playbackState.add(
             _buildPlaybackState(
@@ -405,6 +406,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
               hasSong: true,
               position: Duration.zero,
               buffering: false,
+              queueIndex: 0,
             ),
           );
         }
@@ -471,7 +473,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
         final artUrl = client != null && s.coverArtId != null
             ? client.getCoverArtUri(s.coverArtId!, size: 300).toString()
             : null;
-        return songToMediaItem(s, coverArtUrl: artUrl);
+        return songToQueueItem(s, coverArtUrl: artUrl);
       }).toList();
       final offline = _isOffline;
       final index = _coverIndex;
@@ -2009,7 +2011,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
           mediaItem.add(item);
           unawaited(_useStoredNowPlayingArt(item, first));
           queue.add(
-            songs.map((s) => songToMediaItem(s, coverArtUrl: artUrl)).toList(),
+            songs.map((s) => songToQueueItem(s, coverArtUrl: artUrl)).toList(),
           );
           playbackState.add(
             _buildPlaybackState(
@@ -2017,6 +2019,7 @@ class FlaxAudioHandler extends BaseAudioHandler {
               hasSong: true,
               position: Duration.zero,
               buffering: false,
+              queueIndex: 0,
             ),
           );
         }
@@ -2224,6 +2227,25 @@ class FlaxAudioHandler extends BaseAudioHandler {
         'track': song.track,
         'starred': song.starred,
       },
+    );
+  }
+
+  /// The media session's queue entry for [song], described with exactly the
+  /// title, artist and album the Now Playing item carries.
+  ///
+  /// Android's Bluetooth stack (AVRCP) checks the active queue entry against
+  /// the Now Playing metadata before it tells a car the track changed, and
+  /// holds the update back while they differ. Head units that browse the now
+  /// playing list also read these entries rather than the metadata. Entries
+  /// used to read "Title · Artist" over "Artist · Album", which never matched:
+  /// a car on Bluetooth alone was left showing the first track.
+  static MediaItem songToQueueItem(Song song, {String? coverArtUrl}) {
+    final item = songToMediaItem(song, coverArtUrl: coverArtUrl);
+    return item.copyWith(
+      title: song.title,
+      displayTitle: song.title,
+      displaySubtitle: item.artist,
+      displayDescription: item.album,
     );
   }
 
