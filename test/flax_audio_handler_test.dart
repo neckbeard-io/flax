@@ -691,6 +691,57 @@ void main() {
   });
 
   group('FlaxAudioHandler State Updates', () {
+    // Bluetooth sends a car the playing track's number, and Android reports
+    // "1 of 1" when the metadata has none: a car that checks the playing row
+    // of its now playing list by that number kept the first row checked.
+    test('numbers the Now Playing item and queue by queue position', () {
+      const songs = [
+        Song(id: 'a', serverId: 'srv_1', title: 'One', artistName: 'X'),
+        Song(id: 'b', serverId: 'srv_1', title: 'Two', artistName: 'X'),
+        Song(id: 'c', serverId: 'srv_1', title: 'Three', artistName: 'X'),
+      ];
+      const trackNumber = 'android.media.metadata.TRACK_NUMBER';
+      const numTracks = 'android.media.metadata.NUM_TRACKS';
+
+      handler.updateFromPlayerState(
+        PlayerState(currentSong: songs[1], queue: songs, queueIndex: 1),
+      );
+      expect(handler.mediaItem.value!.extras![trackNumber], 2);
+      expect(handler.mediaItem.value!.extras![numTracks], 3);
+      expect(
+        [for (final e in handler.queue.value) e.extras![trackNumber]],
+        [1, 2, 3],
+      );
+      expect(
+        [for (final e in handler.queue.value) e.extras![numTracks]],
+        [3, 3, 3],
+      );
+
+      handler.updateFromPlayerState(
+        PlayerState(currentSong: songs[2], queue: songs, queueIndex: 2),
+      );
+      expect(handler.mediaItem.value!.title, 'Three');
+      expect(handler.mediaItem.value!.extras![trackNumber], 3);
+      expect(handler.playbackState.value.queueIndex, 2);
+    });
+
+    test('renumbers the Now Playing item when its song moves', () {
+      const a = Song(id: 'a', serverId: 'srv_1', title: 'One');
+      const b = Song(id: 'b', serverId: 'srv_1', title: 'Two');
+      const trackNumber = 'android.media.metadata.TRACK_NUMBER';
+
+      handler.updateFromPlayerState(
+        const PlayerState(currentSong: a, queue: [a, b], queueIndex: 0),
+      );
+      expect(handler.mediaItem.value!.extras![trackNumber], 1);
+
+      handler.updateFromPlayerState(
+        const PlayerState(currentSong: a, queue: [b, a], queueIndex: 1),
+      );
+      expect(handler.mediaItem.value!.extras![trackNumber], 2);
+      expect(handler.queue.value[1].extras![trackNumber], 2);
+    });
+
     test('updates playbackState, mediaItem, and queue from PlayerState', () {
       const currentSong = Song(
         id: 'song_active',

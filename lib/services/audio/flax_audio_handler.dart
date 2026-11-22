@@ -355,18 +355,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
         if (downloadedSongs.isNotEmpty) {
           final first = downloadedSongs.first;
           final artUrl = _nowPlayingArt(first);
-          final item = songToMediaItem(
-            first,
-            coverArtUrl: artUrl,
-            forNowPlaying: true,
+          final item = withQueuePosition(
+            songToMediaItem(first, coverArtUrl: artUrl, forNowPlaying: true),
+            0,
+            downloadedSongs.length,
           );
           mediaItem.add(item);
           unawaited(_useStoredNowPlayingArt(item, first));
-          queue.add(
-            downloadedSongs
-                .map((s) => songToQueueItem(s, coverArtUrl: artUrl))
-                .toList(),
-          );
+          queue.add(songsToQueue(downloadedSongs, coverArtUrl: artUrl));
           playbackState.add(
             _buildPlaybackState(
               isPlaying: false,
@@ -390,16 +386,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
         if (songs.isNotEmpty) {
           final first = songs.first;
           final artUrl = _nowPlayingArt(first);
-          final item = songToMediaItem(
-            first,
-            coverArtUrl: artUrl,
-            forNowPlaying: true,
+          final item = withQueuePosition(
+            songToMediaItem(first, coverArtUrl: artUrl, forNowPlaying: true),
+            0,
+            songs.length,
           );
           mediaItem.add(item);
           unawaited(_useStoredNowPlayingArt(item, first));
-          queue.add(
-            songs.map((s) => songToQueueItem(s, coverArtUrl: artUrl)).toList(),
-          );
+          queue.add(songsToQueue(songs, coverArtUrl: artUrl));
           playbackState.add(
             _buildPlaybackState(
               isPlaying: false,
@@ -442,13 +436,18 @@ class FlaxAudioHandler extends BaseAudioHandler {
     final client = _client;
 
     if (song != null) {
-      final item = songToMediaItem(
+      var item = songToMediaItem(
         song,
         coverArtUrl: _nowPlayingArt(song),
         forNowPlaying: true,
       );
+      final index = state.queueIndex;
+      if (index >= 0 && index < state.queue.length) {
+        item = withQueuePosition(item, index, state.queue.length);
+      }
       if (mediaItem.value?.id != item.id ||
-          mediaItem.value?.rating != item.rating) {
+          mediaItem.value?.rating != item.rating ||
+          _queuePositionOf(mediaItem.value) != _queuePositionOf(item)) {
         // Keep art already upgraded to the stored cover for this track.
         final keepArt =
             mediaItem.value?.id == item.id &&
@@ -469,12 +468,19 @@ class FlaxAudioHandler extends BaseAudioHandler {
     final currentQueueIds = queue.value.map((m) => m.id).toList();
     final newQueueIds = state.queue.map((s) => 'song_${s.id}').toList();
     if (!const ListEquality().equals(currentQueueIds, newQueueIds)) {
-      final queueItems = state.queue.map((s) {
-        final artUrl = client != null && s.coverArtId != null
-            ? client.getCoverArtUri(s.coverArtId!, size: 300).toString()
-            : null;
-        return songToQueueItem(s, coverArtUrl: artUrl);
-      }).toList();
+      final queueItems = [
+        for (final (i, s) in state.queue.indexed)
+          withQueuePosition(
+            songToQueueItem(
+              s,
+              coverArtUrl: client != null && s.coverArtId != null
+                  ? client.getCoverArtUri(s.coverArtId!, size: 300).toString()
+                  : null,
+            ),
+            i,
+            state.queue.length,
+          ),
+      ];
       final offline = _isOffline;
       final index = _coverIndex;
       queue.add([
@@ -2003,16 +2009,14 @@ class FlaxAudioHandler extends BaseAudioHandler {
         if (songs.isNotEmpty) {
           final first = songs.first;
           final artUrl = _nowPlayingArt(first);
-          final item = songToMediaItem(
-            first,
-            coverArtUrl: artUrl,
-            forNowPlaying: true,
+          final item = withQueuePosition(
+            songToMediaItem(first, coverArtUrl: artUrl, forNowPlaying: true),
+            0,
+            songs.length,
           );
           mediaItem.add(item);
           unawaited(_useStoredNowPlayingArt(item, first));
-          queue.add(
-            songs.map((s) => songToQueueItem(s, coverArtUrl: artUrl)).toList(),
-          );
+          queue.add(songsToQueue(songs, coverArtUrl: artUrl));
           playbackState.add(
             _buildPlaybackState(
               isPlaying: false,
@@ -2248,6 +2252,45 @@ class FlaxAudioHandler extends BaseAudioHandler {
       displayDescription: item.album,
     );
   }
+
+  /// Media session metadata keys for a track's place in its list, which
+  /// audio_service passes through from [MediaItem.extras].
+  static const _trackNumberKey = 'android.media.metadata.TRACK_NUMBER';
+  static const _numTracksKey = 'android.media.metadata.NUM_TRACKS';
+
+  /// [item] marked as entry [index] of a queue [count] long.
+  ///
+  /// Bluetooth (AVRCP) sends a car the current track's number and the total,
+  /// and Android falls back to "1 of 1" when the metadata has neither. Cars
+  /// that mark the playing row of the now playing list by that number kept the
+  /// first row checked whatever was playing. Android numbers the list's rows
+  /// by queue position, so this does too, on the Now Playing item and on each
+  /// queue entry alike — the two still have to match (see [songToQueueItem]).
+  static MediaItem withQueuePosition(MediaItem item, int index, int count) =>
+      item.copyWith(
+        extras: {
+          ...?item.extras,
+          _trackNumberKey: index + 1,
+          _numTracksKey: count,
+        },
+      );
+
+  /// The `index + 1` of `count` that [withQueuePosition] put on [item].
+  static (Object?, Object?) _queuePositionOf(MediaItem? item) =>
+      (item?.extras?[_trackNumberKey], item?.extras?[_numTracksKey]);
+
+  /// The media session queue for [songs], each entry numbered by its place.
+  static List<MediaItem> songsToQueue(
+    List<Song> songs, {
+    String? coverArtUrl,
+  }) => [
+    for (final (i, s) in songs.indexed)
+      withQueuePosition(
+        songToQueueItem(s, coverArtUrl: coverArtUrl),
+        i,
+        songs.length,
+      ),
+  ];
 
   static MediaItem albumToMediaItem(Album album, SubsonicClient client) {
     final coverUrl = album.coverArtId != null
