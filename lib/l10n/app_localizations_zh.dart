@@ -687,4 +687,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get unknownArtist => '未知艺术家';
+
+  @override
+  String queuePosition(int current, int total) {
+    return '第 $current 首，共 $total 首';
+  }
+
+  @override
+  String queueTotalTime(String duration) {
+    return '共 $duration';
+  }
+
+  @override
+  String queueTimeLeft(String duration) {
+    return '剩余 $duration';
+  }
+
+  @override
+  String get queueShowPlaying => '显示正在播放的曲目';
 }

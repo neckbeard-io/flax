@@ -691,4 +691,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get unknownArtist => '不明なアーティスト';
+
+  @override
+  String queuePosition(int current, int total) {
+    return '$total曲中$current曲目';
+  }
+
+  @override
+  String queueTotalTime(String duration) {
+    return '合計 $duration';
+  }
+
+  @override
+  String queueTimeLeft(String duration) {
+    return '残り $duration';
+  }
+
+  @override
+  String get queueShowPlaying => '再生中の曲を表示';
 }

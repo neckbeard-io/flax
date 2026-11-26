@@ -203,5 +203,9 @@
   "removedPlaylistFromCache": "「{name}」をオフラインキャッシュから削除しました",
   "navPlaylistsShort": "プレイリスト",
   "unknownAlbum": "不明なアルバム",
-  "unknownArtist": "不明なアーティスト"
+  "unknownArtist": "不明なアーティスト",
+  "queuePosition": "{total}曲中{current}曲目",
+  "queueTotalTime": "合計 {duration}",
+  "queueTimeLeft": "残り {duration}",
+  "queueShowPlaying": "再生中の曲を表示"
 }

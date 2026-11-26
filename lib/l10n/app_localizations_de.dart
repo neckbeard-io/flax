@@ -740,4 +740,22 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get unknownArtist => 'Unbekannter Künstler';
+
+  @override
+  String queuePosition(int current, int total) {
+    return 'Titel $current von $total';
+  }
+
+  @override
+  String queueTotalTime(String duration) {
+    return '$duration gesamt';
+  }
+
+  @override
+  String queueTimeLeft(String duration) {
+    return 'noch $duration';
+  }
+
+  @override
+  String get queueShowPlaying => 'Aktuellen Titel anzeigen';
 }

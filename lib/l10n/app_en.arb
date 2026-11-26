@@ -951,5 +951,31 @@
   "unknownArtist": "Unknown Artist",
   "@unknownArtist": {
     "description": "Shown in an album break above a track that has no artist name"
+  },
+  "queuePosition": "Track {current} of {total}",
+  "@queuePosition": {
+    "description": "Play queue summary line: which track of the queue is playing",
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "queueTotalTime": "{duration} total",
+  "@queueTotalTime": {
+    "description": "Play queue summary line: running time of the whole queue, e.g. 2:41:07 total",
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "queueTimeLeft": "{duration} left",
+  "@queueTimeLeft": {
+    "description": "Play queue summary line: time until the queue finishes, counted from the playback position",
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "queueShowPlaying": "Show the playing track",
+  "@queueShowPlaying": {
+    "description": "Button over the play queue, shown when the playing track is scrolled out of view; scrolls back to it"
   }
 }
