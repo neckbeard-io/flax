@@ -203,5 +203,9 @@
   "removedPlaylistFromCache": "„{name}“ aus dem Offline-Cache entfernt",
   "navPlaylistsShort": "Playlists",
   "unknownAlbum": "Unbekanntes Album",
-  "unknownArtist": "Unbekannter Künstler"
+  "unknownArtist": "Unbekannter Künstler",
+  "queuePosition": "Titel {current} von {total}",
+  "queueTotalTime": "{duration} gesamt",
+  "queueTimeLeft": "noch {duration}",
+  "queueShowPlaying": "Aktuellen Titel anzeigen"
 }

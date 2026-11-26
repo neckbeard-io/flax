@@ -203,5 +203,9 @@
   "removedPlaylistFromCache": "Se quitó «{name}» de la caché sin conexión",
   "navPlaylistsShort": "Listas",
   "unknownAlbum": "Álbum desconocido",
-  "unknownArtist": "Artista desconocido"
+  "unknownArtist": "Artista desconocido",
+  "queuePosition": "Pista {current} de {total}",
+  "queueTotalTime": "{duration} en total",
+  "queueTimeLeft": "Quedan {duration}",
+  "queueShowPlaying": "Mostrar la pista en reproducción"
 }

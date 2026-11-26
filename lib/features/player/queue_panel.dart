@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flax/core/providers/library_provider.dart';
 import 'package:flax/domain/repositories/library_repository.dart';
 import 'package:flax/domain/models/album.dart';
 import 'package:flax/domain/models/song.dart';
 import 'package:flax/features/library/album_detail_screen.dart';
+import 'package:flax/l10n/app_localizations.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/services/transcoding/transcoding_service.dart';
 import 'package:flax/shared/widgets/album_group_header.dart';
@@ -14,15 +16,119 @@ import 'package:flax/shared/widgets/genre_chips.dart';
 import 'package:flax/shared/widgets/song_context_menu.dart';
 import 'package:flax/shared/widgets/star_rating.dart';
 
-class QueuePanel extends ConsumerWidget {
+/// The play queue, grouped by album, that keeps the playing track in view.
+///
+/// When the track changes the list scrolls to it, as long as the old one was
+/// on screen: scroll away to look further down and the list stays where you
+/// put it, with a button to come back. Issue #211.
+class QueuePanel extends ConsumerStatefulWidget {
   const QueuePanel({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(playerProvider);
+  ConsumerState<QueuePanel> createState() => _QueuePanelState();
+}
+
+class _QueuePanelState extends ConsumerState<QueuePanel> {
+  final _scroll = ScrollController();
+  final _playingRowKey = GlobalKey();
+
+  /// Which way the playing track lies when it is out of view; null in view.
+  final _playingOffscreen = ValueNotifier<AxisDirection?>(null);
+
+  /// The playing track's group as a share of the list, 0 to 1. A lazily built
+  /// list has no row to scroll to until it is near, so a far reveal jumps by
+  /// this first.
+  double _playingFraction = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reveal());
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _playingOffscreen.dispose();
+    super.dispose();
+  }
+
+  /// Where the playing row sits relative to the viewport: null when any of it
+  /// shows, otherwise the direction to scroll to find it.
+  AxisDirection? _playingRowDirection() {
+    if (!_scroll.hasClients) return null;
+    final pos = _scroll.position;
+    final box = _playingRowKey.currentContext?.findRenderObject();
+    if (box is! RenderBox || !box.attached) {
+      // Not built, so well outside the cache extent: guess from its share.
+      return _playingFraction * pos.maxScrollExtent < pos.pixels
+          ? AxisDirection.up
+          : AxisDirection.down;
+    }
+    final viewport = RenderAbstractViewport.maybeOf(box);
+    if (viewport == null) return null;
+    final top = viewport.getOffsetToReveal(box, 0).offset - pos.pixels;
+    if (top + box.size.height <= 0) return AxisDirection.up;
+    if (top >= pos.viewportDimension) return AxisDirection.down;
+    return null;
+  }
+
+  void _updateIndicator() {
+    if (!mounted) return;
+    _playingOffscreen.value = _playingRowDirection();
+  }
+
+  /// Scrolls the playing row to near the top, leaving what plays next below.
+  void _reveal({bool animate = false, int attempts = 4}) {
+    if (!mounted || !_scroll.hasClients) return;
+    final context = _playingRowKey.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.15,
+        duration: animate ? const Duration(milliseconds: 300) : Duration.zero,
+        curve: Curves.easeOutCubic,
+      ).then((_) => _updateIndicator());
+      return;
+    }
+    if (attempts == 0) {
+      _updateIndicator();
+      return;
+    }
+    final pos = _scroll.position;
+    _scroll.jumpTo(
+      (_playingFraction * pos.maxScrollExtent).clamp(
+        pos.minScrollExtent,
+        pos.maxScrollExtent,
+      ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _reveal(animate: animate, attempts: attempts - 1),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Not the whole state: position ticks several times a second, and only the
+    // summary line needs it.
+    final (queue, queueIndex, currentSong) = ref.watch(
+      playerProvider.select((s) => (s.queue, s.queueIndex, s.currentSong)),
+    );
     final theme = Theme.of(context);
 
-    if (state.queue.isEmpty) {
+    ref.listen(playerProvider.select((s) => s.queueIndex), (previous, next) {
+      // Still the old row: this runs before the rebuild moves the key.
+      final wasWatching = _playingRowDirection() == null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (wasWatching) {
+          _reveal(animate: true);
+        } else {
+          _updateIndicator();
+        }
+      });
+    });
+
+    if (queue.isEmpty) {
       return Center(
         child: Text(
           'Queue is empty',
@@ -33,37 +139,148 @@ class QueuePanel extends ConsumerWidget {
       );
     }
 
-    final groups = groupByAlbum(state.queue);
-    final currentSong = state.currentSong;
+    final groups = groupByAlbum(queue);
+    final starts = <int>[];
+    var playingGroup = 0;
+    var next = 0;
+    for (var g = 0; g < groups.length; g++) {
+      starts.add(next);
+      next += groups[g].songs.length;
+      if (queueIndex >= starts[g] && queueIndex < next) playingGroup = g;
+    }
+    _playingFraction = groups.length > 1
+        ? playingGroup / (groups.length - 1)
+        : 0;
 
     return Column(
       children: [
         // ── Now playing album header ──
         if (currentSong != null) _NowPlayingAlbumHeader(song: currentSong),
 
+        _QueueSummaryLine(queue: queue, queueIndex: queueIndex),
+
         // ── Grouped track list ──
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 16),
-            itemCount: groups.length,
-            itemBuilder: (context, groupIndex) {
-              final group = groups[groupIndex];
-              return _AlbumGroup(
-                group: group,
-                currentSong: currentSong,
-                onSongTap: (song, index) {
-                  final queueIndex = state.queue.indexOf(song);
-                  if (queueIndex >= 0) {
-                    ref
-                        .read(playerProvider.notifier)
-                        .playSong(song, queue: state.queue, index: queueIndex);
-                  }
+          child: Stack(
+            children: [
+              NotificationListener<ScrollMetricsNotification>(
+                onNotification: (_) {
+                  _updateIndicator();
+                  return false;
                 },
-              );
-            },
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (_) {
+                    _updateIndicator();
+                    return false;
+                  },
+                  child: ListView.builder(
+                    controller: _scroll,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemCount: groups.length,
+                    itemBuilder: (context, groupIndex) {
+                      return _AlbumGroup(
+                        group: groups[groupIndex],
+                        startIndex: starts[groupIndex],
+                        playingIndex: queueIndex,
+                        playingRowKey: _playingRowKey,
+                        onSongTap: (song, index) => ref
+                            .read(playerProvider.notifier)
+                            .playSong(song, queue: queue, index: index),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: ValueListenableBuilder<AxisDirection?>(
+                  valueListenable: _playingOffscreen,
+                  builder: (context, direction, _) {
+                    if (direction == null) return const SizedBox.shrink();
+                    return IconButton.filledTonal(
+                      key: const ValueKey('queue-show-playing'),
+                      tooltip:
+                          AppLocalizations.of(context)?.queueShowPlaying ??
+                          'Show the playing track',
+                      icon: Icon(
+                        direction == AxisDirection.up
+                            ? Icons.arrow_upward
+                            : Icons.arrow_downward,
+                      ),
+                      onPressed: () => _reveal(animate: true),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Seconds from [position] in the track at [index] to the end of [queue].
+int queueSecondsLeft(List<Song> queue, int index, Duration position) {
+  if (index < 0 || index >= queue.length) return 0;
+  final current = queue[index].duration - position.inSeconds;
+  var left = current > 0 ? current : 0;
+  for (var i = index + 1; i < queue.length; i++) {
+    left += queue[i].duration;
+  }
+  return left;
+}
+
+/// "Track 5 of 42 · 2:41:07 total · 1:58:30 left" above the queue.
+class _QueueSummaryLine extends ConsumerWidget {
+  const _QueueSummaryLine({required this.queue, required this.queueIndex});
+
+  final List<Song> queue;
+  final int queueIndex;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final seconds = ref.watch(
+      playerProvider.select((s) => s.position.inSeconds),
+    );
+    final total = queue.fold<int>(0, (sum, s) => sum + s.duration);
+    final playing = queueIndex >= 0 && queueIndex < queue.length;
+    final totalText = formatDuration(total);
+
+    final parts = [
+      if (playing)
+        l10n?.queuePosition(queueIndex + 1, queue.length) ??
+            'Track ${queueIndex + 1} of ${queue.length}',
+      l10n?.queueTotalTime(totalText) ?? '$totalText total',
+      if (playing)
+        () {
+          final left = formatDuration(
+            queueSecondsLeft(queue, queueIndex, Duration(seconds: seconds)),
+          );
+          return l10n?.queueTimeLeft(left) ?? '$left left';
+        }(),
+    ];
+
+    return Container(
+      key: const ValueKey('queue-summary'),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+      ),
+      child: Text(
+        parts.join(' · '),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
@@ -245,12 +462,20 @@ class _AlbumRatingRow extends ConsumerWidget {
 
 class _AlbumGroup extends ConsumerWidget {
   final AlbumGroup group;
-  final Song? currentSong;
-  final void Function(Song song, int index) onSongTap;
+
+  /// Queue index of this group's first song.
+  final int startIndex;
+  final int playingIndex;
+  final GlobalKey playingRowKey;
+
+  /// Called with the song and its queue index.
+  final void Function(Song song, int queueIndex) onSongTap;
 
   const _AlbumGroup({
     required this.group,
-    this.currentSong,
+    required this.startIndex,
+    required this.playingIndex,
+    required this.playingRowKey,
     required this.onSongTap,
   });
 
@@ -269,16 +494,18 @@ class _AlbumGroup extends ConsumerWidget {
         ...group.songs.asMap().entries.map((entry) {
           final index = entry.key;
           final song = entry.value;
-          final isCurrent = currentSong?.id == song.id;
+          // By position, not id: a song queued twice is playing only once.
+          final isCurrent = startIndex + index == playingIndex;
           final isCached = downloadedSongIds.contains(song.id);
 
           return SongContextMenu(
+            key: isCurrent ? playingRowKey : null,
             song: song,
             queue: group.songs,
             index: index,
             child: _QueueRowHover(
               isCurrent: isCurrent,
-              onTap: () => onSongTap(song, index),
+              onTap: () => onSongTap(song, startIndex + index),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,

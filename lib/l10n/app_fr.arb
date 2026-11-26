@@ -203,5 +203,9 @@
   "removedPlaylistFromCache": "« {name} » retiré du cache hors ligne",
   "navPlaylistsShort": "Playlists",
   "unknownAlbum": "Album inconnu",
-  "unknownArtist": "Artiste inconnu"
+  "unknownArtist": "Artiste inconnu",
+  "queuePosition": "Morceau {current} sur {total}",
+  "queueTotalTime": "{duration} au total",
+  "queueTimeLeft": "Reste {duration}",
+  "queueShowPlaying": "Afficher le morceau en cours"
 }

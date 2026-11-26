@@ -203,5 +203,9 @@
   "removedPlaylistFromCache": "已从离线缓存中移除“{name}”",
   "navPlaylistsShort": "播放列表",
   "unknownAlbum": "未知专辑",
-  "unknownArtist": "未知艺术家"
+  "unknownArtist": "未知艺术家",
+  "queuePosition": "第 {current} 首，共 {total} 首",
+  "queueTotalTime": "共 {duration}",
+  "queueTimeLeft": "剩余 {duration}",
+  "queueShowPlaying": "显示正在播放的曲目"
 }

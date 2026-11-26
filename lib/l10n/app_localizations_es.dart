@@ -743,4 +743,22 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get unknownArtist => 'Artista desconocido';
+
+  @override
+  String queuePosition(int current, int total) {
+    return 'Pista $current de $total';
+  }
+
+  @override
+  String queueTotalTime(String duration) {
+    return '$duration en total';
+  }
+
+  @override
+  String queueTimeLeft(String duration) {
+    return 'Quedan $duration';
+  }
+
+  @override
+  String get queueShowPlaying => 'Mostrar la pista en reproducción';
 }

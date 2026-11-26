@@ -1329,6 +1329,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown Artist'**
   String get unknownArtist;
+
+  /// Play queue summary line: which track of the queue is playing
+  ///
+  /// In en, this message translates to:
+  /// **'Track {current} of {total}'**
+  String queuePosition(int current, int total);
+
+  /// Play queue summary line: running time of the whole queue, e.g. 2:41:07 total
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} total'**
+  String queueTotalTime(String duration);
+
+  /// Play queue summary line: time until the queue finishes, counted from the playback position
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} left'**
+  String queueTimeLeft(String duration);
+
+  /// Button over the play queue, shown when the playing track is scrolled out of view; scrolls back to it
+  ///
+  /// In en, this message translates to:
+  /// **'Show the playing track'**
+  String get queueShowPlaying;
 }
 
 class _AppLocalizationsDelegate
