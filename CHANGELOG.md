@@ -10,6 +10,9 @@ Releases before v0.1.8 predate this file. Their notes are on the
 
 ## Unreleased
 
+### Added
+- Search song results: tap the artist or album name to open it.
+
 ### Fixed
 - Bluetooth car stereos now follow track changes, not just the first song's title and art.
 - Bluetooth car stereos now check the playing song in their track list, not always the first.

@@ -7,6 +7,7 @@ import 'package:flax/domain/models/models.dart';
 import 'package:flax/features/player/player_provider.dart';
 import 'package:flax/features/settings/playback_settings.dart';
 import 'package:flax/shared/widgets/cover_art_image.dart';
+import 'package:flax/shared/widgets/hover_effects.dart';
 import 'package:flax/shared/widgets/window_buttons.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
@@ -217,11 +218,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            subtitle: Text(
-                              '${song.artistName ?? ''} — ${song.albumName ?? ''}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            subtitle: SongSubtitleLinks(song: song),
                             onTap: () {
                               ref.read(playerProvider.notifier).playSong(song);
                               if (ref
@@ -243,6 +240,51 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A song result's "artist — album" line, each name a link to its page.
+///
+/// The links sit inside the row's [ListTile], and the innermost gesture wins:
+/// tapping a name opens it, tapping anywhere else plays the song. A name whose
+/// id the server did not send stays plain text, so a tap on it plays.
+class SongSubtitleLinks extends StatelessWidget {
+  const SongSubtitleLinks({super.key, required this.song});
+
+  final Song song;
+
+  @override
+  Widget build(BuildContext context) {
+    final artist = song.artistName;
+    final album = song.albumName;
+    final hasArtist = artist != null && artist.isNotEmpty;
+    final hasAlbum = album != null && album.isNotEmpty;
+
+    return Row(
+      children: [
+        if (hasArtist)
+          Flexible(
+            child: HoverLink(
+              key: const ValueKey('song-artist-link'),
+              text: artist,
+              onTap: song.artistId != null
+                  ? () => context.push('/artists/${song.artistId}')
+                  : null,
+            ),
+          ),
+        if (hasArtist && hasAlbum) const Text(' — '),
+        if (hasAlbum)
+          Flexible(
+            child: HoverLink(
+              key: const ValueKey('song-album-link'),
+              text: album,
+              onTap: song.albumId != null
+                  ? () => context.push('/albums/${song.albumId}')
+                  : null,
+            ),
+          ),
+      ],
     );
   }
 }
