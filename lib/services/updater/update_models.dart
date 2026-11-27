@@ -163,6 +163,11 @@ class UpdateState {
   final String? errorMessage;
   final DateTime? lastCheckedAt;
 
+  /// Whether this build updates itself at all. A debug build run from a
+  /// checkout does not: it would install a release over the build folder, and
+  /// on macOS the sandbox its debug entitlements apply stops it partway.
+  final bool enabled;
+
   const UpdateState({
     this.stage = UpdateStage.idle,
     this.channel = UpdateChannel.stable,
@@ -176,6 +181,7 @@ class UpdateState {
     this.localFilePath,
     this.errorMessage,
     this.lastCheckedAt,
+    this.enabled = true,
   });
 
   bool get isUpdateAvailable =>
@@ -205,6 +211,7 @@ class UpdateState {
     String? errorMessage,
     bool clearError = false,
     DateTime? lastCheckedAt,
+    bool? enabled,
   }) {
     return UpdateState(
       stage: stage ?? this.stage,
@@ -221,6 +228,7 @@ class UpdateState {
           : (localFilePath ?? this.localFilePath),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
+      enabled: enabled ?? this.enabled,
     );
   }
 }

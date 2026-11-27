@@ -42,14 +42,16 @@ OS_TYPE="$(uname -s)"
 if [ "$OS_TYPE" = "Darwin" ]; then
   PLATFORM="macos"
   APP="build/macos/Build/Products/$([ "$MODE" = release ] && echo Release || echo Debug)/flax.app"
-  KILL_PATTERN="flax.app/Contents/MacOS/flax"
+  KILL_PATTERN="$PWD/build/macos/Build/Products/[^/]+/flax.app/Contents/MacOS/flax"
 else
   PLATFORM="linux"
   APP="build/linux/x64/$MODE/bundle/flax"
-  KILL_PATTERN="build/linux/x64/.*/bundle/flax"
+  KILL_PATTERN="$PWD/build/linux/x64/[^/]+/bundle/flax"
 fi
 
-echo "==> Killing any running flax…"
+# Only this checkout's builds are stopped. The installed flax, the one actually
+# used day to day, keeps running beside a test build.
+echo "==> Killing any running test build…"
 pkill -f "$KILL_PATTERN" 2>/dev/null || true
 # Wait for the process to actually exit so the new launch is the only instance.
 for _ in $(seq 1 20); do pgrep -f "$KILL_PATTERN" >/dev/null || break; sleep 0.2; done

@@ -413,6 +413,14 @@ Do **not** rely on `flutter run` hot reload for verification — a full rebuild 
 the only guarantee that the window matches `main`. A debug build from cold takes
 a couple of minutes; expect it.
 
+**A test build is not the installed app.** The flax in `/Applications`, put
+there by the curl installer, is the one used day to day; never build into it,
+copy over it, quit it or update it. Test builds run from `build/`, which
+`run_flax.sh` stops and starts without touching the installed one. A debug
+build never checks for or offers updates: run from a checkout, it would install
+a release over its own build folder, and on macOS its sandboxed entitlements
+stop that halfway, leaving a disk image mounted.
+
 ### Checks
 
 - **Local:** Run any new unit/widget test you added (e.g. `flutter test test/my_feature_test.dart`) and format touched files with the **pinned** SDK (below).

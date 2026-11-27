@@ -495,84 +495,88 @@ class _AboutTile extends ConsumerWidget {
             );
           },
         ),
-        ListTile(
-          title: const Text('Update Channel'),
-          subtitle: Text(updateState.channel.description),
-          trailing: DropdownButton<UpdateChannel>(
-            value: updateState.channel,
-            underline: const SizedBox.shrink(),
-            onChanged: (UpdateChannel? newChannel) {
-              if (newChannel != null) {
-                updateNotifier.setChannel(newChannel);
-              }
-            },
-            items: const [
-              DropdownMenuItem(
-                value: UpdateChannel.stable,
-                child: Text('Stable'),
-              ),
-              DropdownMenuItem(value: UpdateChannel.dev, child: Text('Dev')),
-            ],
-          ),
-        ),
-        ListTile(
-          title: const Text('Check for Updates'),
-          subtitle: Text(
-            updateState.isChecking
-                ? 'Checking for updates (${updateState.channel.label} channel)...'
-                : updateState.isUpdateAvailable
-                ? 'New ${updateState.latestRelease?.isPrerelease == true ? "dev" : "stable"} version: v${updateState.latestRelease?.version ?? ""}'
-                : updateState.stage == UpdateStage.upToDate
-                ? 'Flax is up to date (${updateState.channel.label} channel)'
-                : updateState.stage == UpdateStage.error &&
-                      updateState.errorMessage != null
-                ? updateState.errorMessage!
-                : 'Tap to check GitHub for new ${updateState.channel.label.toLowerCase()} releases',
-          ),
-          trailing: updateState.isChecking
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : updateState.isUpdateAvailable
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isCompact)
-                      IconButton.outlined(
-                        tooltip: 'Check for updates',
-                        onPressed: () {
-                          updateNotifier.checkForUpdates();
-                        },
-                        icon: const Icon(Icons.refresh),
-                      )
-                    else
-                      OutlinedButton(
-                        onPressed: () {
-                          updateNotifier.checkForUpdates();
-                        },
-                        child: const Text('Check Now'),
-                      ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () {
-                        showDialog<void>(
-                          context: context,
-                          builder: (_) => const UpdateDialog(),
-                        );
-                      },
-                      child: const Text('Update'),
-                    ),
-                  ],
-                )
-              : OutlinedButton(
-                  onPressed: () {
-                    updateNotifier.checkForUpdates();
-                  },
-                  child: const Text('Check Now'),
+        // A debug build never updates itself, so it offers neither control;
+        // the version line above already says it is a debug build.
+        if (updateState.enabled) ...[
+          ListTile(
+            title: const Text('Update Channel'),
+            subtitle: Text(updateState.channel.description),
+            trailing: DropdownButton<UpdateChannel>(
+              value: updateState.channel,
+              underline: const SizedBox.shrink(),
+              onChanged: (UpdateChannel? newChannel) {
+                if (newChannel != null) {
+                  updateNotifier.setChannel(newChannel);
+                }
+              },
+              items: const [
+                DropdownMenuItem(
+                  value: UpdateChannel.stable,
+                  child: Text('Stable'),
                 ),
-        ),
+                DropdownMenuItem(value: UpdateChannel.dev, child: Text('Dev')),
+              ],
+            ),
+          ),
+          ListTile(
+            title: const Text('Check for Updates'),
+            subtitle: Text(
+              updateState.isChecking
+                  ? 'Checking for updates (${updateState.channel.label} channel)...'
+                  : updateState.isUpdateAvailable
+                  ? 'New ${updateState.latestRelease?.isPrerelease == true ? "dev" : "stable"} version: v${updateState.latestRelease?.version ?? ""}'
+                  : updateState.stage == UpdateStage.upToDate
+                  ? 'Flax is up to date (${updateState.channel.label} channel)'
+                  : updateState.stage == UpdateStage.error &&
+                        updateState.errorMessage != null
+                  ? updateState.errorMessage!
+                  : 'Tap to check GitHub for new ${updateState.channel.label.toLowerCase()} releases',
+            ),
+            trailing: updateState.isChecking
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : updateState.isUpdateAvailable
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isCompact)
+                        IconButton.outlined(
+                          tooltip: 'Check for updates',
+                          onPressed: () {
+                            updateNotifier.checkForUpdates();
+                          },
+                          icon: const Icon(Icons.refresh),
+                        )
+                      else
+                        OutlinedButton(
+                          onPressed: () {
+                            updateNotifier.checkForUpdates();
+                          },
+                          child: const Text('Check Now'),
+                        ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () {
+                          showDialog<void>(
+                            context: context,
+                            builder: (_) => const UpdateDialog(),
+                          );
+                        },
+                        child: const Text('Update'),
+                      ),
+                    ],
+                  )
+                : OutlinedButton(
+                    onPressed: () {
+                      updateNotifier.checkForUpdates();
+                    },
+                    child: const Text('Check Now'),
+                  ),
+          ),
+        ],
         ListTile(
           title: const Text('Export Diagnostics & Report Issue'),
           subtitle: const Text(
