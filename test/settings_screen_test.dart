@@ -271,6 +271,32 @@ void main() {
       expect(notifier.checkCalls, 1);
     });
   });
+  testWidgets('a debug build offers no update controls', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final notifier = _TestUpdateNotifier(
+      const UpdateState(currentVersion: '0.8.1', enabled: false),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [updateNotifierProvider.overrideWith((ref) => notifier)],
+        child: const MaterialApp(home: SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Export Diagnostics & Report Issue'),
+      500,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Update Channel'), findsNothing);
+    expect(find.text('Check for Updates'), findsNothing);
+  });
+
   group('Android Auto offline option', () {
     Future<void> pumpSettings(
       WidgetTester tester,

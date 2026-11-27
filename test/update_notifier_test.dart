@@ -135,6 +135,22 @@ void main() {
 
   tearDown(() => notifier.dispose());
 
+  test('a debug build never checks for or offers an update', () async {
+    SharedPreferences.setMockInitialValues({'update_auto_check_enabled': true});
+    final debug = UpdateNotifier(
+      UpdateService(dio: github.dio()),
+      enabled: false,
+    );
+    addTearDown(debug.dispose);
+    await pumpEventQueue();
+
+    await debug.checkForUpdates();
+    expect(debug.state.enabled, isFalse);
+    expect(debug.state.stage, UpdateStage.idle);
+    expect(debug.state.latestRelease, isNull);
+    expect(debug.state.isUpdateAvailable, isFalse);
+  });
+
   test('a successful check clears the error a failed one left', () async {
     github.reachable = false;
     await notifier.checkForUpdates();

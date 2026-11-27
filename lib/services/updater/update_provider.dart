@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,7 +17,9 @@ final updateServiceProvider = Provider<UpdateService>((ref) {
 final updateNotifierProvider =
     StateNotifierProvider<UpdateNotifier, UpdateState>((ref) {
       final service = ref.watch(updateServiceProvider);
-      return UpdateNotifier(service);
+      // Debug builds come from a checkout and are run for testing next to the
+      // installed app; only release and profile builds update themselves.
+      return UpdateNotifier(service, enabled: !kDebugMode);
     });
 
 class UpdateNotifier extends StateNotifier<UpdateState> {
@@ -28,12 +31,13 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
   static const String _prefAutoCheckKey = 'update_auto_check_enabled';
   static const String _prefChannelKey = 'update_channel';
 
-  UpdateNotifier(this._service) : super(const UpdateState()) {
+  UpdateNotifier(this._service, {bool enabled = true})
+    : super(UpdateState(enabled: enabled)) {
     _init();
   }
 
   Future<void> _init() async {
-    unawaited(_service.deleteLeftoverDownloads());
+    if (state.enabled) unawaited(_service.deleteLeftoverDownloads());
     final version = await _service.getCurrentVersion();
     final method = _service.detectInstallMethod();
     final prefs = await SharedPreferences.getInstance();
@@ -47,7 +51,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
     );
 
     final autoCheck = prefs.getBool(_prefAutoCheckKey) ?? true;
-    if (autoCheck) {
+    if (autoCheck && state.enabled) {
       checkForUpdates(silent: true);
       if (!Platform.environment.containsKey('FLUTTER_TEST')) {
         _autoCheckTimer?.cancel();
@@ -68,6 +72,7 @@ class UpdateNotifier extends StateNotifier<UpdateState> {
 
   /// Checks GitHub for new releases.
   Future<void> checkForUpdates({bool silent = false}) async {
+    if (!state.enabled) return;
     if (state.isChecking || state.isDownloading || state.isInstalling) return;
 
     final stageBefore = state.stage;
